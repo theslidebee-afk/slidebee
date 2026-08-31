@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Anyone can read blogs, only authenticated users can write
+    match /blogs/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Anyone can create leads, only authenticated users can read/write
+    match /leads/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+  }
+}
