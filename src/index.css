@@ -58,10 +58,14 @@
 }
 
 @theme {
-  --color-primary: #ed6c25;
-  --color-primary-dark: #d55a16;
-  --color-foreground: #1e293b;
+  /* Official SlideBee Brand Colors from SlideBEE.pptx */
+  --color-primary: #fcbf14;
+  --color-primary-dark: #d99f06;
+  --color-primary-amber: #936610;
+  --color-foreground: #111111;
   --color-background: #ffffff;
+  --color-cream: #fff9e8;
+  --color-slate-custom: #726f6d;
   
   --font-sans: 'Montserrat', system-ui, -apple-system, sans-serif;
   --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;

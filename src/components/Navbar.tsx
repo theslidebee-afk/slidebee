@@ -112,7 +112,7 @@ export default function Navbar() {
         <div className="hidden md:block">
           <Link
             to="/contact"
-            className="bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 px-6 rounded-full transition-all hover:shadow-lg inline-block"
+            className="bg-primary hover:bg-primary-dark text-foreground font-bold py-2.5 px-6 rounded-full transition-all hover:shadow-lg inline-block shadow-md shadow-primary/20"
           >
             Try Now
           </Link>
@@ -152,7 +152,7 @@ export default function Navbar() {
                 <Link to="/media/videos" className="text-xl font-heading font-bold text-foreground hover:text-primary">Videos</Link>
               </div>
               <Link to="/contact" className="text-2xl font-heading font-bold text-foreground hover:text-primary">Contact</Link>
-              <Link to="/contact" className="mt-4 bg-primary text-white text-xl font-bold py-3 px-12 rounded-full">
+              <Link to="/contact" className="mt-4 bg-primary text-foreground text-xl font-extrabold py-3 px-12 rounded-full shadow-lg shadow-primary/20">
                 Try Now
               </Link>
             </nav>

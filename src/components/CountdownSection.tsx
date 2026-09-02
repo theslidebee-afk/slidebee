@@ -195,7 +195,7 @@ export default function CountdownSection() {
                 <button
                   type="submit"
                   disabled={status === "loading"}
-                  className="px-7 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-all duration-200 disabled:opacity-50 shrink-0 shadow-lg shadow-primary/30"
+                  className="px-7 py-4 bg-primary hover:bg-primary-dark text-foreground font-extrabold rounded-xl transition-all duration-200 disabled:opacity-50 shrink-0 shadow-lg shadow-primary/30"
                 >
                   {status === "loading" ? "Joining..." : "Notify Me"}
                 </button>

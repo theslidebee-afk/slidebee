@@ -39,10 +39,10 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="flex flex-wrap gap-4"
           >
-            <Link to="/contact" className="bg-primary hover:bg-primary-dark text-white font-bold py-4 px-8 rounded-full transition-all hover:-translate-y-1 shadow-[0_10px_20px_rgba(237,108,37,0.3)]">
+            <Link to="/contact" className="bg-primary hover:bg-primary-dark text-foreground font-extrabold py-4 px-8 rounded-full transition-all hover:-translate-y-1 shadow-[0_10px_25px_rgba(252,191,20,0.35)]">
               Try Now
             </Link>
-            <Link to="/examples" className="bg-transparent border-2 border-white/20 hover:border-white text-white font-bold py-4 px-8 rounded-full transition-all">
+            <Link to="/examples" className="bg-transparent border-2 border-white/20 hover:border-primary hover:text-primary text-white font-bold py-4 px-8 rounded-full transition-all">
               View Our Work
             </Link>
           </motion.div>
