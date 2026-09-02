@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
+import SlideBeeLogo from "./SlideBeeLogo";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,13 +11,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="space-y-6">
-            <Link to="/" className="flex items-center gap-2 inline-block">
-              <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-heading font-bold text-lg shadow-md shadow-primary/20">
-                🐝
-              </div>
-              <span className="font-heading font-bold text-2xl text-white tracking-tight">
-                Slide<span className="text-primary">Bee</span>
-              </span>
+            <Link to="/" className="inline-block">
+              <SlideBeeLogo variant="dark" size="lg" />
             </Link>
             <p className="text-gray-400 font-light leading-relaxed">
               Elevating presentations for world-class brands. We transform complex data and ideas into compelling visual stories that drive results.

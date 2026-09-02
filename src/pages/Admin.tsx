@@ -6,6 +6,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { motion } from "framer-motion";
 import { Loader2, LogOut, Upload, FileText, Video, Users } from "lucide-react";
+import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -107,12 +108,9 @@ export default function Admin() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 pt-20 px-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-100">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-heading font-bold text-3xl mx-auto mb-4 shadow-lg shadow-primary/30">
-              🐝
-            </div>
-            <h2 className="text-2xl font-heading font-bold text-foreground">SlideBee Admin</h2>
-            <p className="text-muted-foreground mt-2">Sign in to manage your content</p>
+          <div className="text-center mb-8 flex flex-col items-center">
+            <SlideBeeLogo size="lg" variant="light" className="mb-2" />
+            <p className="text-muted-foreground mt-1 text-sm">Sign in to manage your leads & blog content</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-5">

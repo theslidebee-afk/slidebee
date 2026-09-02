@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+import SlideBeeLogo from "./SlideBeeLogo";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -39,13 +40,8 @@ export default function Navbar() {
     >
       <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 z-50">
-          <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-heading font-bold text-lg shadow-md shadow-primary/20">
-            🐝
-          </div>
-          <span className={clsx("font-heading font-bold text-2xl tracking-tight", isScrolled ? "text-foreground" : "text-white")}>
-            Slide<span className="text-primary">Bee</span>
-          </span>
+        <Link to="/" className="z-50">
+          <SlideBeeLogo variant={isScrolled ? "light" : "dark"} size="md" />
         </Link>
 
         {/* Desktop Nav */}
