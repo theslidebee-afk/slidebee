@@ -1,37 +1,65 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import About from "./pages/About";
+import Templates from "./pages/Templates";
 import Services from "./pages/Services";
+import OrderNow from "./pages/OrderNow";
 import Examples from "./pages/Examples";
+import About from "./pages/About";
 import Pricing from "./pages/Pricing";
 import Contact from "./pages/Contact";
+import ComingSoon from "./pages/ComingSoon";
 import Blog from "./pages/Blog";
 import Videos from "./pages/Videos";
 import Admin from "./pages/Admin";
 import Footer from "./components/Footer";
+import { CustomBeeCursor } from "./components/CustomBeeCursor";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 function App() {
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-background">
-        <Navbar />
-        <main className="flex-grow">
+    <CurrencyProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
+          {/* Custom SVG Bee Cursor */}
+          <CustomBeeCursor />
+          
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/examples" element={<Examples />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/media/blog" element={<Blog />} />
-            <Route path="/media/videos" element={<Videos />} />
-            <Route path="/admin/*" element={<Admin />} />
+            {/* 1. Public Default Landing View: Coming Soon */}
+            <Route path="/" element={<ComingSoon />} />
+            <Route path="/coming-soon" element={<ComingSoon />} />
+
+            {/* 2. Full Platform Pages (with Navbar & Footer) */}
+            <Route
+              path="/*"
+              element={
+                <>
+                  <Navbar />
+                  <main className="flex-grow">
+                    <Routes>
+                      <Route path="/home" element={<Home />} />
+                      <Route path="/templates" element={<Templates />} />
+                      <Route path="/services" element={<Services />} />
+                      <Route path="/ordernow" element={<OrderNow />} />
+                      <Route path="/order" element={<OrderNow />} />
+                      <Route path="/examples" element={<Examples />} />
+                      <Route path="/portfolio" element={<Examples />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/pricing" element={<Pricing />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/media/blog" element={<Blog />} />
+                      <Route path="/media/videos" element={<Videos />} />
+                      <Route path="/admin/*" element={<Admin />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </>
+              }
+            />
           </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+        </div>
+      </Router>
+    </CurrencyProvider>
   );
 }
 
