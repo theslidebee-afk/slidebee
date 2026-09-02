@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
+import { RecreatedHoneycombCluster } from "./RecreatedHoneycombCluster";
 
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -171,34 +172,10 @@ export default function HeroSection() {
             </motion.div>
           </div>
 
-          {/* Right Column: Full 7-Hexagon Honeycomb Cluster with Thick Borders */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-6 flex items-center justify-center relative select-none"
-          >
-            {/* Background Golden Hexagon Outline Lines */}
-            <div className="absolute -top-10 -right-10 w-full h-full pointer-events-none opacity-30 z-0">
-              <svg viewBox="0 0 500 500" className="w-full h-full stroke-primary fill-none stroke-[1.5]">
-                <path d="M 380 80 L 445 117.5 L 445 192.5 L 380 230 L 315 192.5 L 315 117.5 Z" />
-                <path d="M 445 192.5 L 510 230 L 510 305 L 445 342.5 L 380 305 L 380 230 Z" />
-                <path d="M 380 305 L 445 342.5 L 445 417.5 L 380 455 L 315 417.5 L 315 342.5 Z" />
-              </svg>
-            </div>
-
-            {/* Complete 7-Hexagon Cluster Graphic with Beveled Borders */}
-            <div className="relative w-full max-w-[560px] sm:max-w-[620px] aspect-square flex items-center justify-center group z-10">
-              <img
-                src="/slidebee_honeycomb_cluster.png"
-                alt="SlideBee Honeycomb Templates: Startup Pitch Deck, Business Plan, Marketing Strategy, Company Profile, Project Proposal"
-                className="w-full h-full object-contain filter drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] transition-transform duration-700 ease-out group-hover:scale-105"
-              />
-              
-              {/* Subtle ambient pulse behind the center Startup Pitch Deck */}
-              <div className="absolute w-36 h-36 bg-primary/25 rounded-full blur-2xl pointer-events-none -z-10 group-hover:bg-primary/40 transition-colors" />
-            </div>
-          </motion.div>
+          {/* Right Column: Code-Rebuilt 7-Hexagon Honeycomb Cluster */}
+          <div className="lg:col-span-6 flex items-center justify-center relative">
+            <RecreatedHoneycombCluster />
+          </div>
         </div>
       </div>
 
