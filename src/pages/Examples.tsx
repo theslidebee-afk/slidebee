@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { X, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
 
 interface PortfolioItem {
@@ -196,12 +196,29 @@ const categories = [
 ] as const;
 
 export default function Examples() {
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeModalItem, setActiveModalItem] = useState<PortfolioItem | null>(null);
 
-  const filteredItems = selectedCategory === "All"
-    ? portfolioData
-    : portfolioData.filter(item => item.category === selectedCategory);
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q !== null) {
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
+
+  const filteredItems = portfolioData.filter((item) => {
+    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+    const matchesSearch = !searchTerm.trim() || 
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.highlights.some(h => h.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-white pt-32 pb-24">

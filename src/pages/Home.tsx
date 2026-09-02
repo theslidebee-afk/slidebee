@@ -1,123 +1,199 @@
-import HeroSection from "../components/HeroSection";
-import ServicesSection from "../components/ServicesSection";
-import TryNowForm from "../components/TryNowForm";
-import CountdownSection from "../components/CountdownSection";
-import { motion } from "framer-motion";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Sparkles, Clock, Layers, Headphones } from "lucide-react";
-
-const featuredWork = [
-  {
-    client: "Nike x WLT",
-    title: "Executive Keynote Agenda",
-    category: "Brand & Keynotes",
-    image: "/portfolio/nike_hsbc_cvs_1.png"
-  },
-  {
-    client: "HSBC",
-    title: "Cost Savings & Headcount Matrix",
-    category: "Corporate & Finance",
-    image: "/portfolio/nike_hsbc_cvs_8.png"
-  },
-  {
-    client: "CVS Health",
-    title: "Digital Platform Ecosystem",
-    category: "Healthcare & Tech",
-    image: "/portfolio/nike_hsbc_cvs_10.png"
-  },
-  {
-    client: "Levi's",
-    title: "Global Marketing Framework",
-    category: "Brand Strategy",
-    image: "/portfolio/levis_yuengling_3.png"
-  }
-];
+import HeroSection from "../components/HeroSection";
+import CountdownSection from "../components/CountdownSection";
+import TryNowForm from "../components/TryNowForm";
+import { 
+  Shield, 
+  Clock, 
+  Layers, 
+  Headphones, 
+  ArrowRight, 
+  Sparkles, 
+  Sliders
+} from "lucide-react";
 
 export default function Home() {
+  const [sliderPosition, setSliderPosition] = useState(50);
+  const [activeTab, setActiveTab] = useState<"executive" | "financial" | "technical">("executive");
+
+  const comparisons = {
+    executive: {
+      title: "Executive Strategic Keynote",
+      beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
+      afterImg: "/portfolio/case_study_a_1.png",
+      beforeDesc: "Cluttered text bullets, misaligned branding, low readability.",
+      afterDesc: "Clean typographic hierarchy, high-contrast focal points, ex-McKinsey polish."
+    },
+    financial: {
+      title: "Series A / Private Equity Deck",
+      beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
+      afterImg: "/portfolio/global_brands_1.png",
+      beforeDesc: "Dense Excel tables, unformatted margins, confusing data points.",
+      afterDesc: "Intuitive financial data visualization with clear investment highlights."
+    },
+    technical: {
+      title: "Product Architecture & Ecosystem",
+      beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
+      afterImg: "/portfolio/levis_yuengling_6.png",
+      beforeDesc: "Complex wireframes with generic flowcharts.",
+      afterDesc: "Streamlined modern architectural diagrams and system frameworks."
+    }
+  };
+
+  const currentComparison = comparisons[activeTab];
+
+  const featuredWork = [
+    {
+      title: "Series A Investment Pitch",
+      client: "Venture Backed Tech",
+      category: "Startup Pitch",
+      image: "/portfolio/case_study_a_1.png"
+    },
+    {
+      title: "Global Supply Chain Model",
+      client: "Yuengling",
+      category: "Operations",
+      image: "/portfolio/levis_yuengling_6.png"
+    },
+    {
+      title: "Executive Board Overview",
+      client: "HSBC",
+      category: "Corporate Finance",
+      image: "/portfolio/nike_hsbc_cvs_8.png"
+    },
+    {
+      title: "Brand Campaign Rollout",
+      client: "Nike x WLT",
+      category: "Marketing Keynote",
+      image: "/portfolio/nike_hsbc_cvs_2.png"
+    }
+  ];
+
   return (
-    <div className="w-full">
-      <HeroSection />
-      <ServicesSection />
+    <div className="flex flex-col min-h-screen bg-[#0b0f19] text-white">
       
-      {/* Before / After Transformation Section */}
-      <section className="py-24 bg-[#fffdfa] overflow-hidden border-t border-b border-black/5">
+      {/* Hero Section with Full 7-Hexagon Honeycomb Structure */}
+      <HeroSection />
+
+      {/* SECTION 2: Before & After Transformation */}
+      <section className="py-24 bg-[#0d121f] relative border-t border-white/10">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-2 bg-primary/20 text-foreground px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-              <Sparkles size={14} className="text-primary-dark" />
-              Real Presentation Redesign
-            </div>
-            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-6">
-              See The <span className="text-primary-amber">Difference</span>
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="text-primary text-xs font-black uppercase tracking-widest bg-primary/10 border border-primary/20 px-3 py-1 rounded-full inline-block mb-3">
+              Precision Design Transformation
+            </span>
+            <h2 className="text-3xl md:text-5xl font-heading font-extrabold text-white mb-4">
+              Raw Drafts Transformed Into <span className="text-primary">Executive Decks</span>
             </h2>
-            <p className="text-lg text-gray-600 font-light">
-              Drag the slider to see how we transform cluttered raw bullet points into an executive visual story.
+            <p className="text-gray-300 font-light text-base md:text-lg">
+              Drag the interactive slider below to inspect the transformation from client draft to polished deliverable.
             </p>
           </div>
-          
-          <div className="max-w-5xl mx-auto rounded-3xl aspect-[16/9] border border-gray-200 shadow-2xl relative overflow-hidden group">
-            {/* After Image (SlideBee Polished Deck) */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center" 
-              style={{ backgroundImage: "url('/portfolio/nike_hsbc_cvs_1.png')" }}
-            >
-              <div className="absolute bottom-4 right-4 bg-primary text-foreground font-extrabold px-4 py-1.5 rounded-full text-xs shadow-lg uppercase tracking-wider">
-                ✨ After (SlideBee Polish)
+
+          {/* Comparison Category Tabs */}
+          <div className="flex justify-center gap-2 md:gap-4 mb-8">
+            {(["executive", "financial", "technical"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2.5 rounded-full text-xs md:text-sm font-bold capitalize transition-all ${
+                  activeTab === tab
+                    ? "bg-primary text-foreground shadow-lg shadow-primary/20 scale-105"
+                    : "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"
+                }`}
+              >
+                {tab} Slide
+              </button>
+            ))}
+          </div>
+
+          {/* Interactive Before/After Split Slider */}
+          <div className="max-w-4xl mx-auto bg-black/40 border border-white/15 rounded-3xl p-4 md:p-6 shadow-2xl">
+            <div className="relative aspect-[16/9] rounded-2xl overflow-hidden select-none">
+              
+              {/* After Image (Background) */}
+              <img
+                src={currentComparison.afterImg}
+                alt="After Redesign"
+                className="absolute inset-0 w-full h-full object-contain bg-[#111111]"
+              />
+              
+              <div className="absolute top-4 right-4 bg-primary text-foreground font-black text-xs px-3 py-1.5 rounded-full z-10 shadow-lg flex items-center gap-1">
+                <Sparkles size={12} /> SlideBee Redesign
               </div>
-            </div>
-            
-            {/* Before Image (Raw Unstyled Slide) */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center border-r-4 border-primary" 
-              style={{ 
-                backgroundImage: "url('/portfolio/nike_hsbc_cvs_8.png')",
-                clipPath: `inset(0 calc(100% - var(--slider-pos, 50%)) 0 0)`
-              }}
-            >
-              <div className="absolute bottom-4 left-4 bg-black/80 text-white font-bold px-4 py-1.5 rounded-full text-xs shadow-lg uppercase tracking-wider">
-                📄 Before (Raw Draft)
+
+              {/* Before Image (Clipped Overlay) */}
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
+              >
+                <img
+                  src={currentComparison.beforeImg}
+                  alt="Before Redesign"
+                  className="absolute inset-0 w-full h-full object-contain bg-[#161a22]"
+                />
+                <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-md text-white font-bold text-xs px-3 py-1.5 rounded-full border border-white/20">
+                  Client Original Draft
+                </div>
               </div>
+
+              {/* Draggable Divider Bar */}
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize z-20"
+                style={{ left: `${sliderPosition}%` }}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 bg-primary text-foreground rounded-full flex items-center justify-center shadow-2xl border-2 border-white">
+                  <Sliders size={16} />
+                </div>
+              </div>
+
+              {/* Native Range Input */}
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={sliderPosition}
+                aria-label="Before and after slider position"
+                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
+              />
             </div>
-            
-            {/* Hidden Range Input for dragging */}
-            <input 
-              type="range" 
-              min="0" max="100" defaultValue="50"
-              onChange={(e) => {
-                e.currentTarget.parentElement?.style.setProperty('--slider-pos', `${e.target.value}%`);
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
-            />
-            
-            {/* Custom Slider Handle */}
-            <div 
-              className="absolute top-0 bottom-0 pointer-events-none z-10"
-              style={{ left: `var(--slider-pos, 50%)`, transform: 'translateX(-50%)' }}
-            >
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-primary text-foreground rounded-full shadow-2xl border-2 border-white flex items-center justify-center font-bold text-xs">
-                ↔
+
+            {/* Explanatory Footnotes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/10 text-xs">
+              <div className="text-gray-400">
+                <span className="text-white font-bold block mb-1">Before:</span>
+                {currentComparison.beforeDesc}
+              </div>
+              <div className="text-primary-cream">
+                <span className="text-primary font-bold block mb-1">After (SlideBee):</span>
+                {currentComparison.afterDesc}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Why Choose SlideBee Section (From Slide 1 & 2) */}
-      <section className="py-24 bg-[#0b0f19] text-white relative">
-        <div className="container mx-auto px-4 relative z-10">
+      {/* SECTION 3: Why Choose SlideBee (Pillars) */}
+      <section className="py-24 bg-[#0b0f19] relative">
+        <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-5xl font-heading font-extrabold mb-4">
-              Why Choose <span className="text-primary">SlideBee?</span>
+            <span className="text-primary text-xs font-black uppercase tracking-widest bg-primary/10 border border-primary/20 px-3 py-1 rounded-full inline-block mb-3">
+              Core Capabilities & Speed
+            </span>
+            <h2 className="text-3xl md:text-5xl font-heading font-extrabold text-white mb-4">
+              Why Executives Choose <span className="text-primary">SlideBee</span>
             </h2>
-            <p className="text-gray-400 font-light text-lg">
-              Enterprise-grade slide design tailored for founders, executives, and marketing leaders.
+            <p className="text-gray-300 font-light text-base md:text-lg">
+              We operate as your on-demand presentation design bureau with strict security, high velocity, and unmatched craft.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="bg-white/5 border border-white/10 p-8 rounded-2xl hover:border-primary/50 transition-all group">
               <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <ShieldCheck size={26} />
+                <Shield size={26} />
               </div>
               <h3 className="text-xl font-bold mb-2">100% Confidential</h3>
               <p className="text-gray-400 text-sm font-light leading-relaxed">
@@ -158,21 +234,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Client Decks Grid */}
-      <section className="py-24 bg-white">
+      {/* SECTION 4: Featured Client Decks Grid */}
+      <section className="py-24 bg-[#0d121f] border-t border-white/10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
             <div>
-              <span className="text-primary-amber text-xs font-bold uppercase tracking-widest block mb-2">
-                Proven Track Record
+              <span className="text-primary text-xs font-bold uppercase tracking-widest block mb-2">
+                Proven Industry Portfolio
               </span>
-              <h2 className="text-3xl md:text-5xl font-heading font-extrabold text-foreground">
+              <h2 className="text-3xl md:text-5xl font-heading font-extrabold text-white">
                 Featured Client Decks
               </h2>
             </div>
             <Link
               to="/examples"
-              className="inline-flex items-center gap-2 text-foreground font-bold hover:text-primary transition-colors border-b-2 border-primary pb-1 shrink-0"
+              className="inline-flex items-center gap-2 text-primary font-bold hover:text-white transition-colors border-b-2 border-primary pb-1 shrink-0"
             >
               View All 18+ Case Studies <ArrowRight size={18} />
             </Link>
@@ -183,23 +259,23 @@ export default function Home() {
               <Link
                 key={idx}
                 to="/examples"
-                className="group bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl transition-all block"
+                className="group bg-[#151a24] border border-white/10 rounded-2xl overflow-hidden hover:border-primary/50 transition-all block hover:-translate-y-1 shadow-lg"
               >
-                <div className="aspect-[16/9] overflow-hidden bg-black/5 relative">
+                <div className="aspect-[16/9] overflow-hidden bg-black/40 relative">
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                   />
-                  <div className="absolute top-2 left-2 bg-black/80 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  <div className="absolute top-2 left-2 bg-black/80 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/20">
                     {item.client}
                   </div>
                 </div>
                 <div className="p-5">
-                  <div className="text-[11px] text-primary-amber font-bold uppercase tracking-wider mb-1">
+                  <div className="text-[11px] text-primary font-bold uppercase tracking-wider mb-1">
                     {item.category}
                   </div>
-                  <h3 className="font-heading font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                  <h3 className="font-heading font-bold text-white group-hover:text-primary transition-colors line-clamp-1">
                     {item.title}
                   </h3>
                 </div>
@@ -209,70 +285,63 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Countdown + Waitlist */}
+      {/* Countdown Section */}
       <CountdownSection />
 
-      {/* CTA / Contact Section */}
-      <section className="py-24 bg-[#0b0f19] relative overflow-hidden">
-        {/* Background blobs */}
+      {/* SECTION 5: Final Contact Section */}
+      <section className="py-24 bg-[#0b0f19] relative overflow-hidden border-t border-white/10">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-primary-amber/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-primary/15 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-primary/15 rounded-full blur-3xl"></div>
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div 
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="text-white"
-            >
-              <h2 className="text-4xl md:text-5xl font-heading font-bold mb-6 leading-tight">
-                Ready to elevate your next presentation?
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Left: Contact Info & Benefits */}
+            <div className="lg:col-span-6 text-white">
+              <h2 className="text-4xl md:text-5xl font-heading font-black mb-6 leading-tight">
+                Ready to elevate your next <span className="text-primary">presentation?</span>
               </h2>
-              <p className="text-xl text-gray-300 mb-8 font-light">
-                Whether you need a quick polish or a complete ground-up redesign, our expert team is ready to bring your vision to life.
+              <p className="text-lg text-gray-300 mb-8 font-light leading-relaxed">
+                Whether you need a rapid 24h polish or a full custom overhaul, our ex-McKinsey presentation designers are ready to bring your message to life.
               </p>
               
-              <div className="space-y-6">
+              <div className="space-y-6 mb-8">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="font-bold text-primary text-xl">1</span>
+                  <div className="w-10 h-10 bg-primary/15 text-primary border border-primary/30 rounded-xl flex items-center justify-center shrink-0 font-bold">
+                    1
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold mb-1">Submit your request</h4>
-                    <p className="text-gray-400">Fill out the form with your project details and attach your draft.</p>
+                    <h4 className="text-lg font-bold mb-0.5">Submit Your Draft or Outline</h4>
+                    <p className="text-gray-400 text-sm">Upload your raw slides or project requirements securely.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="font-bold text-primary text-xl">2</span>
+                  <div className="w-10 h-10 bg-primary/15 text-primary border border-primary/30 rounded-xl flex items-center justify-center shrink-0 font-bold">
+                    2
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold mb-1">Get a free quote & timeline</h4>
-                    <p className="text-gray-400">We'll review your needs and provide a custom proposal within 24 hours.</p>
+                    <h4 className="text-lg font-bold mb-0.5">Get Free Art Direction & Quote</h4>
+                    <p className="text-gray-400 text-sm">Receive a customized plan and guaranteed delivery timeline.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="font-bold text-primary text-xl">3</span>
+                  <div className="w-10 h-10 bg-primary/15 text-primary border border-primary/30 rounded-xl flex items-center justify-center shrink-0 font-bold">
+                    3
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold mb-1">Receive your masterpiece</h4>
-                    <p className="text-gray-400">Review the initial concepts, provide feedback, and get the final polished deck.</p>
+                    <h4 className="text-lg font-bold mb-0.5">Receive Your Presentation Masterpiece</h4>
+                    <p className="text-gray-400 text-sm">Fully editable, on-brand, and built for maximum impact.</p>
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
             
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            {/* Right: Try Now Form */}
+            <div className="lg:col-span-6">
               <TryNowForm />
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
