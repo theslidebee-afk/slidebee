@@ -1,20 +1,79 @@
 @import "tailwindcss";
 
+/* Local Montserrat Font Family */
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-primary: #ed6c25;
   --color-primary-dark: #d55a16;
   --color-foreground: #1e293b;
   --color-background: #ffffff;
   
-  --font-sans: "Plus Jakarta Sans", sans-serif;
-  --font-heading: "Montserrat", sans-serif;
+  --font-sans: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground font-sans;
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-bold;
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
   }
 }
