@@ -11,11 +11,11 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-2 inline-block">
-              <div className="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center font-heading font-bold text-xl">
-                XYZ
+              <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-heading font-bold text-lg shadow-md shadow-primary/20">
+                🐝
               </div>
-              <span className="font-heading font-bold text-2xl text-white">
-                Templates
+              <span className="font-heading font-bold text-2xl text-white tracking-tight">
+                Slide<span className="text-primary">Bee</span>
               </span>
             </Link>
             <p className="text-gray-400 font-light leading-relaxed">
@@ -64,14 +64,14 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <span>hello@xyztemplates.com</span>
+                <span>hello@slidebeestudio.com</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-          <p>&copy; {currentYear} XYZ Templates. All rights reserved.</p>
+          <p>&copy; {currentYear} SlideBee. All rights reserved.</p>
           <div className="flex gap-6">
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>

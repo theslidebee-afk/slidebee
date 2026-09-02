@@ -108,10 +108,10 @@ export default function Admin() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 pt-20 px-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-100">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-heading font-bold text-3xl mx-auto mb-4 shadow-lg">
-              XYZ
+            <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-heading font-bold text-3xl mx-auto mb-4 shadow-lg shadow-primary/30">
+              🐝
             </div>
-            <h2 className="text-2xl font-heading font-bold text-foreground">Admin Portal</h2>
+            <h2 className="text-2xl font-heading font-bold text-foreground">SlideBee Admin</h2>
             <p className="text-muted-foreground mt-2">Sign in to manage your content</p>
           </div>
           

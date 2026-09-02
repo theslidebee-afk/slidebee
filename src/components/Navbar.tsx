@@ -40,11 +40,11 @@ export default function Navbar() {
       <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 z-50">
-          <div className="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center font-heading font-bold text-xl">
-            XYZ
+          <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-heading font-bold text-lg shadow-md shadow-primary/20">
+            🐝
           </div>
-          <span className={clsx("font-heading font-bold text-xl", isScrolled ? "text-foreground" : "text-white")}>
-            Templates
+          <span className={clsx("font-heading font-bold text-2xl tracking-tight", isScrolled ? "text-foreground" : "text-white")}>
+            Slide<span className="text-primary">Bee</span>
           </span>
         </Link>
 
