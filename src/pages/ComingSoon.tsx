@@ -1,19 +1,40 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import SlideBeeLogo from "../components/SlideBeeLogo";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
+    if (!email.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      // 1. Save to Supabase
+      const { error } = await supabase.from("waitlist").insert([
+        { email: email.trim().toLowerCase(), source: "coming_soon" }
+      ]);
+      
+      if (error && error.code !== "23505") { // Ignore duplicate key errors gracefully
+        console.warn("Supabase waitlist error:", error.message);
+      }
+
+      // 2. Local fallback backup
       const list = JSON.parse(localStorage.getItem("slidebee_waitlist") || "[]");
       list.push({ email, date: new Date().toISOString() });
       localStorage.setItem("slidebee_waitlist", JSON.stringify(list));
+
       setSubmitted(true);
+    } catch (err) {
+      console.error("Waitlist submit error:", err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -82,9 +103,18 @@ export default function ComingSoon() {
               />
               <button
                 type="submit"
-                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-6 py-3 text-xs sm:text-sm transition-all shadow-sm hover:scale-105 shrink-0 flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="hex-pill bg-primary hover:bg-primary-dark disabled:opacity-50 text-[#111111] font-extrabold px-6 py-3 text-xs sm:text-sm transition-all shadow-sm hover:scale-105 shrink-0 flex items-center justify-center gap-2"
               >
-                Notify Me <ArrowRight size={15} />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    Notify Me <ArrowRight size={15} />
+                  </>
+                )}
               </button>
             </form>
           )}

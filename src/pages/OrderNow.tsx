@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { 
   Send, 
   Loader2, 
@@ -76,14 +75,35 @@ export default function OrderNow() {
     const generatedId = `SB-${Math.floor(100000 + Math.random() * 900000)}`;
 
     try {
-      await addDoc(collection(db, 'orders'), {
-        ...formData,
-        orderId: generatedId,
-        createdAt: serverTimestamp(),
-      });
+      // 1. Save to Supabase
+      const { error: sbError } = await supabase.from('orders').insert([
+        {
+          order_reference: generatedId,
+          service_type: formData.service,
+          slide_count: formData.slideCount,
+          timeline: formData.timeline,
+          formats: [formData.format],
+          style_preference: formData.stylePreference,
+          drive_url: formData.driveLink,
+          project_brief: formData.projectNotes,
+          full_name: formData.name,
+          email: formData.email,
+          company: formData.company,
+          phone: formData.phone,
+          status: 'pending'
+        }
+      ]);
+
+      if (sbError) {
+        console.warn('Supabase orders notice:', sbError.message);
+      }
+
+      // 2. Local backup
+      const savedOrders = JSON.parse(localStorage.getItem('slidebee_orders') || '[]');
+      savedOrders.push({ ...formData, orderId: generatedId, createdAt: new Date().toISOString() });
+      localStorage.setItem('slidebee_orders', JSON.stringify(savedOrders));
     } catch (err: any) {
-      console.warn('Firestore fallback to local storage:', err);
-      // Local fallback
+      console.warn('Order submission fallback to local storage:', err);
       const savedOrders = JSON.parse(localStorage.getItem('slidebee_orders') || '[]');
       savedOrders.push({ ...formData, orderId: generatedId, createdAt: new Date().toISOString() });
       localStorage.setItem('slidebee_orders', JSON.stringify(savedOrders));
