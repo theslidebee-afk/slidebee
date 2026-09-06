@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { sendOrderConfirmationEmail } from '../lib/email';
 import { 
   Send, 
   Loader2, 
@@ -98,7 +99,17 @@ export default function OrderNow() {
         console.warn('Supabase orders notice:', sbError.message);
       }
 
-      // 2. Local backup
+      // 2. Dispatch Automated Confirmation Email via Resend
+      sendOrderConfirmationEmail({
+        clientName: formData.name,
+        clientEmail: formData.email,
+        serviceType: formData.service,
+        slideCount: formData.slideCount,
+        rushDelivery: formData.timeline.includes('24h') || formData.timeline.includes('rush'),
+        driveLink: formData.driveLink
+      }).catch(err => console.warn('Email dispatch notice:', err));
+
+      // 3. Local backup
       const savedOrders = JSON.parse(localStorage.getItem('slidebee_orders') || '[]');
       savedOrders.push({ ...formData, orderId: generatedId, createdAt: new Date().toISOString() });
       localStorage.setItem('slidebee_orders', JSON.stringify(savedOrders));
@@ -116,7 +127,7 @@ export default function OrderNow() {
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-20 large-hex-grid">
-      <div className="container mx-auto px-4 md:px-8 max-w-4xl">
+      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
         <div className="text-center mb-12">
@@ -191,8 +202,8 @@ export default function OrderNow() {
           <form onSubmit={handleSubmit} className="space-y-8">
             
             {/* Step 1: Project Scope */}
-            <div className="bg-white border border-[#111111]/8 rounded-3xl p-6 md:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#111111]/5">
+            <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-primary/20">
                 <div className="w-8 h-8 rounded-xl bg-primary text-[#111111] font-black text-xs flex items-center justify-center">
                   1
                 </div>
@@ -215,7 +226,7 @@ export default function OrderNow() {
                   <select
                     value={formData.service}
                     onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   >
                     {services.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -231,7 +242,7 @@ export default function OrderNow() {
                   <select
                     value={formData.slideCount}
                     onChange={(e) => setFormData({ ...formData, slideCount: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   >
                     {slideRanges.map((r) => (
                       <option key={r} value={r}>{r}</option>
@@ -249,7 +260,7 @@ export default function OrderNow() {
                   <select
                     value={formData.timeline}
                     onChange={(e) => setFormData({ ...formData, timeline: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   >
                     {timelines.map((t) => (
                       <option key={t} value={t}>{t}</option>
@@ -265,7 +276,7 @@ export default function OrderNow() {
                   <select
                     value={formData.format}
                     onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   >
                     {formats.map((f) => (
                       <option key={f} value={f}>{f}</option>
@@ -276,8 +287,8 @@ export default function OrderNow() {
             </div>
 
             {/* Step 2: Brand & Design Preferences */}
-            <div className="bg-white border border-[#111111]/8 rounded-3xl p-6 md:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#111111]/5">
+            <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-primary/20">
                 <div className="w-8 h-8 rounded-xl bg-primary text-[#111111] font-black text-xs flex items-center justify-center">
                   2
                 </div>
@@ -300,7 +311,7 @@ export default function OrderNow() {
                   <select
                     value={formData.stylePreference}
                     onChange={(e) => setFormData({ ...formData, stylePreference: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   >
                     {stylePreferences.map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -321,7 +332,7 @@ export default function OrderNow() {
                       placeholder="https://drive.google.com/drive/folders/..."
                       value={formData.driveLink}
                       onChange={(e) => setFormData({ ...formData, driveLink: e.target.value })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary"
                     />
                   </div>
                 </div>
@@ -337,15 +348,15 @@ export default function OrderNow() {
                     placeholder="Describe your audience, key message, brand guidelines, or specific slides you want to emphasize..."
                     value={formData.projectNotes}
                     onChange={(e) => setFormData({ ...formData, projectNotes: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl p-4 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary resize-none"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl p-4 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary resize-none"
                   />
                 </div>
               </div>
             </div>
 
             {/* Step 3: Contact & Proposal Delivery */}
-            <div className="bg-white border border-[#111111]/8 rounded-3xl p-6 md:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#111111]/5">
+            <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-primary/20">
                 <div className="w-8 h-8 rounded-xl bg-primary text-[#111111] font-black text-xs flex items-center justify-center">
                   3
                 </div>
@@ -370,7 +381,7 @@ export default function OrderNow() {
                     placeholder="e.g. Vikram Singhania"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   />
                 </div>
 
@@ -384,7 +395,7 @@ export default function OrderNow() {
                     placeholder="vikram@company.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -399,7 +410,7 @@ export default function OrderNow() {
                     placeholder="e.g. Nexora Ventures"
                     value={formData.company}
                     onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   />
                 </div>
 
@@ -412,14 +423,14 @@ export default function OrderNow() {
                     placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
             </div>
 
             {/* Guarantees & Submit Button */}
-            <div className="bg-white border border-[#111111]/8 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-1.5 text-xs text-[#726F6D] font-medium">
                 <div className="flex items-center gap-2">
                   <Shield size={14} className="text-primary-amber" /> 100% Confidential & NDA Protected

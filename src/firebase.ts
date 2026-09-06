@@ -1,19 +1,15 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
+// New Firebase credentials will be loaded from environment variables
 const firebaseConfig = {
-  projectId: "xyztemplates-32b47",
-  appId: "1:720202083664:web:8df87952b7508e3af5d055",
-  storageBucket: "xyztemplates-32b47.firebasestorage.app",
-  apiKey: "AIzaSyB5mDUvQFB6wGK3GUbjneSyu0sovLJ5N9A",
-  authDomain: "xyztemplates-32b47.firebaseapp.com",
-  messagingSenderId: "720202083664",
-  measurementId: "G-1JRT89DLPD"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSy_NEW_KEY_PENDING",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "slidebee-auth.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "slidebee-auth",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "slidebee-auth.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000"
 };
 
-export const app = initializeApp(firebaseConfig);
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);

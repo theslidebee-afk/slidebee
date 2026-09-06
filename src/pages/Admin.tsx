@@ -1,244 +1,3722 @@
 import { useState, useEffect } from "react";
-import { auth, db, storage } from "../firebase";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-import type { User } from "firebase/auth";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { motion } from "framer-motion";
-import { Loader2, LogOut, Upload, FileText, Video, Users } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Mail, 
+  LogOut, 
+  ShoppingBag, 
+  Users, 
+  Layers, 
+  ExternalLink, 
+  Download, 
+  Plus, 
+  AlertCircle,
+  Search,
+  Image as ImageIcon,
+  Sliders,
+  Save,
+  CheckCircle2,
+  HardDrive,
+  FileSpreadsheet,
+  UploadCloud,
+  CreditCard,
+  ArrowRight,
+  X,
+  Sparkles
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
 import SlideBeeLogo from "../components/SlideBeeLogo";
+import { templateCatalog } from "./Templates";
+
+export const ORDER_MILESTONES = [
+  { 
+    key: "draft_1", 
+    step: 1,
+    label: "Draft 1", 
+    fullLabel: "Draft 1 (Blueprint & Intake)", 
+    desc: "Initial slide architecture, story flow, and structural layout.",
+    color: "amber"
+  },
+  { 
+    key: "client_review", 
+    step: 2,
+    label: "Client Review", 
+    fullLabel: "Client Review & Feedback", 
+    desc: "First draft shared with client for revisions and copy adjustments.",
+    color: "blue"
+  },
+  { 
+    key: "final_polish", 
+    step: 3,
+    label: "Final Polish", 
+    fullLabel: "Final Polish & Styling", 
+    desc: "High-end bespoke typography, charts, visual consistency, and micro-finishes.",
+    color: "purple"
+  },
+  { 
+    key: "delivered", 
+    step: 4,
+    label: "Delivered", 
+    fullLabel: "Delivered & Completed", 
+    desc: "Final PowerPoint (.pptx), Keynote, and PDF assets delivered to client.",
+    color: "emerald"
+  },
+];
+
+export function getMilestoneIndex(status: string | undefined): number {
+  if (!status || status === "pending" || status === "draft_1") return 0;
+  if (status === "client_review") return 1;
+  if (status === "in_progress" || status === "final_polish") return 2;
+  if (status === "completed" || status === "delivered") return 3;
+  return 0;
+}
+
+export const DEFAULT_TESTIMONIALS = [
+  {
+    name: "Rohan Mehta",
+    role: "Founder, FinEdge",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+    rating: 5,
+    quote: "SlideBee's templates saved us hours of work. The quality and typography are exceptional!"
+  },
+  {
+    name: "Priya Sharma",
+    role: "Marketing Head, Nexora",
+    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=80",
+    rating: 5,
+    quote: "The design team understood our brand perfectly and delivered beyond expectations within 24h."
+  },
+  {
+    name: "Arjun Patel",
+    role: "CEO, InnovateX",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+    rating: 5,
+    quote: "Our investor deck looked stunning and helped us raise our $4.5M seed round effortlessly!"
+  }
+];
 
 export default function Admin() {
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Login State
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
 
-  // Dashboard State
-  const [activeTab, setActiveTab] = useState("leads");
-  
-  // Data State
-  const [leads, setLeads] = useState<any[]>([]);
-  const [blogs, setBlogs] = useState<any[]>([]);
+  // Dashboard Active Tab
+  const [activeTab, setActiveTab] = useState<"orders" | "waitlist" | "templates" | "assets" | "config" | "storage" | "subscriptions">("orders");
 
-  // Blog Upload State
-  const [blogTitle, setBlogTitle] = useState("");
-  const [blogContent, setBlogContent] = useState("");
-  const [blogImage, setBlogImage] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  // Live Data States
+  const [orders, setOrders] = useState<any[]>([]);
+  const [waitlist, setWaitlist] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [siteConfigs, setSiteConfigs] = useState<Record<string, any>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [orderMilestoneFilter, setOrderMilestoneFilter] = useState<string>("all");
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
 
+  // Single Template Modal State
+  const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCode, setNewCode] = useState(`SLD-${Math.floor(100 + Math.random() * 900)}`);
+  const [newCategory, setNewCategory] = useState("Pitch Decks");
+  const [newPriceINR, setNewPriceINR] = useState(499);
+  const [newPriceUSD, setNewPriceUSD] = useState(9);
+  const [newSlideCount, setNewSlideCount] = useState(25);
+  const [newDesc, setNewDesc] = useState("");
+  const [newThumbnail, setNewThumbnail] = useState("/portfolio/case_study_a_1.png");
+  const [newSlides, setNewSlides] = useState<string[]>([]);
+  const [isConvertingFile, setIsConvertingFile] = useState(false);
+  const [conversionStatus, setConversionStatus] = useState("");
+  const [uploadedFilename, setUploadedFilename] = useState("");
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+
+  // Bulk Spreadsheet Template Import State
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [csvRawText, setCsvRawText] = useState("");
+  const [parsedBulkTemplates, setParsedBulkTemplates] = useState<any[]>([]);
+  const [isImportingBulk, setIsImportingBulk] = useState(false);
+  const [bulkImportSuccessCount, setBulkImportSuccessCount] = useState<number | null>(null);
+
+  // New Asset Modal State
+  const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
+  const [assetKey, setAssetKey] = useState("");
+  const [assetTitle, setAssetTitle] = useState("");
+  const [assetCategory, setAssetCategory] = useState("portfolio");
+  const [assetUrl, setAssetUrl] = useState("");
+  const [isSavingAsset, setIsSavingAsset] = useState(false);
+
+  // Site Config Edit State
+  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"pricing" | "home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer">("home");
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
+  const [configValidationError, setConfigValidationError] = useState("");
+
+  // 1. Check active session on mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const localPinAuth = localStorage.getItem("slidebee_admin_session");
+    if (localPinAuth === "true") {
+      setSession({ user: { email: "admin@theslidebee.com", role: "super_admin" } });
+      setLoading(false);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  // 2. Fetch data when session is active
   useEffect(() => {
-    if (!user) return;
-    
-    // Fetch Leads
-    const qLeads = query(collection(db, "leads"), orderBy("createdAt", "desc"));
-    const unsubLeads = onSnapshot(qLeads, (snapshot) => {
-      setLeads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    if (!session) return;
+    fetchDashboardData();
+  }, [session]);
 
-    // Fetch Blogs
-    const qBlogs = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
-    const unsubBlogs = onSnapshot(qBlogs, (snapshot) => {
-      setBlogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+  const fetchDashboardData = async () => {
+    // Fetch Orders
+    const { data: ordersData } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (ordersData) setOrders(ordersData);
 
-    return () => {
-      unsubLeads();
-      unsubBlogs();
-    };
-  }, [user]);
+    // Fetch Waitlist
+    const { data: waitlistData } = await supabase
+      .from("waitlist")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (waitlistData) setWaitlist(waitlistData);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setLoginError("Invalid email or password.");
+    // Fetch Templates
+    const { data: templatesData } = await supabase
+      .from("templates")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (templatesData) setTemplates(templatesData);
+
+    // Fetch Assets
+    const { data: assetsData } = await supabase
+      .from("assets")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (assetsData) setAssets(assetsData);
+
+    // Fetch Profiles & Subscriptions
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (profilesData) setProfiles(profilesData);
+
+    const { data: subsData } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (subsData) setSubscriptions(subsData);
+
+    // Fetch Site Configurations
+    const { data: configData } = await supabase
+      .from("site_config")
+      .select("*");
+    if (configData) {
+      const configMap: Record<string, any> = {};
+      configData.forEach((c) => {
+        configMap[c.key] = c.value;
+      });
+      setSiteConfigs(configMap);
     }
   };
 
-  const handleBlogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!blogImage) return alert("Please select an image.");
-    
-    setIsUploading(true);
-    try {
-      // 1. Upload Image to Storage
-      const storageRef = ref(storage, `blogs/${Date.now()}_${blogImage.name}`);
-      const snapshot = await uploadBytes(storageRef, blogImage);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+  // Handle Logout
+  const handleLogout = async () => {
+    localStorage.removeItem("slidebee_admin_session");
+    await supabase.auth.signOut();
+    setSession(null);
+  };
 
-      // 2. Save Document to Firestore
-      await addDoc(collection(db, "blogs"), {
-        title: blogTitle,
-        content: blogContent,
-        imageUrl: downloadURL,
-        createdAt: serverTimestamp()
+  // Handle Status Update on Order
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (!error) {
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    }
+  };
+
+  // Export Waitlist to CSV
+  const handleExportWaitlistCSV = () => {
+    if (waitlist.length === 0) return;
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      ["Email,Source,Joined At", ...waitlist.map(w => `"${w.email}","${w.source || ''}","${w.created_at}"`)].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `slidebee_waitlist_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Download Sample Bulk Template CSV
+  const handleDownloadSampleCSV = () => {
+    const sampleHeaders = "title,category,price_inr,price_usd,slide_count,thumbnail_url,description\n";
+    const sampleRows = 
+      `"Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,30,"/portfolio/case_study_a_1.png","High-converting 30-slide pitch deck layout with financial unit economics."\n` +
+      `"Executive Board Review 2026","Corporate",1499,29,45,"/portfolio/case_study_a_14.png","Minimalist corporate executive board presentation system."\n` +
+      `"Modern Brand Styleguide & Guidelines","Branding",799,15,20,"/portfolio/levis_yuengling_6.png","Complete visual identity presentation system with color tokens."`;
+    
+    const blob = new Blob([sampleHeaders + sampleRows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "slidebee_templates_bulk_sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Parse CSV text into objects
+  const handleParseCSV = (raw: string) => {
+    setCsvRawText(raw);
+    const lines = raw.trim().split("\n");
+    if (lines.length < 2) {
+      setParsedBulkTemplates([]);
+      return;
+    }
+
+    const items: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      // Simple regex CSV splitter supporting quotes
+      const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
+      const cleanParts = parts.map(p => p.replace(/^"|"$/g, '').trim());
+
+      if (cleanParts.length >= 4) {
+        const title = cleanParts[0] || `Template ${i}`;
+        items.push({
+          title,
+          slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          category: cleanParts[1] || "Pitch Decks",
+          price_inr: Number(cleanParts[2]) || 499,
+          price_usd: Number(cleanParts[3]) || 9,
+          slide_count: Number(cleanParts[4]) || 25,
+          thumbnail_url: cleanParts[5] || "/portfolio/case_study_a_1.png",
+          description: cleanParts[6] || "Executive presentation deck layout.",
+          is_published: true
+        });
+      }
+    }
+    setParsedBulkTemplates(items);
+  };
+
+  // Handle CSV file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      handleParseCSV(text);
+    };
+    reader.readAsText(file);
+  };
+
+  // Execute Bulk Insertion into Supabase
+  const handleExecuteBulkImport = async () => {
+    if (parsedBulkTemplates.length === 0) return;
+    setIsImportingBulk(true);
+
+    const { data, error } = await supabase
+      .from("templates")
+      .insert(parsedBulkTemplates)
+      .select();
+
+    if (!error && data) {
+      setTemplates([...data, ...templates]);
+      setBulkImportSuccessCount(data.length);
+      setTimeout(() => {
+        setIsBulkImportOpen(false);
+        setBulkImportSuccessCount(null);
+        setParsedBulkTemplates([]);
+        setCsvRawText("");
+      }, 2000);
+    }
+    setIsImportingBulk(false);
+  };
+
+  // Create Single Template
+  const handleCreateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle) return;
+
+    setIsCreatingTemplate(true);
+    const slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const templateCode = newCode || `SLD-${Math.floor(100 + Math.random() * 900)}`;
+
+    const { data, error } = await supabase
+      .from("templates")
+      .insert([
+        {
+          title: newTitle,
+          slug,
+          code: templateCode,
+          description: newDesc || "Executive presentation deck layout.",
+          category: newCategory,
+          price_inr: Number(newPriceINR),
+          price_usd: Number(newPriceUSD),
+          slide_count: Number(newSlideCount),
+          thumbnail_url: newThumbnail,
+          slides: newSlides.length > 0 ? newSlides : [newThumbnail],
+          is_published: true
+        }
+      ])
+      .select();
+
+    if (!error && data) {
+      setTemplates([data[0], ...templates]);
+      setIsAddTemplateOpen(false);
+      setNewTitle("");
+      setNewDesc("");
+      setNewSlides([]);
+      setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
+      setConversionStatus("");
+      setUploadedFilename("");
+    }
+    setIsCreatingTemplate(false);
+  };
+
+  // Automated Local Presentation File Upload & Slide-to-Image Conversion
+  const handlePresentationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsConvertingFile(true);
+    setConversionStatus("Uploading presentation and rendering high-res slides with LibreOffice & Poppler...");
+    setUploadedFilename(file.name);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("code", newCode || `SLD-${Math.floor(100 + Math.random() * 900)}`);
+
+      const res = await fetch("/api/convert-slides", {
+        method: "POST",
+        body: formData
       });
 
-      setBlogTitle("");
-      setBlogContent("");
-      setBlogImage(null);
-      alert("Blog published successfully!");
-    } catch (error) {
-      console.error("Error publishing blog:", error);
-      alert("Error publishing blog.");
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        throw new Error(result.error || "Failed to convert presentation slides.");
+      }
+
+      setNewThumbnail(result.thumbnail);
+      setNewSlides(result.slides || [result.thumbnail]);
+      setNewSlideCount(result.slideCount || 1);
+      if (result.templateCode) {
+        setNewCode(result.templateCode);
+      }
+      if (!newTitle) {
+        const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
+      }
+
+      setConversionStatus(`✓ Successfully extracted ${result.slideCount} slides for ${result.templateCode}!`);
+    } catch (err: any) {
+      console.error(err);
+      setConversionStatus(`⚠️ Conversion notice: ${err.message}. You can still set a thumbnail manually.`);
     } finally {
-      setIsUploading(false);
+      setIsConvertingFile(false);
     }
+  };
+
+  // Save / Update Asset
+  const handleSaveAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assetKey || !assetUrl) return;
+
+    setIsSavingAsset(true);
+    const { data, error } = await supabase
+      .from("assets")
+      .upsert([
+        {
+          key: assetKey,
+          title: assetTitle || assetKey,
+          category: assetCategory,
+          url: assetUrl,
+          alt_text: assetTitle || assetKey,
+          updated_at: new Date().toISOString()
+        }
+      ], { onConflict: "key" })
+      .select();
+
+    if (!error && data) {
+      setAssets([data[0], ...assets.filter(a => a.key !== assetKey)]);
+      setIsAddAssetOpen(false);
+      setAssetKey("");
+      setAssetTitle("");
+      setAssetUrl("");
+    }
+    setIsSavingAsset(false);
+  };
+
+  // Upload Local Image File to Data URL
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (dataUrl: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        callback(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Save Site Configuration
+  const handleSaveConfig = async (key: string, value: any) => {
+    setConfigValidationError("");
+
+    // Validate that no string field in the payload is blank / empty
+    const checkEmpty = (data: any): boolean => {
+      if (typeof data === "string") return data.trim() === "";
+      if (Array.isArray(data)) return data.some(item => checkEmpty(item));
+      if (typeof data === "object" && data !== null) {
+        return Object.values(data).some(val => checkEmpty(val));
+      }
+      return false;
+    };
+
+    if (value && checkEmpty(value)) {
+      setConfigValidationError("Cannot save with empty text fields. Please enter text before saving.");
+      setTimeout(() => setConfigValidationError(""), 5000);
+      return;
+    }
+
+    setConfigSaving(true);
+    setConfigSavedSuccess(false);
+
+    const { error } = await supabase
+      .from("site_config")
+      .upsert([
+        {
+          key,
+          value,
+          updated_at: new Date().toISOString()
+        }
+      ], { onConflict: "key" });
+
+    if (!error) {
+      setSiteConfigs({ ...siteConfigs, [key]: value });
+      setConfigSavedSuccess(true);
+      setTimeout(() => setConfigSavedSuccess(false), 3000);
+    }
+    setConfigSaving(false);
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
-  }
-
-  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 pt-20 px-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-100">
-          <div className="text-center mb-8 flex flex-col items-center">
-            <SlideBeeLogo size="lg" variant="light" className="mb-2" />
-            <p className="text-muted-foreground mt-1 text-sm">Sign in to manage your leads & blog content</p>
-          </div>
-          
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1">Email</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-lg border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1">Password</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-lg border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none" />
-            </div>
-            {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
-            <button type="submit" className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-all shadow-md">
-              Sign In
-            </button>
-          </form>
+      <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center text-[#111111]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs font-extrabold uppercase tracking-widest text-[#726F6D]">
+            Loading SlideBee Admin...
+          </p>
         </div>
       </div>
     );
   }
 
+  // --- 1. REDIRECT UNAUTHENTICATED USERS TO UNIFIED LOGIN PAGE ---
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // --- 2. AUTHENTICATED FULL SITE CONTROL CENTER ---
+  const filteredOrders = orders.filter(o => {
+    const matchesSearch = 
+      o.client_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.service_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (orderMilestoneFilter === "all") return matchesSearch;
+    const currentIdx = getMilestoneIndex(o.status);
+    const targetIdx = ORDER_MILESTONES.findIndex(m => m.key === orderMilestoneFilter);
+    return matchesSearch && currentIdx === targetIdx;
+  });
+
+  const filteredWaitlist = waitlist.filter(w => 
+    w.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredAssets = assets.filter(a => 
+    a.key?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Cloudflare R2 Storage Stats (10 GB Free Tier Quota)
+  const totalR2QuotaMB = 10240; // 10 GB
+  // Estimate stored size based on assets and templates
+  const estimatedUsedMB = Math.round((templates.length * 35.5) + (assets.length * 4.2) + 24.5); // Sample dynamic computation
+  const remainingMB = Math.max(0, totalR2QuotaMB - estimatedUsedMB);
+  const percentUsed = ((estimatedUsedMB / totalR2QuotaMB) * 100).toFixed(1);
+  const remainingGB = (remainingMB / 1024).toFixed(2);
+
   return (
-    <div className="min-h-screen bg-gray-50 pt-28 pb-20">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Sidebar */}
-          <div className="w-full md:w-64 shrink-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-32">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-heading font-bold text-lg truncate">{user.email}</h3>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Administrator</p>
-              </div>
-              <div className="p-2 space-y-1">
-                <button onClick={() => setActiveTab('leads')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${activeTab === 'leads' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-foreground'}`}>
-                  <Users size={18} /> Leads & Quotes
-                </button>
-                <button onClick={() => setActiveTab('blogs')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${activeTab === 'blogs' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-foreground'}`}>
-                  <FileText size={18} /> Manage Blogs
-                </button>
-                <button onClick={() => setActiveTab('videos')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${activeTab === 'videos' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-foreground'}`}>
-                  <Video size={18} /> Manage Videos
-                </button>
-              </div>
-              <div className="p-4 border-t border-gray-100">
-                <button onClick={() => signOut(auth)} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 font-semibold transition-colors">
-                  <LogOut size={18} /> Sign Out
-                </button>
-              </div>
+    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-24 pb-20">
+      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Top Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-[#111111]/10 p-6 hex-card-lg shadow-sm mb-8">
+          <div className="flex items-center gap-4">
+            <SlideBeeLogo variant="light" size="md" />
+            <div className="border-l border-[#111111]/10 pl-4">
+              <h1 className="text-lg font-heading font-extrabold text-[#111111]">
+                SlideBee Master Studio Hub
+              </h1>
+              <span className="text-xs text-[#726F6D] font-medium">
+                Admin: <strong>{session.user.email}</strong>
+              </span>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className="flex-grow">
-            {activeTab === 'leads' && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-2xl font-heading font-bold mb-6">Recent Leads</h2>
-                <div className="space-y-4">
-                  {leads.length === 0 ? (
-                    <p className="text-muted-foreground">No leads yet.</p>
-                  ) : (
-                    leads.map(lead => (
-                      <div key={lead.id} className="p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-lg">{lead.name} <span className="text-sm font-normal text-muted-foreground">({lead.email})</span></h4>
-                          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">{lead.service}</span>
-                        </div>
-                        {lead.company && <p className="text-sm text-gray-600 mb-3">🏢 {lead.company}</p>}
-                        <p className="text-gray-700 bg-gray-50 p-4 rounded-lg italic">"{lead.message}"</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchDashboardData}
+              className="hex-pill bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 px-4 py-2 text-xs font-extrabold hover:bg-black/5 transition-all"
+            >
+              ↻ Refresh Data
+            </button>
+            <button
+              onClick={handleLogout}
+              className="hex-pill bg-red-50 text-red-700 border border-red-200 px-4 py-2 text-xs font-extrabold hover:bg-red-100 transition-all flex items-center gap-1.5"
+            >
+              <LogOut size={14} /> Log Out
+            </button>
+          </div>
+        </div>
+
+        {/* 5 Metric Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+            <div className="flex items-center justify-between text-primary-amber mb-1.5">
+              <ShoppingBag size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                Briefs
+              </span>
+            </div>
+            <div className="text-2xl font-heading font-black text-[#111111]">
+              {orders.length}
+            </div>
+            <span className="text-[10px] text-[#726F6D] font-medium block">
+              {orders.filter(o => o.status === 'pending').length} pending
+            </span>
+          </div>
+
+          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+            <div className="flex items-center justify-between text-primary-amber mb-1.5">
+              <Users size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                Waitlist
+              </span>
+            </div>
+            <div className="text-2xl font-heading font-black text-[#111111]">
+              {waitlist.length}
+            </div>
+            <span className="text-[10px] text-[#726F6D] font-medium block">
+              Subscribers
+            </span>
+          </div>
+
+          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+            <div className="flex items-center justify-between text-primary-amber mb-1.5">
+              <Layers size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                Templates
+              </span>
+            </div>
+            <div className="text-2xl font-heading font-black text-[#111111]">
+              {templates.length}
+            </div>
+            <span className="text-[10px] text-[#726F6D] font-medium block">
+              In Store CMS
+            </span>
+          </div>
+
+          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+            <div className="flex items-center justify-between text-primary-amber mb-1.5">
+              <ImageIcon size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                Media CMS
+              </span>
+            </div>
+            <div className="text-2xl font-heading font-black text-[#111111]">
+              {assets.length}
+            </div>
+            <span className="text-[10px] text-[#726F6D] font-medium block">
+              Visual Assets
+            </span>
+          </div>
+
+          {/* R2 Storage Live Monitor Card */}
+          <div 
+            onClick={() => setActiveTab("storage")}
+            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all col-span-2 sm:col-span-1"
+          >
+            <div className="flex items-center justify-between text-primary-amber mb-1.5">
+              <HardDrive size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                Cloudflare R2
+              </span>
+            </div>
+            <div className="text-2xl font-heading font-black text-[#111111]">
+              {remainingGB} <span className="text-xs font-bold text-[#726F6D]">GB Free</span>
+            </div>
+            <div className="w-full bg-[#FFF9E8] rounded-full h-1.5 mt-2 overflow-hidden border border-[#111111]/10">
+              <div 
+                className="bg-primary-amber h-full rounded-full transition-all" 
+                style={{ width: `${Math.max(3, Number(percentUsed))}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Selector & Search Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          
+          <div className="inline-flex bg-white border border-[#111111]/10 p-1 hex-pill shadow-sm overflow-x-auto">
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "orders"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <ShoppingBag size={14} /> Orders ({orders.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("waitlist")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "waitlist"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <Users size={14} /> Waitlist ({waitlist.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("templates")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "templates"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <Layers size={14} /> Templates ({templates.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("assets")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "assets"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <ImageIcon size={14} /> Media Assets ({assets.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("config")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "config"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <Sliders size={14} /> Pricing & Copy
+            </button>
+            <button
+              onClick={() => setActiveTab("subscriptions")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "subscriptions"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <CreditCard size={14} /> Subscriptions & Users ({subscriptions.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("storage")}
+              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === "storage"
+                  ? "bg-[#111111] text-[#FCBF14] shadow"
+                  : "text-[#111111] hover:text-primary-amber"
+              }`}
+            >
+              <HardDrive size={14} /> R2 10 GB Storage
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeTab !== "config" && activeTab !== "storage" && (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search records..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-white border border-[#111111]/12 hex-pill pl-9 pr-4 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+              </div>
             )}
 
-            {activeTab === 'blogs' && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                {/* Upload Form */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <h2 className="text-2xl font-heading font-bold mb-6">Publish New Blog</h2>
-                  <form onSubmit={handleBlogSubmit} className="space-y-5">
-                    <div>
-                      <label className="block text-sm font-semibold mb-1">Blog Title</label>
-                      <input type="text" required value={blogTitle} onChange={e => setBlogTitle(e.target.value)} className="w-full px-4 py-3 rounded-lg border focus:border-primary outline-none" />
+            {activeTab === "waitlist" && (
+              <button
+                onClick={handleExportWaitlistCSV}
+                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+              >
+                <Download size={14} /> Export CSV
+              </button>
+            )}
+
+            {activeTab === "templates" && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsBulkImportOpen(true)}
+                  className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                >
+                  <FileSpreadsheet size={14} /> Bulk CSV Import
+                </button>
+                <button
+                  onClick={() => setIsAddTemplateOpen(true)}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                >
+                  <Plus size={14} /> Add Single
+                </button>
+              </div>
+            )}
+
+            {activeTab === "assets" && (
+              <button
+                onClick={() => setIsAddAssetOpen(true)}
+                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+              >
+                <Plus size={14} /> Add Asset
+              </button>
+            )}
+          </div>
+
+        </div>
+
+        {/* TAB 1: ORDERS WITH INTERACTIVE MILESTONE TIMELINE STEPPER */}
+        {activeTab === "orders" && (
+          <div className="space-y-6">
+            
+            {/* 1. Milestone Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {ORDER_MILESTONES.map((m, idx) => {
+                const count = orders.filter(o => getMilestoneIndex(o.status) === idx).length;
+                const isFilterActive = orderMilestoneFilter === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setOrderMilestoneFilter(isFilterActive ? "all" : m.key)}
+                    className={`hex-card text-left p-4 border transition-all ${
+                      isFilterActive 
+                        ? "bg-[#111111] text-white border-[#111111] shadow-lg scale-[1.02]"
+                        : "bg-white border-[#111111]/10 hover:border-primary/60 hover:bg-[#FFF9E8] shadow-sm"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                        isFilterActive ? "bg-primary text-[#111111]" : "bg-[#FFF9E8] text-[#111111] border border-primary/30"
+                      }`}>
+                        Stage {m.step}
+                      </span>
+                      <span className={`text-xs font-black ${isFilterActive ? "text-primary" : "text-[#726F6D]"}`}>
+                        {count} {count === 1 ? "order" : "orders"}
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-1">Cover Image</label>
-                      <input type="file" accept="image/*" required onChange={e => setBlogImage(e.target.files?.[0] || null)} className="w-full px-4 py-3 rounded-lg border file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                    <div className="font-heading font-extrabold text-sm sm:text-base leading-tight mb-1">
+                      {m.label}
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-1">Content (Markdown/Text)</label>
-                      <textarea required rows={6} value={blogContent} onChange={e => setBlogContent(e.target.value)} className="w-full px-4 py-3 rounded-lg border focus:border-primary outline-none resize-none"></textarea>
+                    <div className={`text-[11px] font-medium leading-relaxed truncate ${
+                      isFilterActive ? "text-white/70" : "text-[#726F6D]"
+                    }`}>
+                      {m.desc}
                     </div>
-                    <button type="submit" disabled={isUploading} className="bg-primary text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 disabled:opacity-70">
-                      {isUploading ? <Loader2 className="animate-spin" /> : <Upload />}
-                      {isUploading ? "Uploading & Publishing..." : "Publish Blog"}
-                    </button>
-                  </form>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 2. Filter Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-[#111111]/10 p-4 hex-card shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-[#726F6D] mr-1">Filter by Stage:</span>
+                <button
+                  type="button"
+                  onClick={() => setOrderMilestoneFilter("all")}
+                  className={`hex-pill-sm px-3 py-1 text-xs font-extrabold transition-all border ${
+                    orderMilestoneFilter === "all"
+                      ? "bg-[#111111] text-primary border-[#111111] shadow-sm"
+                      : "bg-[#FFF9E8] text-[#111111] border-[#111111]/10 hover:border-primary"
+                  }`}
+                >
+                  All Orders ({orders.length})
+                </button>
+                {ORDER_MILESTONES.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setOrderMilestoneFilter(m.key)}
+                    className={`hex-pill-sm px-3 py-1 text-xs font-extrabold transition-all border ${
+                      orderMilestoneFilter === m.key
+                        ? "bg-[#111111] text-primary border-[#111111] shadow-sm"
+                        : "bg-[#FFF9E8] text-[#111111] border-[#111111]/10 hover:border-primary"
+                    }`}
+                  >
+                    {m.label} ({orders.filter(o => getMilestoneIndex(o.status) === m.step - 1).length})
+                  </button>
+                ))}
+              </div>
+
+              {orderMilestoneFilter !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setOrderMilestoneFilter("all")}
+                  className="text-xs text-primary-amber font-extrabold hover:underline"
+                >
+                  Clear Filter
+                </button>
+              )}
+            </div>
+
+            {/* 3. Orders Table with Interactive Milestone Stepper */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+              {filteredOrders.length === 0 ? (
+                <div className="p-12 text-center text-[#726F6D]">
+                  <ShoppingBag size={36} className="mx-auto text-gray-300 mb-2" />
+                  <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Orders Matching Filter</h4>
+                  <p className="text-xs font-medium mt-1">Try switching stage filters or clearing the search query.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
+                        <th className="p-4">Date & Client</th>
+                        <th className="p-4">Service & Scope</th>
+                        <th className="p-4">Rush / Target</th>
+                        <th className="p-4 min-w-[380px]">Milestone Timeline Stepper (1-Click Advance)</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
+                      {filteredOrders.map((ord) => {
+                        const currentIdx = getMilestoneIndex(ord.status);
+                        const nextMilestone = currentIdx < ORDER_MILESTONES.length - 1 ? ORDER_MILESTONES[currentIdx + 1] : null;
+
+                        return (
+                          <tr key={ord.id} className="hover:bg-primary/5 transition-colors">
+                            
+                            {/* Date & Client Column */}
+                            <td className="p-4">
+                              <div className="font-extrabold text-[#111111] text-sm flex items-center gap-1.5">
+                                {ord.client_name || "Client"}
+                                {ord.target_date && (
+                                  <span className="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.2 rounded border border-amber-200">
+                                    Due: {ord.target_date}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[#726F6D] text-[11px] font-medium">{ord.client_email}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                Submitted {new Date(ord.created_at).toLocaleDateString()}
+                              </div>
+                            </td>
+
+                            {/* Service & Scope Column */}
+                            <td className="p-4">
+                              <div className="font-extrabold text-[#111111]">{ord.service_type || "Presentation Design"}</div>
+                              <div className="text-[11px] text-[#726F6D]">{ord.slide_count || "Custom"} slides</div>
+                              {ord.budget && (
+                                <div className="text-[10px] font-bold text-primary-amber">Budget: {ord.budget}</div>
+                              )}
+                            </td>
+
+                            {/* Rush Delivery Column */}
+                            <td className="p-4 whitespace-nowrap">
+                              {ord.rush_delivery ? (
+                                <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-1 border border-red-200 shadow-sm flex items-center gap-1 w-fit">
+                                  ⚡ 24h Rush
+                                </span>
+                              ) : (
+                                <span className="hex-pill-sm bg-gray-100 text-[#726F6D] text-[10px] font-bold px-2.5 py-0.5 border border-gray-200">
+                                  Standard 48h
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Milestone Timeline Stepper (Interactive) */}
+                            <td className="p-4">
+                              <div className="bg-[#FFF9E8]/70 border border-primary/25 rounded-xl p-3 shadow-inner">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-extrabold text-[#726F6D] uppercase tracking-wider">
+                                    Current Phase: <strong className="text-[#111111]">{ORDER_MILESTONES[currentIdx].label}</strong>
+                                  </span>
+                                  {nextMilestone && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateOrderStatus(ord.id, nextMilestone.key)}
+                                      className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-0.5 flex items-center gap-1 transition-all shadow-sm"
+                                    >
+                                      Advance to {nextMilestone.label} <ArrowRight size={10} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* 4-Step Interactive Horizontal Stepper */}
+                                <div className="grid grid-cols-4 gap-1.5 relative">
+                                  {ORDER_MILESTONES.map((m, idx) => {
+                                    const isPassed = idx < currentIdx;
+                                    const isCurrent = idx === currentIdx;
+
+                                    return (
+                                      <button
+                                        key={m.key}
+                                        type="button"
+                                        title={`Set status to ${m.fullLabel}`}
+                                        onClick={() => handleUpdateOrderStatus(ord.id, m.key)}
+                                        className={`group relative text-center py-2 px-1 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 ${
+                                          isCurrent
+                                            ? "bg-[#111111] text-white border-[#111111] shadow-md ring-2 ring-primary/50"
+                                            : isPassed
+                                            ? "bg-amber-100/80 text-amber-900 border-amber-300 hover:bg-amber-200"
+                                            : "bg-white text-gray-400 border-gray-200 hover:border-primary/50 hover:text-[#111111]"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-center">
+                                          {isPassed ? (
+                                            <div className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[9px] font-black">
+                                              ✓
+                                            </div>
+                                          ) : isCurrent ? (
+                                            <div className="w-4 h-4 rounded-full bg-primary text-[#111111] flex items-center justify-center text-[9px] font-black animate-pulse">
+                                              {m.step}
+                                            </div>
+                                          ) : (
+                                            <div className="w-4 h-4 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[9px] font-bold border border-gray-300 group-hover:border-primary">
+                                              {m.step}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className={`text-[10px] font-extrabold truncate w-full px-0.5 ${
+                                          isCurrent ? "text-primary font-black" : isPassed ? "text-amber-900" : "text-gray-500"
+                                        }`}>
+                                          {m.label}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Actions Column */}
+                            <td className="p-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-2">
+                                {ord.drive_link && (
+                                  <a
+                                    href={ord.drive_link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hex-pill-sm bg-white border border-[#111111]/12 hover:border-primary text-[#111111] font-bold px-2.5 py-1.5 inline-flex items-center gap-1 text-[11px] shadow-sm"
+                                  >
+                                    <ExternalLink size={11} className="text-primary-amber" /> Drive
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrderForModal(ord)}
+                                  className="hex-pill-sm bg-[#111111] text-white hover:text-primary font-bold px-3 py-1.5 inline-flex items-center gap-1 text-[11px] transition-colors shadow-sm"
+                                >
+                                  Inspect Brief
+                                </button>
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: WAITLIST */}
+        {activeTab === "waitlist" && (
+          <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+            {filteredWaitlist.length === 0 ? (
+              <div className="p-12 text-center text-[#726F6D]">
+                <Users size={36} className="mx-auto text-gray-300 mb-2" />
+                <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Waitlist Leads</h4>
+                <p className="text-xs font-medium mt-1">Signups from the Coming Soon page will appear here.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
+                      <th className="p-4">Date Joined</th>
+                      <th className="p-4">Email Address</th>
+                      <th className="p-4">Source / Note</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
+                    {filteredWaitlist.map((w) => (
+                      <tr key={w.id} className="hover:bg-primary/5 transition-colors">
+                        <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                          {new Date(w.created_at).toLocaleString()}
+                        </td>
+                        <td className="p-4 font-extrabold text-[#111111]">
+                          {w.email}
+                        </td>
+                        <td className="p-4 text-[#726F6D]">
+                          {w.source || "Coming Soon Hero"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: TEMPLATES */}
+        {activeTab === "templates" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {templates.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
+              >
+                <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
+                  <img
+                    src={tpl.thumbnail_url}
+                    alt={tpl.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
-                {/* Blog List */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <h3 className="text-xl font-heading font-bold mb-6">Published Blogs</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {blogs.map(blog => (
-                      <div key={blog.id} className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
-                        <img src={blog.imageUrl} alt={blog.title} className="w-full h-48 object-cover" />
-                        <div className="p-4">
-                          <h4 className="font-bold mb-2 line-clamp-1">{blog.title}</h4>
-                          <p className="text-sm text-gray-500 line-clamp-2">{blog.content}</p>
+                <div className="p-5">
+                  <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider mb-2">
+                    {tpl.category}
+                  </div>
+                  <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
+                    {tpl.title}
+                  </h4>
+                  <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-4">
+                    {tpl.description}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
+                    <span>{tpl.slide_count} Slides</span>
+                    <span className="text-primary-amber font-extrabold">
+                      ₹{tpl.price_inr} / ${tpl.price_usd}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB 4: ASSETS CMS */}
+        {activeTab === "assets" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAssets.map((ast) => (
+              <div
+                key={ast.id}
+                className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm p-4 flex flex-col justify-between"
+              >
+                <div className="aspect-[16/10] bg-[#111111] rounded-xl overflow-hidden mb-3">
+                  <img
+                    src={ast.url}
+                    alt={ast.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2 py-0.5 uppercase">
+                      {ast.category}
+                    </span>
+                    <code className="text-[10px] bg-black/5 px-2 py-0.5 rounded text-[#726F6D]">
+                      {ast.key}
+                    </code>
+                  </div>
+                  <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+                    {ast.title}
+                  </h4>
+                  <p className="text-[11px] text-[#726F6D] font-medium truncate">
+                    {ast.url}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB 5: GLOBAL SITE COPY & PRICING CONFIGURATION */}
+        {activeTab === "config" && (
+          <div className="space-y-8">
+            {configSavedSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-pulse">
+                <CheckCircle2 size={16} /> Changes saved successfully to live website database!
+              </div>
+            )}
+
+            {configValidationError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-shake">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0" /> {configValidationError}
+              </div>
+            )}
+
+            {/* Page Customizer Sub-Navigation Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
+              {[
+                { id: "home", label: "🏠 Homepage Header" },
+                { id: "marquee", label: "🎠 Hero Marquee" },
+                { id: "testimonials", label: "💬 Client Testimonials" },
+                { id: "services", label: "⚙️ Services & Before/After" },
+                { id: "portfolio", label: "🖼️ Portfolio & Case Studies" },
+                { id: "about", label: "🏢 About & Story" },
+                { id: "contact", label: "📞 Contact & Channels" },
+                { id: "footer", label: "👣 Footer Links" },
+                { id: "pricing", label: "💰 Pricing Rates" },
+              ].map((subTab) => (
+                <button
+                  key={subTab.id}
+                  onClick={() => setActiveCmsSubTab(subTab.id as any)}
+                  className={`hex-pill px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all ${
+                    activeCmsSubTab === subTab.id
+                      ? "bg-primary text-[#111111] shadow-md scale-105"
+                      : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                  }`}
+                >
+                  {subTab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* SUB-TAB 1: HOMEPAGE CMS */}
+            {activeCmsSubTab === "home" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      🏠 Homepage Hero Customizer
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update the hero headlines and call-to-action buttons.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("hero", siteConfigs["hero"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Homepage"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Hero Badge Text
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["hero"]?.badgeText ?? "SlideBee Design Studio"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        hero: { ...siteConfigs["hero"], badgeText: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Primary CTA Button Text
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["hero"]?.ctaText ?? "Start Your Project Brief"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        hero: { ...siteConfigs["hero"], ctaText: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Hero H1 Headline (HTML allowed)
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["hero"]?.headline ?? 'Present With <br class="hidden sm:inline" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-[#D99F06] to-[#FCD34D]">Unfair Advantage</span>'}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      hero: { ...siteConfigs["hero"], headline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-bold text-[#111111]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Secondary CTA Button Text
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["hero"]?.secondaryCtaText ?? "Hire a Designer"}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      hero: { ...siteConfigs["hero"], secondaryCtaText: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-bold text-[#111111]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Hero Sub-Headline / Supporting Paragraph
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={siteConfigs["hero"]?.subheadline ?? "From 24-hour investor pitch deck redesigns to enterprise master templates — we help founders and executives command the room."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      hero: { ...siteConfigs["hero"], subheadline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                  />
+                </div>
+
+                {/* FEATURED TEMPLATES ON HOMEPAGE */}
+                <div className="pt-6 border-t border-[#111111]/8 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-heading font-extrabold text-[#111111]">
+                        ⭐ Featured Templates On Homepage Grid
+                      </h4>
+                      <p className="text-xs text-[#726F6D]">
+                        Select which templates appear in the 8-card showcase on the homepage.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const first8 = templateCatalog.slice(0, 8).map(t => t.id);
+                          setSiteConfigs({
+                            ...siteConfigs,
+                            featured_templates: { ids: first8 }
+                          });
+                        }}
+                        className="text-[11px] font-bold text-primary-amber hover:underline px-2 py-1 bg-[#FFF9E8] rounded border border-primary/20"
+                      >
+                        Reset to First 8
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveConfig("featured_templates", siteConfigs["featured_templates"] || { ids: templateCatalog.slice(0, 8).map(t => t.id) })}
+                        disabled={configSaving}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
+                      >
+                        Save Templates
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Grid of Templates for Toggle Selection */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-h-[380px] overflow-y-auto p-1 bg-[#FFF9E8]/50 rounded-xl border border-[#111111]/8">
+                    {templateCatalog.map((tmpl) => {
+                      const selectedIds: string[] = siteConfigs["featured_templates"]?.ids || templateCatalog.slice(0, 8).map(t => t.id);
+                      const isSelected = selectedIds.includes(tmpl.id);
+
+                      return (
+                        <div
+                          key={tmpl.id}
+                          onClick={() => {
+                            let newIds: string[];
+                            if (isSelected) {
+                              newIds = selectedIds.filter(id => id !== tmpl.id);
+                            } else {
+                              newIds = [...selectedIds, tmpl.id];
+                            }
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              featured_templates: { ids: newIds }
+                            });
+                          }}
+                          className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                            isSelected 
+                              ? "bg-white border-primary shadow-sm" 
+                              : "bg-white/60 border-transparent opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <img 
+                            src={tmpl.image} 
+                            alt={tmpl.title} 
+                            className="w-12 h-9 object-cover rounded-md border border-[#111111]/10 flex-shrink-0" 
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase text-primary-amber tracking-wider truncate">
+                                {tmpl.category}
+                              </span>
+                              <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${
+                                isSelected ? "bg-primary text-[#111111]" : "bg-gray-200 text-gray-500"
+                              }`}>
+                                {isSelected ? "✓" : "+"}
+                              </span>
+                            </div>
+                            <h5 className="text-xs font-bold text-[#111111] truncate">
+                              {tmpl.title}
+                            </h5>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[11px] text-[#726F6D] font-medium">
+                    Currently Selected: <strong>{(siteConfigs["featured_templates"]?.ids || templateCatalog.slice(0, 8).map(t => t.id)).length}</strong> templates active on the homepage.
+                  </div>
+                </div>
+
+                {/* BEFORE & AFTER SLIDER CUSTOMIZER */}
+                <div className="pt-6 border-t border-[#111111]/8 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-heading font-extrabold text-[#111111]">
+                        🔄 Homepage Before & After Comparison Decks
+                      </h4>
+                      <p className="text-xs text-[#726F6D]">
+                        Configure the slide images, titles, and critique descriptions for the comparison slider.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveConfig("home_before_after", siteConfigs["home_before_after"] || {
+                        sales: {
+                          title: "Q2 Sales Performance",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
+                          afterImg: "/portfolio/case_study_a_1.png",
+                          beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
+                          afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways."
+                        },
+                        executive: {
+                          title: "Executive Strategic Keynote",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
+                          afterImg: "/portfolio/case_study_a_14.png",
+                          beforeDesc: "Mismatched brand colors, generic bullet points.",
+                          afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points."
+                        },
+                        financial: {
+                          title: "Series A Investment Deck",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
+                          afterImg: "/portfolio/global_brands_1.png",
+                          beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
+                          afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones."
+                        }
+                      })}
+                      disabled={configSaving}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
+                    >
+                      Save Before & After Decks
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(["sales", "executive", "financial"] as const).map((tabKey) => {
+                      const currentComp = (siteConfigs["home_before_after"] && siteConfigs["home_before_after"][tabKey]) || {
+                        sales: {
+                          title: "Q2 Sales Performance",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
+                          afterImg: "/portfolio/case_study_a_1.png",
+                          beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
+                          afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways."
+                        },
+                        executive: {
+                          title: "Executive Strategic Keynote",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
+                          afterImg: "/portfolio/case_study_a_14.png",
+                          beforeDesc: "Mismatched brand colors, generic bullet points.",
+                          afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points."
+                        },
+                        financial: {
+                          title: "Series A Investment Deck",
+                          beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
+                          afterImg: "/portfolio/global_brands_1.png",
+                          beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
+                          afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones."
+                        }
+                      }[tabKey];
+
+                      return (
+                        <div key={tabKey} className="bg-[#FFF9E8] p-4 rounded-2xl border border-[#111111]/10 space-y-3">
+                          <div className="flex items-center justify-between border-b border-[#111111]/8 pb-2">
+                            <span className="text-xs font-black uppercase text-primary-amber">
+                              Tab: {tabKey.toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">
+                              Deck Title
+                            </label>
+                            <input
+                              type="text"
+                              value={currentComp.title}
+                              onChange={(e) => {
+                                const prev = siteConfigs["home_before_after"] || {};
+                                setSiteConfigs({
+                                  ...siteConfigs,
+                                  home_before_after: {
+                                    ...prev,
+                                    [tabKey]: { ...currentComp, title: e.target.value }
+                                  }
+                                });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[10px] font-extrabold text-red-700">
+                                ❌ Before Image
+                              </label>
+                              <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                <UploadCloud size={11} /> Choose File
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                    const prev = siteConfigs["home_before_after"] || {};
+                                    setSiteConfigs({
+                                      ...siteConfigs,
+                                      home_before_after: {
+                                        ...prev,
+                                        [tabKey]: { ...currentComp, beforeImg: dataUrl }
+                                      }
+                                    });
+                                  })}
+                                />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {currentComp.beforeImg && (
+                                <img src={currentComp.beforeImg} alt="Before" className="w-10 h-7 object-cover rounded border border-red-300 flex-shrink-0" />
+                              )}
+                              <input
+                                type="text"
+                                value={currentComp.beforeImg}
+                                onChange={(e) => {
+                                  const prev = siteConfigs["home_before_after"] || {};
+                                  setSiteConfigs({
+                                    ...siteConfigs,
+                                    home_before_after: {
+                                      ...prev,
+                                      [tabKey]: { ...currentComp, beforeImg: e.target.value }
+                                    }
+                                  });
+                                }}
+                                placeholder="URL or uploaded file"
+                                className="w-full bg-white border border-red-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[10px] font-extrabold text-green-700">
+                                ✨ After Image
+                              </label>
+                              <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                <UploadCloud size={11} /> Choose File
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                    const prev = siteConfigs["home_before_after"] || {};
+                                    setSiteConfigs({
+                                      ...siteConfigs,
+                                      home_before_after: {
+                                        ...prev,
+                                        [tabKey]: { ...currentComp, afterImg: dataUrl }
+                                      }
+                                    });
+                                  })}
+                                />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {currentComp.afterImg && (
+                                <img src={currentComp.afterImg} alt="After" className="w-10 h-7 object-cover rounded border border-green-300 flex-shrink-0" />
+                              )}
+                              <input
+                                type="text"
+                                value={currentComp.afterImg}
+                                onChange={(e) => {
+                                  const prev = siteConfigs["home_before_after"] || {};
+                                  setSiteConfigs({
+                                    ...siteConfigs,
+                                    home_before_after: {
+                                      ...prev,
+                                      [tabKey]: { ...currentComp, afterImg: e.target.value }
+                                    }
+                                  });
+                                }}
+                                placeholder="URL or uploaded file"
+                                className="w-full bg-white border border-green-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
+                              Before Description
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={currentComp.beforeDesc}
+                              onChange={(e) => {
+                                const prev = siteConfigs["home_before_after"] || {};
+                                setSiteConfigs({
+                                  ...siteConfigs,
+                                  home_before_after: {
+                                    ...prev,
+                                    [tabKey]: { ...currentComp, beforeDesc: e.target.value }
+                                  }
+                                });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
+                              After Description
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={currentComp.afterDesc}
+                              onChange={(e) => {
+                                const prev = siteConfigs["home_before_after"] || {};
+                                setSiteConfigs({
+                                  ...siteConfigs,
+                                  home_before_after: {
+                                    ...prev,
+                                    [tabKey]: { ...currentComp, afterDesc: e.target.value }
+                                  }
+                                });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB: MARQUEE CMS */}
+            {activeCmsSubTab === "marquee" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      🎠 Moving Marquee Presentation Slides
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update the gliding presentation cards shown in the hero section.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("hero", siteConfigs["hero"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Marquee"}
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold text-[#111111] block">
+                      Slide Images
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentSlides = siteConfigs["hero"]?.marqueeSlides || [];
+                        setSiteConfigs({
+                          ...siteConfigs,
+                          hero: { ...siteConfigs["hero"], marqueeSlides: [...currentSlides, "/portfolio/case_study_a_1.png"] }
+                        });
+                      }}
+                      className="text-[11px] font-bold text-primary-amber hover:underline"
+                    >
+                      + Add Slide Image
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(siteConfigs["hero"]?.marqueeSlides || [
+                      '/portfolio/case_study_a_14.png',
+                      '/portfolio/global_brands_1.png',
+                      '/portfolio/levis_yuengling_6.png',
+                      '/portfolio/pepsico_1.png',
+                      '/portfolio/case_study_b_2.png',
+                      '/portfolio/global_brands_3.png'
+                    ]).map((slide: string, idx: number) => (
+                      <div key={idx} className="flex items-center bg-[#FFF9E8] border border-[#111111]/10 rounded overflow-hidden">
+                        <div className="w-8 h-8 bg-[#111111]/5 flex-shrink-0 flex items-center justify-center border-r border-[#111111]/10">
+                          <img src={slide} alt="Slide" className="w-full h-full object-cover" />
+                        </div>
+                        <input
+                          type="text"
+                          value={slide}
+                          onChange={(e) => {
+                            const updated = [...(siteConfigs["hero"]?.marqueeSlides || [])];
+                            updated[idx] = e.target.value;
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              hero: { ...siteConfigs["hero"], marqueeSlides: updated }
+                            });
+                          }}
+                          className="w-full bg-white border border-[#111111]/10 rounded px-2 py-1 text-[11px] font-mono text-[#111111]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = (siteConfigs["hero"]?.marqueeSlides || []).filter((_: any, i: number) => i !== idx);
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              hero: { ...siteConfigs["hero"], marqueeSlides: updated }
+                            });
+                          }}
+                          className="text-red-500 hover:text-red-700 font-bold px-1 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB: TESTIMONIALS CMS */}
+            {activeCmsSubTab === "testimonials" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      💬 Client Testimonials & Social Proof Customizer
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Add, edit, or remove executive reviews, star ratings, quotes, names, roles, and avatar photos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS;
+                        setSiteConfigs({
+                          ...siteConfigs,
+                          testimonials: [
+                            ...current,
+                            {
+                              name: "New Client",
+                              role: "VP of Product, Apex",
+                              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+                              rating: 5,
+                              quote: "Outstanding visual quality and fast turnaround time on our board slides."
+                            }
+                          ]
+                        });
+                      }}
+                      className="text-xs font-bold text-primary-amber hover:underline px-3 py-1.5 bg-[#FFF9E8] rounded-lg border border-primary/30"
+                    >
+                      + Add New Testimonial
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveConfig("testimonials", siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)}
+                      disabled={configSaving}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs flex items-center gap-1.5 shadow"
+                    >
+                      <Save size={14} /> {configSaving ? "Saving..." : "Save Testimonials"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS).map((t: any, idx: number) => (
+                    <div key={idx} className="bg-[#FFF9E8] p-4 rounded-2xl border border-[#111111]/10 space-y-3 relative">
+                      <div className="flex items-center justify-between border-b border-[#111111]/8 pb-2">
+                        <span className="text-xs font-black uppercase text-primary-amber">
+                          Review #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                            current.splice(idx, 1);
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              testimonials: current
+                            });
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-red-50"
+                        >
+                          ✕ Delete
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">
+                            Client Name
+                          </label>
+                          <input
+                            type="text"
+                            value={t.name ?? ""}
+                            onChange={(e) => {
+                              const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                              current[idx] = { ...current[idx], name: e.target.value };
+                              setSiteConfigs({ ...siteConfigs, testimonials: current });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 hex-pill px-2.5 py-1 text-xs font-bold text-[#111111]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">
+                            Star Rating (1-5)
+                          </label>
+                          <select
+                            value={t.rating || 5}
+                            onChange={(e) => {
+                              const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                              current[idx] = { ...current[idx], rating: Number(e.target.value) };
+                              setSiteConfigs({ ...siteConfigs, testimonials: current });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 hex-pill px-2.5 py-1 text-xs font-bold text-[#111111]"
+                          >
+                            <option value={5}>⭐⭐⭐⭐⭐ (5 Stars)</option>
+                            <option value={4}>⭐⭐⭐⭐ (4 Stars)</option>
+                            <option value={3}>⭐⭐⭐ (3 Stars)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-[#111111] block mb-1">
+                          Role / Title & Company
+                        </label>
+                        <input
+                          type="text"
+                          value={t.role ?? ""}
+                          onChange={(e) => {
+                            const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                            current[idx] = { ...current[idx], role: e.target.value };
+                            setSiteConfigs({ ...siteConfigs, testimonials: current });
+                          }}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-2.5 py-1 text-xs font-medium text-[#111111]"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-bold text-[#111111]">
+                            Avatar Photo
+                          </label>
+                          <label className="cursor-pointer text-[9px] font-bold text-primary-amber bg-white hover:bg-amber-50 border border-primary/30 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                            <UploadCloud size={11} /> Choose Photo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                                current[idx] = { ...current[idx], avatar: dataUrl };
+                                setSiteConfigs({ ...siteConfigs, testimonials: current });
+                              })}
+                            />
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <img 
+                            src={t.avatar} 
+                            alt="Avatar" 
+                            className="w-7 h-7 rounded-full object-cover border border-[#111111]/20 flex-shrink-0" 
+                          />
+                          <input
+                            type="text"
+                            value={t.avatar ?? ""}
+                            onChange={(e) => {
+                              const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                              current[idx] = { ...current[idx], avatar: e.target.value };
+                              setSiteConfigs({ ...siteConfigs, testimonials: current });
+                            }}
+                            placeholder="Image URL or upload"
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2 py-1 text-[10px] font-mono text-[#111111]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
+                          Quote / Client Feedback
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={t.quote ?? ""}
+                          onChange={(e) => {
+                            const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
+                            current[idx] = { ...current[idx], quote: e.target.value };
+                            setSiteConfigs({ ...siteConfigs, testimonials: current });
+                          }}
+                          className="w-full bg-white border border-[#111111]/12 rounded p-2 text-xs font-medium text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 2: SERVICES & BEFORE/AFTER CMS */}
+            {activeCmsSubTab === "services" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      ⚙️ Services & Before / After Slider Customizer
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update the 6 service tiers, turnaround times, and before/after comparison decks
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("services_cms", siteConfigs["services_cms"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save All Services"}
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  {Object.keys(siteConfigs["services_cms"] || {}).map((serviceKey) => {
+                    const svc = siteConfigs["services_cms"][serviceKey];
+                    return (
+                      <div key={serviceKey} className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/10 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-primary-amber">
+                            Service: {svc.title}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#726F6D]">
+                            ID: {serviceKey}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                              Service Title
+                            </label>
+                            <input
+                              type="text"
+                              value={svc.title || ""}
+                              onChange={(e) => setSiteConfigs({
+                                ...siteConfigs,
+                                services_cms: {
+                                  ...siteConfigs["services_cms"],
+                                  [serviceKey]: { ...svc, title: e.target.value }
+                                }
+                              })}
+                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                              Turnaround Time Badge
+                            </label>
+                            <input
+                              type="text"
+                              value={svc.turnaround || ""}
+                              onChange={(e) => setSiteConfigs({
+                                ...siteConfigs,
+                                services_cms: {
+                                  ...siteConfigs["services_cms"],
+                                  [serviceKey]: { ...svc, turnaround: e.target.value }
+                                }
+                              })}
+                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                              Ideal For Audience
+                            </label>
+                            <input
+                              type="text"
+                              value={svc.idealFor || ""}
+                              onChange={(e) => setSiteConfigs({
+                                ...siteConfigs,
+                                services_cms: {
+                                  ...siteConfigs["services_cms"],
+                                  [serviceKey]: { ...svc, idealFor: e.target.value }
+                                }
+                              })}
+                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                            Service Description / Tagline
+                          </label>
+                          <input
+                            type="text"
+                            value={svc.tagline || ""}
+                            onChange={(e) => setSiteConfigs({
+                              ...siteConfigs,
+                              services_cms: {
+                                ...siteConfigs["services_cms"],
+                                [serviceKey]: { ...svc, tagline: e.target.value }
+                              }
+                            })}
+                            className="w-full bg-white border border-[#111111]/12 rounded-xl px-3 py-1.5 text-xs font-medium text-[#111111]"
+                          />
+                        </div>
+
+                        {/* Before / After Images */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#111111]/6">
+                          <div className="bg-white p-3 rounded-xl border border-red-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-extrabold text-red-700 block">
+                                ❌ Raw Draft (Before Image)
+                              </label>
+                              <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                <UploadCloud size={11} /> Upload Image
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                    setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...siteConfigs["services_cms"],
+                                        [serviceKey]: { ...svc, beforeImg: dataUrl }
+                                      }
+                                    });
+                                  })}
+                                />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              {svc.beforeImg && (
+                                <img
+                                  src={svc.beforeImg}
+                                  alt="Before Preview"
+                                  className="w-12 h-8 object-cover rounded border border-red-200 flex-shrink-0"
+                                />
+                              )}
+                              <input
+                                type="text"
+                                value={svc.beforeImg || ""}
+                                onChange={(e) => setSiteConfigs({
+                                  ...siteConfigs,
+                                  services_cms: {
+                                    ...siteConfigs["services_cms"],
+                                    [serviceKey]: { ...svc, beforeImg: e.target.value }
+                                  }
+                                })}
+                                placeholder="Image URL or upload"
+                                className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
+                              />
+                            </div>
+                            <div className="text-[10px] text-gray-500 truncate">
+                              Label: {svc.beforeTitle}
+                            </div>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-xl border border-green-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-extrabold text-green-700 block">
+                                ✨ SlideBee Polish (After Image)
+                              </label>
+                              <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                <UploadCloud size={11} /> Upload Image
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                    setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...siteConfigs["services_cms"],
+                                        [serviceKey]: { ...svc, afterImg: dataUrl }
+                                      }
+                                    });
+                                  })}
+                                />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              {svc.afterImg && (
+                                <img
+                                  src={svc.afterImg}
+                                  alt="After Preview"
+                                  className="w-12 h-8 object-cover rounded border border-green-200 flex-shrink-0"
+                                />
+                              )}
+                              <input
+                                type="text"
+                                value={svc.afterImg || ""}
+                                onChange={(e) => setSiteConfigs({
+                                  ...siteConfigs,
+                                  services_cms: {
+                                    ...siteConfigs["services_cms"],
+                                    [serviceKey]: { ...svc, afterImg: e.target.value }
+                                  }
+                                })}
+                                placeholder="Image URL or upload"
+                                className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
+                              />
+                            </div>
+                            <div className="text-[10px] text-gray-500 truncate">
+                              Label: {svc.afterTitle}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 3: PORTFOLIO & CASE STUDIES CMS */}
+            {activeCmsSubTab === "portfolio" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      🖼️ Portfolio & Case Studies Customizer (/examples)
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Add, edit, or remove client presentation showcase items and impact statistics
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("portfolio_cms", siteConfigs["portfolio_cms"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Portfolio"}
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {(siteConfigs["portfolio_cms"]?.caseStudies || []).map((cs: any, idx: number) => (
+                    <div key={idx} className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
+                          Case Study #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = siteConfigs["portfolio_cms"].caseStudies.filter((_: any, i: number) => i !== idx);
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                            });
+                          }}
+                          className="text-red-600 hover:text-red-800 text-xs font-bold"
+                        >
+                          🗑️ Remove
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Project Title</label>
+                          <input
+                            type="text"
+                            value={cs.title || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].title = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Client Name</label>
+                          <input
+                            type="text"
+                            value={cs.client || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].client = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Category Filter</label>
+                          <input
+                            type="text"
+                            value={cs.category || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].category = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Impact Stat (e.g. $14M Raised)</label>
+                          <input
+                            type="text"
+                            value={cs.impact || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].impact = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-extrabold text-primary-amber"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Image / Screenshot URL</label>
+                          <input
+                            type="text"
+                            value={cs.imageUrl || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].imageUrl = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Brief Description</label>
+                          <input
+                            type="text"
+                            value={cs.description || ""}
+                            onChange={(e) => {
+                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                              updated[idx].description = e.target.value;
+                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = siteConfigs["portfolio_cms"]?.caseStudies || [];
+                      const newCS = {
+                        id: Date.now(),
+                        title: "New Venture Deck",
+                        client: "Acme Corp",
+                        category: "Healthcare & Tech",
+                        slides: 20,
+                        imageUrl: "/portfolio/case_study_a_14.png",
+                        impact: "$10M Series A",
+                        description: "High-impact presentation narrative and custom infographics.",
+                        deliverables: ["PPTX Master", "Google Slides", "PDF"]
+                      };
+                      setSiteConfigs({
+                        ...siteConfigs,
+                        portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: [...current, newCS] }
+                      });
+                    }}
+                    className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
+                  >
+                    + Add New Case Study
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 4: ABOUT PAGE CMS */}
+            {activeCmsSubTab === "about" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      🏢 About Page & Track Record Customizer
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update studio statistics, funding raised, and brand story
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("about_cms", siteConfigs["about_cms"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save About Page"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Total Client Funding Raised Metric
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["about_cms"]?.totalRaised || "$50M+"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...siteConfigs["about_cms"], totalRaised: e.target.value }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
+                    />
+                  </div>
+
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Total Decks Designed Metric
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["about_cms"]?.decksDesigned || "500+"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...siteConfigs["about_cms"], decksDesigned: e.target.value }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
+                    />
+                  </div>
+
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Rush Turnaround Guarantee
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["about_cms"]?.rushTurnaround || "24h"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...siteConfigs["about_cms"], rushTurnaround: e.target.value }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Story Section Heading
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["about_cms"]?.storyHeading || "Most Great Ideas Get Lost in Bad PowerPoint Slides."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      about_cms: { ...siteConfigs["about_cms"], storyHeading: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Story Paragraph 1
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={siteConfigs["about_cms"]?.storyParagraph1 || ""}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...siteConfigs["about_cms"], storyParagraph1: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Story Paragraph 2
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={siteConfigs["about_cms"]?.storyParagraph2 || ""}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...siteConfigs["about_cms"], storyParagraph2: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 5: CONTACT & CHANNELS CMS */}
+            {activeCmsSubTab === "contact" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      📞 Contact & Channels Customizer (/contact)
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update studio support emails, WhatsApp hotline, and response time guarantee
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("contact_cms", siteConfigs["contact_cms"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Contact Info"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Primary Client Email
+                    </label>
+                    <input
+                      type="email"
+                      value={siteConfigs["contact_cms"]?.generalEmail || "hello@theslidebee.com"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        contact_cms: { ...siteConfigs["contact_cms"], generalEmail: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Support / Intake Email
+                    </label>
+                    <input
+                      type="email"
+                      value={siteConfigs["contact_cms"]?.supportEmail || "support@theslidebee.com"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        contact_cms: { ...siteConfigs["contact_cms"], supportEmail: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      WhatsApp Hotline / Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["contact_cms"]?.whatsapp || "+1 (555) 123-4567"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        contact_cms: { ...siteConfigs["contact_cms"], whatsapp: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Response Guarantee Badge
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["contact_cms"]?.responseGuarantee || "2-Hour Response Time"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        contact_cms: { ...siteConfigs["contact_cms"], responseGuarantee: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-primary-amber"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Studio Physical Address
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["contact_cms"]?.address || "123 Design Avenue, Suite 400, New York, NY 10001"}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      contact_cms: { ...siteConfigs["contact_cms"], address: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 6: FOOTER LINKS CMS */}
+            {activeCmsSubTab === "footer" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      👣 Footer Social Media & Brand Links Customizer
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Update LinkedIn, Twitter/X, Instagram, and Dribbble channels
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("footer_cms", siteConfigs["footer_cms"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Footer Links"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      LinkedIn URL
+                    </label>
+                    <input
+                      type="url"
+                      value={siteConfigs["footer_cms"]?.linkedinUrl || "https://linkedin.com/company/theslidebee"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        footer_cms: { ...siteConfigs["footer_cms"], linkedinUrl: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-mono text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Twitter / X URL
+                    </label>
+                    <input
+                      type="url"
+                      value={siteConfigs["footer_cms"]?.twitterUrl || "https://twitter.com/theslidebee"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        footer_cms: { ...siteConfigs["footer_cms"], twitterUrl: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-mono text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Instagram URL
+                    </label>
+                    <input
+                      type="url"
+                      value={siteConfigs["footer_cms"]?.instagramUrl || "https://instagram.com/theslidebee"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        footer_cms: { ...siteConfigs["footer_cms"], instagramUrl: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-mono text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Dribbble Portfolio URL
+                    </label>
+                    <input
+                      type="url"
+                      value={siteConfigs["footer_cms"]?.dribbbleUrl || "https://dribbble.com/theslidebee"}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        footer_cms: { ...siteConfigs["footer_cms"], dribbbleUrl: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-mono text-[#111111]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Brand Tagline
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["footer_cms"]?.tagline || "Elevating presentations for world-class brands."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      footer_cms: { ...siteConfigs["footer_cms"], tagline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 7: PRICING CMS */}
+            {activeCmsSubTab === "pricing" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8 mb-6">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      💰 Service Pricing Rates & Retainers
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Control per-slide prices for all tiers in USD ($) and INR (₹)
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSaveConfig("pricing", siteConfigs["pricing"])}
+                    disabled={configSaving}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Pricing"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      1. Presentation Redesign
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Rate / slide ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_usd_redesign || 19}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_usd_redesign: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Rate / slide (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_inr_redesign || 1499}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_inr_redesign: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      2. Venture Pitch Deck
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Rate / slide ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_usd_pitch || 29}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_usd_pitch: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Rate / slide (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_inr_pitch || 2299}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_inr_pitch: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      3. Executive Keynote
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Rate / slide ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_usd_executive || 49}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_usd_executive: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Rate / slide (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.rate_inr_executive || 3899}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], rate_inr_executive: Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pro Access Subscription & Yearly 50% Off Config */}
+                <div className="mt-8 pt-6 border-t border-[#111111]/8">
+                  <h4 className="text-sm font-heading font-extrabold text-[#111111] mb-1">
+                    👑 SlideBee Pro Access Subscription & Yearly Deal
+                  </h4>
+                  <p className="text-xs text-[#726F6D] mb-4">
+                    Set monthly base price and yearly discount percentage (automatically calculates 50% off yearly billing).
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <div>
+                      <label className="text-xs font-bold text-[#111111] block mb-1">
+                        Monthly Base Price (₹ INR)
+                      </label>
+                      <input
+                        type="number"
+                        value={siteConfigs["pricing"]?.pro_monthly_inr ?? 199}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          pricing: { 
+                            ...siteConfigs["pricing"], 
+                            pro_monthly_inr: Number(e.target.value) 
+                          }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-[#111111] block mb-1">
+                        Yearly Discount Percentage (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={siteConfigs["pricing"]?.pro_discount_percent ?? 50}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          pricing: { 
+                            ...siteConfigs["pricing"], 
+                            pro_discount_percent: Number(e.target.value) 
+                          }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col justify-between bg-white p-3.5 rounded-xl border border-primary/40">
+                      <span className="text-[10px] font-extrabold uppercase text-primary-amber tracking-wider">
+                        Auto-Calculated Yearly Price
+                      </span>
+                      <div className="text-xl font-heading font-black text-[#111111]">
+                        ₹{Math.round(
+                          ((siteConfigs["pricing"]?.pro_monthly_inr ?? 199) * 12) * 
+                          (1 - (siteConfigs["pricing"]?.pro_discount_percent ?? 50) / 100)
+                        ).toLocaleString()} <span className="text-xs font-medium text-[#726F6D]">/year</span>
+                      </div>
+                      <span className="text-[10px] text-green-700 font-bold">
+                        Saves {(siteConfigs["pricing"]?.pro_discount_percent ?? 50)}% compared to 12 monthly payments
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 6: CLOUDFLARE R2 10 GB STORAGE MONITOR */}
+        {activeTab === "storage" && (
+          <div className="space-y-8">
+            <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#111111]/8 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary-amber">
+                    <HardDrive size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-heading font-extrabold text-[#111111]">
+                      Cloudflare R2 Object Storage
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Free Tier Quota: <strong>10.00 GB Available</strong> • $0.00 Egress Bandwidth Fees
+                    </p>
+                  </div>
+                </div>
+
+                <div className="hex-pill bg-[#FFF9E8] border border-primary/30 px-4 py-2 text-xs font-extrabold text-[#111111]">
+                  Status: 🟢 Connected & Active
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between text-xs font-extrabold mb-2">
+                  <span className="text-[#111111]">{estimatedUsedMB} MB Used</span>
+                  <span className="text-primary-amber">{remainingGB} GB Remaining ({100 - Number(percentUsed)}% Free)</span>
+                </div>
+                <div className="w-full bg-[#FFF9E8] rounded-full h-4 overflow-hidden border border-[#111111]/10 p-0.5">
+                  <div 
+                    className="bg-primary-amber h-full rounded-full transition-all" 
+                    style={{ width: `${Math.max(2, Number(percentUsed))}%` }} 
+                  />
+                </div>
+              </div>
+
+              {/* Storage Breakdown Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    PowerPoint Decks (.pptx)
+                  </span>
+                  <div className="text-xl font-heading font-black text-[#111111]">
+                    {templates.length * 35.5} MB
+                  </div>
+                  <span className="text-[10px] text-[#726F6D] font-medium">
+                    {templates.length} downloadable ZIP packages
+                  </span>
+                </div>
+
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Slide Previews (.png/.webp)
+                  </span>
+                  <div className="text-xl font-heading font-black text-[#111111]">
+                    {assets.length * 4.2} MB
+                  </div>
+                  <span className="text-[10px] text-[#726F6D] font-medium">
+                    {assets.length} portfolio slide previews
+                  </span>
+                </div>
+
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Monthly Egress Bandwidth
+                  </span>
+                  <div className="text-xl font-heading font-black text-green-700">
+                    $0.00 / FREE
+                  </div>
+                  <span className="text-[10px] text-green-800 font-medium">
+                    Zero bandwidth fees on Cloudflare R2
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: SUBSCRIPTIONS & CLIENT PROFILES */}
+        {activeTab === "subscriptions" && (
+          <div className="space-y-8">
+            
+            {/* Top Metric Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                  Monthly Recurring Revenue (MRR)
+                </span>
+                <div className="text-3xl font-heading font-black text-primary-amber">
+                  ${subscriptions.reduce((acc, s) => acc + (Number(s.amount_usd) || 1490), 0).toLocaleString()}
+                </div>
+                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                  From {subscriptions.filter(s => s.status === 'active').length} active enterprise retainers
+                </span>
+              </div>
+
+              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                  Total Client Accounts
+                </span>
+                <div className="text-3xl font-heading font-black text-[#111111]">
+                  {profiles.length}
+                </div>
+                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                  Registered founders & brand executives
+                </span>
+              </div>
+
+              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                  Slide Capacity Used This Month
+                </span>
+                <div className="text-3xl font-heading font-black text-[#111111]">
+                  {subscriptions.reduce((acc, s) => acc + (s.slides_used || 0), 0)} / {subscriptions.reduce((acc, s) => acc + (s.slides_limit || 80), 0)}
+                </div>
+                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                  Across all active designer retainers
+                </span>
+              </div>
+            </div>
+
+            {/* 1. Subscriptions Table */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+              <div className="p-6 border-b border-[#111111]/8 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                    Active Monthly Retainer Subscriptions
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Real-time monitoring of client slide quotas, billing tiers, and renewals
+                  </p>
+                </div>
+              </div>
+
+              {subscriptions.length === 0 ? (
+                <div className="p-10 text-center text-[#726F6D]">
+                  <CreditCard size={32} className="mx-auto text-gray-300 mb-2" />
+                  <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
+                  <p className="text-xs font-medium mt-1">Client retainers will be tracked here.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
+                        <th className="p-4">Subscriber</th>
+                        <th className="p-4">Plan Name</th>
+                        <th className="p-4">Rate / Month</th>
+                        <th className="p-4">Monthly Slide Quota</th>
+                        <th className="p-4">Renewal Cycle</th>
+                        <th className="p-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
+                      {subscriptions.map((sub) => (
+                        <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
+                          <td className="p-4">
+                            <div className="font-extrabold text-[#111111]">{sub.user_email}</div>
+                          </td>
+                          <td className="p-4 font-bold text-[#111111]">
+                            {sub.plan_name}
+                          </td>
+                          <td className="p-4 font-black text-primary-amber">
+                            ${sub.amount_usd} / ₹{sub.amount_inr?.toLocaleString()}
+                          </td>
+                          <td className="p-4">
+                            <div className="font-bold mb-1">
+                              {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
+                            </div>
+                            <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
+                              <div 
+                                className="bg-primary-amber h-full rounded-full" 
+                                style={{ width: `${((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100}%` }} 
+                              />
+                            </div>
+                          </td>
+                          <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                            {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "Every 30 Days"}
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            <span className="hex-pill-sm bg-green-100 text-green-800 text-[10px] font-black px-2.5 py-0.5">
+                              ● {sub.status || 'Active'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Registered Client Accounts Table */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+              <div className="p-6 border-b border-[#111111]/8">
+                <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                  Registered Client Profiles ({profiles.length})
+                </h3>
+                <p className="text-xs text-[#726F6D]">
+                  All clients who registered an account or submitted a presentation brief
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
+                      <th className="p-4">Full Name</th>
+                      <th className="p-4">Work Email</th>
+                      <th className="p-4">Company / Organization</th>
+                      <th className="p-4">Account Role</th>
+                      <th className="p-4">Joined Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
+                    {profiles.map((p) => (
+                      <tr key={p.id} className="hover:bg-primary/5 transition-colors">
+                        <td className="p-4 font-extrabold text-[#111111]">
+                          {p.full_name || "N/A"}
+                        </td>
+                        <td className="p-4 font-bold text-[#111111]">
+                          {p.email}
+                        </td>
+                        <td className="p-4 text-[#726F6D]">
+                          {p.company || "Enterprise Client"}
+                        </td>
+                        <td className="p-4 whitespace-nowrap">
+                          <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2.5 py-0.5">
+                            {p.role || "Client"}
+                          </span>
+                        </td>
+                        <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                          {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+
+      {/* MODAL: BULK SPREADSHEET TEMPLATES IMPORT */}
+      <AnimatePresence>
+        {isBulkImportOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-[#111111]/10 mb-4">
+                <div>
+                  <h3 className="text-xl font-heading font-extrabold text-[#111111]">
+                    Bulk Import Templates via Spreadsheet
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Upload a CSV file or paste spreadsheet rows to batch publish templates
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleDownloadSampleCSV}
+                  className="hex-pill bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5"
+                >
+                  <Download size={13} /> Sample CSV
+                </button>
+              </div>
+
+              {/* Upload or Paste Area */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                    1. Upload .CSV File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                    Or 2. Paste CSV Rows Directly
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder={`"title","category","price_inr","price_usd","slide_count","thumbnail_url","description"`}
+                    value={csvRawText}
+                    onChange={(e) => handleParseCSV(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-mono outline-none focus:border-primary resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Parsed Preview Table */}
+              {parsedBulkTemplates.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-primary-amber">
+                      ✓ Ready to Import ({parsedBulkTemplates.length} Templates)
+                    </span>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto border border-[#111111]/10 rounded-xl overflow-hidden text-xs">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold">
+                        <tr>
+                          <th className="p-2.5">Title</th>
+                          <th className="p-2.5">Category</th>
+                          <th className="p-2.5">INR (₹)</th>
+                          <th className="p-2.5">USD ($)</th>
+                          <th className="p-2.5">Slides</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#111111]/8 font-medium">
+                        {parsedBulkTemplates.map((t, idx) => (
+                          <tr key={idx} className="hover:bg-primary/5">
+                            <td className="p-2.5 font-bold">{t.title}</td>
+                            <td className="p-2.5">{t.category}</td>
+                            <td className="p-2.5 font-bold">₹{t.price_inr}</td>
+                            <td className="p-2.5 font-bold">${t.price_usd}</td>
+                            <td className="p-2.5">{t.slide_count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {bulkImportSuccessCount !== null && (
+                <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl text-xs font-bold flex items-center gap-2 mb-4">
+                  <CheckCircle2 size={16} /> Successfully imported {bulkImportSuccessCount} templates into store!
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkImportOpen(false)}
+                  className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={parsedBulkTemplates.length === 0 || isImportingBulk}
+                  onClick={handleExecuteBulkImport}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <UploadCloud size={15} />
+                  {isImportingBulk ? "Importing to Database..." : `Import ${parsedBulkTemplates.length} Templates`}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: ADD SINGLE TEMPLATE WITH AUTOMATED SLIDE CONVERSION */}
+      <AnimatePresence>
+        {isAddTemplateOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10 mb-4">
+                <div>
+                  <h3 className="text-xl font-heading font-extrabold text-[#111111]">
+                    Add New Presentation Template
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Upload a local PPTX/PDF file for automated slide-to-JPEG conversion, or create manually.
+                  </p>
+                </div>
+                <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-3 py-1">
+                  SKU: {newCode}
+                </span>
+              </div>
+
+              {/* 1. Automated Local File Slide Extractor */}
+              <div className="bg-[#FFF9E8] border-2 border-dashed border-primary/40 rounded-2xl p-4 sm:p-5 mb-5 text-center">
+                <div className="max-w-md mx-auto space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 text-primary-amber flex items-center justify-center mx-auto mb-1">
+                    <UploadCloud size={20} />
+                  </div>
+                  <h4 className="font-heading font-black text-sm text-[#111111]">
+                    Auto-Extract Slide Previews from Local File
+                  </h4>
+                  <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                    Select a PowerPoint (<code className="bg-white px-1 py-0.5 rounded border text-[#111111]">.pptx</code>) or <code className="bg-white px-1 py-0.5 rounded border text-[#111111]">.pdf</code> from your computer. Our engine will convert all slides to 16:9 images and auto-fill metadata.
+                  </p>
+
+                  <div className="pt-2">
+                    <label className="hex-pill inline-flex items-center gap-2 bg-[#111111] hover:bg-black text-primary font-black px-5 py-2.5 text-xs cursor-pointer shadow-md hover:scale-[1.02] transition-transform">
+                      <HardDrive size={14} />
+                      <span>{isConvertingFile ? "Converting Slides..." : "Choose Presentation File from Computer"}</span>
+                      <input
+                        type="file"
+                        accept=".pptx,.ppt,.pdf,.odp"
+                        disabled={isConvertingFile}
+                        onChange={handlePresentationFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {uploadedFilename && (
+                    <div className="text-[11px] font-bold text-[#111111] mt-2">
+                      Selected: <span className="underline">{uploadedFilename}</span>
+                    </div>
+                  )}
+
+                  {conversionStatus && (
+                    <div className={`text-xs font-bold mt-2 p-2 rounded-lg ${
+                      conversionStatus.startsWith("✓") 
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                        : conversionStatus.startsWith("⚠️")
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-blue-100 text-blue-800 border border-blue-300 animate-pulse"
+                    }`}>
+                      {conversionStatus}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Converted Slide Previews Gallery (If available) */}
+              {newSlides.length > 0 && (
+                <div className="bg-gray-50 border border-[#111111]/10 rounded-2xl p-4 mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-primary-amber" /> Extracted Slide Previews ({newSlides.length} Slides)
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-2 py-0.5 rounded">
+                      ✓ Ready for Marketplace
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1">
+                    {newSlides.map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="hex-card overflow-hidden bg-white border border-[#111111]/10 text-left p-1 shadow-sm"
+                      >
+                        <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                          <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[9px] font-black text-[#111111]">
+                            Slide #{idx + 1}
+                          </span>
+                          {idx === 0 && (
+                            <span className="text-[8px] bg-primary text-[#111111] font-black px-1 rounded">
+                              Cover
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              </motion.div>
-            )}
+              )}
 
-            {activeTab === 'videos' && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-                <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h2 className="text-2xl font-heading font-bold mb-2">Video Management</h2>
-                <p className="text-muted-foreground">Video upload capabilities coming soon.</p>
-              </motion.div>
-            )}
+              {/* 2. Template Metadata Form */}
+              <form onSubmit={handleCreateTemplate} className="space-y-3.5">
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Template Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Series A Pitch Deck Pro"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Template Code (SKU) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. SLD-201"
+                      value={newCode}
+                      onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-black uppercase outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      <option value="Pitch Decks">Pitch Decks</option>
+                      <option value="Business">Business</option>
+                      <option value="Strategy">Strategy</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Infographics">Infographics</option>
+                      <option value="Timelines">Timelines</option>
+                      <option value="Education">Education</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Total Slides Count
+                    </label>
+                    <input
+                      type="number"
+                      value={newSlideCount}
+                      onChange={(e) => setNewSlideCount(Number(e.target.value))}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Price INR (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={newPriceINR}
+                      onChange={(e) => setNewPriceINR(Number(e.target.value))}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Price USD ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={newPriceUSD}
+                      onChange={(e) => setNewPriceUSD(Number(e.target.value))}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Primary Cover / Thumbnail URL
+                  </label>
+                  <input
+                    type="text"
+                    value={newThumbnail}
+                    onChange={(e) => setNewThumbnail(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Description & Features
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Short summary of the template features and layout styles..."
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddTemplateOpen(false)}
+                    className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingTemplate || isConvertingFile}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50"
+                  >
+                    {isCreatingTemplate ? "Publishing to Database..." : "Publish Template to Marketplace"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: ADD ASSET */}
+      <AnimatePresence>
+        {isAddAssetOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl"
+            >
+              <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-4">
+                Add / Update Dynamic Asset
+              </h3>
+
+              <form onSubmit={handleSaveAsset} className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Asset Unique Key *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. hero_slide_banner_1"
+                    value={assetKey}
+                    onChange={(e) => setAssetKey(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Executive Keynote Sample"
+                      value={assetTitle}
+                      onChange={(e) => setAssetTitle(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={assetCategory}
+                      onChange={(e) => setAssetCategory(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    >
+                      <option value="portfolio">portfolio</option>
+                      <option value="marquee">marquee</option>
+                      <option value="comparison">comparison</option>
+                      <option value="logo">logo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Asset Image URL * (Cloudflare R2 / Local path / URL)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="/portfolio/case_study_a_1.png or https://..."
+                    value={assetUrl}
+                    onChange={(e) => setAssetUrl(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddAssetOpen(false)}
+                    className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingAsset}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs"
+                  >
+                    {isSavingAsset ? "Saving..." : "Save Asset"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: ORDER DETAILS & MILESTONE STEPPER */}
+      <AnimatePresence>
+        {selectedOrderForModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedOrderForModal(null)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#111111] transition-colors hex-pill bg-black/5 hover:bg-black/10"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                  Order #{selectedOrderForModal.id?.slice(0, 8) || "N/A"}
+                </span>
+                {selectedOrderForModal.rush_delivery && (
+                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-0.5 border border-red-200">
+                    ⚡ 24h Rush Order
+                  </span>
+                )}
+              </div>
+
+              <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111] mb-1">
+                {selectedOrderForModal.service_type || "Presentation Design"}
+              </h3>
+              <p className="text-xs text-[#726F6D] font-medium mb-6">
+                Client: <strong className="text-[#111111]">{selectedOrderForModal.client_name || "N/A"}</strong> ({selectedOrderForModal.client_email})
+              </p>
+
+              {/* Milestone Timeline Stepper in Modal */}
+              <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-5 mb-6 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-primary-amber" /> Live Milestone Progress
+                  </h4>
+                  <span className="text-xs font-extrabold text-primary-amber">
+                    Stage {getMilestoneIndex(selectedOrderForModal.status) + 1} of 4: {ORDER_MILESTONES[getMilestoneIndex(selectedOrderForModal.status)].label}
+                  </span>
+                </div>
+
+                {/* 4-Step Stepper */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                  {ORDER_MILESTONES.map((m, idx) => {
+                    const currentIdx = getMilestoneIndex(selectedOrderForModal.status);
+                    const isPassed = idx < currentIdx;
+                    const isCurrent = idx === currentIdx;
+
+                    return (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => {
+                          handleUpdateOrderStatus(selectedOrderForModal.id, m.key);
+                          setSelectedOrderForModal({ ...selectedOrderForModal, status: m.key });
+                        }}
+                        className={`text-left p-3 rounded-xl border transition-all ${
+                          isCurrent
+                            ? "bg-[#111111] text-white border-[#111111] shadow-md ring-2 ring-primary/40"
+                            : isPassed
+                            ? "bg-amber-100/90 text-amber-900 border-amber-300 hover:bg-amber-200"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            isCurrent ? "bg-primary text-[#111111]" : isPassed ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {isPassed ? "✓ Done" : isCurrent ? "Active" : `Step ${m.step}`}
+                          </span>
+                        </div>
+                        <div className={`font-extrabold text-xs mb-0.5 ${isCurrent ? "text-primary" : "text-[#111111]"}`}>
+                          {m.label}
+                        </div>
+                        <div className={`text-[10px] font-medium leading-tight ${isCurrent ? "text-white/70" : "text-[#726F6D]"}`}>
+                          {m.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-3 border-t border-[#111111]/10">
+                  <span className="text-[#726F6D]">
+                    Click any stage above to update status instantly.
+                  </span>
+                  {getMilestoneIndex(selectedOrderForModal.status) < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextKey = ORDER_MILESTONES[getMilestoneIndex(selectedOrderForModal.status) + 1].key;
+                        handleUpdateOrderStatus(selectedOrderForModal.id, nextKey);
+                        setSelectedOrderForModal({ ...selectedOrderForModal, status: nextKey });
+                      }}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-1.5 flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      Advance to {ORDER_MILESTONES[getMilestoneIndex(selectedOrderForModal.status) + 1].label} <ArrowRight size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Scope & Requirements */}
+              <div className="space-y-4 text-xs mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-xl border border-[#111111]/8">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">Slide Scope</span>
+                    <span className="font-extrabold text-[#111111] text-sm">{selectedOrderForModal.slide_count || "Custom"} Slides</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">Target Deadline</span>
+                    <span className="font-extrabold text-[#111111] text-sm">{selectedOrderForModal.target_date || "Standard (48h)"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">Contact Phone</span>
+                    <span className="font-extrabold text-[#111111] text-sm">{selectedOrderForModal.phone || "Not provided"}</span>
+                  </div>
+                </div>
+
+                {selectedOrderForModal.notes && (
+                  <div>
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#111111] block mb-1">
+                      Client Project Brief & Notes:
+                    </span>
+                    <div className="p-3.5 bg-[#FFF9E8] rounded-xl border border-primary/20 text-[#111111] font-medium leading-relaxed whitespace-pre-wrap">
+                      {selectedOrderForModal.notes}
+                    </div>
+                  </div>
+                )}
+
+                {selectedOrderForModal.drive_link && (
+                  <div className="flex items-center justify-between p-3.5 bg-primary/10 border border-primary/30 rounded-xl">
+                    <div>
+                      <span className="font-extrabold text-[#111111] block">Google Drive / Cloud Assets</span>
+                      <span className="text-[11px] text-[#726F6D] truncate max-w-xs sm:max-w-md block">
+                        {selectedOrderForModal.drive_link}
+                      </span>
+                    </div>
+                    <a
+                      href={selectedOrderForModal.drive_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shrink-0 shadow-sm"
+                    >
+                      Open Link <ExternalLink size={12} />
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`mailto:${selectedOrderForModal.client_email}?subject=SlideBee Order Update: ${encodeURIComponent(selectedOrderForModal.service_type || 'Your Presentation')}`}
+                    className="hex-pill border border-[#111111]/20 hover:border-primary text-[#111111] font-extrabold text-xs px-4 py-2 flex items-center gap-1.5"
+                  >
+                    <Mail size={13} /> Email Client
+                  </a>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForModal(null)}
+                  className="hex-pill bg-[#111111] text-white hover:text-primary font-black text-xs px-6 py-2.5 shadow-md"
+                >
+                  Done
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
+

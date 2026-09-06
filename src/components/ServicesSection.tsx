@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
-import { PenTool, Edit3, Sparkles, PieChart, LayoutTemplate, Palette } from "lucide-react";
+import { PenTool, Edit3, Wand2, PieChart, LayoutTemplate, Palette } from "lucide-react";
 
 const services = [
   {
     title: "Redesign and Visual Enhancement",
     description: "We take your existing slides and transform them into a visually stunning masterpiece that aligns with your brand guidelines.",
-    icon: <Sparkles className="w-10 h-10 text-primary" />
+    icon: <Wand2 className="w-10 h-10 text-primary" />
   },
   {
     title: "Handwritten Conversions",

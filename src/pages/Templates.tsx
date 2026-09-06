@@ -1,16 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams, Link } from "react-router-dom";
-import { Search, Download, Check, X, Eye } from "lucide-react";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { Search, Download, Check, X, Eye, ArrowRight } from "lucide-react";
+import SoftwareBadge from "../components/SoftwareIcons";
 import { useCurrency } from "../context/CurrencyContext";
+import { supabase } from "../lib/supabase";
 
 export interface TemplateItem {
   id: string;
+  code?: string;
   title: string;
   category: string;
   price: number;
   originalPrice?: number;
   image: string;
+  slides?: string[];
   slidesCount: number;
   rating: number;
   downloads: number;
@@ -22,6 +26,7 @@ export interface TemplateItem {
 export const templateCatalog: TemplateItem[] = [
   {
     id: "investor-pitch-deck",
+    code: "SLD-101",
     title: "Investor Pitch Deck",
     category: "Pitch Decks",
     price: 499,
@@ -36,6 +41,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "company-profile-2024",
+    code: "SLD-102",
     title: "Company Profile 2024",
     category: "Business",
     price: 299,
@@ -50,6 +56,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "swot-analysis-suite",
+    code: "SLD-103",
     title: "SWOT Analysis Suite",
     category: "Strategy",
     price: 299,
@@ -64,6 +71,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "marketing-growth-plan",
+    code: "SLD-104",
     title: "Marketing Growth Plan",
     category: "Marketing",
     price: 499,
@@ -78,6 +86,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "timeline-milestones-pack",
+    code: "SLD-105",
     title: "Timeline & Roadmap Pack",
     category: "Timelines",
     price: 299,
@@ -92,6 +101,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "kpi-executive-dashboard",
+    code: "SLD-106",
     title: "KPI & Metrics Dashboard",
     category: "Finance",
     price: 499,
@@ -106,6 +116,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "product-roadmap-slides",
+    code: "SLD-107",
     title: "Product Roadmap Slides",
     category: "Strategy",
     price: 499,
@@ -120,6 +131,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "consulting-master-toolkit",
+    code: "SLD-108",
     title: "Consulting Master Toolkit",
     category: "Business",
     price: 799,
@@ -134,6 +146,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "infographics-mega-pack",
+    code: "SLD-109",
     title: "Infographics Mega Pack",
     category: "Infographics",
     price: 399,
@@ -148,6 +161,7 @@ export const templateCatalog: TemplateItem[] = [
   },
   {
     id: "education-workshop-deck",
+    code: "SLD-110",
     title: "Masterclass & Workshop Deck",
     category: "Education",
     price: 299,
@@ -163,6 +177,7 @@ export const templateCatalog: TemplateItem[] = [
 ];
 
 export default function Templates() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "All";
   const initialSearch = searchParams.get("search") || "";
@@ -171,8 +186,41 @@ export default function Templates() {
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [selectedFormat, setSelectedFormat] = useState<string>("All");
   const [activeModalTemplate, setActiveModalTemplate] = useState<TemplateItem | null>(null);
+  const [templatesList, setTemplatesList] = useState<TemplateItem[]>(templateCatalog);
   
   const { formatPrice } = useCurrency();
+
+  useEffect(() => {
+    supabase
+      .from("templates")
+      .select("*")
+      .then(({ data, error }) => {
+        if (data && !error && data.length > 0) {
+          const mapped: TemplateItem[] = data.map((t: any) => ({
+            id: t.id,
+            code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
+            title: t.title,
+            category: t.category,
+            price: t.price_inr || 499,
+            originalPrice: t.original_price_inr || (t.price_inr ? t.price_inr * 2 : 999),
+            image: t.thumbnail_url || "/portfolio/case_study_a_1.png",
+            slides: t.slides || [],
+            slidesCount: t.slide_count || 25,
+            rating: 4.9,
+            downloads: 80,
+            formats: ["PPT", "Slides", "Canva"],
+            description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
+            features: [
+              `${t.slide_count || 25}+ High-Impact Slides`,
+              "16:9 Widescreen Layout",
+              "Fully Editable Vector Elements"
+            ]
+          }));
+          // Merge custom database templates with static catalog
+          setTemplatesList([...mapped, ...templateCatalog]);
+        }
+      });
+  }, []);
 
   const categories = [
     "All",
@@ -187,16 +235,17 @@ export default function Templates() {
   ];
 
   const filteredTemplates = useMemo(() => {
-    return templateCatalog.filter((t) => {
+    return templatesList.filter((t) => {
       const matchCategory = selectedCategory === "All" || t.category.toLowerCase() === selectedCategory.toLowerCase();
       const matchSearch =
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchQuery.toLowerCase());
+        t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.code && t.code.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchFormat = selectedFormat === "All" || t.formats.includes(selectedFormat as any);
       return matchCategory && matchSearch && matchFormat;
     });
-  }, [selectedCategory, searchQuery, selectedFormat]);
+  }, [templatesList, selectedCategory, searchQuery, selectedFormat]);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-20 large-hex-grid">
@@ -224,7 +273,7 @@ export default function Templates() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
               <input
                 type="text"
-                placeholder="Search templates, pitch decks..."
+                placeholder="Search templates, pitch decks, SKU..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="hex-card w-full bg-[#FFF9E8] border border-[#111111]/10 pl-11 pr-4 py-2.5 text-xs sm:text-sm text-[#111111] placeholder-gray-400 focus:outline-none focus:border-primary font-medium"
@@ -310,35 +359,45 @@ export default function Templates() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="hex-card group bg-white border border-[#111111]/10 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm"
+                className="hex-card group bg-white border-2 border-primary/35 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm cursor-pointer"
+                onClick={() => navigate(`/template/${item.id}`)}
               >
                 {/* Half-Hexagon Preview Cut */}
-                <div className="half-hex-preview relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-[#111111]/10">
+                <div className="half-hex-preview relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-primary/20">
                   <img
                     src={item.image}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-0.5">
+                  
+                  {/* Category Badge */}
+                  <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-0.5 z-10 border border-primary/30">
                     {item.category}
                   </div>
-                  <div className="hex-pill-sm absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#111111] text-[10px] font-extrabold px-2.5 py-0.5 shadow">
+
+                  {/* SKU Code Badge */}
+                  <div className="hex-pill-sm absolute bottom-3 left-3 bg-[#111111]/90 backdrop-blur-md text-primary text-[10px] font-black px-2.5 py-0.5 shadow z-10 border border-primary/40">
+                    {item.code || `SLD-${item.id.slice(0, 4).toUpperCase()}`}
+                  </div>
+
+                  <div className="hex-pill-sm absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#111111] text-[10px] font-extrabold px-2.5 py-0.5 shadow z-10 border border-primary/30">
                     ⭐ {item.rating}
                   </div>
 
                   {/* Quick Preview Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => setActiveModalTemplate(item)}
-                      className="hex-pill bg-primary text-[#111111] font-black text-xs px-5 py-2 flex items-center gap-1.5 shadow-xl hover:scale-105 transition-transform"
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
+                    <Link
+                      to={`/template/${item.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-5 py-2.5 flex items-center gap-1.5 shadow-xl hover:scale-105 transition-transform"
                     >
-                      <Eye size={14} /> Quick Preview
-                    </button>
+                      <Eye size={13} /> View Full Deck
+                    </Link>
                   </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-5 pt-2 flex flex-col flex-grow justify-between">
+                <div className="p-5 pt-3 flex flex-col flex-grow justify-between">
                   <div>
                     <h3 className="font-heading font-extrabold text-base text-[#111111] group-hover:text-primary-amber transition-colors mb-1.5 line-clamp-1">
                       {item.title}
@@ -349,7 +408,7 @@ export default function Templates() {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between pt-3 border-t border-[#111111]/5 mb-3">
+                    <div className="flex items-center justify-between pt-3 border-t border-primary/15 mb-3">
                       <div>
                         <div className="text-lg font-heading font-black text-[#111111]">
                           {formatPrice(item.price)}
@@ -360,24 +419,20 @@ export default function Templates() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         {item.formats.map((fmt) => (
-                          <span
-                            key={fmt}
-                            className="hex-pill-sm text-[8.5px] font-extrabold px-2 py-0.5 bg-[#FFF9E8] border border-[#111111]/10 text-[#726F6D]"
-                          >
-                            {fmt}
-                          </span>
+                          <SoftwareBadge key={fmt} format={fmt} size="sm" showLabel={true} />
                         ))}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setActiveModalTemplate(item)}
-                      className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    <Link
+                      to={`/template/${item.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
                     >
-                      <Download size={14} /> View Details & Buy
-                    </button>
+                      <Download size={14} /> View Details & Buy <ArrowRight size={12} />
+                    </Link>
                   </div>
                 </div>
               </motion.div>

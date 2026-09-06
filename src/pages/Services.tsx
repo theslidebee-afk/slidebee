@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { MagneticButton } from "../components/MagneticButton";
 import { 
   Shield, 
   Clock, 
   Layers, 
-  Sparkles, 
   Sliders, 
   Paintbrush, 
   TrendingUp, 
@@ -19,9 +20,19 @@ import {
 
 export default function Services() {
   const [sliderPosition, setSliderPosition] = useState(50);
-  const [selectedService, setSelectedService] = useState<
-    "redesign" | "pitch" | "keynote" | "data" | "template" | "sales"
-  >("redesign");
+  const [selectedService, setSelectedService] = useState<string>("redesign");
+  const [customServices, setCustomServices] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "services_cms")
+      .single()
+      .then(({ data }) => {
+        if (data?.value) setCustomServices(data.value);
+      });
+  }, []);
 
   // Top marquee slide images
   const topMarqueeSlides = [
@@ -179,13 +190,19 @@ export default function Services() {
     }
   };
 
-  const activeServiceData = servicesData[selectedService];
+  const defaultService = (servicesData as any)[selectedService] || servicesData.redesign;
+  const customOverride = customServices[selectedService] || {};
+  const activeServiceData = {
+    ...defaultService,
+    ...customOverride,
+    icon: defaultService.icon
+  };
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden">
       
       {/* 1. HERO SECTION WITH DUAL MOVING SLIDE MARQUEES */}
-      <section className="relative bg-[#FFF9E8] pt-28 pb-16 border-b border-[#111111]/8 large-hex-grid overflow-hidden">
+      <section className="relative bg-[#FFF9E8] pt-28 pb-16 border-b border-primary/20 large-hex-grid overflow-hidden">
         
         {/* Soft Golden Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FCBF14]/12 rounded-full blur-[150px] pointer-events-none" />
@@ -200,7 +217,7 @@ export default function Services() {
             {[...topMarqueeSlides, ...topMarqueeSlides, ...topMarqueeSlides].map((img, i) => (
               <div
                 key={`top-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border border-[#111111]/10 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
+                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
               >
                 <img
                   src={img}
@@ -213,9 +230,9 @@ export default function Services() {
         </div>
 
         {/* CENTER HERO CONTENT */}
-        <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl z-10 relative">
-          <span className="hex-pill inline-flex items-center gap-2 bg-white border border-[#111111]/10 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
-            <Sparkles size={15} /> SlideBee Design Studio
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 text-center z-10 relative">
+          <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
+            SlideBee Design Studio
           </span>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-[#111111] leading-[1.12] mb-4 tracking-tight">
@@ -227,19 +244,23 @@ export default function Services() {
             From emergency 24-hour pitch deck redesigns to complete enterprise master template systems — we make your ideas unforgettable.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3.5">
-            <Link
-              to="/ordernow"
-              className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-8 py-3.5 text-xs sm:text-sm transition-all shadow-md shadow-primary/25 hover:scale-105 flex items-center gap-2"
-            >
-              Request Custom Design <ArrowRight size={16} />
-            </Link>
-            <a
-              href="#services-grid"
-              className="hex-pill bg-white hover:bg-[#FFF9E8] text-[#111111] font-extrabold border border-[#111111]/15 px-8 py-3.5 text-xs sm:text-sm transition-all shadow-sm hover:scale-105"
-            >
-              Explore 6 Core Services
-            </a>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+            <MagneticButton>
+              <Link
+                to="/ordernow"
+                className="hex-cut-btn text-[#111111] font-black px-8 py-3.5 text-xs sm:text-sm gap-2"
+              >
+                Request Custom Design <ArrowRight size={16} />
+              </Link>
+            </MagneticButton>
+            <MagneticButton>
+              <a
+                href="#services-grid"
+                className="hex-cut-btn light-btn text-[#111111] font-extrabold px-8 py-3.5 text-xs sm:text-sm"
+              >
+                Explore Offerings
+              </a>
+            </MagneticButton>
           </div>
         </div>
 
@@ -253,7 +274,7 @@ export default function Services() {
             {[...bottomMarqueeSlides, ...bottomMarqueeSlides, ...bottomMarqueeSlides].map((img, i) => (
               <div
                 key={`bot-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border border-[#111111]/10 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
+                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
               >
                 <img
                   src={img}
@@ -283,8 +304,8 @@ export default function Services() {
             </p>
           </div>
 
-          {/* 6 Service Selector Pills Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-12">
+          {/* 6 Service Selector Equilateral Hexagons Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
             {Object.values(servicesData).map((svc) => (
               <button
                 key={svc.id}
@@ -292,18 +313,18 @@ export default function Services() {
                   setSelectedService(svc.id as any);
                   setSliderPosition(50);
                 }}
-                className={`hex-card p-4 flex flex-col items-center text-center transition-all cursor-pointer ${
+                className={`hex-equilateral-h p-3 flex flex-col items-center justify-center text-center transition-all cursor-pointer ${
                   selectedService === svc.id
-                    ? "bg-[#111111] text-[#FCBF14] border-2 border-primary shadow-lg scale-105"
-                    : "bg-white text-[#111111] border border-[#111111]/10 hover:border-primary hover:bg-primary/5 shadow-sm"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-lg scale-105"
+                    : "bg-white text-[#111111] hover:bg-primary/10 shadow-sm"
                 }`}
               >
-                <div className={`hex-pill p-2.5 mb-2 transition-transform ${
-                  selectedService === svc.id ? "bg-primary/20 text-primary" : "bg-[#FFF9E8] text-primary-amber"
+                <div className={`hex-pure w-8 h-8 flex items-center justify-center mb-1.5 transition-transform ${
+                  selectedService === svc.id ? "bg-primary text-[#111111]" : "bg-[#FFF9E8] text-primary-amber"
                 }`}>
                   {svc.icon}
                 </div>
-                <span className="font-heading font-extrabold text-xs leading-snug">
+                <span className="font-heading font-extrabold text-[11px] leading-tight px-1">
                   {svc.title}
                 </span>
               </button>
@@ -318,11 +339,11 @@ export default function Services() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 md:p-10 shadow-xl max-w-5xl mx-auto"
+              className="hex-card-lg bg-white border-2 border-primary/40 p-6 md:p-10 shadow-xl max-w-5xl mx-auto"
             >
               
               {/* Header Details */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-[#111111]/10 mb-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-primary/20 mb-8">
                 <div>
                   <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/30 text-xs font-extrabold px-4 py-1 uppercase tracking-wider mb-2">
                     Turnaround: {activeServiceData.turnaround}
@@ -348,7 +369,7 @@ export default function Services() {
                 
                 {/* Interactive Drag Before/After Slider */}
                 <div className="lg:col-span-7">
-                  <div className="hex-card bg-[#111111] border border-[#111111]/20 p-2 shadow-xl">
+                  <div className="hex-card bg-[#111111] border-2 border-primary/40 p-2 shadow-xl">
                     <div className="relative aspect-[16/9] overflow-hidden select-none">
                       
                       {/* After Image */}
@@ -357,8 +378,8 @@ export default function Services() {
                         alt={activeServiceData.afterTitle}
                         className="absolute inset-0 w-full h-full object-contain bg-[#111111]"
                       />
-                      <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-black text-[10px] px-3 py-1 z-10 shadow flex items-center gap-1">
-                        <Sparkles size={11} /> {activeServiceData.afterTitle}
+                      <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-black text-[10px] px-3 py-1 z-10 shadow">
+                        {activeServiceData.afterTitle}
                       </div>
 
                       {/* Before Image (Clipped) */}
@@ -378,11 +399,11 @@ export default function Services() {
 
                       {/* Slider Divider Bar */}
                       <div
-                        className="absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize z-20"
+                        className="absolute top-0 bottom-0 w-[2px] bg-primary cursor-ew-resize z-20"
                         style={{ left: `${sliderPosition}%` }}
                       >
-                        <div className="hex-pill absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-[#111111] flex items-center justify-center shadow-xl border border-white">
-                          <Sliders size={14} />
+                        <div className="hex-slider-knob absolute top-1/2 -translate-y-1/2 -translate-x-1/2">
+                          <Sliders size={15} />
                         </div>
                       </div>
 
@@ -403,36 +424,40 @@ export default function Services() {
                 </div>
 
                 {/* Transformation Details & Breakdown */}
-                <div className="lg:col-span-5 space-y-6">
+                <div className="lg:col-span-5 space-y-4">
                   
                   {/* Before Problems */}
-                  <div className="bg-red-500/5 border border-red-500/15 p-4 rounded-xl">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-red-600 mb-2 flex items-center gap-1.5">
-                      ❌ Before (Raw Draft Flaws):
-                    </h5>
-                    <ul className="space-y-1.5 text-xs text-[#726F6D] font-medium">
-                      {activeServiceData.beforeIssues.map((issue, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-red-500 font-bold">•</span>
-                          <span>{issue}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="hex-card p-[1.5px] bg-red-500/20">
+                    <div className="hex-card bg-red-500/5 p-4">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-red-600 mb-2 flex items-center gap-1.5">
+                        ❌ Before (Raw Draft Flaws):
+                      </h5>
+                      <ul className="space-y-1.5 text-xs text-[#726F6D] font-medium">
+                        {(activeServiceData.beforeIssues || []).map((issue: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <span className="text-red-500 font-bold">•</span>
+                            <span>{issue}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
 
                   {/* After Results */}
-                  <div className="bg-[#FFF9E8] border border-primary/30 p-4 rounded-xl">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-2 flex items-center gap-1.5">
-                      ✨ After (SlideBee Executive Polish):
-                    </h5>
-                    <ul className="space-y-1.5 text-xs text-[#111111] font-medium">
-                      {activeServiceData.afterBenefits.map((benefit, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary-amber shrink-0 mt-0.5" />
-                          <span>{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="hex-card p-[1.5px] bg-[#FCBF14]/40">
+                    <div className="hex-card bg-[#FFF9E8] p-4">
+                      <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-2 flex items-center gap-1.5">
+                        SlideBee Executive Polish:
+                      </h5>
+                      <ul className="space-y-1.5 text-xs text-[#111111] font-medium">
+                        {(activeServiceData.afterBenefits || []).map((benefit: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary-amber shrink-0 mt-0.5" />
+                            <span>{benefit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
 
                   {/* Ideal For */}
@@ -455,44 +480,44 @@ export default function Services() {
         </div>
       </section>
 
-      {/* 3. STUDIO GUARANTEES (3 Cards) */}
-      <section className="py-16 bg-white large-hex-grid border-t border-[#111111]/8">
-        <div className="container mx-auto px-4 md:px-8 max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 3. STUDIO GUARANTEES (3 Equilateral Hex Cards) */}
+      <section className="py-16 bg-white large-hex-grid border-t border-primary/20">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
             
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/8 p-6 flex flex-col items-center text-center shadow-sm">
-              <div className="hex-pill w-12 h-12 bg-primary/20 flex items-center justify-center mb-3">
-                <Clock className="w-6 h-6 text-primary-amber" />
+            <div className="hex-equilateral-h bg-[#FFF9E8] p-6 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="hex-pure w-11 h-11 bg-primary/25 flex items-center justify-center mb-2">
+                <Clock className="w-5 h-5 text-primary-amber" />
               </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+              <h4 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] mb-1">
                 24h – 48h Turnaround
               </h4>
-              <p className="text-xs text-[#726F6D] font-medium leading-relaxed">
-                Need slides for tomorrow's board meeting? We offer 24h rush delivery with dedicated priority designers.
+              <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed max-w-[200px]">
+                Fast turns with priority rush delivery options for urgent meetings.
               </p>
             </div>
 
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/8 p-6 flex flex-col items-center text-center shadow-sm">
-              <div className="hex-pill w-12 h-12 bg-primary/20 flex items-center justify-center mb-3">
-                <Shield className="w-6 h-6 text-primary-amber" />
+            <div className="hex-equilateral-h bg-[#FFF9E8] p-6 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="hex-pure w-11 h-11 bg-primary/25 flex items-center justify-center mb-2">
+                <Shield className="w-5 h-5 text-primary-amber" />
               </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                100% Strict NDA & Security
+              <h4 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] mb-1">
+                Strict NDA & Security
               </h4>
-              <p className="text-xs text-[#726F6D] font-medium leading-relaxed">
-                Your financials, strategy, and business data are protected with signed enterprise NDAs and encrypted drives.
+              <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed max-w-[200px]">
+                Protected with signed enterprise NDAs and private encrypted drives.
               </p>
             </div>
 
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/8 p-6 flex flex-col items-center text-center shadow-sm">
-              <div className="hex-pill w-12 h-12 bg-primary/20 flex items-center justify-center mb-3">
-                <Layers className="w-6 h-6 text-primary-amber" />
+            <div className="hex-equilateral-h bg-[#FFF9E8] p-6 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="hex-pure w-11 h-11 bg-primary/25 flex items-center justify-center mb-2">
+                <Layers className="w-5 h-5 text-primary-amber" />
               </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Fully Editable Deliverables
+              <h4 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] mb-1">
+                Fully Editable Files
               </h4>
-              <p className="text-xs text-[#726F6D] font-medium leading-relaxed">
-                Receive fully editable PPTX, Google Slides, Keynote, and Canva files with embedded fonts and custom vectors.
+              <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed max-w-[200px]">
+                Receive PPTX, Google Slides, Keynote, and vector assets.
               </p>
             </div>
 

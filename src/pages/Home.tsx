@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { RecreatedHoneycombCluster } from "../components/RecreatedHoneycombCluster";
+import ThreeJsHero from "../components/ThreeJsHero";
+import { HexProcessInfographic } from "../components/HexProcessInfographic";
+import { MagneticButton } from "../components/MagneticButton";
+import SoftwareBadge from "../components/SoftwareIcons";
 import { templateCatalog } from "./Templates";
+import { supabase } from "../lib/supabase";
 import { 
   Search, 
   ArrowRight, 
-  Sparkles, 
   Sliders, 
   Paintbrush, 
   TrendingUp, 
@@ -29,7 +32,61 @@ export default function Home() {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [activeTab, setActiveTab] = useState<"sales" | "executive" | "financial">("sales");
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
+  const [featuredTemplateIds, setFeaturedTemplateIds] = useState<string[]>([]);
+  const [customComparisons, setCustomComparisons] = useState<any>(null);
+  const [pricingConfig, setPricingConfig] = useState<any>(null);
+  const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
+  const [heroConfig, setHeroConfig] = useState<any>({
+    badgeText: "SlideBee Design Studio",
+    headline: "Present Better. Faster.",
+    subheadline: "Premium PowerPoint templates and expert presentation design services — all in one hive.",
+    ctaText: "Browse Templates",
+    secondaryCtaText: "Hire a Designer"
+  });
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("*")
+      .then(({ data }) => {
+        if (data) {
+          data.forEach((item) => {
+            if (item.key === "hero" && item.value) setHeroConfig(item.value);
+            if (item.key === "featured_templates" && item.value?.ids) setFeaturedTemplateIds(item.value.ids);
+            if (item.key === "home_before_after" && item.value) setCustomComparisons(item.value);
+            if (item.key === "pricing" && item.value) setPricingConfig(item.value);
+            if (item.key === "testimonials" && Array.isArray(item.value)) setCustomTestimonials(item.value);
+          });
+        }
+      });
+
+    // Also fetch live templates from database
+    supabase
+      .from("templates")
+      .select("*")
+      .then(({ data, error }) => {
+        if (data && !error && data.length > 0) {
+          const mapped = data.map((t: any) => ({
+            id: String(t.id),
+            code: t.code || `SLD-${String(t.id).slice(0, 4).toUpperCase()}`,
+            title: t.title,
+            category: t.category,
+            price: t.price_inr || 499,
+            originalPrice: t.original_price_inr || (t.price_inr ? t.price_inr * 2 : 999),
+            image: t.thumbnail_url || "/portfolio/case_study_a_1.png",
+            slides: t.slides || [],
+            slidesCount: t.slide_count || 25,
+            rating: 4.9,
+            downloads: 80,
+            formats: ["PPT", "Slides", "Canva"],
+            description: t.description || "Executive presentation deck tailored for high-stakes business meetings."
+          }));
+          setDbTemplates(mapped);
+        }
+      });
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +108,7 @@ export default function Home() {
     { label: "Timelines", icon: <Calendar className="w-5 h-5 text-primary-amber" /> },
   ];
 
-  const comparisons = {
+  const defaultComparisons = {
     sales: {
       title: "Q2 Sales Performance",
       beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
@@ -75,9 +132,10 @@ export default function Home() {
     }
   };
 
-  const currentComparison = comparisons[activeTab];
+  const comparisons = customComparisons || defaultComparisons;
+  const currentComparison = comparisons[activeTab] || defaultComparisons[activeTab];
 
-  const testimonials = [
+  const defaultTestimonials = [
     {
       quote: "SlideBee's templates saved us hours of work. The quality and typography are exceptional!",
       name: "Rohan Mehta",
@@ -101,61 +159,73 @@ export default function Home() {
     }
   ];
 
+  const testimonials = (customTestimonials && customTestimonials.length > 0) ? customTestimonials : defaultTestimonials;
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#FFF9E8] text-[#111111]">
+    <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
+      <ThreeJsHero />
+      <div className="relative z-10">
       
       {/* 1. HERO SECTION */}
-      <section className="relative bg-[#FFF9E8] text-[#111111] large-hex-grid overflow-hidden pt-28 pb-10 border-b border-[#111111]/5">
-        
-        {/* Soft Golden Glow */}
-        <div className="absolute top-1/4 right-0 w-[450px] h-[450px] bg-[#FCBF14]/10 rounded-full blur-[140px] pointer-events-none" />
-
-        <div className="container mx-auto px-4 md:px-8 z-10">
+      <section className="relative text-[#111111] overflow-hidden pt-28 pb-14 min-h-[90vh] flex items-center">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center mb-8">
             
-            {/* Left Column: Headline, Hexagonal CTAs & Hexagonal Search */}
+            {/* Left Column: Bold Editorial Typography, Direct CTAs & Search */}
             <div className="lg:col-span-6 flex flex-col justify-center text-left">
               
+              {/* Elegant Eyebrow with Golden Accent Rule */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-[2.5px] bg-[#FCBF14] rounded-full" />
+                <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#726F6D]">
+                  {heroConfig.badgeText || "SlideBee Design Studio"}
+                </span>
+              </div>
+
+              {/* High-Impact Hero Headline */}
               <motion.h1
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-3xl sm:text-5xl lg:text-5xl font-heading font-extrabold text-[#111111] leading-[1.14] mb-4 tracking-tight"
-              >
-                Present Better. <br />
-                <span className="text-primary-amber drop-shadow-sm">
-                  Faster.
-                </span>
-              </motion.h1>
+                className="text-4xl sm:text-6xl lg:text-6xl xl:text-7xl font-heading font-black text-[#111111] leading-[1.08] mb-4 tracking-tight"
+                dangerouslySetInnerHTML={{
+                  __html: heroConfig.headline || 'Present With <br class="hidden sm:inline" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-[#D99F06] to-[#FCD34D]">Unfair Advantage</span>'
+                }}
+              />
 
+              {/* Subheadline & Description */}
               <motion.p
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-sm sm:text-base text-[#726F6D] mb-6 max-w-lg font-medium leading-relaxed"
+                className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mb-8"
               >
-                Premium PowerPoint templates and expert presentation design services — all in one hive.
+                {heroConfig.subheadline || "Premium PowerPoint templates and expert presentation design services — all in one hive."}
               </motion.p>
 
-              {/* Action Buttons (Hexagonal Capsule Shape) */}
+              {/* Call-To-Action & Search Group */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex flex-wrap items-center gap-3 mb-6"
+                className="flex flex-col sm:flex-row flex-wrap gap-4 mb-8"
               >
-                <Link
-                  to="/templates"
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-8 py-3.5 text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-md shadow-primary/25"
-                >
-                  Browse Templates <ArrowRight size={15} />
-                </Link>
-                <Link
-                  to="/ordernow"
-                  className="hex-pill bg-[#111111] hover:bg-black text-white font-bold border border-[#111111] px-8 py-3.5 text-xs sm:text-sm transition-all hover:scale-105 flex items-center gap-1.5 shadow-sm"
-                >
-                  Hire a Designer <ArrowRight size={15} />
-                </Link>
+                <MagneticButton>
+                  <Link
+                    to="/templates"
+                    className="hex-cut-btn text-[#111111] font-black px-8 py-4 sm:px-9 sm:py-4 text-xs sm:text-sm gap-2"
+                  >
+                    {heroConfig.ctaText || "Browse 5,000+ Templates"} <ArrowRight size={16} />
+                  </Link>
+                </MagneticButton>
+                <MagneticButton>
+                  <Link
+                    to="/services"
+                    className="hex-cut-btn dark-btn text-[#FCBF14] font-black px-8 py-4 sm:px-9 sm:py-4 text-xs sm:text-sm gap-2"
+                  >
+                    {heroConfig.secondaryCtaText || "Hire a Designer"} <ArrowRight size={16} />
+                  </Link>
+                </MagneticButton>
               </motion.div>
 
               {/* Search Bar (Hexagonal Box) */}
@@ -164,9 +234,9 @@ export default function Home() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="relative max-w-lg"
+                className="relative max-w-xl mb-6"
               >
-                <div className="hex-card relative flex items-center bg-white border border-[#111111]/15 shadow-md p-2 focus-within:border-primary transition-all">
+                <div className="hex-card relative flex items-center bg-white border-2 border-primary/50 shadow-md p-2 focus-within:border-primary transition-all">
                   <Search className="w-4 h-4 text-[#726F6D] ml-3 shrink-0" />
                   <input
                     type="text"
@@ -177,33 +247,44 @@ export default function Home() {
                   />
                   <button
                     type="submit"
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-6 py-2.5 transition-all text-xs shrink-0 shadow-sm"
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs transition-all shrink-0 cursor-pointer shadow-sm hover:scale-105"
                   >
                     Search
                   </button>
                 </div>
               </motion.form>
+
+              {/* Bottom Subtle Brand / Format Badges */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                  Compatible With:
+                </span>
+                <SoftwareBadge format="PowerPoint" size="sm" showLabel={true} />
+                <SoftwareBadge format="Google Slides" size="sm" showLabel={true} />
+                <SoftwareBadge format="Keynote" size="sm" showLabel={true} />
+                <SoftwareBadge format="Canva" size="sm" showLabel={true} />
+              </div>
             </div>
 
-            {/* Right Column: 7-Hexagon Honeycomb Cluster */}
-            <div className="lg:col-span-6 flex items-center justify-center relative">
-              <RecreatedHoneycombCluster />
+            {/* Right Column: Empty for Three.js Canvas Visibility */}
+            <div className="lg:col-span-6 flex items-center justify-center relative pointer-events-none">
+              {/* No more HeroHexCollage, the 3D scene fills this space */}
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. CATEGORY PILLS STRIP (Hexagonal Chamfered Category Cards) */}
-      <section className="py-8 bg-[#FFF9E8] large-hex-grid border-b border-[#111111]/5">
-        <div className="container mx-auto px-4 md:px-8">
+      {/* 2. CATEGORY PILLS STRIP */}
+      <section className="py-6">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {categories.map((cat, idx) => (
               <Link
                 key={idx}
                 to={`/templates?category=${encodeURIComponent(cat.label)}`}
-                className="hex-card flex items-center sm:flex-col justify-center gap-2.5 sm:gap-2 p-3.5 bg-white hover:bg-primary/10 border border-[#111111]/8 hover:border-primary shadow-sm hover:shadow-md transition-all group text-center"
+                className="hex-card flex items-center sm:flex-col justify-center gap-2.5 sm:gap-2 p-3.5 bg-white hover:bg-primary/10 border-2 border-primary/30 hover:border-primary shadow-sm hover:shadow-md transition-all group text-center"
               >
-                <div className="hex-pill p-2 bg-[#FFF9E8] group-hover:scale-110 transition-transform shrink-0">
+                <div className="hex-pill p-2 bg-[#FFF9E8] border border-primary/30 group-hover:scale-110 transition-transform shrink-0">
                   {cat.icon}
                 </div>
                 <span className="text-xs sm:text-sm font-extrabold text-[#111111] group-hover:text-primary-amber transition-colors">
@@ -215,9 +296,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. TRENDING TEMPLATES GRID (Hexagonal Cards & Half-Hexagon Slide Previews) */}
-      <section className="py-16 bg-[#FFF9E8] large-hex-grid">
-        <div className="container mx-auto px-4 md:px-8">
+      {/* 3. TRENDING TEMPLATES GRID */}
+      <section className="py-14">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-extrabold text-[#111111] mb-1.5">
@@ -227,34 +308,41 @@ export default function Home() {
                 Professionally designed, fully editable, and ready to impress.
               </p>
             </div>
-            <Link
-              to="/templates"
-              className="hex-pill bg-white px-5 py-2 inline-flex items-center gap-1.5 text-primary-amber hover:text-[#111111] font-extrabold text-xs sm:text-sm transition-colors shrink-0 shadow-sm border border-[#111111]/10"
-            >
-              Explore All Templates <ArrowRight size={14} />
-            </Link>
+            <MagneticButton>
+              <Link
+                to="/templates"
+                className="hex-cut-btn text-[#111111] font-black px-7 py-3 gap-2 text-xs sm:text-sm shrink-0"
+              >
+                Explore All Templates <ArrowRight size={15} />
+              </Link>
+            </MagneticButton>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {templateCatalog.slice(0, 8).map((item) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
+            {(() => {
+              const allTemplates = [...dbTemplates, ...templateCatalog];
+              const displayed = featuredTemplateIds.length > 0 
+                ? allTemplates.filter(t => featuredTemplateIds.includes(String(t.id))) 
+                : allTemplates.slice(0, 8);
+              return displayed.map((item) => (
               <Link
                 key={item.id}
-                to="/templates"
-                className="hex-card group bg-white border border-[#111111]/10 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 shadow-sm flex flex-col justify-between"
+                to={`/template/${item.id}`}
+                className="hex-card group bg-white border-2 border-primary/35 hover:border-primary overflow-hidden hover:shadow-2xl transition-all duration-300 shadow-sm flex flex-col justify-between"
               >
-                {/* Half-Hexagon Preview Notch Cut */}
-                <div className="half-hex-preview relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-[#111111]/10">
+                {/* Preview Image */}
+                <div className="relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-primary/20">
                   <img
                     src={item.image}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-0.5">
+                  <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-3 py-0.5">
                     {item.category}
                   </div>
                 </div>
 
-                <div className="p-4 pt-2 flex flex-col flex-grow justify-between">
+                <div className="p-4 pt-3 flex flex-col flex-grow justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
@@ -266,98 +354,99 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 pt-2.5 border-t border-[#111111]/5 mt-2.5">
-                    {item.formats.map((fmt) => (
-                      <span
-                        key={fmt}
-                        className="hex-pill-sm text-[8.5px] font-extrabold px-2 py-0.5 bg-[#FFF9E8] border border-[#111111]/10 text-[#726F6D]"
-                      >
-                        {fmt}
-                      </span>
+                  {/* Branded Software Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-primary/15 mt-2.5">
+                    {item.formats.map((fmt: string) => (
+                      <SoftwareBadge key={fmt} format={fmt} size="sm" showLabel={true} />
                     ))}
                   </div>
                 </div>
               </Link>
-            ))}
+            ));
+          })()}
           </div>
         </div>
       </section>
 
-      {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP (Hex Cards) */}
-      <section className="py-14 bg-white large-hex-grid border-y border-[#111111]/5">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-            <div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-heading font-extrabold text-[#111111] mb-1">
-                Need Something Custom?
-              </h2>
-              <p className="text-[#726F6D] text-xs sm:text-sm font-medium">
-                Our presentation specialists can redesign, build, and animate your slides.
-              </p>
-            </div>
-            <Link
-              to="/ordernow"
-              className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-6 py-3 text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-md hover:scale-105 shrink-0"
-            >
-              Request Custom Design <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/5 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-              <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Paintbrush className="w-5 h-5 text-primary-amber" />
+      {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP (Translucent Card Container) */}
+      <section className="py-8">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 shadow-lg">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-heading font-extrabold text-[#111111] mb-1">
+                  Need Something Custom?
+                </h2>
+                <p className="text-[#726F6D] text-xs sm:text-sm font-medium">
+                  Our presentation specialists can redesign, build, and animate your slides.
+                </p>
               </div>
-              <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Presentation Redesign
-              </h3>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Transform cluttered slides into clear, modern, and impactful presentations.
-              </p>
+              <MagneticButton>
+                <Link
+                  to="/ordernow"
+                  className="hex-cut-btn text-[#111111] font-black px-7 py-3 text-xs sm:text-sm gap-2 shrink-0"
+                >
+                  Request Custom Design <ArrowRight size={15} />
+                </Link>
+              </MagneticButton>
             </div>
 
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/5 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-              <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <TrendingUp className="w-5 h-5 text-primary-amber" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
+                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Paintbrush className="w-5 h-5 text-primary-amber" />
+                </div>
+                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+                  Presentation Redesign
+                </h3>
+                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
+                  Transform cluttered slides into clear, modern, and impactful presentations.
+                </p>
               </div>
-              <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Pitch Deck Design
-              </h3>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Investor-ready pitch decks that tell your story and secure attention.
-              </p>
-            </div>
 
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/5 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-              <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BarChart3 className="w-5 h-5 text-primary-amber" />
+              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
+                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-5 h-5 text-primary-amber" />
+                </div>
+                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+                  Pitch Deck Design
+                </h3>
+                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
+                  Investor-ready pitch decks that tell your story and secure attention.
+                </p>
               </div>
-              <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Data Visualization
-              </h3>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Turn complex data into visual stories that drive understanding.
-              </p>
-            </div>
 
-            <div className="hex-card bg-[#FFF9E8] border border-[#111111]/5 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-              <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <LayoutGrid className="w-5 h-5 text-primary-amber" />
+              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
+                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-5 h-5 text-primary-amber" />
+                </div>
+                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+                  Data Visualization
+                </h3>
+                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
+                  Turn complex data into visual stories that drive understanding.
+                </p>
               </div>
-              <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Branded Templates
-              </h3>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Custom templates that reflect your brand and maintain consistency.
-              </p>
+
+              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
+                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <LayoutGrid className="w-5 h-5 text-primary-amber" />
+                </div>
+                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
+                  Branded Templates
+                </h3>
+                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
+                  Custom templates that reflect your brand and maintain consistency.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 5. "FROM ROUGH CONTENT TO POLISHED SLIDES" (Hexagonal Container) */}
-      <section className="py-16 bg-[#FFF9E8] large-hex-grid">
-        <div className="container mx-auto px-4 md:px-8">
+      {/* 5. "FROM ROUGH CONTENT TO POLISHED SLIDES" */}
+      <section className="py-14">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div className="lg:col-span-5">
@@ -381,7 +470,7 @@ export default function Home() {
                     className={`hex-pill px-4 py-2 text-xs font-bold capitalize transition-all ${
                       activeTab === tab
                         ? "bg-primary text-[#111111] shadow-sm"
-                        : "bg-white text-[#726F6D] border border-[#111111]/10 hover:border-primary"
+                        : "bg-white text-[#726F6D] border-2 border-primary/40 hover:border-primary"
                     }`}
                   >
                     {tab} Slide
@@ -392,15 +481,15 @@ export default function Home() {
 
             {/* Draggable Split Slider (Hexagonal Frame) */}
             <div className="lg:col-span-7">
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-3 md:p-4 shadow-xl">
+              <div className="hex-card-lg bg-white border-2 border-primary/40 p-3 md:p-4 shadow-xl">
                 <div className="relative aspect-[16/9] overflow-hidden select-none">
                   <img
                     src={currentComparison.afterImg}
                     alt="After Redesign"
                     className="absolute inset-0 w-full h-full object-contain bg-[#111111]"
                   />
-                  <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-extrabold text-[10px] px-3 py-1 z-10 shadow flex items-center gap-1">
-                    <Sparkles size={11} /> After
+                  <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-extrabold text-[10px] px-3 py-1 z-10 shadow">
+                    SlideBee Polish (After)
                   </div>
 
                   <div
@@ -412,17 +501,17 @@ export default function Home() {
                       alt="Before Redesign"
                       className="absolute inset-0 w-full h-full object-contain bg-[#161a22]"
                     />
-                    <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/80 backdrop-blur-md text-white font-bold text-[10px] px-3 py-1 border border-white/20">
+                    <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/80 backdrop-blur-md text-white font-bold text-[10px] px-3 py-1 border border-primary/30">
                       Before
                     </div>
                   </div>
 
                   <div
-                    className="absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize z-20"
+                    className="absolute top-0 bottom-0 w-[2px] bg-primary cursor-ew-resize z-20"
                     style={{ left: `${sliderPosition}%` }}
                   >
-                    <div className="hex-pill absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-[#111111] flex items-center justify-center shadow-lg border border-white">
-                      <Sliders size={14} />
+                    <div className="hex-slider-knob absolute top-1/2 -translate-y-1/2 -translate-x-1/2">
+                      <Sliders size={15} />
                     </div>
                   </div>
 
@@ -442,102 +531,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. "HOW SLIDEBEE WORKS" 4-STEP FLOW (Hex Cards) */}
-      <section className="py-16 bg-white large-hex-grid border-t border-[#111111]/5">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] mb-2">
-              How SlideBee Works
-            </h2>
-            <p className="text-[#726F6D] text-xs sm:text-sm font-medium">
-              Simple, transparent, and built for speed.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="hex-card flex flex-col items-start bg-[#FFF9E8] border border-[#111111]/5 p-6 relative shadow-sm">
-              <div className="hex-pill w-8 h-8 bg-primary text-[#111111] font-black text-xs flex items-center justify-center mb-3 shadow">
-                1
-              </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Choose a Template
-              </h4>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Browse thousands of professional templates for any business purpose.
-              </p>
-            </div>
-
-            <div className="hex-card flex flex-col items-start bg-[#FFF9E8] border border-[#111111]/5 p-6 relative shadow-sm">
-              <div className="hex-pill w-8 h-8 bg-primary text-[#111111] font-black text-xs flex items-center justify-center mb-3 shadow">
-                2
-              </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Download or Upload Content
-              </h4>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Download instantly or upload your draft notes and brand guidelines.
-              </p>
-            </div>
-
-            <div className="hex-card flex flex-col items-start bg-[#FFF9E8] border border-[#111111]/5 p-6 relative shadow-sm">
-              <div className="hex-pill w-8 h-8 bg-primary text-[#111111] font-black text-xs flex items-center justify-center mb-3 shadow">
-                3
-              </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                We Design or You Customize
-              </h4>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                We design it for you or you customize easily with our editable slides.
-              </p>
-            </div>
-
-            <div className="hex-card flex flex-col items-start bg-[#FFF9E8] border border-[#111111]/5 p-6 relative shadow-sm">
-              <div className="hex-pill w-8 h-8 bg-primary text-[#111111] font-black text-xs flex items-center justify-center mb-3 shadow">
-                4
-              </div>
-              <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                Present with Confidence
-              </h4>
-              <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                Deliver presentations that inspire, persuade, and leave a lasting impact.
-              </p>
-            </div>
+      {/* 6. "HOW SLIDEBEE WORKS" 4-STEP INFOGRAPHIC PIPELINE */}
+      <section className="py-12">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white/85 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 lg:p-12 shadow-lg">
+            <HexProcessInfographic />
           </div>
         </div>
       </section>
 
-      {/* 7. STATS & PRICING (Hexagonal Cards) */}
-      <section className="py-16 bg-[#FFF9E8] large-hex-grid border-t border-[#111111]/5">
-        <div className="container mx-auto px-4 md:px-8">
+      {/* 7. PRICING */}
+      <section className="pt-8 pb-14">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* 3 Stats Badges */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-14 max-w-3xl mx-auto">
-            <div className="hex-card bg-white border border-[#111111]/8 p-5 text-center shadow-sm">
-              <div className="text-3xl font-heading font-black text-primary-amber mb-0.5">
-                5,000+
-              </div>
-              <p className="text-[#726F6D] text-[10px] uppercase tracking-wider font-extrabold">
-                Templates Available
-              </p>
-            </div>
-            <div className="hex-card bg-white border border-[#111111]/8 p-5 text-center shadow-sm">
-              <div className="text-3xl font-heading font-black text-primary-amber mb-0.5">
-                1,200+
-              </div>
-              <p className="text-[#726F6D] text-[10px] uppercase tracking-wider font-extrabold">
-                Happy Clients
-              </p>
-            </div>
-            <div className="hex-card bg-white border border-[#111111]/8 p-5 text-center shadow-sm">
-              <div className="text-3xl font-heading font-black text-primary-amber mb-0.5">
-                98%
-              </div>
-              <p className="text-[#726F6D] text-[10px] uppercase tracking-wider font-extrabold">
-                Satisfaction Rate
-              </p>
-            </div>
-          </div>
-
           {/* Pricing Header */}
           <div className="text-center max-w-2xl mx-auto mb-8">
             <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] mb-2">
@@ -548,7 +554,7 @@ export default function Home() {
             </p>
 
             {/* Monthly / Yearly Toggle */}
-            <div className="hex-pill inline-flex items-center gap-1.5 bg-white p-1 border border-[#111111]/10 shadow-sm">
+            <div className="hex-pill inline-flex items-center gap-1.5 bg-white p-1 border-2 border-primary/40 shadow-sm">
               <button
                 onClick={() => setBillingPeriod("monthly")}
                 className={`hex-pill px-4 py-1.5 text-xs font-bold transition-all ${
@@ -569,17 +575,17 @@ export default function Home() {
               >
                 <span>Yearly</span>
                 <span className="bg-green-500/20 text-green-700 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
-                  Save 20%
+                  {pricingConfig?.pro_discount_percent ?? 50}% OFF
                 </span>
               </button>
             </div>
           </div>
 
           {/* 3 Pricing Cards (Hexagonal Chamfered) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1580px] w-full mx-auto mb-16">
             
             {/* Starter (Free) */}
-            <div className="hex-card bg-white border border-[#111111]/10 p-6 flex flex-col justify-between shadow-sm">
+            <div className="hex-card bg-white/60 backdrop-blur-xl border-2 border-primary/30 p-6 flex flex-col justify-between shadow-sm">
               <div>
                 <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider block mb-1">
                   Starter
@@ -590,9 +596,9 @@ export default function Home() {
                 <p className="text-[#726F6D] text-xs font-medium mb-4">
                   Perfect for trying out templates.
                 </p>
-                <div className="space-y-2 border-t border-[#111111]/10 pt-4 text-xs text-[#111111] font-medium">
+                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
                   <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 5 Free Templates
+                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 5 Free Credits (On Sign-up)
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-primary-amber" /> Standard Downloads
@@ -603,16 +609,18 @@ export default function Home() {
                 </div>
               </div>
 
-              <Link
-                to="/templates"
-                className="hex-pill mt-6 block text-center bg-[#FFF9E8] hover:bg-primary/20 border border-[#111111]/10 text-[#111111] font-extrabold py-2.5 text-xs transition-all"
-              >
-                Get Started
-              </Link>
+              <MagneticButton className="w-full mt-6">
+                <Link
+                  to="/templates"
+                  className="hex-cut-btn light-btn w-full block text-center text-[#111111] font-extrabold py-3 text-xs"
+                >
+                  Get Started
+                </Link>
+              </MagneticButton>
             </div>
 
             {/* Pro (Most Popular) */}
-            <div className="hex-card bg-white border-2 border-primary p-6 flex flex-col justify-between relative shadow-xl">
+            <div className="hex-card bg-white/70 backdrop-blur-xl border-2 border-primary p-6 flex flex-col justify-between relative shadow-xl">
               <div className="hex-pill-sm absolute top-3 right-4 bg-primary text-[#111111] font-black text-[9px] uppercase tracking-widest px-3 py-0.5 shadow">
                 Most Popular
               </div>
@@ -621,18 +629,25 @@ export default function Home() {
                 <span className="text-[10px] text-primary-amber font-bold uppercase tracking-wider block mb-1">
                   Pro Access
                 </span>
-                <div className="text-3xl font-heading font-black text-[#111111] mb-1">
-                  ₹{billingPeriod === "yearly" ? "999" : "199"}<span className="text-xs font-normal text-[#726F6D]">/{billingPeriod === "yearly" ? "year" : "month"}</span>
-                </div>
+                {(() => {
+                  const monthlyPrice = pricingConfig?.pro_monthly_inr ?? 199;
+                  const discount = pricingConfig?.pro_discount_percent ?? 50;
+                  const yearlyPrice = Math.round((monthlyPrice * 12) * (1 - discount / 100));
+                  return (
+                    <div className="text-3xl font-heading font-black text-[#111111] mb-1">
+                      ₹{billingPeriod === "yearly" ? yearlyPrice.toLocaleString() : monthlyPrice.toLocaleString()}
+                      <span className="text-xs font-normal text-[#726F6D]">
+                        /{billingPeriod === "yearly" ? "year" : "month"}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <p className="text-[#726F6D] text-xs font-medium mb-4">
                   Unlimited access to premium templates.
                 </p>
-                <div className="space-y-2 border-t border-[#111111]/10 pt-4 text-xs text-[#111111] font-medium">
+                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
                   <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Unlimited Template Downloads
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Premium 4K Vector Slides
+                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Unlimited SlideBee Credits
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-primary-amber" /> Priority Customer Support
@@ -643,16 +658,18 @@ export default function Home() {
                 </div>
               </div>
 
-              <button
-                onClick={() => alert("Redirecting to Pro checkout...")}
-                className="hex-pill mt-6 w-full bg-primary hover:bg-primary-dark text-[#111111] font-extrabold py-3 text-xs transition-all shadow"
-              >
-                Go Pro Now
-              </button>
+              <MagneticButton className="w-full mt-6">
+                <button
+                  onClick={() => alert("Redirecting to Pro checkout...")}
+                  className="hex-cut-btn w-full block text-center text-[#111111] font-black py-3 text-xs"
+                >
+                  Go Pro Now
+                </button>
+              </MagneticButton>
             </div>
 
             {/* Studio (Custom) */}
-            <div className="hex-card bg-white border border-[#111111]/10 p-6 flex flex-col justify-between shadow-sm">
+            <div className="hex-card bg-white/60 backdrop-blur-xl border-2 border-primary/30 p-6 flex flex-col justify-between shadow-sm">
               <div>
                 <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider block mb-1">
                   Studio
@@ -663,7 +680,7 @@ export default function Home() {
                 <p className="text-[#726F6D] text-xs font-medium mb-4">
                   Custom design services for your business.
                 </p>
-                <div className="space-y-2 border-t border-[#111111]/10 pt-4 text-xs text-[#111111] font-medium">
+                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
                   <div className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-primary-amber" /> 1-on-1 Senior Art Director
                   </div>
@@ -679,21 +696,23 @@ export default function Home() {
                 </div>
               </div>
 
-              <Link
-                to="/ordernow"
-                className="hex-pill mt-6 block text-center bg-[#FFF9E8] hover:bg-primary/20 border border-[#111111]/10 text-[#111111] font-extrabold py-2.5 text-xs transition-all"
-              >
-                Get a Quote
-              </Link>
+              <MagneticButton className="w-full mt-6">
+                <Link
+                  to="/ordernow"
+                  className="hex-cut-btn light-btn w-full block text-center text-[#111111] font-extrabold py-3 text-xs"
+                >
+                  Get a Quote
+                </Link>
+              </MagneticButton>
             </div>
           </div>
 
           {/* Testimonials (Hexagonal Chamfered) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1580px] w-full mx-auto">
             {testimonials.map((t, idx) => (
               <div
                 key={idx}
-                className="hex-card bg-white border border-[#111111]/8 p-5 flex flex-col justify-between shadow-sm"
+                className="hex-card bg-[#FFF9E8] border-2 border-primary/35 p-5 flex flex-col justify-between shadow-sm"
               >
                 <div>
                   <div className="flex items-center gap-1 text-primary mb-2.5">
@@ -706,7 +725,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 pt-3 border-t border-[#111111]/5">
+                <div className="flex items-center gap-2.5 pt-3 border-t border-primary/20">
                   <img
                     src={t.avatar}
                     alt={t.name}
@@ -728,6 +747,7 @@ export default function Home() {
         </div>
       </section>
 
+      </div>
     </div>
   );
 }

@@ -1,0 +1,37 @@
+# SlideBee — Full Context Knowledge Graph for AI Agents & Search Engines
+
+## Company Overview
+- **Name**: SlideBee (SlideBee Design Studio)
+- **Domain**: theslidebee.com
+- **Mission**: Turn complex business ideas, financial models, and strategic visions into clear, high-converting executive presentations.
+- **Audience**: Seed, Series A/B founders, C-Suite leaders, Private Equity / M&A advisors, and high-growth sales teams.
+- **Turnaround Speed**: 24h to 48h standard turnaround with 24h priority rush options.
+- **Security**: 100% mutual NDA signed on demand, encrypted private cloud storage, zero public publishing without written consent.
+- **Deliverables**: Native editable PowerPoint (.pptx), Google Slides, Keynote, and vector assets.
+
+## Services Detailed
+1. **Redesign & Visual Polish ($19/slide)**:
+   - For existing drafts, rough sketches, or unformatted decks.
+   - Cleans typography, visual hierarchy, alignment, tables, and branding.
+2. **Venture Pitch Deck ($29/slide)**:
+   - 12-slide standard VC framework (Problem, Solution, Product, Market Size, Traction, Business Model, Team, Financial Ask).
+   - Investor-grade unit economics and cap table visualizers.
+3. **Executive Stage Keynote ($49/slide)**:
+   - For major conferences, keynote speeches, annual board meetings.
+   - Ex-McKinsey strategic framing, stage-optimized high-contrast visuals, bespoke 3D graphics.
+4. **Dedicated Designer Monthly Retainer ($1,490/month)**:
+   - Embedded senior designer in client Slack/WhatsApp.
+   - 80 slides/month capacity with same-day turns.
+
+## Design Philosophy
+- Clear visual hierarchy over decorative clutter.
+- 3-second comprehension rule: if an audience cannot extract the takeaway in 3 seconds, the slide is simplified.
+- Warm Milk Cream (#FFF9E8) aesthetic with Honey Gold (#FCBF14) accents and obsidian typography (#111111).
+
+## Official Links
+- Home: https://theslidebee.com/
+- Services: https://theslidebee.com/#/services
+- Pricing: https://theslidebee.com/#/pricing
+- Templates: https://theslidebee.com/#/templates
+- Portfolio: https://theslidebee.com/#/examples
+- Contact: https://theslidebee.com/#/contact

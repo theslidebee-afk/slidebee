@@ -2,6 +2,7 @@ import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Templates from "./pages/Templates";
+import TemplateDetail from "./pages/TemplateDetail";
 import Services from "./pages/Services";
 import OrderNow from "./pages/OrderNow";
 import Examples from "./pages/Examples";
@@ -11,9 +12,9 @@ import Contact from "./pages/Contact";
 import ComingSoon from "./pages/ComingSoon";
 import Blog from "./pages/Blog";
 import Videos from "./pages/Videos";
+import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import Footer from "./components/Footer";
-import { CustomBeeCursor } from "./components/CustomBeeCursor";
 import { CurrencyProvider } from "./context/CurrencyContext";
 
 function App() {
@@ -21,9 +22,6 @@ function App() {
     <CurrencyProvider>
       <Router>
         <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
-          {/* Custom SVG Bee Cursor */}
-          <CustomBeeCursor />
-          
           <Routes>
             {/* 1. Public Default Landing View: Coming Soon */}
             <Route path="/" element={<ComingSoon />} />
@@ -39,6 +37,8 @@ function App() {
                     <Routes>
                       <Route path="/home" element={<Home />} />
                       <Route path="/templates" element={<Templates />} />
+                      <Route path="/templates/:id" element={<TemplateDetail />} />
+                      <Route path="/template/:id" element={<TemplateDetail />} />
                       <Route path="/services" element={<Services />} />
                       <Route path="/ordernow" element={<OrderNow />} />
                       <Route path="/order" element={<OrderNow />} />
@@ -47,6 +47,10 @@ function App() {
                       <Route path="/about" element={<About />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/contact" element={<Contact />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/account" element={<Login />} />
+                      <Route path="/blog" element={<Blog />} />
+                      <Route path="/videos" element={<Videos />} />
                       <Route path="/media/blog" element={<Blog />} />
                       <Route path="/media/videos" element={<Videos />} />
                       <Route path="/admin/*" element={<Admin />} />

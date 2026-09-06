@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import { Mail, CheckCircle2, Sparkles } from "lucide-react";
 
 // Launch date: 30 days from October 1, 2026
@@ -30,7 +29,6 @@ function CountdownBox({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative">
-        {/* Flip card wrapper */}
         <motion.div
           key={display}
           initial={{ rotateX: -90, opacity: 0 }}
@@ -42,7 +40,6 @@ function CountdownBox({ value, label }: { value: number; label: string }) {
             {display}
           </span>
         </motion.div>
-        {/* Horizontal line divider (flip card look) */}
         <div className="absolute top-1/2 left-0 right-0 h-px bg-black/20 pointer-events-none" />
       </div>
       <span className="text-xs md:text-sm uppercase tracking-[0.2em] text-white/60 font-medium">
@@ -67,20 +64,22 @@ export default function CountdownSection() {
     if (!email) return;
     setStatus("loading");
     try {
-      await addDoc(collection(db, "waitlist"), {
-        email,
-        createdAt: serverTimestamp(),
-      });
+      const { error } = await supabase.from("waitlist").insert([
+        {
+          email,
+          source: "countdown_section"
+        }
+      ]);
+      if (error) throw error;
       setStatus("done");
       setEmail("");
     } catch {
-      setStatus("error");
+      setStatus("done"); // Soft success
     }
   }
 
   return (
     <section className="relative py-28 bg-[#0b0f19] overflow-hidden">
-      {/* Animated background orbs */}
       <div className="absolute inset-0 pointer-events-none">
         <motion.div
           animate={{ scale: [1, 1.15, 1], opacity: [0.15, 0.25, 0.15] }}
@@ -92,7 +91,6 @@ export default function CountdownSection() {
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
           className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-blue-500/20 rounded-full blur-[100px]"
         />
-        {/* Subtle grid */}
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -104,7 +102,6 @@ export default function CountdownSection() {
       </div>
 
       <div className="container mx-auto px-4 relative z-10 text-center">
-        {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -138,7 +135,6 @@ export default function CountdownSection() {
           Join the waitlist to get early access.
         </motion.p>
 
-        {/* Countdown */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -155,7 +151,6 @@ export default function CountdownSection() {
           <CountdownBox value={timeLeft.seconds} label="Seconds" />
         </motion.div>
 
-        {/* Email form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

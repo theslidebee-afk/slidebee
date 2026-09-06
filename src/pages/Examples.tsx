@@ -1,16 +1,128 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
-import { X, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
+import { X, ArrowRight, Search } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 interface PortfolioItem {
   id: number;
   title: string;
   client: string;
-  category: "All" | "Brand & Marketing" | "Corporate & Finance" | "Healthcare & Tech" | "Strategy & Operations";
+  category: "All" | "Brand & Marketing" | "Corporate & Finance" | "Healthcare & Tech" | "Strategy & Operations" | string;
   image: string;
+  slides?: string[];
   description: string;
   highlights: string[];
+}
+
+function getSlideSet(item: PortfolioItem): string[] {
+  if (item.slides && item.slides.length > 0) return item.slides;
+  const match = item.image.match(/\/portfolio\/([a-zA-Z0-9_]+)_(\d+)\.png/);
+  if (match) {
+    const prefix = match[1];
+    const num = parseInt(match[2], 10);
+    const num2 = (num % 16) + 1;
+    const num3 = ((num + 1) % 16) + 1;
+    return [
+      `/portfolio/${prefix}_${num}.png`,
+      `/portfolio/${prefix}_${num2}.png`,
+      `/portfolio/${prefix}_${num3}.png`,
+    ];
+  }
+  return [item.image, item.image, item.image];
+}
+
+function PortfolioCard({ 
+  item, 
+  onSelect 
+}: { 
+  item: PortfolioItem; 
+  onSelect: (item: PortfolioItem, selectedSlide: number) => void;
+}) {
+  const slides = getSlideSet(item);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (!isHovered) {
+      setActiveIdx(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % slides.length);
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [isHovered, slides.length]);
+
+  return (
+    <div
+      onClick={() => onSelect(item, activeIdx)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+    >
+      <div className="aspect-[16/10] bg-[#111111] overflow-hidden relative select-none">
+        {/* Active Slide with smooth fade */}
+        <img
+          src={slides[activeIdx]}
+          alt={`${item.title} - Slide ${activeIdx + 1}`}
+          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+        />
+
+        {/* Client Badge */}
+        <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/90 text-primary text-[10px] font-black px-3 py-1 backdrop-blur-sm shadow z-10">
+          {item.client}
+        </div>
+
+        {/* 3-Slide Hover Indicator Pill */}
+        <div className={`hex-pill-sm absolute top-3 right-3 bg-[#111111]/85 text-white text-[10px] font-extrabold px-2.5 py-0.5 backdrop-blur-sm transition-all duration-300 z-10 flex items-center gap-1 ${
+          isHovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+        }`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          Slide {activeIdx + 1} / {slides.length}
+        </div>
+
+        {/* Bottom Pagination Dots */}
+        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 bg-[#111111]/70 px-2.5 py-1 rounded-full backdrop-blur-sm">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveIdx(i);
+              }}
+              className={`rounded-full transition-all duration-300 ${
+                activeIdx === i
+                  ? "w-4 h-1.5 bg-primary"
+                  : "w-1.5 h-1.5 bg-white/50 hover:bg-white"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="p-5">
+        <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary-amber block mb-1">
+          {item.category}
+        </span>
+        <h3 className="font-heading font-extrabold text-base text-[#111111] mb-2 leading-snug group-hover:text-primary-amber transition-colors">
+          {item.title}
+        </h3>
+        <p className="text-xs text-[#726F6D] font-medium line-clamp-2 leading-relaxed mb-4">
+          {item.description}
+        </p>
+
+        <div className="flex flex-wrap gap-1.5 pt-3 border-t border-[#111111]/8">
+          {item.highlights.slice(0, 2).map((h, i) => (
+            <span key={i} className="text-[10px] bg-[#FFF9E8] border border-primary/20 text-[#111111] font-bold px-2 py-0.5 rounded">
+              {h}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const portfolioData: PortfolioItem[] = [
@@ -98,34 +210,34 @@ const portfolioData: PortfolioItem[] = [
     category: "Healthcare & Tech",
     image: "/portfolio/nike_hsbc_cvs_9.png",
     description: "Healthcare stakeholder ecosystem mapping shopper behaviors, trends, and R&D insights.",
-    highlights: ["Circular ecosystem chart", "Key stakeholder mapping", "Data point highlights"]
+    highlights: ["Healthcare stakeholder map", "Trend & demographic data", "Custom pharmaceutical icons"]
   },
   {
     id: 10,
-    title: "Digital Workflow & Technology Platform",
+    title: "Client Roster & Market Leadership",
     client: "CVS Health",
     category: "Healthcare & Tech",
     image: "/portfolio/nike_hsbc_cvs_10.png",
-    description: "Proprietary digital management tool architecture and mobile interface showcase.",
-    highlights: ["Mobile app mockups", "Digital workflow stages", "Volume statistics (2M+ assets)"]
+    description: "Marquee client trust showcase visualizing industry tier rankings and partnership longevity.",
+    highlights: ["Social proof layout", "Brand logo grid architecture", "Authority building visual matrix"]
   },
   {
     id: 11,
-    title: "Executive Pitch Agenda & Governance",
+    title: "Omnichannel Creative Capabilities",
     client: "CVS Health",
     category: "Healthcare & Tech",
     image: "/portfolio/nike_hsbc_cvs_11.png",
-    description: "Strategic governance roadmap highlighting Centers of Excellence and case studies.",
-    highlights: ["Modern icon hierarchy", "Step-by-step agenda flow", "Executive polish"]
+    description: "Point-of-sale, digital, and print collateral execution matrix across health retail stores.",
+    highlights: ["3D retail mockup layout", "Omnichannel workflow", "Color-coded service pillars"]
   },
   {
     id: 12,
-    title: "Brand Refresh & Packaging Origination",
+    title: "Global Supply Chain Footprint",
     client: "CVS Health",
-    category: "Brand & Marketing",
+    category: "Healthcare & Tech",
     image: "/portfolio/nike_hsbc_cvs_12.png",
-    description: "Multi-SKU pharmaceutical product packaging refresh and brand rollout deck.",
-    highlights: ["Packaging visual suite", "3D product asset renders", "Before/After redesign proof"]
+    description: "Worldwide operational hubs, delivery routes, and automated fulfillment network map.",
+    highlights: ["Global hub infographic", "Cross-border transit metrics", "Executive route visualization"]
   },
 
   // Levi's
@@ -187,20 +299,46 @@ const portfolioData: PortfolioItem[] = [
   }
 ];
 
-const categories = [
-  "All",
-  "Brand & Marketing",
-  "Corporate & Finance",
-  "Healthcare & Tech",
-  "Strategy & Operations"
-] as const;
-
 export default function Examples() {
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
   const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeModalItem, setActiveModalItem] = useState<PortfolioItem | null>(null);
+  const [activeModalSlide, setActiveModalSlide] = useState<number>(0);
+  const [items, setItems] = useState<PortfolioItem[]>(portfolioData);
+  const [categoryList, setCategoryList] = useState<string[]>([
+    "All",
+    "Brand & Marketing",
+    "Corporate & Finance",
+    "Healthcare & Tech",
+    "Strategy & Operations"
+  ]);
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "portfolio_cms")
+      .single()
+      .then(({ data }) => {
+        if (data?.value?.caseStudies && data.value.caseStudies.length > 0) {
+          const mapped: PortfolioItem[] = data.value.caseStudies.map((cs: any) => ({
+            id: cs.id,
+            title: cs.title,
+            client: cs.client,
+            category: cs.category,
+            image: cs.imageUrl,
+            description: cs.description,
+            highlights: cs.deliverables || [cs.impact || "High-impact presentation design"]
+          }));
+          setItems([...mapped, ...portfolioData]);
+        }
+        if (data?.value?.categories && data.value.categories.length > 0) {
+          setCategoryList(data.value.categories);
+        }
+      });
+  }, []);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -209,7 +347,7 @@ export default function Examples() {
     }
   }, [searchParams]);
 
-  const filteredItems = portfolioData.filter((item) => {
+  const filteredItems = items.filter((item) => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
     const matchesSearch = !searchTerm.trim() || 
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -221,192 +359,182 @@ export default function Examples() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-white pt-32 pb-24">
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[400px] bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
+      
+      {/* 1. HERO SECTION (Warm Milk Cream + Honey Gold Glow) */}
+      <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FCBF14]/12 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-6"
-          >
-            <Sparkles size={14} />
-            Proven Client Work & Case Studies
-          </motion.div>
+        <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
+          Proven Client Work & Case Studies
+        </span>
 
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-6xl font-heading font-extrabold mb-6 leading-tight"
-          >
-            Our Presentation <span className="text-primary">Portfolio</span>
-          </motion.h1>
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-[#111111] leading-[1.12] mb-4 tracking-tight">
+          Our Executive <br />
+          <span className="text-primary-amber">Presentation Portfolio.</span>
+        </h1>
+
+        <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-xl mx-auto leading-relaxed">
+          Explore real client presentations, investor pitch decks, and strategic keynotes designed for global brands.
+        </p>
+      </section>
+
+      {/* 2. FILTER & SEARCH TOOLBAR */}
+      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-10">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-300 font-light"
-          >
-            Explore actual keynote slides, executive decks, and financial pitch frameworks designed for world-class enterprises.
-          </motion.p>
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-14">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                selectedCategory === cat
-                  ? "bg-primary text-foreground shadow-lg shadow-primary/25 scale-105"
-                  : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Portfolio Grid */}
-        <motion.div 
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          <AnimatePresence>
-            {filteredItems.map((item, index) => (
-              <motion.div
-                layout
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                onClick={() => setActiveModalItem(item)}
-                className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 cursor-pointer flex flex-col"
+          {/* Category Pills */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+            {categoryList.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`hex-pill px-5 py-2 text-xs font-extrabold transition-all border ${
+                  selectedCategory === cat
+                    ? "bg-[#111111] text-[#FCBF14] border-primary shadow-md scale-105"
+                    : "bg-white text-[#111111] border-primary/40 hover:border-primary hover:bg-[#FFF9E8] shadow-sm"
+                }`}
               >
-                {/* Slide Preview Image */}
-                <div className="relative aspect-[16/9] overflow-hidden bg-black/60 border-b border-white/10">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <span className="bg-primary text-foreground font-bold px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-md">
-                      Enlarge Slide <ExternalLink size={14} />
-                    </span>
-                  </div>
-                  <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full border border-white/20">
-                    {item.client}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 flex flex-col flex-grow">
-                  <div className="text-xs uppercase tracking-widest text-primary font-bold mb-2">
-                    {item.category}
-                  </div>
-                  <h3 className="text-xl font-heading font-bold text-white group-hover:text-primary transition-colors mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-gray-400 text-sm font-light leading-relaxed mb-4 flex-grow">
-                    {item.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/10">
-                    {item.highlights.map((h, i) => (
-                      <span key={i} className="text-[11px] bg-white/5 text-gray-300 px-2.5 py-1 rounded-md border border-white/5">
-                        • {h}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
+                {cat}
+              </button>
             ))}
-          </AnimatePresence>
-        </motion.div>
+          </div>
 
-        {/* Bottom CTA */}
-        <div className="mt-20 text-center bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/30 rounded-3xl p-10 md:p-14 max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-            Need a Presentation Designed Like These?
-          </h2>
-          <p className="text-gray-300 max-w-xl mx-auto mb-8 font-light">
-            Share your raw content or draft deck. Our master designers will craft an executive-ready masterpiece within 24–48 hours.
-          </p>
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-foreground font-extrabold text-base px-8 py-4 rounded-full transition-all hover:scale-105 shadow-xl shadow-primary/30"
-          >
-            Start Your Project Now <ArrowRight size={18} />
-          </Link>
+          {/* Search Bar */}
+          <div className="relative w-full md:w-72">
+            <input
+              type="text"
+              placeholder="Search portfolio..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-primary/40 hex-pill pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
+            />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          </div>
+
         </div>
       </div>
 
-      {/* Lightbox Modal */}
+      {/* 3. PORTFOLIO GRID WITH 3-SLIDE HOVER CAROUSEL */}
+      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((item) => (
+            <PortfolioCard
+              key={item.id}
+              item={item}
+              onSelect={(selectedItem, slideIdx) => {
+                setActiveModalItem(selectedItem);
+                setActiveModalSlide(slideIdx);
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 4. MODAL PREVIEW WITH MULTI-SLIDE NAVIGATION */}
       <AnimatePresence>
         {activeModalItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setActiveModalItem(null)}
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
-          >
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#111111] border border-white/20 rounded-3xl overflow-hidden max-w-5xl w-full shadow-2xl relative flex flex-col"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border-2 border-primary/50 p-6 sm:p-8 max-w-4xl w-full shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto"
             >
               <button
                 onClick={() => setActiveModalItem(null)}
-                className="absolute top-4 right-4 z-20 bg-black/60 hover:bg-white text-white hover:text-black p-2 rounded-full transition-colors"
-                aria-label="Close modal"
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#111111] transition-colors hex-pill bg-black/5 hover:bg-black/10"
               >
-                <X size={22} />
+                <X size={20} />
               </button>
 
-              <div className="relative aspect-[16/9] bg-black">
-                <img
-                  src={activeModalItem.image}
-                  alt={activeModalItem.title}
-                  className="w-full h-full object-contain"
-                />
-              </div>
+              {/* Main Slide Viewer */}
+              {(() => {
+                const modalSlides = getSlideSet(activeModalItem);
+                const currentSlideImg = modalSlides[activeModalSlide] || activeModalItem.image;
+                return (
+                  <div>
+                    <div className="aspect-[16/9] bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40">
+                      <img
+                        src={currentSlideImg}
+                        alt={`${activeModalItem.title} - Slide ${activeModalSlide + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 text-primary border border-primary/30 text-[10px] font-black px-3 py-1 backdrop-blur-sm shadow">
+                        Slide {activeModalSlide + 1} of {modalSlides.length}
+                      </div>
+                    </div>
 
-              <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[#161b26]">
+                    {/* Slide Thumbnails Selector */}
+                    {modalSlides.length > 1 && (
+                      <div className="grid grid-cols-3 gap-3 mb-6">
+                        {modalSlides.map((s, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActiveModalSlide(idx)}
+                            className={`hex-card overflow-hidden text-left p-1 border transition-all ${
+                              activeModalSlide === idx
+                                ? "border-primary ring-2 ring-primary/40 bg-[#FFF9E8]"
+                                : "border-primary/25 hover:border-primary/60 bg-white"
+                            }`}
+                          >
+                            <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                              <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="text-[10px] font-extrabold text-[#111111] block px-1 truncate">
+                              Slide {idx + 1}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary/20 mb-4">
                 <div>
-                  <div className="inline-block bg-primary/20 text-primary border border-primary/30 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                  <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/25 text-[10px] font-black px-3 py-1 uppercase tracking-wider mb-2">
                     {activeModalItem.client} • {activeModalItem.category}
                   </div>
-                  <h3 className="text-2xl font-heading font-bold text-white mb-2">
+                  <h2 className="text-2xl font-heading font-extrabold text-[#111111]">
                     {activeModalItem.title}
-                  </h3>
-                  <p className="text-gray-300 text-sm max-w-2xl font-light">
-                    {activeModalItem.description}
-                  </p>
+                  </h2>
                 </div>
 
                 <Link
-                  to="/contact"
-                  className="bg-primary hover:bg-primary-dark text-foreground font-bold px-6 py-3.5 rounded-full shrink-0 flex items-center gap-2 transition-all shadow-lg"
+                  to={`/ordernow?ref=${encodeURIComponent(activeModalItem.title)}`}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shrink-0"
                 >
-                  Request Similar Deck <ArrowRight size={16} />
+                  Request Similar Design <ArrowRight size={15} />
                 </Link>
               </div>
+
+              <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed mb-6">
+                {activeModalItem.description}
+              </p>
+
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#111111] block mb-2">
+                  Key Design Deliverables:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {activeModalItem.highlights.map((h, i) => (
+                    <span
+                      key={i}
+                      className="hex-pill bg-[#FFF9E8] border border-primary/30 text-xs text-[#111111] font-bold px-3 py-1"
+                    >
+                      ✓ {h}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

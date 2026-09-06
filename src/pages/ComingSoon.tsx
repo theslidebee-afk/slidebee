@@ -47,7 +47,7 @@ export default function ComingSoon() {
       {/* Header */}
       <header className="container mx-auto flex items-center justify-between z-10 max-w-4xl">
         <SlideBeeLogo variant="light" size="lg" />
-        <span className="hex-pill text-primary-amber font-extrabold text-xs bg-white border border-[#111111]/10 px-5 py-2 flex items-center gap-2 shadow-sm">
+        <span className="hex-pill text-primary-amber font-extrabold text-xs bg-white border border-primary/40 px-5 py-2 flex items-center gap-2 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
           Coming Soon
         </span>
@@ -85,14 +85,14 @@ export default function ComingSoon() {
           className="max-w-md mx-auto"
         >
           {submitted ? (
-            <div className="hex-card bg-white border border-[#111111]/10 p-5 text-center shadow-md flex items-center justify-center gap-3">
+            <div className="hex-card bg-white border-2 border-primary/40 p-5 text-center shadow-md flex items-center justify-center gap-3">
               <CheckCircle2 className="w-6 h-6 text-primary-amber shrink-0" />
               <p className="text-xs sm:text-sm font-extrabold text-[#111111]">
                 Thank you! We'll notify you when we go live.
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="hex-card bg-white border border-[#111111]/15 shadow-md p-2 flex flex-col sm:flex-row gap-2">
+            <form onSubmit={handleSubmit} className="hex-card bg-white border-2 border-primary/40 shadow-md p-2 flex flex-col sm:flex-row gap-2">
               <input
                 type="email"
                 required

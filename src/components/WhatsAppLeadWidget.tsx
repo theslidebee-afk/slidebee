@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send } from 'lucide-react';
 import { WHATSAPP_CONFIG } from '../config/whatsapp';
 
 export const WhatsAppLeadWidget: React.FC = () => {
@@ -42,8 +42,8 @@ export const WhatsAppLeadWidget: React.FC = () => {
                   <MessageCircle size={20} />
                 </div>
                 <div>
-                  <h4 className="font-heading font-extrabold text-xs sm:text-sm text-white flex items-center gap-1.5">
-                    Chat with SlideBee <Sparkles size={13} className="text-primary" />
+                  <h4 className="font-heading font-extrabold text-xs sm:text-sm text-white">
+                    Chat with SlideBee
                   </h4>
                   <p className="text-[10px] text-gray-400">
                     Typically replies in under 15 mins

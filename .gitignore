@@ -5,3 +5,7 @@ dist/
 *.log
 .DS_Store
 .wrangler/
+.agents/
+.gemini/
+*.cjs
+serve_local.js
