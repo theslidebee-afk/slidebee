@@ -190,11 +190,31 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auth_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for Profiles
-CREATE POLICY "Allow public insert and update on profiles" 
-ON public.profiles FOR ALL 
+-- Drop any existing conflicting policies on profiles
+DROP POLICY IF EXISTS "Allow public insert and update on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public insert profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public update profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow all profiles" ON public.profiles;
+
+-- RLS Policies for Profiles (Full accessibility for authenticated & anon clients)
+CREATE POLICY "Allow public read profiles" 
+ON public.profiles FOR SELECT 
+USING (true);
+
+CREATE POLICY "Allow public insert profiles" 
+ON public.profiles FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Allow public update profiles" 
+ON public.profiles FOR UPDATE 
 USING (true)
 WITH CHECK (true);
+
+-- Drop any existing conflicting policies on auth_logs
+DROP POLICY IF EXISTS "Allow insert on auth_logs" ON public.auth_logs;
+DROP POLICY IF EXISTS "Allow read auth_logs for admin" ON public.auth_logs;
+DROP POLICY IF EXISTS "Allow all on auth_logs" ON public.auth_logs;
 
 -- RLS Policies for Auth Logs
 CREATE POLICY "Allow insert on auth_logs" 
@@ -205,6 +225,10 @@ CREATE POLICY "Allow read auth_logs for admin"
 ON public.auth_logs FOR SELECT 
 USING (true);
 
+-- Drop any existing conflicting policies on site_config
+DROP POLICY IF EXISTS "Allow read site_config" ON public.site_config;
+DROP POLICY IF EXISTS "Allow full access site_config for authenticated" ON public.site_config;
+
 -- RLS Policies for Site Config
 CREATE POLICY "Allow read site_config" 
 ON public.site_config FOR SELECT 
@@ -213,3 +237,35 @@ USING (true);
 CREATE POLICY "Allow full access site_config for authenticated" 
 ON public.site_config FOR ALL 
 USING (true);
+
+-- =========================================================
+-- 7. Automatic Profile Provisioning Trigger (auth.users -> public.profiles)
+-- Runs with SECURITY DEFINER to safely bypass RLS on signup
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, company, role, last_sign_in_at)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'company', 'Client Enterprise'),
+    'client',
+    now()
+  )
+  ON CONFLICT (email) DO UPDATE
+  SET id = EXCLUDED.id,
+      full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
+      company = COALESCE(EXCLUDED.company, public.profiles.company),
+      last_sign_in_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to run automatically whenever a user signs up
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+

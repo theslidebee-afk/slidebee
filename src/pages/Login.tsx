@@ -10,6 +10,7 @@ import {
   ArrowRight, 
   Clock, 
   AlertCircle,
+  CheckCircle2,
   ExternalLink,
   LogOut,
   CreditCard
@@ -35,6 +36,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [signUpSuccessMessage, setSignUpSuccessMessage] = useState("");
 
   // Check current auth session and sync across tabs
   useEffect(() => {
@@ -148,65 +150,120 @@ export default function Login() {
     e.preventDefault();
     setFormLoading(true);
     setFormError("");
+    setSignUpSuccessMessage("");
 
     const cleanEmail = email.toLowerCase().trim();
     const cleanPassword = password.trim();
 
     try {
       if (isSignUp) {
-        // Register client profile in database
-        const nowIso = new Date().toISOString();
-        const { data: newProfile, error: profileErr } = await supabase
+        // --- 1. SIGN UP NEW CLIENT ---
+        if (!fullName.trim()) {
+          throw new Error("Please enter your full name.");
+        }
+        if (cleanPassword.length < 6) {
+          throw new Error("Password must be at least 6 characters long.");
+        }
+
+        // Check if an account already exists
+        const { data: existingProfile } = await supabase
           .from("profiles")
-          .upsert([
-            {
-              email: cleanEmail,
-              full_name: fullName,
-              company,
-              role: "client",
-              last_sign_in_at: nowIso
+          .select("id, email")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+
+        if (existingProfile) {
+          throw new Error("An account with this email already exists. Please sign in instead.");
+        }
+
+        // Register in Supabase Auth
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: cleanPassword,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              company: company.trim() || "Client Enterprise"
             }
-          ], { onConflict: "email" })
-          .select()
-          .single();
+          }
+        });
 
-        if (profileErr) throw profileErr;
+        if (authErr) {
+          throw new Error(authErr.message || "Failed to register account.");
+        }
 
-        // Log registration to database
+        const nowIso = new Date().toISOString();
+
+        // Safely record in public.profiles table
+        let newProfile = null;
+        try {
+          const { data: pData } = await supabase
+            .from("profiles")
+            .upsert([
+              {
+                id: authData?.user?.id,
+                email: cleanEmail,
+                full_name: fullName.trim(),
+                company: company.trim() || "Client Enterprise",
+                role: "client",
+                last_sign_in_at: nowIso
+              }
+            ], { onConflict: "email" })
+            .select()
+            .maybeSingle();
+          newProfile = pData;
+        } catch (pErr) {
+          console.warn("Profiles RLS notice (handled safely):", pErr);
+        }
+
+        // Log registration to database auth_logs
         recordAuthActivity(cleanEmail, "SIGNUP", { fullName, company });
 
         // Trigger Welcome Email from Zoho Mail (hello@theslidebee.com)
         sendWelcomeEmail({
-          clientName: fullName || cleanEmail.split("@")[0],
+          clientName: fullName.trim() || cleanEmail.split("@")[0],
           clientEmail: cleanEmail,
-          company
+          company: company.trim() || "Client Enterprise"
         }).catch(err => console.warn("Welcome email notice:", err));
 
-        const clientObj = {
-          email: cleanEmail,
-          user_metadata: { full_name: fullName, company }
-        };
-        localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
-        broadcastAuthEvent("LOGIN", "client");
-        setCurrentUser(clientObj);
-        setUserProfile(newProfile);
+        // If session exists immediately (email confirmation off in Supabase)
+        if (authData?.session?.user) {
+          const clientObj = authData.session.user;
+          localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
+          broadcastAuthEvent("LOGIN", "client");
+          setCurrentUser(clientObj);
+          if (newProfile) setUserProfile(newProfile);
+          fetchClientData(cleanEmail);
+        } else {
+          // Email confirmation is required by Supabase
+          setSignUpSuccessMessage(
+            "🎉 Account registered successfully! Please check your email inbox to verify your account, or sign in below."
+          );
+          setIsSignUp(false);
+          setPassword("");
+        }
       } else {
-        // Sign In - Check if Admin first
-        if (
-          cleanEmail === "admin@theslidebee.com" ||
-          cleanPassword === "SlideBee@Admin2026!" ||
-          cleanPassword === "2026" ||
-          cleanPassword === "admin"
-        ) {
-          recordAuthActivity(cleanEmail || "admin@theslidebee.com", "LOGIN", { role: "admin" });
-          localStorage.setItem("slidebee_admin_session", "true");
-          broadcastAuthEvent("LOGIN", "admin");
-          window.location.hash = "#/admin";
-          return;
+        // --- 2. SIGN IN EXISTING USER ---
+
+        // Check if Admin first
+        if (cleanEmail === "admin@theslidebee.com") {
+          if (
+            cleanPassword === "SlideBee@Admin2026!" ||
+            cleanPassword === "2026" ||
+            cleanPassword === "admin"
+          ) {
+            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin" });
+            localStorage.setItem("slidebee_admin_session", "true");
+            broadcastAuthEvent("LOGIN", "admin");
+            window.location.hash = "#/admin";
+            return;
+          } else {
+            throw new Error("Incorrect Admin password. Please check your credentials.");
+          }
         }
 
         // Try Supabase auth
-        const { data: authData } = await supabase.auth.signInWithPassword({
+        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password: cleanPassword
         });
@@ -225,62 +282,33 @@ export default function Login() {
           localStorage.setItem("slidebee_client_user", JSON.stringify(authData.user));
           broadcastAuthEvent("LOGIN", "client");
           fetchClientData(cleanEmail);
-        } else {
-          // Direct Profile Sign In
-          const { data: profile } = await supabase
+          return;
+        }
+
+        if (authErr) {
+          if (authErr.message?.toLowerCase().includes("email not confirmed")) {
+            throw new Error(
+              "Your email has not been confirmed yet. Please check your inbox for the verification link."
+            );
+          }
+
+          // Check if user even exists in profiles table
+          const { data: existingProfile } = await supabase
             .from("profiles")
-            .select("*")
+            .select("id, email, role")
             .eq("email", cleanEmail)
-            .single();
+            .maybeSingle();
 
-          if (profile) {
-            if (profile.role === "super_admin" || profile.role === "admin") {
-              recordAuthActivity(cleanEmail, "LOGIN", { role: profile.role });
-              localStorage.setItem("slidebee_admin_session", "true");
-              broadcastAuthEvent("LOGIN", "admin");
-              window.location.hash = "#/admin";
-              return;
-            }
-            recordAuthActivity(cleanEmail, "LOGIN", { role: "client" });
-            const clientObj = {
-              email: profile.email,
-              user_metadata: { full_name: profile.full_name, company: profile.company }
-            };
-            localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
-            broadcastAuthEvent("LOGIN", "client");
-            setCurrentUser(clientObj);
-            setUserProfile(profile);
-            fetchClientData(cleanEmail);
+          if (!existingProfile) {
+            throw new Error(
+              "No registered account found with this email. Please click 'Create Account' below to sign up."
+            );
           } else {
-            // Auto create client profile on first sign in
-            const newClientProfile = {
-              email: cleanEmail,
-              full_name: cleanEmail.split("@")[0],
-              company: "Client Enterprise",
-              role: "client",
-              last_sign_in_at: new Date().toISOString()
-            };
-            await supabase.from("profiles").upsert([newClientProfile], { onConflict: "email" });
-
-            recordAuthActivity(cleanEmail, "SIGNUP", { autoRegistered: true });
-
-            // Trigger Welcome Email from Zoho Mail
-            sendWelcomeEmail({
-              clientName: cleanEmail.split("@")[0],
-              clientEmail: cleanEmail,
-              company: "Client Enterprise"
-            }).catch(err => console.warn("Welcome email notice:", err));
-
-            const newClient = {
-              email: cleanEmail,
-              user_metadata: { full_name: cleanEmail.split("@")[0], company: "Client Enterprise" }
-            };
-            localStorage.setItem("slidebee_client_user", JSON.stringify(newClient));
-            broadcastAuthEvent("LOGIN", "client");
-            setCurrentUser(newClient);
-            fetchClientData(cleanEmail);
+            throw new Error("Incorrect password. Please verify your password and try again.");
           }
         }
+
+        throw new Error("Authentication failed. Please verify your credentials or sign up.");
       }
     } catch (err: any) {
       setFormError(err.message || "Authentication failed. Please check details.");
@@ -590,7 +618,7 @@ export default function Login() {
         <div className="flex bg-[#FFF9E8] border border-primary/30 p-1 hex-pill mb-6">
           <button
             type="button"
-            onClick={() => { setIsSignUp(false); setFormError(""); }}
+            onClick={() => { setIsSignUp(false); setFormError(""); setSignUpSuccessMessage(""); }}
             className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
               !isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
             }`}
@@ -599,7 +627,7 @@ export default function Login() {
           </button>
           <button
             type="button"
-            onClick={() => { setIsSignUp(true); setFormError(""); }}
+            onClick={() => { setIsSignUp(true); setFormError(""); setSignUpSuccessMessage(""); }}
             className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
               isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
             }`}
@@ -687,6 +715,13 @@ export default function Login() {
               </button>
             </div>
           </div>
+
+          {signUpSuccessMessage && (
+            <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3.5 rounded-xl text-xs font-medium flex items-start gap-2.5 shadow-sm">
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-600 mt-0.5" />
+              <div className="leading-relaxed">{signUpSuccessMessage}</div>
+            </div>
+          )}
 
           {formError && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
