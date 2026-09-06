@@ -13,7 +13,13 @@ import {
   CheckCircle2,
   ExternalLink,
   LogOut,
-  CreditCard
+  CreditCard,
+  Download,
+  ShoppingBag,
+  History,
+  Layers,
+  Check,
+  FileText
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync, broadcastAuthEvent } from "../lib/authSync";
@@ -27,6 +33,7 @@ export default function Login() {
   const [userSubscription, setUserSubscription] = useState<any>(null);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [portalTab, setPortalTab] = useState<"purchases" | "credits" | "projects">("purchases");
 
   // Form State
   const [email, setEmail] = useState("");
@@ -92,12 +99,12 @@ export default function Login() {
   const fetchClientData = async (userEmail: string) => {
     if (!userEmail) return;
 
-    // Fetch Profile
+    // Fetch Profile (includes credits & purchased items)
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("email", userEmail)
-      .single();
+      .maybeSingle();
     if (profile) setUserProfile(profile);
 
     // Fetch Subscription
@@ -105,14 +112,14 @@ export default function Login() {
       .from("subscriptions")
       .select("*")
       .eq("user_email", userEmail)
-      .single();
+      .maybeSingle();
     if (sub) setUserSubscription(sub);
 
-    // Fetch Client Orders
+    // Fetch Client Orders (matches email column)
     const { data: ords } = await supabase
       .from("orders")
       .select("*")
-      .eq("client_email", userEmail)
+      .eq("email", userEmail)
       .order("created_at", { ascending: false });
     if (ords) setUserOrders(ords);
   };
@@ -206,6 +213,11 @@ export default function Login() {
                 full_name: fullName.trim(),
                 company: company.trim() || "Client Enterprise",
                 role: "client",
+                credits_total: 10,
+                credits_used: 0,
+                credits_balance: 10,
+                purchased_items: [],
+                usage_history: [],
                 last_sign_in_at: nowIso
               }
             ], { onConflict: "email" })
@@ -227,17 +239,18 @@ export default function Login() {
         }).catch(err => console.warn("Welcome email notice:", err));
 
         // If session exists immediately (email confirmation off in Supabase)
-        if (authData?.session?.user) {
-          const clientObj = authData.session.user;
+        if (authData?.session?.user || authData?.user) {
+          const clientObj = authData.session?.user || authData.user;
           localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
           broadcastAuthEvent("LOGIN", "client");
           setCurrentUser(clientObj);
           if (newProfile) setUserProfile(newProfile);
           fetchClientData(cleanEmail);
+          return;
         } else {
-          // Email confirmation is required by Supabase
+          // Email confirmation fallback notice
           setSignUpSuccessMessage(
-            "🎉 Account registered successfully! Please check your email inbox to verify your account, or sign in below."
+            "🎉 Account registered successfully! Please sign in below."
           );
           setIsSignUp(false);
           setPassword("");
@@ -300,9 +313,14 @@ export default function Login() {
             .maybeSingle();
 
           if (!existingProfile) {
-            throw new Error(
-              "No registered account found with this email. Please click 'Create Account' below to sign up."
+            // Unregistered email -> Switch directly to Sign Up (Create Account) tab!
+            setIsSignUp(true);
+            setFormError("");
+            setPassword("");
+            setSignUpSuccessMessage(
+              `✨ No registered account found for "${cleanEmail}". We've pre-filled your email — enter your name and choose a password below to create your account and claim 10 free slide credits!`
             );
+            return;
           } else {
             throw new Error("Incorrect password. Please verify your password and try again.");
           }
@@ -341,24 +359,43 @@ export default function Login() {
   // --- 1. AUTHENTICATED CLIENT DASHBOARD ---
   if (currentUser) {
     const clientName = userProfile?.full_name || currentUser.user_metadata?.full_name || currentUser.email.split("@")[0];
-    const clientCompany = userProfile?.company || currentUser.user_metadata?.company || "Enterprise Account";
+    const clientCompany = userProfile?.company || currentUser.user_metadata?.company || "Enterprise Client";
+    const clientRole = userProfile?.role || "client";
+    
+    // Credits calculation
+    const creditsTotal = userProfile?.credits_total ?? 10;
+    const creditsUsed = userProfile?.credits_used ?? 0;
+    const creditsBalance = userProfile?.credits_balance ?? Math.max(0, creditsTotal - creditsUsed);
+    
+    // Purchases & usage data
+    const directPurchases: any[] = Array.isArray(userProfile?.purchased_items) ? userProfile.purchased_items : [];
+    const orderTemplatePurchases = userOrders.filter(o => o.service_type?.toLowerCase().includes("template"));
+    const allPurchasedCount = directPurchases.length > 0 ? directPurchases.length : orderTemplatePurchases.length;
+
+    const usageEvents: any[] = Array.isArray(userProfile?.usage_history) ? userProfile.usage_history : [];
+    const customBriefs = userOrders.filter(o => !o.service_type?.toLowerCase().includes("template"));
 
     return (
       <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-[92%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Dashboard Header Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border-2 border-primary/40 p-6 sm:p-8 hex-card-lg shadow-sm mb-8">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary-amber font-heading font-black text-xl border border-primary/30">
-                {clientName[0].toUpperCase()}
+              <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary-amber font-heading font-black text-2xl border border-primary/30">
+                {clientName[0]?.toUpperCase() || "S"}
               </div>
               <div>
-                <span className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider mb-1">
-                  Client Portal
-                </span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                    {clientRole === "super_admin" || clientRole === "admin" ? "Studio Admin Portal" : "Client Portal"}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check size={10} /> Verified Account
+                  </span>
+                </div>
                 <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111]">
-                  {clientName}
+                  Welcome, {clientName}
                 </h1>
                 <p className="text-xs text-[#726F6D] font-medium">
                   {clientCompany} • <strong>{currentUser.email}</strong>
@@ -382,203 +419,517 @@ export default function Login() {
             </div>
           </div>
 
+          {/* 4 Executive Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            {/* 1. Credits Balance Left */}
+            <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
+                  <CreditCard size={14} className="text-primary-amber" /> Credits Left
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                  Available
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-3xl font-heading font-black text-[#111111]">
+                  {creditsBalance}
+                </span>
+                <span className="text-xs font-bold text-[#726F6D]">
+                  / {creditsTotal} Total
+                </span>
+              </div>
+              <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                Ready to redeem on instant template downloads & presentation polish.
+              </p>
+            </div>
+
+            {/* 2. Credits Used */}
+            <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
+                  <History size={14} className="text-primary-amber" /> Used Credits
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
+                  Redeemed
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-3xl font-heading font-black text-[#111111]">
+                  {creditsUsed}
+                </span>
+                <span className="text-xs font-bold text-[#726F6D]">
+                  Items Used
+                </span>
+              </div>
+              <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                Total presentation slides & master assets claimed to date.
+              </p>
+            </div>
+
+            {/* 3. Purchased Items */}
+            <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
+                  <ShoppingBag size={14} className="text-primary-amber" /> Purchased Items
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                  Licensed
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-3xl font-heading font-black text-[#111111]">
+                  {allPurchasedCount}
+                </span>
+                <span className="text-xs font-bold text-[#726F6D]">
+                  Decks Owned
+                </span>
+              </div>
+              <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                Templates, keynotes & pitch decks in your personal library.
+              </p>
+            </div>
+
+            {/* 4. Active Projects */}
+            <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
+                  <Layers size={14} className="text-primary-amber" /> Custom Briefs
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                  Projects
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-3xl font-heading font-black text-[#111111]">
+                  {customBriefs.length}
+                </span>
+                <span className="text-xs font-bold text-[#726F6D]">
+                  Submitted
+                </span>
+              </div>
+              <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                Custom agency design projects submitted via /ordernow.
+              </p>
+            </div>
+          </div>
+
+          {/* Main Dashboard Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Active Subscription & Quotas */}
+            {/* Left Column: Plan & Credits Quota */}
             <div className="lg:col-span-4 space-y-6">
               
               {/* Subscription / Plan Card */}
-              {userSubscription ? (
-                /* Real Active Subscription from Supabase */
-                <div className="hex-card-dark bg-[#111111] border-2 border-primary text-white p-6 shadow-xl relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-primary text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
-                      <CreditCard size={13} /> Active Plan
-                    </span>
-                    <span className="hex-pill-sm bg-green-500/20 text-green-400 font-extrabold text-[10px] px-2.5 py-0.5">
-                      ● {userSubscription.status || "Active"}
+              <div className="hex-card bg-white border-2 border-primary/40 p-6 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="text-[#726F6D] text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
+                    <CreditCard size={13} className="text-primary-amber" /> Account Status
+                  </span>
+                  <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5 border border-primary/30">
+                    {userSubscription?.status ? `● ${userSubscription.status}` : "Active Client"}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-1">
+                  {userSubscription?.plan_name || "SlideBee Client Account"}
+                </h3>
+                <p className="text-xs text-[#726F6D] font-medium mb-4">
+                  {userSubscription?.plan_description || "Full access to executive presentation templates, custom briefs, and priority downloads."}
+                </p>
+
+                {/* Quota Progress Bar */}
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 mb-4">
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="text-[#726F6D]">Credits Usage:</span>
+                    <span className="text-[#111111] font-black">
+                      {creditsUsed} / {creditsTotal} Credits
                     </span>
                   </div>
-
-                  <h3 className="text-lg font-heading font-extrabold text-white mb-1">
-                    {userSubscription.plan_name || "SlideBee Pro Access"}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium mb-4">
-                    {userSubscription.plan_description || "Unlimited template access & priority presentation downloads"}
-                  </p>
-
-                  {/* Quota Progress */}
-                  {userSubscription.slides_limit ? (
-                    <div className="bg-white/10 p-4 rounded-xl border border-white/10 mb-4">
-                      <div className="flex justify-between text-xs font-bold mb-1.5">
-                        <span className="text-gray-300">Monthly Slide Quota:</span>
-                        <span className="text-primary font-black">
-                          {userSubscription.slides_used || 0} / {userSubscription.slides_limit} Slides
-                        </span>
-                      </div>
-                      <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className="bg-primary h-full rounded-full" 
-                          style={{ width: `${Math.min(100, (((userSubscription.slides_used || 0) / userSubscription.slides_limit) * 100))}%` }} 
-                        />
-                      </div>
-                      <span className="text-[10px] text-gray-400 block mt-1.5">
-                        {Math.max(0, userSubscription.slides_limit - (userSubscription.slides_used || 0))} slides remaining this cycle
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="bg-white/10 p-3 rounded-xl border border-white/10 mb-4 flex items-center justify-between text-xs font-bold">
-                      <span className="text-gray-300">SlideBee Credits:</span>
-                      <span className="text-primary font-black">Unlimited Active</span>
-                    </div>
-                  )}
-
-                  <div className="text-[11px] text-gray-400 pt-3 border-t border-white/10 flex justify-between">
-                    <span>Renewal Cycle:</span>
-                    <strong className="text-white">{userSubscription.renewal_period || "Monthly Auto-Renewal"}</strong>
+                  <div className="w-full bg-black/10 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="bg-primary h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, Math.max(8, (creditsUsed / Math.max(1, creditsTotal)) * 100))}%` }} 
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#726F6D] mt-2 font-medium">
+                    <span>{creditsBalance} credits remaining</span>
+                    <span>{Math.round((creditsUsed / Math.max(1, creditsTotal)) * 100)}% consumed</span>
                   </div>
                 </div>
-              ) : (
-                /* Free Starter User (No Paid Subscription) */
-                <div className="hex-card bg-white border-2 border-primary/40 p-6 shadow-md relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-[#726F6D] text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
-                      <CreditCard size={13} /> Current Plan
-                    </span>
-                    <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5 border border-primary/30">
-                      Starter (Free)
-                    </span>
-                  </div>
 
-                  <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-1">
-                    Free Starter Plan
-                  </h3>
-                  <p className="text-xs text-[#726F6D] font-medium mb-4">
-                    Access free templates and submit custom design project briefs.
-                  </p>
+                <Link
+                  to="/pricing"
+                  className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
+                >
+                  Add More Credits / Upgrade <ArrowRight size={13} className="inline ml-1" />
+                </Link>
+              </div>
 
-                  {/* Free Credit Balance */}
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 mb-4">
-                    <div className="flex justify-between items-center text-xs font-bold mb-1">
-                      <span className="text-[#726F6D]">Available Slide Credits:</span>
-                      <span className="text-[#111111] font-black text-sm">
-                        {userProfile?.credits ?? 5} <span className="text-[10px] font-normal text-[#726F6D]">Free Total</span>
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-[#726F6D]">
-                      5 complimentary starter credits credited on registration.
-                    </p>
-                  </div>
-
-                  <Link
-                    to="/pricing"
-                    className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md"
-                  >
-                    Upgrade to Pro (Unlimited) <ArrowRight size={13} className="inline ml-1" />
-                  </Link>
-                </div>
-              )}
-
-              {/* Direct WhatsApp / Studio Channel */}
+              {/* Direct Studio Channel */}
               <div className="hex-card bg-white border-2 border-primary/40 p-5 shadow-sm">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-2">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-1.5">
                   Direct Studio Contact
                 </h4>
                 <p className="text-xs text-[#726F6D] font-medium leading-relaxed mb-3">
-                  Have an urgent 24-hour deck update? Ping your dedicated art director.
+                  Need an urgent 24-hour turnaround or custom master deck? Connect directly with your dedicated art director.
                 </p>
-                <a
-                  href="mailto:support@theslidebee.com"
-                  className="hex-pill w-full bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] font-black py-2 text-xs flex items-center justify-center gap-1.5 border border-primary/40"
-                >
-                  <Mail size={13} /> support@theslidebee.com
-                </a>
+                <div className="space-y-2">
+                  <a
+                    href="mailto:support@theslidebee.com"
+                    className="hex-pill w-full bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] font-black py-2 text-xs flex items-center justify-center gap-1.5 border border-primary/40 transition-colors"
+                  >
+                    <Mail size={13} /> support@theslidebee.com
+                  </a>
+                  <a
+                    href="https://wa.me/919999999999?text=Hello%20SlideBee%20Team"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hex-pill w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black py-2 text-xs flex items-center justify-center gap-1.5 border border-emerald-300 transition-colors"
+                  >
+                    Direct WhatsApp Studio
+                  </a>
+                </div>
+              </div>
+
+              {/* Strict NDA Assurance */}
+              <div className="bg-[#FFF9E8] border border-primary/30 p-4 rounded-xl text-center">
+                <p className="text-[11px] font-bold text-[#111111] flex items-center justify-center gap-1.5 mb-1">
+                  <CheckCircle2 size={13} className="text-primary-amber" /> Mutual NDA Guaranteed
+                </p>
+                <p className="text-[10px] text-[#726F6D] leading-relaxed">
+                  All drafts, financial models, and decks are protected under strict non-disclosure.
+                </p>
               </div>
 
             </div>
 
-            {/* Right Column: Project Briefs & Orders */}
+            {/* Right Column: Tabbed Content (Purchases, Credit History, Custom Projects) */}
             <div className="lg:col-span-8 space-y-6">
               
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm">
-                <div className="flex items-center justify-between pb-4 border-b border-[#111111]/8 mb-6">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Your Presentation Projects
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Track delivery timelines and access completed PowerPoint files
-                    </p>
-                  </div>
-                  <Link
-                    to="/ordernow"
-                    className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1"
+              <div className="hex-card-lg bg-white border-2 border-primary/30 p-6 sm:p-8 shadow-sm">
+                
+                {/* Navigation Tabs */}
+                <div className="flex flex-wrap items-center gap-2 border-b border-primary/20 pb-4 mb-6">
+                  <button
+                    onClick={() => setPortalTab("purchases")}
+                    className={`hex-pill px-4 py-2 text-xs font-black transition-all flex items-center gap-2 ${
+                      portalTab === "purchases"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111] border border-primary/30"
+                    }`}
                   >
-                    + New Project
-                  </Link>
+                    <ShoppingBag size={14} /> Purchased Templates ({allPurchasedCount})
+                  </button>
+
+                  <button
+                    onClick={() => setPortalTab("credits")}
+                    className={`hex-pill px-4 py-2 text-xs font-black transition-all flex items-center gap-2 ${
+                      portalTab === "credits"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111] border border-primary/30"
+                    }`}
+                  >
+                    <History size={14} /> Credit & Usage History ({usageEvents.length})
+                  </button>
+
+                  <button
+                    onClick={() => setPortalTab("projects")}
+                    className={`hex-pill px-4 py-2 text-xs font-black transition-all flex items-center gap-2 ${
+                      portalTab === "projects"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111] border border-primary/30"
+                    }`}
+                  >
+                    <Layers size={14} /> Custom Projects ({customBriefs.length})
+                  </button>
                 </div>
 
-                {userOrders.length === 0 ? (
-                  <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-[#111111]/8">
-                    <Clock size={32} className="mx-auto text-primary-amber mb-2" />
-                    <h4 className="text-sm font-extrabold text-[#111111]">No Active Project Briefs</h4>
-                    <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto mb-4">
-                      Submit your first rough draft or pitch outline to get started with our design team.
-                    </p>
-                    <Link
-                      to="/ordernow"
-                      className="hex-pill inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow"
-                    >
-                      Start Project <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                ) : (
+                {/* TAB 1: PURCHASED TEMPLATES & MASTER FILES */}
+                {portalTab === "purchases" && (
                   <div className="space-y-4">
-                    {userOrders.map((ord) => (
-                      <div
-                        key={ord.id}
-                        className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                          Purchased Templates & Deliverables
+                        </h3>
+                        <p className="text-xs text-[#726F6D]">
+                          Instant download links and presentation licenses tied to your account
+                        </p>
+                      </div>
+                      <Link
+                        to="/templates"
+                        className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
                       >
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-extrabold text-sm text-[#111111]">
-                              {ord.service_type}
-                            </span>
-                            {ord.rush_delivery && (
-                              <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5">
-                                ⚡ 24h Rush
-                              </span>
+                        + Browse Catalog
+                      </Link>
+                    </div>
+
+                    {directPurchases.length > 0 ? (
+                      <div className="space-y-3">
+                        {directPurchases.map((item: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary transition-all shadow-sm"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 bg-primary/30 rounded-lg flex items-center justify-center text-primary-amber shrink-0 mt-0.5">
+                                <FileText size={20} />
+                              </div>
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <h4 className="font-extrabold text-sm text-[#111111]">
+                                    {item.title}
+                                  </h4>
+                                  {item.category && (
+                                    <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[9px] font-bold px-2 py-0.5 border border-primary/20">
+                                      {item.category}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                    ✓ Commercial License
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-[#726F6D]">
+                                  <span>{item.slides_count || 30} Slides</span>
+                                  {item.formats && (
+                                    <span>Formats: {Array.isArray(item.formats) ? item.formats.join(", ") : item.formats}</span>
+                                  )}
+                                  {item.purchased_at && (
+                                    <span>Purchased: {new Date(item.purchased_at).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.download_url && (
+                                <a
+                                  href={item.download_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                  className="hex-pill bg-[#111111] hover:bg-primary hover:text-[#111111] text-[#FCBF14] px-4 py-2 text-xs font-black flex items-center gap-1.5 shadow transition-all"
+                                >
+                                  <Download size={13} /> Download Deliverable
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : orderTemplatePurchases.length > 0 ? (
+                      <div className="space-y-3">
+                        {orderTemplatePurchases.map((ord: any) => (
+                          <div
+                            key={ord.id}
+                            className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-extrabold text-sm text-[#111111]">
+                                  {ord.service_type}
+                                </h4>
+                                <span className="hex-pill-sm bg-green-100 text-green-800 text-[10px] font-black px-2.5 py-0.5">
+                                  {ord.status || "Completed"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#726F6D]">
+                                {ord.slide_count} slides • Ref: {ord.order_reference} • {new Date(ord.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            {ord.drive_url && (
+                              <a
+                                href={ord.drive_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] px-4 py-2 text-xs font-black flex items-center gap-1.5 shadow"
+                              >
+                                <Download size={13} /> Access Deliverables
+                              </a>
                             )}
                           </div>
-                          <p className="text-xs text-[#726F6D] font-medium">
-                            {ord.slide_count} slides • Submitted on {new Date(ord.created_at).toLocaleDateString()}
-                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-primary/30">
+                        <ShoppingBag size={36} className="mx-auto text-primary-amber mb-2" />
+                        <h4 className="text-sm font-extrabold text-[#111111]">No Templates Purchased Yet</h4>
+                        <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto mb-4">
+                          You currently have <strong>{creditsBalance} slide credits</strong> ready to redeem for ready-to-use executive templates.
+                        </p>
+                        <Link
+                          to="/templates"
+                          className="hex-pill inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow"
+                        >
+                          Explore Templates Catalog <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 2: CREDITS & USAGE HISTORY */}
+                {portalTab === "credits" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                          Credits Breakdown & Deduction History
+                        </h3>
+                        <p className="text-xs text-[#726F6D]">
+                          Track your balance, slide usage, and deduction events
+                        </p>
+                      </div>
+                      <Link
+                        to="/pricing"
+                        className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
+                      >
+                        + Add Credits
+                      </Link>
+                    </div>
+
+                    {/* Summary Highlight Box */}
+                    <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/40 flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <span className="text-xs text-[#726F6D] block">Current Balance:</span>
+                        <span className="text-2xl font-heading font-black text-[#111111]">
+                          {creditsBalance} Credits Available
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs font-bold text-[#726F6D]">
+                        <div>
+                          <span>Total Granted:</span>
+                          <strong className="text-[#111111] ml-1">{creditsTotal}</strong>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className={`hex-pill-sm text-[10px] font-black px-3 py-1 uppercase ${
-                            ord.status === 'completed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : ord.status === 'in_progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {ord.status || 'In Review'}
-                          </span>
-
-                          {ord.drive_link && (
-                            <a
-                              href={ord.drive_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hex-pill bg-white text-[#111111] border border-[#111111]/10 px-3 py-1 text-xs font-bold hover:bg-black/5 flex items-center gap-1"
-                            >
-                              Drive Assets <ExternalLink size={12} />
-                            </a>
-                          )}
+                        <div>
+                          <span>Total Redeemed:</span>
+                          <strong className="text-primary-amber ml-1">{creditsUsed}</strong>
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {usageEvents.length > 0 ? (
+                      <div className="space-y-3">
+                        {usageEvents.map((event: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                                -{event.credits_used || 1}
+                              </div>
+                              <div>
+                                <h4 className="font-extrabold text-xs text-[#111111]">
+                                  {event.action || "Credits Deduction"}
+                                </h4>
+                                <p className="text-[11px] text-[#726F6D]">
+                                  {event.item_title ? `Item: ${event.item_title} • ` : ""}{event.date ? new Date(event.date).toLocaleString() : "Recently"}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto">
+                              ✓ Deducted
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-primary/20">
+                        <History size={32} className="mx-auto text-primary-amber mb-2" />
+                        <h4 className="text-sm font-extrabold text-[#111111]">No Credits Deducted Yet</h4>
+                        <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto">
+                          You have all <strong>{creditsBalance} credits</strong> remaining. Credits are automatically deducted when downloading premium deliverables.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: CUSTOM DECK PROJECTS */}
+                {portalTab === "projects" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                          Your Presentation Projects
+                        </h3>
+                        <p className="text-xs text-[#726F6D]">
+                          Track delivery timelines and access bespoke agency deliverables
+                        </p>
+                      </div>
+                      <Link
+                        to="/ordernow"
+                        className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
+                      >
+                        + New Project
+                      </Link>
+                    </div>
+
+                    {customBriefs.length === 0 ? (
+                      <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-primary/30">
+                        <Clock size={32} className="mx-auto text-primary-amber mb-2" />
+                        <h4 className="text-sm font-extrabold text-[#111111]">No Active Project Briefs</h4>
+                        <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto mb-4">
+                          Submit your first rough draft, financial model, or keynote outline to get started.
+                        </p>
+                        <Link
+                          to="/ordernow"
+                          className="hex-pill inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow"
+                        >
+                          Submit Project Brief <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {customBriefs.map((ord: any) => (
+                          <div
+                            key={ord.id}
+                            className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary transition-all shadow-sm"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-extrabold text-sm text-[#111111]">
+                                  {ord.service_type}
+                                </span>
+                                {ord.timeline && (
+                                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5">
+                                    ⚡ {ord.timeline}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#726F6D] font-medium">
+                                {ord.slide_count} slides • Ref: {ord.order_reference} • Submitted on {new Date(ord.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className={`hex-pill-sm text-[10px] font-black px-3 py-1 uppercase ${
+                                ord.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : ord.status === 'in_progress'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {ord.status || 'In Review'}
+                              </span>
+
+                              {ord.drive_url && (
+                                <a
+                                  href={ord.drive_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="hex-pill bg-white text-[#111111] border border-primary/30 px-3 py-1 text-xs font-bold hover:bg-black/5 flex items-center gap-1"
+                                >
+                                  Drive Assets <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

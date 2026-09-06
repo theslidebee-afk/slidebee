@@ -194,7 +194,7 @@ export default function TemplateDetail() {
         const deliverable = (template as any).download_url || (template as any).downloadUrl || template.image;
         setPurchasedDeliverableUrl(deliverable);
 
-        // Record in Supabase orders
+        // Record in Supabase orders & update user's profile record
         try {
           await supabase.from("orders").insert([
             {
@@ -209,6 +209,60 @@ export default function TemplateDetail() {
               status: "completed"
             }
           ]);
+
+          // Sync into client's public.profiles record (purchased_items, usage_history, credits)
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("purchased_items, usage_history, credits_used, credits_balance")
+            .eq("email", clientEmail)
+            .maybeSingle();
+
+          const newItem = {
+            id: template.id || templateCode,
+            slug: templateCode,
+            title: template.title,
+            category: template.category || "Templates",
+            slides_count: template.slidesCount || 30,
+            formats: template.formats || ["PPT", "Slides"],
+            amount: priceNum,
+            currency: currency === "USD" ? "USD" : "INR",
+            download_url: deliverable,
+            purchased_at: new Date().toISOString()
+          };
+
+          const newUsage = {
+            item_title: template.title,
+            credits_used: 1,
+            action: "Template Purchase & PPTX License",
+            date: new Date().toISOString()
+          };
+
+          if (prof) {
+            const currentItems = Array.isArray(prof.purchased_items) ? prof.purchased_items : [];
+            const currentUsage = Array.isArray(prof.usage_history) ? prof.usage_history : [];
+            await supabase
+              .from("profiles")
+              .update({
+                purchased_items: [newItem, ...currentItems],
+                usage_history: [newUsage, ...currentUsage],
+                credits_used: (prof.credits_used || 0) + 1,
+                credits_balance: Math.max(0, (prof.credits_balance || 10) - 1)
+              })
+              .eq("email", clientEmail);
+          } else {
+            await supabase.from("profiles").upsert([
+              {
+                email: clientEmail,
+                full_name: clientName,
+                role: "client",
+                credits_total: 10,
+                credits_used: 1,
+                credits_balance: 9,
+                purchased_items: [newItem],
+                usage_history: [newUsage]
+              }
+            ], { onConflict: "email" });
+          }
         } catch (e) {
           console.warn("Order record notice:", e);
         }

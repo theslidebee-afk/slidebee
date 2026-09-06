@@ -145,11 +145,18 @@ ON CONFLICT (slug) DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
     company TEXT,
+    phone TEXT,
     role TEXT DEFAULT 'client' NOT NULL CHECK (role IN ('client', 'admin', 'super_admin')),
-    last_sign_in_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+    last_sign_in_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    credits_total INTEGER DEFAULT 10,
+    credits_used INTEGER DEFAULT 0,
+    credits_balance INTEGER DEFAULT 10,
+    purchased_items JSONB DEFAULT '[]'::JSONB,
+    usage_history JSONB DEFAULT '[]'::JSONB
 );
 
 -- 5. Create auth_logs table to record login/registration events
@@ -245,14 +252,31 @@ USING (true);
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, company, role, last_sign_in_at)
+  INSERT INTO public.profiles (
+    id, 
+    email, 
+    full_name, 
+    company, 
+    role, 
+    last_sign_in_at,
+    credits_total,
+    credits_used,
+    credits_balance,
+    purchased_items,
+    usage_history
+  )
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'company', 'Client Enterprise'),
     'client',
-    now()
+    now(),
+    10,
+    0,
+    10,
+    '[]'::jsonb,
+    '[]'::jsonb
   )
   ON CONFLICT (email) DO UPDATE
   SET id = EXCLUDED.id,
