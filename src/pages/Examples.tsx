@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
-import { X, ArrowRight, Search } from "lucide-react";
+import { X, ArrowRight, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 interface PortfolioItem {
@@ -323,15 +323,23 @@ export default function Examples() {
       .single()
       .then(({ data }) => {
         if (data?.value?.caseStudies && data.value.caseStudies.length > 0) {
-          const mapped: PortfolioItem[] = data.value.caseStudies.map((cs: any) => ({
-            id: cs.id,
-            title: cs.title,
-            client: cs.client,
-            category: cs.category,
-            image: cs.imageUrl,
-            description: cs.description,
-            highlights: cs.deliverables || [cs.impact || "High-impact presentation design"]
-          }));
+          const mapped: PortfolioItem[] = data.value.caseStudies.map((cs: any) => {
+            const slideList: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
+              ? cs.slides
+              : (Array.isArray(cs.slideUrls) && cs.slideUrls.length > 0
+                  ? cs.slideUrls
+                  : (cs.imageUrl ? [cs.imageUrl] : []));
+            return {
+              id: cs.id,
+              title: cs.title,
+              client: cs.client,
+              category: cs.category,
+              image: cs.imageUrl || slideList[0] || "/portfolio/case_study_a_1.png",
+              slides: slideList.length > 0 ? slideList : undefined,
+              description: cs.description,
+              highlights: cs.deliverables || [cs.impact || "High-impact presentation design"]
+            };
+          });
           setItems([...mapped, ...portfolioData]);
         }
         if (data?.value?.categories && data.value.categories.length > 0) {
@@ -339,6 +347,23 @@ export default function Examples() {
         }
       });
   }, []);
+
+  // Keyboard navigation for active modal slides
+  useEffect(() => {
+    if (!activeModalItem) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const modalSlides = getSlideSet(activeModalItem);
+      if (e.key === "ArrowLeft") {
+        setActiveModalSlide((prev) => (prev - 1 + modalSlides.length) % modalSlides.length);
+      } else if (e.key === "ArrowRight") {
+        setActiveModalSlide((prev) => (prev + 1) % modalSlides.length);
+      } else if (e.key === "Escape") {
+        setActiveModalItem(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeModalItem]);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -454,26 +479,52 @@ export default function Examples() {
                 const currentSlideImg = modalSlides[activeModalSlide] || activeModalItem.image;
                 return (
                   <div>
-                    <div className="aspect-[16/9] bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40">
+                    <div className="aspect-[16/9] bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
                       <img
                         src={currentSlideImg}
                         alt={`${activeModalItem.title} - Slide ${activeModalSlide + 1}`}
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain select-none"
                       />
-                      <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 text-primary border border-primary/30 text-[10px] font-black px-3 py-1 backdrop-blur-sm shadow">
+                      
+                      {/* Slide Indicator Badge */}
+                      <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 text-primary border border-primary/30 text-[10px] font-black px-3 py-1 backdrop-blur-sm shadow z-10">
                         Slide {activeModalSlide + 1} of {modalSlides.length}
                       </div>
+
+                      {/* Prev Slide Arrow */}
+                      {modalSlides.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveModalSlide((prev) => (prev - 1 + modalSlides.length) % modalSlides.length)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[#111111]/80 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-80 hover:opacity-100 hover:scale-110"
+                          title="Previous Slide (or Left Arrow key)"
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+                      )}
+
+                      {/* Next Slide Arrow */}
+                      {modalSlides.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveModalSlide((prev) => (prev + 1) % modalSlides.length)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[#111111]/80 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-80 hover:opacity-100 hover:scale-110"
+                          title="Next Slide (or Right Arrow key)"
+                        >
+                          <ChevronRight size={20} />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Slide Thumbnails Selector */}
+                    {/* Slide Thumbnails Selector Gallery */}
                     {modalSlides.length > 1 && (
-                      <div className="grid grid-cols-3 gap-3 mb-6">
+                      <div className="flex items-center gap-2.5 overflow-x-auto pb-3 mb-6 custom-scrollbar">
                         {modalSlides.map((s, idx) => (
                           <button
                             key={idx}
                             type="button"
                             onClick={() => setActiveModalSlide(idx)}
-                            className={`hex-card overflow-hidden text-left p-1 border transition-all ${
+                            className={`hex-card overflow-hidden text-left p-1 border transition-all shrink-0 w-28 sm:w-32 cursor-pointer ${
                               activeModalSlide === idx
                                 ? "border-primary ring-2 ring-primary/40 bg-[#FFF9E8]"
                                 : "border-primary/25 hover:border-primary/60 bg-white"
@@ -482,9 +533,14 @@ export default function Examples() {
                             <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
                               <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
                             </div>
-                            <span className="text-[10px] font-extrabold text-[#111111] block px-1 truncate">
-                              Slide {idx + 1}
-                            </span>
+                            <div className="flex items-center justify-between px-1">
+                              <span className="text-[10px] font-extrabold text-[#111111] truncate">
+                                Slide {idx + 1}
+                              </span>
+                              {activeModalSlide === idx && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                              )}
+                            </div>
                           </button>
                         ))}
                       </div>

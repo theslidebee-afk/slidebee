@@ -22,11 +22,15 @@ import {
   CreditCard,
   ArrowRight,
   X,
-  Sparkles
+  Sparkles,
+  Check,
+  FileText,
+  Trash2
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import SlideBeeLogo from "../components/SlideBeeLogo";
+import SoftwareBadge from "../components/SoftwareIcons";
 import { templateCatalog } from "./Templates";
 
 export const ORDER_MILESTONES = [
@@ -126,9 +130,11 @@ export default function Admin() {
   const [newDesc, setNewDesc] = useState("");
   const [newThumbnail, setNewThumbnail] = useState("/portfolio/case_study_a_1.png");
   const [newSlides, setNewSlides] = useState<string[]>([]);
-  const [isConvertingFile, setIsConvertingFile] = useState(false);
-  const [conversionStatus, setConversionStatus] = useState("");
-  const [uploadedFilename, setUploadedFilename] = useState("");
+  const [newSoftwareFormats, setNewSoftwareFormats] = useState<string[]>(["PowerPoint", "Google Slides", "Canva"]);
+  const [newPptUrl, setNewPptUrl] = useState("");
+  const [newPptFilename, setNewPptFilename] = useState("");
+  const [newPptSize, setNewPptSize] = useState("");
+  const [isUploadingPpt, setIsUploadingPpt] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
   // Bulk Spreadsheet Template Import State
@@ -381,23 +387,36 @@ export default function Admin() {
     const slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const templateCode = newCode || `SLD-${Math.floor(100 + Math.random() * 900)}`;
 
+    const effectiveSlides = newSlides.length > 0 ? newSlides : [newThumbnail];
+    const effectiveSlideCount = Number(newSlideCount) || effectiveSlides.length;
+
+    const payload = {
+      title: newTitle,
+      slug,
+      code: templateCode,
+      description: newDesc || "Executive presentation deck layout.",
+      category: newCategory,
+      price_inr: Number(newPriceINR),
+      price_usd: Number(newPriceUSD),
+      original_price_inr: Number(newPriceINR) * 2,
+      slide_count: effectiveSlideCount,
+      slides_count: effectiveSlideCount,
+      thumbnail_url: newThumbnail,
+      image_url: newThumbnail,
+      slides: effectiveSlides,
+      download_url: newPptUrl || newThumbnail,
+      formats: newSoftwareFormats.length > 0 ? newSoftwareFormats : ["PowerPoint", "Google Slides"],
+      features: [
+        `${effectiveSlideCount}+ High-Impact Slides`,
+        "16:9 Widescreen Layout",
+        "Fully Editable Vector Elements"
+      ],
+      is_published: true
+    };
+
     const { data, error } = await supabase
       .from("templates")
-      .insert([
-        {
-          title: newTitle,
-          slug,
-          code: templateCode,
-          description: newDesc || "Executive presentation deck layout.",
-          category: newCategory,
-          price_inr: Number(newPriceINR),
-          price_usd: Number(newPriceUSD),
-          slide_count: Number(newSlideCount),
-          thumbnail_url: newThumbnail,
-          slides: newSlides.length > 0 ? newSlides : [newThumbnail],
-          is_published: true
-        }
-      ])
+      .insert([payload])
       .select();
 
     if (!error && data) {
@@ -405,57 +424,122 @@ export default function Admin() {
       setIsAddTemplateOpen(false);
       setNewTitle("");
       setNewDesc("");
+      setNewThumbnail("/portfolio/case_study_a_1.png");
       setNewSlides([]);
+      setNewPptUrl("");
+      setNewPptFilename("");
+      setNewPptSize("");
       setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
-      setConversionStatus("");
-      setUploadedFilename("");
+      setNewSoftwareFormats(["PowerPoint", "Google Slides", "Canva"]);
+    } else {
+      // Fallback local persistence if insert notice
+      const fallbackItem = { id: `tpl-${Date.now()}`, ...payload };
+      setTemplates([fallbackItem, ...templates]);
+      setIsAddTemplateOpen(false);
     }
     setIsCreatingTemplate(false);
   };
 
-  // Automated Local Presentation File Upload & Slide-to-Image Conversion
-  const handlePresentationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Local PPT / PPTX / PDF File
+  const handlePptFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsConvertingFile(true);
-    setConversionStatus("Uploading presentation and rendering high-res slides with LibreOffice & Poppler...");
-    setUploadedFilename(file.name);
+    setIsUploadingPpt(true);
+    setNewPptFilename(file.name);
+    const sizeKB = (file.size / 1024).toFixed(1);
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    setNewPptSize(file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("code", newCode || `SLD-${Math.floor(100 + Math.random() * 900)}`);
-
-      const res = await fetch("/api/convert-slides", {
-        method: "POST",
-        body: formData
-      });
-
-      const result = await res.json();
-      if (!res.ok || result.error) {
-        throw new Error(result.error || "Failed to convert presentation slides.");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setNewPptUrl(event.target.result as string);
       }
+      setIsUploadingPpt(false);
+    };
+    reader.onerror = () => {
+      setIsUploadingPpt(false);
+    };
+    reader.readAsDataURL(file);
 
-      setNewThumbnail(result.thumbnail);
-      setNewSlides(result.slides || [result.thumbnail]);
-      setNewSlideCount(result.slideCount || 1);
-      if (result.templateCode) {
-        setNewCode(result.templateCode);
-      }
-      if (!newTitle) {
-        const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-        setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
-      }
-
-      setConversionStatus(`✓ Successfully extracted ${result.slideCount} slides for ${result.templateCode}!`);
-    } catch (err: any) {
-      console.error(err);
-      setConversionStatus(`⚠️ Conversion notice: ${err.message}. You can still set a thumbnail manually.`);
-    } finally {
-      setIsConvertingFile(false);
+    if (!newTitle) {
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
     }
   };
+
+  // Upload Multiple Slide Images for Template Gallery
+  const handleSlideImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const imgUrl = event.target.result as string;
+          setNewSlides((prev) => {
+            const next = [...prev, imgUrl];
+            setNewSlideCount(next.length);
+            return next;
+          });
+          if (index === 0 && (!newThumbnail || newThumbnail.startsWith("/portfolio/case_study_a_1"))) {
+            setNewThumbnail(imgUrl);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Toggle Software Format Tag for Template Creation
+  const toggleSoftwareFormat = (fmt: string) => {
+    if (newSoftwareFormats.includes(fmt)) {
+      if (newSoftwareFormats.length > 1) {
+        setNewSoftwareFormats(newSoftwareFormats.filter((f) => f !== fmt));
+      }
+    } else {
+      setNewSoftwareFormats([...newSoftwareFormats, fmt]);
+    }
+  };
+
+  // Upload Multiple Slide Images for Portfolio Case Study
+  const handleCaseStudySlidesUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const imgUrl = event.target.result as string;
+          setSiteConfigs((prevConfigs) => {
+            const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
+            if (!currentStudies[idx]) return prevConfigs;
+            const existingSlides: string[] = Array.isArray(currentStudies[idx].slides) && currentStudies[idx].slides.length > 0
+              ? [...currentStudies[idx].slides]
+              : (currentStudies[idx].imageUrl ? [currentStudies[idx].imageUrl] : []);
+            existingSlides.push(imgUrl);
+            currentStudies[idx] = {
+              ...currentStudies[idx],
+              slides: existingSlides,
+              imageUrl: currentStudies[idx].imageUrl || existingSlides[0]
+            };
+            return {
+              ...prevConfigs,
+              portfolio_cms: {
+                ...prevConfigs["portfolio_cms"],
+                caseStudies: currentStudies
+              }
+            };
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
 
   // Save / Update Asset
   const handleSaveAsset = async (e: React.FormEvent) => {
@@ -1144,18 +1228,40 @@ export default function Admin() {
                 </div>
 
                 <div className="p-5">
-                  <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider mb-2">
-                    {tpl.category}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider">
+                      {tpl.category}
+                    </div>
+                    {tpl.code && (
+                      <span className="text-[10px] font-black text-[#726F6D] uppercase">
+                        {tpl.code}
+                      </span>
+                    )}
                   </div>
+
                   <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
                     {tpl.title}
                   </h4>
-                  <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-4">
+                  <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-3">
                     {tpl.description}
                   </p>
 
+                  {/* Software Compatibility Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-3">
+                    {(Array.isArray(tpl.formats) && tpl.formats.length > 0 ? tpl.formats : ["PowerPoint", "Google Slides"]).map((fmt: string) => (
+                      <SoftwareBadge key={fmt} format={fmt} size="sm" showLabel={true} />
+                    ))}
+                  </div>
+
+                  {tpl.download_url && (
+                    <div className="text-[10px] text-emerald-800 font-extrabold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md flex items-center gap-1 mb-3">
+                      <FileText size={11} className="text-emerald-600" />
+                      <span className="truncate">Deliverable file attached</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
-                    <span>{tpl.slide_count} Slides</span>
+                    <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
                     <span className="text-primary-amber font-extrabold">
                       ₹{tpl.price_inr} / ${tpl.price_usd}
                     </span>
@@ -2265,13 +2371,45 @@ export default function Admin() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Image / Screenshot URL</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-[#111111]">Primary Cover / Thumbnail</label>
+                            <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2 py-0.5 text-[9px] inline-flex items-center gap-1 cursor-pointer">
+                              <UploadCloud size={10} className="text-primary-amber" /> Upload Cover
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                  const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                  const existingSlides = Array.isArray(updated[idx].slides) && updated[idx].slides.length > 0
+                                    ? [...updated[idx].slides]
+                                    : [dataUrl];
+                                  existingSlides[0] = dataUrl;
+                                  updated[idx] = {
+                                    ...updated[idx],
+                                    imageUrl: dataUrl,
+                                    slides: existingSlides
+                                  };
+                                  setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                                })}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                           <input
                             type="text"
                             value={cs.imageUrl || ""}
                             onChange={(e) => {
                               const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].imageUrl = e.target.value;
+                              const newCover = e.target.value;
+                              const existingSlides = Array.isArray(updated[idx].slides) && updated[idx].slides.length > 0
+                                ? [...updated[idx].slides]
+                                : [newCover];
+                              existingSlides[0] = newCover;
+                              updated[idx] = {
+                                ...updated[idx],
+                                imageUrl: newCover,
+                                slides: existingSlides
+                              };
                               setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
                             }}
                             className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
@@ -2291,6 +2429,167 @@ export default function Admin() {
                           />
                         </div>
                       </div>
+
+                      {/* Multi-Slide Series Showcase Gallery */}
+                      {(() => {
+                        const currentSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
+                          ? cs.slides
+                          : (cs.imageUrl ? [cs.imageUrl] : []);
+
+                        return (
+                          <div className="bg-white/90 rounded-xl p-3 border border-[#111111]/10 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Layers size={13} className="text-primary-amber" />
+                                <span className="text-[11px] font-heading font-extrabold text-[#111111]">
+                                  Slide Showcase Series ({currentSlides.length} Slides)
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-[#726F6D] font-medium">
+                                Flip through with Prev/Next buttons & thumbnails on /examples
+                              </span>
+                            </div>
+
+                            {/* Thumbnails strip */}
+                            {currentSlides.length > 0 && (
+                              <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                {currentSlides.map((slideImg: string, sIdx: number) => (
+                                  <div
+                                    key={sIdx}
+                                    className={`relative group shrink-0 w-24 rounded-lg overflow-hidden border p-1 bg-[#FFF9E8] ${
+                                      sIdx === 0 ? "border-primary ring-2 ring-primary/40" : "border-[#111111]/15"
+                                    }`}
+                                  >
+                                    <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                                      <img src={slideImg} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px]">
+                                      <span className="font-extrabold text-[#111111]">
+                                        {sIdx === 0 ? "★ Cover" : `#${sIdx + 1}`}
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        {sIdx > 0 && (
+                                          <button
+                                            type="button"
+                                            title="Make Cover"
+                                            onClick={() => {
+                                              const nextSlides = [...currentSlides];
+                                              const [moved] = nextSlides.splice(sIdx, 1);
+                                              nextSlides.unshift(moved);
+                                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                              updated[idx] = {
+                                                ...updated[idx],
+                                                slides: nextSlides,
+                                                imageUrl: nextSlides[0]
+                                              };
+                                              setSiteConfigs({
+                                                ...siteConfigs,
+                                                portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                                              });
+                                            }}
+                                            className="text-[9px] text-primary-amber hover:underline font-extrabold"
+                                          >
+                                            Top
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          title="Remove slide"
+                                          onClick={() => {
+                                            const nextSlides = currentSlides.filter((_, i) => i !== sIdx);
+                                            const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                            updated[idx] = {
+                                              ...updated[idx],
+                                              slides: nextSlides,
+                                              imageUrl: nextSlides[0] || ""
+                                            };
+                                            setSiteConfigs({
+                                              ...siteConfigs,
+                                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                                            });
+                                          }}
+                                          className="text-red-500 hover:text-red-700"
+                                        >
+                                          <Trash2 size={11} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add Slides Action Bar */}
+                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#111111]/8">
+                              <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                                <UploadCloud size={12} className="text-primary-amber" />
+                                <span>Upload Slides from Computer</span>
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={(e) => handleCaseStudySlidesUpload(idx, e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <div className="flex-1 min-w-[200px] flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Or paste slide image URL and press Enter..."
+                                  id={`cs-slide-input-${idx}`}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const input = e.currentTarget;
+                                      const val = input.value.trim();
+                                      if (val) {
+                                        const nextSlides = [...currentSlides, val];
+                                        const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          slides: nextSlides,
+                                          imageUrl: updated[idx].imageUrl || nextSlides[0]
+                                        };
+                                        setSiteConfigs({
+                                          ...siteConfigs,
+                                          portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                                        });
+                                        input.value = "";
+                                      }
+                                    }
+                                  }}
+                                  className="flex-1 bg-white border border-[#111111]/12 rounded px-2 py-1 text-xs font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const input = document.getElementById(`cs-slide-input-${idx}`) as HTMLInputElement;
+                                    if (input && input.value.trim()) {
+                                      const val = input.value.trim();
+                                      const nextSlides = [...currentSlides, val];
+                                      const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                      updated[idx] = {
+                                        ...updated[idx],
+                                        slides: nextSlides,
+                                        imageUrl: updated[idx].imageUrl || nextSlides[0]
+                                      };
+                                      setSiteConfigs({
+                                        ...siteConfigs,
+                                        portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                                      });
+                                      input.value = "";
+                                    }
+                                  }}
+                                  className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-bold px-2.5 py-1 text-[11px]"
+                                >
+                                  + Add Slide
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
 
@@ -2303,7 +2602,11 @@ export default function Admin() {
                         title: "New Venture Deck",
                         client: "Acme Corp",
                         category: "Healthcare & Tech",
-                        slides: 20,
+                        slides: [
+                          "/portfolio/case_study_a_14.png",
+                          "/portfolio/case_study_a_15.png",
+                          "/portfolio/case_study_a_16.png"
+                        ],
                         imageUrl: "/portfolio/case_study_a_14.png",
                         impact: "$10M Series A",
                         description: "High-impact presentation narrative and custom infographics.",
@@ -3230,93 +3533,319 @@ export default function Admin() {
                 </span>
               </div>
 
-              {/* 1. Automated Local File Slide Extractor */}
-              <div className="bg-[#FFF9E8] border-2 border-dashed border-primary/40 rounded-2xl p-4 sm:p-5 mb-5 text-center">
-                <div className="max-w-md mx-auto space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 text-primary-amber flex items-center justify-center mx-auto mb-1">
-                    <UploadCloud size={20} />
+              {/* SECTION 1: PRESENTATION DELIVERABLE FILE (.pptx / Cloud Link) */}
+              <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
+                      <FileText size={15} />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
+                        1. Presentation Deliverable File (.pptx / Download Link)
+                      </h4>
+                      <p className="text-[10px] text-[#726F6D]">
+                        The file buyers receive upon purchase or download (PPTX, Keynote, PDF, or Cloud Drive link)
+                      </p>
+                    </div>
                   </div>
-                  <h4 className="font-heading font-black text-sm text-[#111111]">
-                    Auto-Extract Slide Previews from Local File
-                  </h4>
-                  <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                    Select a PowerPoint (<code className="bg-white px-1 py-0.5 rounded border text-[#111111]">.pptx</code>) or <code className="bg-white px-1 py-0.5 rounded border text-[#111111]">.pdf</code> from your computer. Our engine will convert all slides to 16:9 images and auto-fill metadata.
-                  </p>
+                </div>
 
-                  <div className="pt-2">
-                    <label className="hex-pill inline-flex items-center gap-2 bg-[#111111] hover:bg-black text-primary font-black px-5 py-2.5 text-xs cursor-pointer shadow-md hover:scale-[1.02] transition-transform">
-                      <HardDrive size={14} />
-                      <span>{isConvertingFile ? "Converting Slides..." : "Choose Presentation File from Computer"}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Option A: Upload from local computer */}
+                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
+                      Option A: Upload Source File
+                    </span>
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
+                      <HardDrive size={13} className="text-primary-amber" />
+                      <span>{isUploadingPpt ? "Attaching File..." : "Choose .PPTX / .PDF / .KEY"}</span>
                       <input
                         type="file"
-                        accept=".pptx,.ppt,.pdf,.odp"
-                        disabled={isConvertingFile}
-                        onChange={handlePresentationFileUpload}
+                        accept=".pptx,.ppt,.pdf,.key,.zip"
+                        disabled={isUploadingPpt}
+                        onChange={handlePptFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {newPptFilename && (
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-[11px] font-bold flex items-center justify-between">
+                        <div className="truncate flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">{newPptFilename} ({newPptSize})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewPptUrl("");
+                            setNewPptFilename("");
+                            setNewPptSize("");
+                          }}
+                          className="text-red-500 hover:text-red-700 ml-2 text-[10px] underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Option B: Direct Cloud / Drive Link */}
+                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
+                      Option B: Cloud Download URL
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/file/d/... or direct link"
+                      value={newPptUrl.startsWith("data:") ? "" : newPptUrl}
+                      onChange={(e) => {
+                        setNewPptUrl(e.target.value);
+                        if (e.target.value) {
+                          setNewPptFilename("Cloud Link Deliverable");
+                          setNewPptSize("Cloud");
+                        }
+                      }}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs text-[#111111] font-mono outline-none focus:border-primary"
+                    />
+                    <p className="text-[9px] text-[#726F6D]">
+                      Paste a Google Drive, Dropbox, or OneDrive shareable link.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: TEMPLATE PREVIEWS & SLIDE DECK GALLERY */}
+              <div className="bg-white border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-primary text-[#111111] flex items-center justify-center font-bold">
+                      <ImageIcon size={15} />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
+                        2. Template Previews & Slide Deck Gallery
+                      </h4>
+                      <p className="text-[10px] text-[#726F6D]">
+                        Add cover thumbnail and interior slide previews for customer marketplace inspection
+                      </p>
+                    </div>
+                  </div>
+                  {newSlides.length > 0 && (
+                    <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5">
+                      {newSlides.length} Slide Previews
+                    </span>
+                  )}
+                </div>
+
+                {/* Primary Cover Thumbnail */}
+                <div className="bg-[#FFF9E8] p-3 rounded-xl border border-[#111111]/10">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-extrabold text-[#111111]">
+                      Primary Cover / Thumbnail Image *
+                    </label>
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2.5 py-1 text-[10px] inline-flex items-center gap-1 cursor-pointer shadow-sm">
+                      <UploadCloud size={11} className="text-primary-amber" /> Upload Cover Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                          setNewThumbnail(dataUrl);
+                          if (newSlides.length === 0) {
+                            setNewSlides([dataUrl]);
+                            setNewSlideCount(1);
+                          } else {
+                            const updated = [...newSlides];
+                            updated[0] = dataUrl;
+                            setNewSlides(updated);
+                          }
+                        })}
                         className="hidden"
                       />
                     </label>
                   </div>
 
-                  {uploadedFilename && (
-                    <div className="text-[11px] font-bold text-[#111111] mt-2">
-                      Selected: <span className="underline">{uploadedFilename}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-11 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                      <img src={newThumbnail} alt="Cover Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <input
+                      type="text"
+                      value={newThumbnail}
+                      onChange={(e) => setNewThumbnail(e.target.value)}
+                      placeholder="Cover image URL or upload from computer"
+                      className="flex-1 bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Multi-Slide Interior Previews Gallery */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] font-extrabold text-[#111111] flex items-center gap-1.5">
+                      <Layers size={13} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
+                    </span>
+                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                      <UploadCloud size={12} />
+                      <span>Upload Slide Images (Multi-Select)</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleSlideImagesUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Visual Slide Thumbnails Strip */}
+                  {newSlides.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1 border border-[#111111]/10 rounded-xl bg-[#FFF9E8]/50">
+                      {newSlides.map((s, idx) => (
+                        <div
+                          key={idx}
+                          className="hex-card overflow-hidden bg-white border border-[#111111]/10 text-left p-1.5 shadow-sm relative group"
+                        >
+                          <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                            <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex items-center justify-between px-0.5">
+                            <span className="text-[9px] font-black text-[#111111]">
+                              {idx === 0 ? "★ Cover" : `Slide #${idx + 1}`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {idx > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...newSlides];
+                                    const [moved] = next.splice(idx, 1);
+                                    next.unshift(moved);
+                                    setNewSlides(next);
+                                    setNewThumbnail(moved);
+                                  }}
+                                  className="text-[8px] text-primary-amber font-extrabold hover:underline"
+                                  title="Make Cover"
+                                >
+                                  Top
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = newSlides.filter((_, i) => i !== idx);
+                                  setNewSlides(next);
+                                  setNewSlideCount(next.length || 1);
+                                  if (idx === 0 && next.length > 0) {
+                                    setNewThumbnail(next[0]);
+                                  }
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                                title="Remove"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {conversionStatus && (
-                    <div className={`text-xs font-bold mt-2 p-2 rounded-lg ${
-                      conversionStatus.startsWith("✓") 
-                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                        : conversionStatus.startsWith("⚠️")
-                        ? "bg-amber-100 text-amber-800 border border-amber-300"
-                        : "bg-blue-100 text-blue-800 border border-blue-300 animate-pulse"
-                    }`}>
-                      {conversionStatus}
-                    </div>
-                  )}
+                  {/* Add Individual Slide by URL */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Or paste slide image URL and press Enter..."
+                      id="template-add-slide-url"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const input = e.currentTarget;
+                          const val = input.value.trim();
+                          if (val) {
+                            setNewSlides((prev) => {
+                              const next = [...prev, val];
+                              setNewSlideCount(next.length);
+                              return next;
+                            });
+                            input.value = "";
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById("template-add-slide-url") as HTMLInputElement;
+                        if (input && input.value.trim()) {
+                          const val = input.value.trim();
+                          setNewSlides((prev) => {
+                            const next = [...prev, val];
+                            setNewSlideCount(next.length);
+                            return next;
+                          });
+                          input.value = "";
+                        }
+                      }}
+                      className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px]"
+                    >
+                      + Add Slide
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Converted Slide Previews Gallery (If available) */}
-              {newSlides.length > 0 && (
-                <div className="bg-gray-50 border border-[#111111]/10 rounded-2xl p-4 mb-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-primary-amber" /> Extracted Slide Previews ({newSlides.length} Slides)
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-2 py-0.5 rounded">
-                      ✓ Ready for Marketplace
-                    </span>
+              {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS */}
+              <div className="bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
+                      <Sliders size={15} />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
+                        3. Software Compatibility Tags *
+                      </h4>
+                      <p className="text-[10px] text-[#726F6D]">
+                        Select the presentation applications supported (matches homepage badges)
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1">
-                    {newSlides.map((s, idx) => (
-                      <div
-                        key={idx}
-                        className="hex-card overflow-hidden bg-white border border-[#111111]/10 text-left p-1 shadow-sm"
-                      >
-                        <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                          <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-[9px] font-black text-[#111111]">
-                            Slide #{idx + 1}
-                          </span>
-                          {idx === 0 && (
-                            <span className="text-[8px] bg-primary text-[#111111] font-black px-1 rounded">
-                              Cover
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <span className="text-[10px] font-bold text-primary-amber">
+                    {newSoftwareFormats.length} Formats Selected
+                  </span>
                 </div>
-              )}
 
-              {/* 2. Template Metadata Form */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {["PowerPoint", "Google Slides", "Keynote", "Canva", "Figma"].map((fmt) => {
+                    const isSelected = newSoftwareFormats.includes(fmt);
+                    return (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => toggleSoftwareFormat(fmt)}
+                        className={`hex-pill px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                          isSelected
+                            ? "bg-[#111111] text-white border-2 border-primary shadow-sm scale-105"
+                            : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/15 opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        <SoftwareBadge format={fmt} size="sm" showLabel={true} />
+                        {isSelected ? (
+                          <Check size={12} className="text-primary" />
+                        ) : (
+                          <Plus size={12} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 4: TEMPLATE METADATA FORM */}
               <form onSubmit={handleCreateTemplate} className="space-y-3.5">
-                
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
@@ -3409,18 +3938,6 @@ export default function Admin() {
 
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Primary Cover / Thumbnail URL
-                  </label>
-                  <input
-                    type="text"
-                    value={newThumbnail}
-                    onChange={(e) => setNewThumbnail(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
                     Description & Features
                   </label>
                   <textarea
@@ -3442,7 +3959,7 @@ export default function Admin() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isCreatingTemplate || isConvertingFile}
+                    disabled={isCreatingTemplate || isUploadingPpt}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50"
                   >
                     {isCreatingTemplate ? "Publishing to Database..." : "Publish Template to Marketplace"}

@@ -80,7 +80,7 @@ export default function Home() {
             slidesCount: t.slide_count || 25,
             rating: 4.9,
             downloads: 80,
-            formats: ["PPT", "Slides", "Canva"],
+            formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint", "Google Slides", "Canva"],
             description: t.description || "Executive presentation deck tailored for high-stakes business meetings."
           }));
           setDbTemplates(mapped);

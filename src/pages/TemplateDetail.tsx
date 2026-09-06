@@ -81,7 +81,7 @@ export default function TemplateDetail() {
             slidesCount: data.slide_count || 25,
             rating: 4.9,
             downloads: 120,
-            formats: ["PPT", "Slides", "Canva"],
+            formats: Array.isArray(data.formats) && data.formats.length > 0 ? data.formats : ["PowerPoint", "Google Slides", "Canva"],
             description: data.description || "Executive presentation deck tailored for high-stakes business meetings.",
             features: [
               `${data.slide_count || 25}+ High-Impact Slides`,

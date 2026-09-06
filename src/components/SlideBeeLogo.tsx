@@ -20,13 +20,13 @@ export default function SlideBeeLogo({
     <div className={`inline-flex items-center select-none ${className}`}>
       {variant === "dark" ? (
         <img
-          src="/slidebee_logo_dark.png"
+          src="/slidebee_logo_dark.svg"
           alt="SlideBee"
           className={`${heightMap[size]} w-auto object-contain drop-shadow-sm`}
         />
       ) : variant === "light" ? (
         <img
-          src="/slidebee_logo_light.png"
+          src="/slidebee_logo_light.svg"
           alt="SlideBee"
           className={`${heightMap[size]} w-auto object-contain`}
         />
@@ -34,12 +34,12 @@ export default function SlideBeeLogo({
         /* Auto mode - switch based on parent theme */
         <>
           <img
-            src="/slidebee_logo_light.png"
+            src="/slidebee_logo_light.svg"
             alt="SlideBee"
             className={`dark:hidden ${heightMap[size]} w-auto object-contain`}
           />
           <img
-            src="/slidebee_logo_dark.png"
+            src="/slidebee_logo_dark.svg"
             alt="SlideBee"
             className={`hidden dark:block ${heightMap[size]} w-auto object-contain`}
           />
