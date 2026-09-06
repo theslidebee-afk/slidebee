@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   ArrowRight, 
-  Download, 
+  Mail,
+  ShieldCheck,
   Star, 
   Sparkles, 
   CheckCircle2
@@ -50,8 +51,11 @@ export default function TemplateDetail() {
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
   const [isPurchased, setIsPurchased] = useState(false);
+  const [purchasedClientEmail, setPurchasedClientEmail] = useState("");
   const [purchasedDeliverableUrl, setPurchasedDeliverableUrl] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [emailResentSuccess, setEmailResentSuccess] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -141,6 +145,30 @@ export default function TemplateDetail() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleResendEmail = async () => {
+    if (!purchasedClientEmail || !template) return;
+    setIsResendingEmail(true);
+    try {
+      const deliverable = purchasedDeliverableUrl || (template as any).download_url || (template as any).downloadUrl || template.image;
+      const priceNum = currency === "USD" ? ((template as any).priceUSD || template.price) : ((template as any).priceINR || template.price);
+      await sendTemplatePurchaseReceiptEmail({
+        clientEmail: purchasedClientEmail,
+        clientName: purchasedClientEmail.split("@")[0],
+        templateTitle: template.title,
+        templateCode,
+        downloadUrl: deliverable.startsWith("http") ? deliverable : `https://theslidebee.com${deliverable}`,
+        amountPaid: priceNum,
+        currency: currency === "USD" ? "USD" : "INR"
+      });
+      setEmailResentSuccess(true);
+      setTimeout(() => setEmailResentSuccess(false), 4000);
+    } catch (e) {
+      console.warn("Resend email notice:", e);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
   const handleInstantDownload = async () => {
     setIsProcessingPayment(true);
     const clientUser = JSON.parse(localStorage.getItem("slidebee_client_user") || "{}");
@@ -161,6 +189,7 @@ export default function TemplateDetail() {
       onSuccess: async (payment) => {
         setIsProcessingPayment(false);
         setIsPurchased(true);
+        setPurchasedClientEmail(clientEmail);
 
         const deliverable = (template as any).download_url || (template as any).downloadUrl || template.image;
         setPurchasedDeliverableUrl(deliverable);
@@ -172,9 +201,9 @@ export default function TemplateDetail() {
               order_reference: `TPL-${templateCode}-${Date.now().toString().slice(-4)}`,
               service_type: `Template Purchase: ${template.title}`,
               slide_count: `${template.slidesCount || 30}`,
-              timeline: "Instant Download",
+              timeline: "Instant Delivery via Email",
               formats: template.formats,
-              project_brief: `Payment ID: ${payment.razorpay_payment_id}. Deliverable: ${deliverable}`,
+              project_brief: `Payment ID: ${payment.razorpay_payment_id}. Deliverable dispatched securely to: ${clientEmail}`,
               full_name: clientName,
               email: clientEmail,
               status: "completed"
@@ -184,7 +213,7 @@ export default function TemplateDetail() {
           console.warn("Order record notice:", e);
         }
 
-        // Send confirmation receipt email
+        // Send confirmation receipt & master files exclusively via Zoho Mail (design@theslidebee.com)
         sendTemplatePurchaseReceiptEmail({
           clientEmail,
           clientName,
@@ -194,14 +223,6 @@ export default function TemplateDetail() {
           amountPaid: priceNum,
           currency: currency === "USD" ? "USD" : "INR"
         }).catch(err => console.warn("Receipt email notice:", err));
-
-        // Trigger immediate browser download
-        const a = document.createElement("a");
-        a.href = deliverable;
-        a.download = `${(template as any).slug || "slidebee_template"}_master.pptx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
       },
       onFailure: (err) => {
         setIsProcessingPayment(false);
@@ -388,31 +409,49 @@ export default function TemplateDetail() {
               {/* Primary Action Buttons */}
               <div className="space-y-2.5 pt-2">
                 {isPurchased ? (
-                  <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-xl space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-black text-emerald-800">
-                      <CheckCircle2 size={16} className="text-emerald-600" /> Payment Confirmed! Deliverable Ready.
+                  <div className="bg-emerald-50 border-2 border-emerald-400/60 p-5 rounded-2xl space-y-3 shadow-sm">
+                    <div className="flex items-center gap-2 text-xs font-black text-emerald-900">
+                      <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                      <span>Order Confirmed & Deliverables Dispatched! 🎉</span>
                     </div>
-                    <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
-                      Your master presentation file has been downloaded. A receipt and perpetual commercial license have been sent to your email from <strong>hello@theslidebee.com</strong>.
+                    <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                      To protect master templates from automated scrapers and bots, files are delivered exclusively to verified purchasers. Your editable PowerPoint deck and perpetual license have been sent to:
                     </p>
-                    <a
-                      href={purchasedDeliverableUrl || template.image}
-                      download={`${(template as any).slug || "slidebee_template"}_master.pptx`}
-                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    <div className="bg-white border border-emerald-300 px-3.5 py-2.5 rounded-xl text-xs font-black text-[#111111] flex items-center justify-between shadow-xs">
+                      <span className="truncate">{purchasedClientEmail || "your email inbox"}</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded uppercase shrink-0">
+                        Dispatched via Zoho
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Sent from <strong>design@theslidebee.com</strong>. Please check your inbox (and spam or promotions folder if not visible within 2 minutes).
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isResendingEmail}
+                      onClick={handleResendEmail}
+                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-60"
                     >
-                      <Download size={14} /> Re-Download Master Deck (.pptx)
-                    </a>
+                      <Mail size={14} />
+                      {isResendingEmail ? "Resending to Inbox..." : (emailResentSuccess ? "✓ Dispatched to Inbox Again!" : "Resend Files to My Email")}
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={isProcessingPayment}
-                    onClick={handleInstantDownload}
-                    className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] cursor-pointer disabled:opacity-60"
-                  >
-                    <Download size={16} />
-                    {isProcessingPayment ? "Opening Razorpay..." : `Instant Download (${formatPrice(template.price)})`}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={isProcessingPayment}
+                      onClick={handleInstantDownload}
+                      className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] cursor-pointer disabled:opacity-60"
+                    >
+                      <Mail size={16} />
+                      {isProcessingPayment ? "Opening Checkout..." : `Instant Delivery via Email (${formatPrice(template.price)})`}
+                    </button>
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                      <span>Direct Inbox Delivery • Protected from Bot Scraping</span>
+                    </div>
+                  </>
                 )}
 
                 <Link

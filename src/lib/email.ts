@@ -6,16 +6,19 @@ interface SendEmailParams {
   to: string | string[];
   subject: string;
   html: string;
+  fromEmail?: string;
+  fromName?: string;
+  replyTo?: string;
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, fromEmail, fromName, replyTo }: SendEmailParams) {
   try {
     const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ to, subject, html }),
+      body: JSON.stringify({ to, subject, html, fromEmail, fromName, replyTo }),
     });
 
     const data = await response.json();
@@ -85,6 +88,9 @@ export async function sendOrderConfirmationEmail({
 
   return sendEmail({
     to: clientEmail,
+    fromEmail: 'design@theslidebee.com',
+    fromName: 'SlideBee Design Studio',
+    replyTo: 'design@theslidebee.com',
     subject: `🐝 Brief Received: ${serviceType} (${slideCount} Slides) — SlideBee Studio`,
     html,
   });
@@ -137,6 +143,9 @@ export async function sendWelcomeEmail({
 
   return sendEmail({
     to: clientEmail,
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Studio',
+    replyTo: 'hello@theslidebee.com',
     subject: `🐝 Welcome to SlideBee Studio — Your Client Account is Ready`,
     html,
   });
@@ -187,6 +196,9 @@ export async function sendWaitlistConfirmationEmail({
 
   return sendEmail({
     to: clientEmail,
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Studio',
+    replyTo: 'hello@theslidebee.com',
     subject: `🐝 VIP Access Confirmed: You're on the SlideBee Waitlist`,
     html,
   });
@@ -230,6 +242,9 @@ export async function sendContactNotificationEmail({
 
   return sendEmail({
     to: email,
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Studio',
+    replyTo: 'hello@theslidebee.com',
     subject: `🐝 We Received Your Note: ${subject} — SlideBee Studio`,
     html,
   });
@@ -304,7 +319,10 @@ export async function sendTemplatePurchaseReceiptEmail({
 
   return sendEmail({
     to: clientEmail,
-    subject: `🐝 Download Your Presentation Template: ${templateTitle} (${templateCode}) — SlideBee`,
+    fromEmail: 'design@theslidebee.com',
+    fromName: 'SlideBee Design Studio',
+    replyTo: 'design@theslidebee.com',
+    subject: `🐝 Your Master Presentation Files: ${templateTitle} (${templateCode}) — SlideBee`,
     html,
   });
 }

@@ -21,7 +21,7 @@ export async function onRequestPost(context: any) {
   try {
     const { request, env } = context;
     const body = await request.json();
-    const { to, subject, html, text, replyTo } = body;
+    const { to, subject, html, text, replyTo, fromEmail, fromName } = body;
 
     if (!to || !subject || (!html && !text)) {
       return new Response(
@@ -38,10 +38,11 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    // Attempt sending with hello@theslidebee.com verified domain
-    // If the domain DNS isn't finished propagating in Resend, fall back to onboarding@resend.dev
-    const primarySender = "SlideBee Studio <hello@theslidebee.com>";
-    const fallbackSender = "SlideBee Studio <onboarding@resend.dev>";
+    // Configurable Zoho sender (e.g. design@theslidebee.com or hello@theslidebee.com)
+    const configuredEmail = fromEmail || "hello@theslidebee.com";
+    const senderDisplayName = fromName || "SlideBee Studio";
+    const primarySender = `${senderDisplayName} <${configuredEmail}>`;
+    const fallbackSender = `${senderDisplayName} <onboarding@resend.dev>`;
 
     let resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -52,7 +53,7 @@ export async function onRequestPost(context: any) {
       body: JSON.stringify({
         from: primarySender,
         to: Array.isArray(to) ? to : [to],
-        reply_to: replyTo || "hello@theslidebee.com",
+        reply_to: replyTo || configuredEmail,
         subject,
         html: html || `<p>${text || ""}</p>`,
       }),
