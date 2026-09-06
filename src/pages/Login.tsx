@@ -15,6 +15,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { performGlobalLogout, subscribeToAuthSync, broadcastAuthEvent } from "../lib/authSync";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export default function Login() {
@@ -34,9 +35,23 @@ export default function Login() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Check current auth session
+  // Check current auth session and sync across tabs
   useEffect(() => {
     checkUserSession();
+
+    const unsubscribe = subscribeToAuthSync(
+      () => {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setUserSubscription(null);
+        setUserOrders([]);
+      },
+      () => {
+        checkUserSession();
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   const checkUserSession = async () => {
@@ -128,6 +143,7 @@ export default function Login() {
           user_metadata: { full_name: fullName, company }
         };
         localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
+        broadcastAuthEvent("LOGIN", "client");
         setCurrentUser(clientObj);
         setUserProfile(newProfile);
       } else {
@@ -142,6 +158,7 @@ export default function Login() {
           cleanPassword === "admin"
         ) {
           localStorage.setItem("slidebee_admin_session", "true");
+          broadcastAuthEvent("LOGIN", "admin");
           window.location.hash = "#/admin";
           return;
         }
@@ -156,11 +173,13 @@ export default function Login() {
           // Check if admin role
           if (authData.user.email === "admin@theslidebee.com") {
             localStorage.setItem("slidebee_admin_session", "true");
+            broadcastAuthEvent("LOGIN", "admin");
             window.location.hash = "#/admin";
             return;
           }
           setCurrentUser(authData.user);
           localStorage.setItem("slidebee_client_user", JSON.stringify(authData.user));
+          broadcastAuthEvent("LOGIN", "client");
           fetchClientData(cleanEmail);
         } else {
           // Direct Profile Sign In
@@ -173,6 +192,7 @@ export default function Login() {
           if (profile) {
             if (profile.role === "super_admin" || profile.role === "admin") {
               localStorage.setItem("slidebee_admin_session", "true");
+              broadcastAuthEvent("LOGIN", "admin");
               window.location.hash = "#/admin";
               return;
             }
@@ -181,6 +201,7 @@ export default function Login() {
               user_metadata: { full_name: profile.full_name, company: profile.company }
             };
             localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
+            broadcastAuthEvent("LOGIN", "client");
             setCurrentUser(clientObj);
             setUserProfile(profile);
             fetchClientData(cleanEmail);
@@ -191,6 +212,7 @@ export default function Login() {
               user_metadata: { full_name: cleanEmail.split("@")[0], company: "Client Enterprise" }
             };
             localStorage.setItem("slidebee_client_user", JSON.stringify(newClient));
+            broadcastAuthEvent("LOGIN", "client");
             setCurrentUser(newClient);
             fetchClientData(cleanEmail);
           }
@@ -203,9 +225,8 @@ export default function Login() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("slidebee_client_user");
-    supabase.auth.signOut();
+  const handleLogout = async () => {
+    await performGlobalLogout();
     setCurrentUser(null);
     setUserProfile(null);
     setUserSubscription(null);

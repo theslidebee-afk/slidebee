@@ -82,12 +82,12 @@ export const WhatsAppLeadWidget: React.FC = () => {
                   <select
                     value={serviceType}
                     onChange={(e) => setServiceType(e.target.value)}
-                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-primary"
+                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-primary cursor-pointer"
                   >
-                    <option>Pitch Deck Design</option>
-                    <option>Presentation Redesign</option>
-                    <option>Data Visualization</option>
-                    <option>Branded Templates</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">Pitch Deck Design</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">Presentation Redesign</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">Data Visualization</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">Branded Templates</option>
                   </select>
                 </div>
                 <div>
@@ -97,12 +97,12 @@ export const WhatsAppLeadWidget: React.FC = () => {
                   <select
                     value={slideCount}
                     onChange={(e) => setSlideCount(e.target.value)}
-                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-primary"
+                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-primary cursor-pointer"
                   >
-                    <option>1-10 Slides</option>
-                    <option>10-25 Slides</option>
-                    <option>25-50 Slides</option>
-                    <option>50+ Slides</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">1-10 Slides</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">10-25 Slides</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">25-50 Slides</option>
+                    <option className="bg-[#1c1c1c] text-white py-1">50+ Slides</option>
                   </select>
                 </div>
               </div>

@@ -25,6 +25,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { templateCatalog } from "./Templates";
 
@@ -153,11 +154,23 @@ export default function Admin() {
 
   // 1. Check active session on mount
   useEffect(() => {
+    const unsubscribeSync = subscribeToAuthSync(
+      () => {
+        setSession(null);
+      },
+      () => {
+        const localPinAuth = localStorage.getItem("slidebee_admin_session");
+        if (localPinAuth === "true") {
+          setSession({ user: { email: "admin@theslidebee.com", role: "super_admin" } });
+        }
+      }
+    );
+
     const localPinAuth = localStorage.getItem("slidebee_admin_session");
     if (localPinAuth === "true") {
       setSession({ user: { email: "admin@theslidebee.com", role: "super_admin" } });
       setLoading(false);
-      return;
+      return () => unsubscribeSync();
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -171,7 +184,10 @@ export default function Admin() {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      unsubscribeSync();
+      subscription.unsubscribe();
+    };
   }, []);
 
   // 2. Fetch data when session is active
@@ -237,8 +253,7 @@ export default function Admin() {
 
   // Handle Logout
   const handleLogout = async () => {
-    localStorage.removeItem("slidebee_admin_session");
-    await supabase.auth.signOut();
+    await performGlobalLogout();
     setSession(null);
   };
 
@@ -2335,7 +2350,7 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["about_cms"]?.totalRaised || "$50M+"}
+                      value={siteConfigs["about_cms"]?.totalRaised ?? "$50M+"}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
                         about_cms: { ...siteConfigs["about_cms"], totalRaised: e.target.value }
@@ -2350,7 +2365,7 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["about_cms"]?.decksDesigned || "500+"}
+                      value={siteConfigs["about_cms"]?.decksDesigned ?? "500+"}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
                         about_cms: { ...siteConfigs["about_cms"], decksDesigned: e.target.value }
@@ -2365,7 +2380,7 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["about_cms"]?.rushTurnaround || "24h"}
+                      value={siteConfigs["about_cms"]?.rushTurnaround ?? "24h"}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
                         about_cms: { ...siteConfigs["about_cms"], rushTurnaround: e.target.value }

@@ -6,6 +6,7 @@ import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
 import { supabase } from "../lib/supabase";
+import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -43,6 +44,21 @@ export default function Navbar() {
 
   useEffect(() => {
     checkAuth();
+
+    const unsubscribe = subscribeToAuthSync(
+      () => {
+        setIsAdmin(false);
+        setClientUser(null);
+        if (location.pathname === "/admin") {
+          navigate("/login");
+        }
+      },
+      () => {
+        checkAuth();
+      }
+    );
+
+    return () => unsubscribe();
   }, [location.pathname]);
 
   useEffect(() => {
@@ -57,8 +73,8 @@ export default function Navbar() {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const handleLogoutAdmin = () => {
-    localStorage.removeItem("slidebee_admin_session");
+  const handleLogoutAdmin = async () => {
+    await performGlobalLogout();
     setIsAdmin(false);
     navigate("/login");
   };

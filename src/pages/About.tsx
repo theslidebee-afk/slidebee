@@ -101,7 +101,7 @@ export default function About() {
                   Our Track Record
                 </div>
                 <div className="text-4xl sm:text-5xl font-heading font-black text-white mb-1">
-                  {aboutConfig.totalRaised || "$50M+"}
+                  {(aboutConfig.totalRaised && aboutConfig.totalRaised !== "0M+") ? aboutConfig.totalRaised : "$50M+"}
                 </div>
                 <p className="text-gray-300 text-xs font-medium mb-6">
                   Raised by client pitch decks designed by our team

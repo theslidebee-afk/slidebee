@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { sendOrderConfirmationEmail } from '../lib/email';
 import { 
@@ -10,10 +10,132 @@ import {
   UploadCloud, 
   Clock, 
   Shield, 
-  Layers
+  Layers,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
+interface SlideBeeSelectProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  name?: string;
+}
+
+function SlideBeeSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = "Select an option",
+  name
+}: SlideBeeSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click or Escape key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
+        {label}
+      </label>
+
+      {name && <input type="hidden" name={name} value={value} />}
+
+      {/* Trigger Button styled with SlideBee brand colors */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(prev => !prev)}
+        className={`w-full flex items-center justify-between bg-[#FFF9E8] border-2 transition-all duration-200 rounded-2xl px-4 py-3.5 text-left text-xs sm:text-sm font-bold text-[#111111] shadow-sm cursor-pointer select-none ${
+          isOpen
+            ? "border-primary ring-2 ring-primary/30 shadow-md"
+            : "border-primary/40 hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/20"
+        }`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-primary-amber transition-transform duration-200 shrink-0 ml-2 ${
+            isOpen ? "rotate-180 text-[#111111]" : ""
+          }`}
+        />
+      </button>
+
+      {/* Floating Animated Custom Menu in Warm Milk & Honey Gold */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute z-50 left-0 right-0 mt-2 bg-[#FFFDF7] border-2 border-primary rounded-2xl shadow-2xl shadow-primary/20 overflow-hidden py-1.5 max-h-60 overflow-y-auto"
+            role="listbox"
+          >
+            {options.map((option) => {
+              const isSelected = option === value;
+              return (
+                <button
+                  type="button"
+                  key={option}
+                  onClick={() => {
+                    onChange(option);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-primary text-[#111111] font-black"
+                      : "text-[#111111] font-semibold hover:bg-primary/20"
+                  }`}
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  <span className="truncate">{option}</span>
+                  {isSelected && (
+                    <Check className="w-4 h-4 text-[#111111] shrink-0 ml-2" />
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function OrderNow() {
+  const [searchParams] = useSearchParams();
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -68,6 +190,26 @@ export default function OrderNow() {
     'Tech & Minimalist (Dark/Glass/Sleek)',
     'Vibrant & Creative (Custom Vector / 3D)'
   ];
+
+  useEffect(() => {
+    const serviceParam = searchParams.get('service') || searchParams.get('ref');
+    const tierParam = searchParams.get('tier');
+
+    if (serviceParam) {
+      const matched = services.find(s => s.toLowerCase().includes(serviceParam.toLowerCase()));
+      if (matched) {
+        setFormData(prev => ({ ...prev, service: matched }));
+      }
+    } else if (tierParam) {
+      if (tierParam.toLowerCase().includes('starter') || tierParam.toLowerCase().includes('micro')) {
+        setFormData(prev => ({ ...prev, slideCount: '1–10 Slides (Micro Deck)' }));
+      } else if (tierParam.toLowerCase().includes('growth') || tierParam.toLowerCase().includes('pro')) {
+        setFormData(prev => ({ ...prev, slideCount: '10–25 Slides (Standard Pitch / Keynote)' }));
+      } else if (tierParam.toLowerCase().includes('enterprise')) {
+        setFormData(prev => ({ ...prev, slideCount: '50+ Slides (Enterprise Deck)', service: 'Enterprise Master Templates' }));
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,70 +361,42 @@ export default function OrderNow() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 {/* Service Selection */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Primary Service *
-                  </label>
-                  <select
-                    value={formData.service}
-                    onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
-                  >
-                    {services.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+                <SlideBeeSelect
+                  label="Primary Service *"
+                  value={formData.service}
+                  onChange={(val) => setFormData({ ...formData, service: val })}
+                  options={services}
+                  name="service"
+                />
 
                 {/* Slide Count */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Estimated Slide Count *
-                  </label>
-                  <select
-                    value={formData.slideCount}
-                    onChange={(e) => setFormData({ ...formData, slideCount: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
-                  >
-                    {slideRanges.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
+                <SlideBeeSelect
+                  label="Estimated Slide Count *"
+                  value={formData.slideCount}
+                  onChange={(val) => setFormData({ ...formData, slideCount: val })}
+                  options={slideRanges}
+                  name="slideCount"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Timeline */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Desired Delivery Timeline *
-                  </label>
-                  <select
-                    value={formData.timeline}
-                    onChange={(e) => setFormData({ ...formData, timeline: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
-                  >
-                    {timelines.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
+                <SlideBeeSelect
+                  label="Desired Delivery Timeline *"
+                  value={formData.timeline}
+                  onChange={(val) => setFormData({ ...formData, timeline: val })}
+                  options={timelines}
+                  name="timeline"
+                />
 
                 {/* Output Format */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Deliverable Format *
-                  </label>
-                  <select
-                    value={formData.format}
-                    onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
-                  >
-                    {formats.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
+                <SlideBeeSelect
+                  label="Deliverable Format *"
+                  value={formData.format}
+                  onChange={(val) => setFormData({ ...formData, format: val })}
+                  options={formats}
+                  name="format"
+                />
               </div>
             </div>
 
@@ -304,20 +418,13 @@ export default function OrderNow() {
 
               <div className="space-y-5">
                 {/* Visual Style */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Design & Visual Style
-                  </label>
-                  <select
-                    value={formData.stylePreference}
-                    onChange={(e) => setFormData({ ...formData, stylePreference: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
-                  >
-                    {stylePreferences.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
+                <SlideBeeSelect
+                  label="Design & Visual Style"
+                  value={formData.stylePreference}
+                  onChange={(val) => setFormData({ ...formData, stylePreference: val })}
+                  options={stylePreferences}
+                  name="stylePreference"
+                />
 
                 {/* Cloud Link for Draft Slides */}
                 <div>
