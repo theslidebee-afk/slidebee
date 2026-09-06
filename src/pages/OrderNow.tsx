@@ -156,10 +156,11 @@ export default function OrderNow() {
 
   const services = [
     'Presentation Redesign',
-    'Investor Pitch Deck',
+    'Investor Pitch Decks',
+    'Executive & Board Keynotes',
     'Data & Financial Visualization',
-    'Enterprise Master Templates',
-    'Keynote & Summit Presentation'
+    'Master Branded Template Systems',
+    'Sales & Marketing Collateral'
   ];
 
   const slideRanges = [
@@ -196,9 +197,33 @@ export default function OrderNow() {
     const tierParam = searchParams.get('tier');
 
     if (serviceParam) {
-      const matched = services.find(s => s.toLowerCase().includes(serviceParam.toLowerCase()));
-      if (matched) {
-        setFormData(prev => ({ ...prev, service: matched }));
+      const paramDecoded = decodeURIComponent(serviceParam).trim();
+      const paramLower = paramDecoded.toLowerCase();
+      // 1. Exact match
+      const exactMatch = services.find(s => s.toLowerCase() === paramLower);
+      if (exactMatch) {
+        setFormData(prev => ({ ...prev, service: exactMatch }));
+      } else {
+        // 2. Keyword-based intelligent match
+        const matched = services.find(s => {
+          const sLower = s.toLowerCase();
+          return sLower.includes(paramLower) || paramLower.includes(sLower) ||
+            (paramLower.includes('pitch') && sLower.includes('pitch')) ||
+            (paramLower.includes('keynote') && sLower.includes('keynote')) ||
+            (paramLower.includes('board') && sLower.includes('keynote')) ||
+            (paramLower.includes('template') && sLower.includes('template')) ||
+            (paramLower.includes('data') && sLower.includes('data')) ||
+            (paramLower.includes('financial') && sLower.includes('data')) ||
+            (paramLower.includes('sales') && sLower.includes('sales')) ||
+            (paramLower.includes('proposal') && sLower.includes('sales')) ||
+            (paramLower.includes('marketing') && sLower.includes('sales')) ||
+            (paramLower.includes('redesign') && sLower.includes('redesign'));
+        });
+        if (matched) {
+          setFormData(prev => ({ ...prev, service: matched }));
+        } else {
+          setFormData(prev => ({ ...prev, service: paramDecoded }));
+        }
       }
     } else if (tierParam) {
       if (tierParam.toLowerCase().includes('starter') || tierParam.toLowerCase().includes('micro')) {
@@ -206,7 +231,7 @@ export default function OrderNow() {
       } else if (tierParam.toLowerCase().includes('growth') || tierParam.toLowerCase().includes('pro')) {
         setFormData(prev => ({ ...prev, slideCount: '10–25 Slides (Standard Pitch / Keynote)' }));
       } else if (tierParam.toLowerCase().includes('enterprise')) {
-        setFormData(prev => ({ ...prev, slideCount: '50+ Slides (Enterprise Deck)', service: 'Enterprise Master Templates' }));
+        setFormData(prev => ({ ...prev, slideCount: '50+ Slides (Enterprise Deck)', service: 'Master Branded Template Systems' }));
       }
     }
   }, [searchParams]);

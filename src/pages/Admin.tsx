@@ -2631,10 +2631,10 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🏢 About Page & Track Record Customizer
+                      🏢 About Page Story & Mission Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Update studio statistics, funding raised, and brand story
+                      Update brand story, mission, and company background (/about)
                     </p>
                   </div>
                   <button
@@ -2644,53 +2644,6 @@ export default function Admin() {
                   >
                     <Save size={14} /> {configSaving ? "Saving..." : "Save About Page"}
                   </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                      Total Client Funding Raised Metric
-                    </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["about_cms"]?.totalRaised ?? "$50M+"}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        about_cms: { ...siteConfigs["about_cms"], totalRaised: e.target.value }
-                      })}
-                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
-                    />
-                  </div>
-
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                      Total Decks Designed Metric
-                    </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["about_cms"]?.decksDesigned ?? "500+"}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        about_cms: { ...siteConfigs["about_cms"], decksDesigned: e.target.value }
-                      })}
-                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
-                    />
-                  </div>
-
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                      Rush Turnaround Guarantee
-                    </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["about_cms"]?.rushTurnaround ?? "24h"}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        about_cms: { ...siteConfigs["about_cms"], rushTurnaround: e.target.value }
-                      })}
-                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-black text-[#111111]"
-                    />
-                  </div>
                 </div>
 
                 <div>

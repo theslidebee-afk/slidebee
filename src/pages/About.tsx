@@ -15,10 +15,7 @@ export default function About() {
     subheadline: "SlideBee is a dedicated presentation design studio engineered for high-growth startups, C-suite executives, and forward-thinking enterprises.",
     storyHeading: "Most Great Ideas Get Lost in Bad PowerPoint Slides.",
     storyParagraph1: "Founders spend months building transformative products, only to pitch them with crowded bullet points, default templates, and unreadable spreadsheet screenshots.",
-    storyParagraph2: "SlideBee was founded to fix this. We combine ex-consulting strategic framing with world-class graphic artistry to create presentations that command the room and secure deals.",
-    totalRaised: "$50M+",
-    decksDesigned: "500+",
-    rushTurnaround: "24h"
+    storyParagraph2: "SlideBee was founded to fix this. We combine ex-consulting strategic framing with world-class graphic artistry to create presentations that command the room and secure deals."
   });
 
   useEffect(() => {
@@ -77,48 +74,20 @@ export default function About() {
 
       {/* 2. THE MISSION & CRAFT */}
       <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="hex-card-lg bg-white border-2 border-primary/40 p-8 sm:p-12 shadow-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            
-            <div className="lg:col-span-7 space-y-4">
-              <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block">
-                Why We Started SlideBee
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] leading-snug">
-                {aboutConfig.storyHeading}
-              </h2>
-              <p className="text-[#726F6D] text-xs sm:text-sm font-medium leading-relaxed">
-                {aboutConfig.storyParagraph1}
-              </p>
-              <p className="text-[#726F6D] text-xs sm:text-sm font-medium leading-relaxed">
-                {aboutConfig.storyParagraph2}
-              </p>
-            </div>
-
-            <div className="lg:col-span-5">
-              <div className="hex-card-dark bg-[#111111] border-2 border-primary text-white p-8 text-center relative overflow-hidden shadow-2xl">
-                <div className="hex-pill inline-block bg-primary/20 text-primary border border-primary/40 px-4 py-1 text-xs font-black uppercase tracking-wider mb-4">
-                  Our Track Record
-                </div>
-                <div className="text-4xl sm:text-5xl font-heading font-black text-white mb-1">
-                  {(aboutConfig.totalRaised && aboutConfig.totalRaised !== "0M+") ? aboutConfig.totalRaised : "$50M+"}
-                </div>
-                <p className="text-gray-300 text-xs font-medium mb-6">
-                  Raised by client pitch decks designed by our team
-                </p>
-                <div className="pt-6 border-t border-primary/30 grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-black text-primary">{aboutConfig.decksDesigned || "500+"}</div>
-                    <div className="text-[11px] text-gray-400">Decks Designed</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-black text-primary">{aboutConfig.rushTurnaround || "24h"}</div>
-                    <div className="text-[11px] text-gray-400">Rush Turnaround</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+        <div className="hex-card-lg bg-white border-2 border-primary/40 p-8 sm:p-14 shadow-xl">
+          <div className="max-w-4xl mx-auto space-y-6 text-left">
+            <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block">
+              Why We Started SlideBee
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111] leading-tight">
+              {aboutConfig.storyHeading}
+            </h2>
+            <p className="text-[#726F6D] text-sm sm:text-base font-medium leading-relaxed">
+              {aboutConfig.storyParagraph1}
+            </p>
+            <p className="text-[#726F6D] text-sm sm:text-base font-medium leading-relaxed">
+              {aboutConfig.storyParagraph2}
+            </p>
           </div>
         </div>
       </section>

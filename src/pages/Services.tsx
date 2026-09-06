@@ -474,6 +474,27 @@ export default function Services() {
 
               </div>
 
+              {/* Dedicated Call to Action Bar for the Active Before/After Service */}
+              <div className="mt-8 pt-6 border-t border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FFF9E8] p-5 sm:p-6 rounded-2xl border border-primary/30 shadow-sm">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary-amber block mb-1">
+                    Ready to elevate your slides?
+                  </span>
+                  <h4 className="text-base sm:text-lg font-heading font-extrabold text-[#111111]">
+                    Get Started with {activeServiceData.title}
+                  </h4>
+                  <p className="text-xs text-[#726F6D] font-medium mt-0.5">
+                    Estimated Turnaround: <strong className="text-[#111111]">{activeServiceData.turnaround}</strong> • 100% editable vector slides & strict enterprise NDA
+                  </p>
+                </div>
+                <Link
+                  to={`/ordernow?service=${encodeURIComponent(activeServiceData.title)}`}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-7 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0"
+                >
+                  Order {activeServiceData.title} <ArrowRight size={15} />
+                </Link>
+              </div>
+
             </motion.div>
           </AnimatePresence>
 
