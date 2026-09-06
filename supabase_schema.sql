@@ -138,3 +138,78 @@ VALUES
   ARRAY['25 Matrix & SWOT Variations', 'High-Resolution Icons', 'Free Font Files Included']
 )
 ON CONFLICT (slug) DO NOTHING;
+
+-- =========================================================
+-- 4. Create profiles table for user accounts & client portal
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT,
+    company TEXT,
+    role TEXT DEFAULT 'client' NOT NULL CHECK (role IN ('client', 'admin', 'super_admin')),
+    last_sign_in_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 5. Create auth_logs table to record login/registration events
+CREATE TABLE IF NOT EXISTS public.auth_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    user_email TEXT NOT NULL,
+    event TEXT NOT NULL CHECK (event IN ('LOGIN', 'SIGNUP', 'LOGOUT', 'PASSWORD_RESET')),
+    metadata JSONB DEFAULT '{}'::JSONB
+);
+
+-- 6. Create site_config table for runtime key/value configuration
+CREATE TABLE IF NOT EXISTS public.site_config (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key TEXT UNIQUE NOT NULL,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Ensure templates table has slides, code, and download_url columns
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'templates' AND column_name = 'slides') THEN
+        ALTER TABLE public.templates ADD COLUMN slides TEXT[] DEFAULT '{}'::TEXT[];
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'templates' AND column_name = 'code') THEN
+        ALTER TABLE public.templates ADD COLUMN code TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'templates' AND column_name = 'download_url') THEN
+        ALTER TABLE public.templates ADD COLUMN download_url TEXT;
+    END IF;
+END $$;
+
+-- Enable RLS for profiles, auth_logs, site_config
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for Profiles
+CREATE POLICY "Allow public insert and update on profiles" 
+ON public.profiles FOR ALL 
+USING (true)
+WITH CHECK (true);
+
+-- RLS Policies for Auth Logs
+CREATE POLICY "Allow insert on auth_logs" 
+ON public.auth_logs FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Allow read auth_logs for admin" 
+ON public.auth_logs FOR SELECT 
+USING (true);
+
+-- RLS Policies for Site Config
+CREATE POLICY "Allow read site_config" 
+ON public.site_config FOR SELECT 
+USING (true);
+
+CREATE POLICY "Allow full access site_config for authenticated" 
+ON public.site_config FOR ALL 
+USING (true);

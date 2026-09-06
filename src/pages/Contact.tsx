@@ -9,6 +9,7 @@ import {
   Phone
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { sendContactNotificationEmail } from "../lib/email";
 
 export default function Contact() {
   const [name, setName] = useState("");
@@ -43,7 +44,8 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !message) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !message) return;
 
     setIsSubmitting(true);
     setErrorMsg("");
@@ -51,12 +53,21 @@ export default function Contact() {
     try {
       const { error } = await supabase.from("waitlist").insert([
         {
-          email,
+          email: cleanEmail,
           source: `contact_form: ${name || "Anonymous"} | Sub: ${subject || "General Inquiry"} | Msg: ${message}`
         }
       ]);
 
       if (error) throw error;
+
+      // Dispatch confirmation email to client & notification to studio
+      sendContactNotificationEmail({
+        name,
+        email: cleanEmail,
+        subject: subject || "General Inquiry",
+        message
+      }).catch(err => console.warn("Contact email notice:", err));
+
       setIsSuccess(true);
     } catch (err: any) {
       console.error("Contact error:", err);

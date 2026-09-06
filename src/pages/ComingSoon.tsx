@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { sendWaitlistConfirmationEmail } from "../lib/email";
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -11,22 +12,29 @@ export default function ComingSoon() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
 
     setIsSubmitting(true);
     try {
       // 1. Save to Supabase
       const { error } = await supabase.from("waitlist").insert([
-        { email: email.trim().toLowerCase(), source: "coming_soon" }
+        { email: cleanEmail, source: "coming_soon" }
       ]);
       
       if (error && error.code !== "23505") { // Ignore duplicate key errors gracefully
         console.warn("Supabase waitlist error:", error.message);
       }
 
-      // 2. Local fallback backup
+      // 2. Dispatch Confirmation Email via Zoho/Resend
+      sendWaitlistConfirmationEmail({
+        clientEmail: cleanEmail,
+        source: "coming_soon"
+      }).catch(err => console.warn("Waitlist email notice:", err));
+
+      // 3. Local fallback backup
       const list = JSON.parse(localStorage.getItem("slidebee_waitlist") || "[]");
-      list.push({ email, date: new Date().toISOString() });
+      list.push({ email: cleanEmail, date: new Date().toISOString() });
       localStorage.setItem("slidebee_waitlist", JSON.stringify(list));
 
       setSubmitted(true);

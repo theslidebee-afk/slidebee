@@ -12,6 +12,8 @@ import {
 import { useCurrency } from "../context/CurrencyContext";
 import SoftwareBadge from "../components/SoftwareIcons";
 import { supabase } from "../lib/supabase";
+import { openRazorpayCheckout } from "../lib/razorpay";
+import { sendTemplatePurchaseReceiptEmail } from "../lib/email";
 import { templateCatalog, type TemplateItem } from "./Templates";
 
 // Fallback slide sets for catalog items if not explicitly provided
@@ -41,12 +43,15 @@ function getTemplateSlides(item: TemplateItem): string[] {
 export default function TemplateDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
 
   const [template, setTemplate] = useState<TemplateItem | null>(null);
   const [activeSlideIdx, setActiveSlideIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
+  const [isPurchased, setIsPurchased] = useState(false);
+  const [purchasedDeliverableUrl, setPurchasedDeliverableUrl] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -90,7 +95,8 @@ export default function TemplateDetail() {
               "Free Typography Included"
             ],
             ...(data.code ? { code: data.code } : {}),
-            ...(data.slides ? { slides: data.slides } : {})
+            ...(data.slides ? { slides: data.slides } : {}),
+            ...(data.download_url ? { download_url: data.download_url } : {})
           } as TemplateItem);
         } else {
           // Fallback to first static template if not found
@@ -133,6 +139,78 @@ export default function TemplateDetail() {
     navigator.clipboard.writeText(window.location.href);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleInstantDownload = async () => {
+    setIsProcessingPayment(true);
+    const clientUser = JSON.parse(localStorage.getItem("slidebee_client_user") || "{}");
+    const clientEmail = clientUser.email || prompt("Enter your email address to receive download receipt and license:") || "client@theslidebee.com";
+    const clientName = clientUser.user_metadata?.full_name || clientEmail.split("@")[0];
+
+    const priceNum = currency === "USD" ? ((template as any).priceUSD || template.price) : ((template as any).priceINR || template.price);
+
+    await openRazorpayCheckout({
+      amount: priceNum,
+      currency: currency === "USD" ? "USD" : "INR",
+      title: template.title,
+      description: `Commercial Template License — ${templateCode}`,
+      prefill: {
+        email: clientEmail,
+        name: clientName
+      },
+      onSuccess: async (payment) => {
+        setIsProcessingPayment(false);
+        setIsPurchased(true);
+
+        const deliverable = (template as any).download_url || (template as any).downloadUrl || template.image;
+        setPurchasedDeliverableUrl(deliverable);
+
+        // Record in Supabase orders
+        try {
+          await supabase.from("orders").insert([
+            {
+              order_reference: `TPL-${templateCode}-${Date.now().toString().slice(-4)}`,
+              service_type: `Template Purchase: ${template.title}`,
+              slide_count: `${template.slidesCount || 30}`,
+              timeline: "Instant Download",
+              formats: template.formats,
+              project_brief: `Payment ID: ${payment.razorpay_payment_id}. Deliverable: ${deliverable}`,
+              full_name: clientName,
+              email: clientEmail,
+              status: "completed"
+            }
+          ]);
+        } catch (e) {
+          console.warn("Order record notice:", e);
+        }
+
+        // Send confirmation receipt email
+        sendTemplatePurchaseReceiptEmail({
+          clientEmail,
+          clientName,
+          templateTitle: template.title,
+          templateCode,
+          downloadUrl: deliverable.startsWith("http") ? deliverable : `https://theslidebee.com${deliverable}`,
+          amountPaid: priceNum,
+          currency: currency === "USD" ? "USD" : "INR"
+        }).catch(err => console.warn("Receipt email notice:", err));
+
+        // Trigger immediate browser download
+        const a = document.createElement("a");
+        a.href = deliverable;
+        a.download = `${(template as any).slug || "slidebee_template"}_master.pptx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      },
+      onFailure: (err) => {
+        setIsProcessingPayment(false);
+        console.warn("Payment error:", err);
+      },
+      onDismiss: () => {
+        setIsProcessingPayment(false);
+      }
+    });
   };
 
   return (
@@ -309,15 +387,33 @@ export default function TemplateDetail() {
 
               {/* Primary Action Buttons */}
               <div className="space-y-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert(`Direct download checkout initiated for ${template.title} (${templateCode}). Instant download files (.pptx, .key) will be provided upon payment confirmation.`);
-                  }}
-                  className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] cursor-pointer"
-                >
-                  <Download size={16} /> Instant Download ({formatPrice(template.price)})
-                </button>
+                {isPurchased ? (
+                  <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-xl space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-black text-emerald-800">
+                      <CheckCircle2 size={16} className="text-emerald-600" /> Payment Confirmed! Deliverable Ready.
+                    </div>
+                    <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
+                      Your master presentation file has been downloaded. A receipt and perpetual commercial license have been sent to your email from <strong>hello@theslidebee.com</strong>.
+                    </p>
+                    <a
+                      href={purchasedDeliverableUrl || template.image}
+                      download={`${(template as any).slug || "slidebee_template"}_master.pptx`}
+                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                      <Download size={14} /> Re-Download Master Deck (.pptx)
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isProcessingPayment}
+                    onClick={handleInstantDownload}
+                    className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] cursor-pointer disabled:opacity-60"
+                  >
+                    <Download size={16} />
+                    {isProcessingPayment ? "Opening Razorpay..." : `Instant Download (${formatPrice(template.price)})`}
+                  </button>
+                )}
 
                 <Link
                   to={`/ordernow?ref=${encodeURIComponent(template.title)}&code=${encodeURIComponent(templateCode)}`}

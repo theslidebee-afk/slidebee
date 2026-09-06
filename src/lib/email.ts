@@ -141,3 +141,170 @@ export async function sendWelcomeEmail({
     html,
   });
 }
+
+/**
+ * 3. Waitlist Confirmation Email
+ */
+export async function sendWaitlistConfirmationEmail({
+  clientEmail,
+  source: _source
+}: {
+  clientEmail: string;
+  source?: string;
+}) {
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Exclusive Early Access Reservation</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">You're on the VIP Waitlist! 🎉</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Thank you for joining the SlideBee early access list. We are putting the final touches on our on-demand executive presentation design studio and master PowerPoint template store.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <h3 style="font-size: 13px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 8px;">VIP Benefits Reserved for You:</h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
+            <li><strong>30% Off First Custom Project:</strong> Investor pitch deck, sales deck, or keynote redesign.</li>
+            <li><strong>Free Starter Master Deck:</strong> Instant download access upon launch.</li>
+            <li><strong>Priority Turnaround:</strong> Guaranteed 24h rush queue access.</li>
+          </ul>
+        </div>
+
+        <p style="font-size: 13px; color: #4B5563; line-height: 1.6;">
+          Need urgent presentation slides designed right now? Reply directly to this email or reach us at <a href="mailto:hello@theslidebee.com" style="color: #936610; font-weight: 700;">hello@theslidebee.com</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • <a href="https://theslidebee.com" style="color: #936610;">theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    subject: `🐝 VIP Access Confirmed: You're on the SlideBee Waitlist`,
+    html,
+  });
+}
+
+/**
+ * 4. Contact / Lead Notification Email
+ */
+export async function sendContactNotificationEmail({
+  name,
+  email,
+  subject,
+  message
+}: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Inquiry Confirmation</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Message</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${name || 'there'}</strong>,<br/><br/>
+          Thank you for reaching out to SlideBee Studio. Our design leads review every project note and will reply within <strong>2 hours</strong>.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 14px; border-radius: 8px; margin: 18px 0; border: 1px solid #FCBF14;">
+          <p style="font-size: 12px; font-weight: bold; color: #936610; margin: 0 0 6px 0;">SUBJECT: ${subject}</p>
+          <p style="font-size: 13px; color: #111111; margin: 0; white-space: pre-wrap;">${message}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `🐝 We Received Your Note: ${subject} — SlideBee Studio`,
+    html,
+  });
+}
+
+/**
+ * 5. Template Purchase Receipt & Instant Deliverables Email
+ */
+export async function sendTemplatePurchaseReceiptEmail({
+  clientEmail,
+  clientName,
+  templateTitle,
+  templateCode,
+  downloadUrl,
+  amountPaid,
+  currency = 'INR'
+}: {
+  clientEmail: string;
+  clientName?: string;
+  templateTitle: string;
+  templateCode: string;
+  downloadUrl: string;
+  amountPaid: number;
+  currency?: string;
+}) {
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Template Store</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Order Confirmed & Deliverables Ready</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">Your Master Presentation Files Are Ready! 🎉</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          Thank you for purchasing <strong>${templateTitle}</strong> (${templateCode}). Your commercial license is active.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+            <span><strong>Item:</strong></span>
+            <span>${templateTitle} (${templateCode})</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+            <span><strong>Amount Paid:</strong></span>
+            <span>${currency === 'USD' ? '$' : '₹'}${amountPaid}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span><strong>License:</strong></span>
+            <span>Single Commercial Unlimited Use</span>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${downloadUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Download Master Presentation (.pptx) →
+          </a>
+        </div>
+
+        <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center;">
+          Need help customizing or want our designers to tailor this deck to your branding?<br/>
+          Reply to this email or submit a quick redesign order on <a href="https://theslidebee.com/#/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • Official Inquiries: <a href="mailto:hello@theslidebee.com" style="color: #936610;">hello@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    subject: `🐝 Download Your Presentation Template: ${templateTitle} (${templateCode}) — SlideBee`,
+    html,
+  });
+}

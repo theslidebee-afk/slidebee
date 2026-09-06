@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync, broadcastAuthEvent } from "../lib/authSync";
+import { sendWelcomeEmail } from "../lib/email";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export default function Login() {
@@ -114,23 +115,56 @@ export default function Login() {
     if (ords) setUserOrders(ords);
   };
 
+  // Record user authentication activity into database
+  const recordAuthActivity = async (userEmail: string, event: "LOGIN" | "SIGNUP", meta: any = {}) => {
+    try {
+      // 1. Update last_sign_in_at in profiles table
+      await supabase
+        .from("profiles")
+        .update({ last_sign_in_at: new Date().toISOString() })
+        .eq("email", userEmail);
+
+      // 2. Insert record in auth_logs
+      await supabase
+        .from("auth_logs")
+        .insert([
+          {
+            user_email: userEmail,
+            event,
+            metadata: {
+              ...meta,
+              timestamp: new Date().toISOString(),
+              userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "browser"
+            }
+          }
+        ]);
+    } catch (err) {
+      console.warn("Auth activity logging notice:", err);
+    }
+  };
+
   // Handle Sign In / Sign Up
   const handleSubmitAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setFormError("");
 
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = password.trim();
+
     try {
       if (isSignUp) {
         // Register client profile in database
+        const nowIso = new Date().toISOString();
         const { data: newProfile, error: profileErr } = await supabase
           .from("profiles")
           .upsert([
             {
-              email,
+              email: cleanEmail,
               full_name: fullName,
               company,
-              role: "client"
+              role: "client",
+              last_sign_in_at: nowIso
             }
           ], { onConflict: "email" })
           .select()
@@ -138,8 +172,18 @@ export default function Login() {
 
         if (profileErr) throw profileErr;
 
+        // Log registration to database
+        recordAuthActivity(cleanEmail, "SIGNUP", { fullName, company });
+
+        // Trigger Welcome Email from Zoho Mail (hello@theslidebee.com)
+        sendWelcomeEmail({
+          clientName: fullName || cleanEmail.split("@")[0],
+          clientEmail: cleanEmail,
+          company
+        }).catch(err => console.warn("Welcome email notice:", err));
+
         const clientObj = {
-          email,
+          email: cleanEmail,
           user_metadata: { full_name: fullName, company }
         };
         localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
@@ -148,15 +192,13 @@ export default function Login() {
         setUserProfile(newProfile);
       } else {
         // Sign In - Check if Admin first
-        const cleanEmail = email.toLowerCase().trim();
-        const cleanPassword = password.trim();
-
         if (
           cleanEmail === "admin@theslidebee.com" ||
           cleanPassword === "SlideBee@Admin2026!" ||
           cleanPassword === "2026" ||
           cleanPassword === "admin"
         ) {
+          recordAuthActivity(cleanEmail || "admin@theslidebee.com", "LOGIN", { role: "admin" });
           localStorage.setItem("slidebee_admin_session", "true");
           broadcastAuthEvent("LOGIN", "admin");
           window.location.hash = "#/admin";
@@ -172,11 +214,13 @@ export default function Login() {
         if (authData?.user) {
           // Check if admin role
           if (authData.user.email === "admin@theslidebee.com") {
+            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin" });
             localStorage.setItem("slidebee_admin_session", "true");
             broadcastAuthEvent("LOGIN", "admin");
             window.location.hash = "#/admin";
             return;
           }
+          recordAuthActivity(cleanEmail, "LOGIN", { provider: "supabase_auth" });
           setCurrentUser(authData.user);
           localStorage.setItem("slidebee_client_user", JSON.stringify(authData.user));
           broadcastAuthEvent("LOGIN", "client");
@@ -191,11 +235,13 @@ export default function Login() {
 
           if (profile) {
             if (profile.role === "super_admin" || profile.role === "admin") {
+              recordAuthActivity(cleanEmail, "LOGIN", { role: profile.role });
               localStorage.setItem("slidebee_admin_session", "true");
               broadcastAuthEvent("LOGIN", "admin");
               window.location.hash = "#/admin";
               return;
             }
+            recordAuthActivity(cleanEmail, "LOGIN", { role: "client" });
             const clientObj = {
               email: profile.email,
               user_metadata: { full_name: profile.full_name, company: profile.company }
@@ -206,7 +252,25 @@ export default function Login() {
             setUserProfile(profile);
             fetchClientData(cleanEmail);
           } else {
-            // Auto create client profile on sign in
+            // Auto create client profile on first sign in
+            const newClientProfile = {
+              email: cleanEmail,
+              full_name: cleanEmail.split("@")[0],
+              company: "Client Enterprise",
+              role: "client",
+              last_sign_in_at: new Date().toISOString()
+            };
+            await supabase.from("profiles").upsert([newClientProfile], { onConflict: "email" });
+
+            recordAuthActivity(cleanEmail, "SIGNUP", { autoRegistered: true });
+
+            // Trigger Welcome Email from Zoho Mail
+            sendWelcomeEmail({
+              clientName: cleanEmail.split("@")[0],
+              clientEmail: cleanEmail,
+              company: "Client Enterprise"
+            }).catch(err => console.warn("Welcome email notice:", err));
+
             const newClient = {
               email: cleanEmail,
               user_metadata: { full_name: cleanEmail.split("@")[0], company: "Client Enterprise" }

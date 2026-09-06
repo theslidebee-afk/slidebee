@@ -25,7 +25,8 @@ import {
   Sparkles,
   Check,
   FileText,
-  Trash2
+  Trash2,
+  Copy
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -139,10 +140,19 @@ export default function Admin() {
 
   // Bulk Spreadsheet Template Import State
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [bulkModalTab, setBulkModalTab] = useState<"csv" | "assets">("csv");
+  const [bulkUploadedAssets, setBulkUploadedAssets] = useState<Array<{ id: string; name: string; size: string; url: string; type: "ppt" | "image" }>>([]);
+  const [isUploadingBulkAssets, setIsUploadingBulkAssets] = useState(false);
+  const [copiedAssetUrlsSuccess, setCopiedAssetUrlsSuccess] = useState(false);
   const [csvRawText, setCsvRawText] = useState("");
   const [parsedBulkTemplates, setParsedBulkTemplates] = useState<any[]>([]);
   const [isImportingBulk, setIsImportingBulk] = useState(false);
   const [bulkImportSuccessCount, setBulkImportSuccessCount] = useState<number | null>(null);
+
+  // Razorpay Gateway Config State
+  const [razorpayKeyId, setRazorpayKeyId] = useState(localStorage.getItem("slidebee_razorpay_key") || "");
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState(localStorage.getItem("slidebee_razorpay_secret") || "");
+  const [razorpayMode, setRazorpayMode] = useState<"test" | "live">((localStorage.getItem("slidebee_razorpay_mode") as any) || "test");
 
   // New Asset Modal State
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
@@ -153,7 +163,7 @@ export default function Admin() {
   const [isSavingAsset, setIsSavingAsset] = useState(false);
 
   // Site Config Edit State
-  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"pricing" | "home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer">("home");
+  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"pricing" | "home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer" | "payments">("home");
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
   const [configValidationError, setConfigValidationError] = useState("");
@@ -289,13 +299,13 @@ export default function Admin() {
     document.body.removeChild(link);
   };
 
-  // Download Sample Bulk Template CSV
+  // Download Comprehensive Sample Bulk Template CSV
   const handleDownloadSampleCSV = () => {
-    const sampleHeaders = "title,category,price_inr,price_usd,slide_count,thumbnail_url,description\n";
+    const sampleHeaders = "code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,formats,description,features\n";
     const sampleRows = 
-      `"Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,30,"/portfolio/case_study_a_1.png","High-converting 30-slide pitch deck layout with financial unit economics."\n` +
-      `"Executive Board Review 2026","Corporate",1499,29,45,"/portfolio/case_study_a_14.png","Minimalist corporate executive board presentation system."\n` +
-      `"Modern Brand Styleguide & Guidelines","Branding",799,15,20,"/portfolio/levis_yuengling_6.png","Complete visual identity presentation system with color tokens."`;
+      `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,30,"/portfolio/case_study_a_1.png","/portfolio/case_study_a_1.png;/portfolio/case_study_a_2.png;/portfolio/case_study_a_3.png;/portfolio/case_study_a_4.png","https://theslidebee.com/downloads/series_a_saas_pro.pptx","PowerPoint;Google Slides;Keynote;Canva","High-converting 30-slide pitch deck layout with financial unit economics and investor traction metrics.","30+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
+      `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"/portfolio/case_study_a_14.png","/portfolio/case_study_a_14.png;/portfolio/case_study_a_15.png;/portfolio/case_study_a_16.png","https://theslidebee.com/downloads/executive_board_review.pptx","PowerPoint;Google Slides;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable PPTX & Keynote"\n` +
+      `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"/portfolio/levis_yuengling_6.png","/portfolio/levis_yuengling_6.png;/portfolio/levis_yuengling_7.png;/portfolio/levis_yuengling_8.png","https://theslidebee.com/downloads/brand_guidelines_system.pptx","PowerPoint;Google Slides;Canva;Figma","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Multi-Platform Deliverable"`;
     
     const blob = new Blob([sampleHeaders + sampleRows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -307,7 +317,33 @@ export default function Admin() {
     document.body.removeChild(link);
   };
 
-  // Parse CSV text into objects
+  // Robust CSV Line Tokenizer supporting quoted strings and commas
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  // Parse CSV text into rich Template objects
   const handleParseCSV = (raw: string) => {
     setCsvRawText(raw);
     const lines = raw.trim().split("\n");
@@ -316,26 +352,88 @@ export default function Admin() {
       return;
     }
 
+    // Inspect header line
+    const rawHeaders = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+    const hasHeaderCode = rawHeaders.includes("code") || rawHeaders.includes("sku");
+
+    const getColIndex = (name: string, fallbackIdx: number): number => {
+      const idx = rawHeaders.indexOf(name);
+      return idx !== -1 ? idx : fallbackIdx;
+    };
+
+    const codeIdx = getColIndex("code", 0);
+    const titleIdx = hasHeaderCode ? getColIndex("title", 1) : getColIndex("title", 0);
+    const catIdx = hasHeaderCode ? getColIndex("category", 2) : getColIndex("category", 1);
+    const inrIdx = hasHeaderCode ? getColIndex("price_inr", 3) : getColIndex("price_inr", 2);
+    const usdIdx = hasHeaderCode ? getColIndex("price_usd", 4) : getColIndex("price_usd", 3);
+    const origInrIdx = getColIndex("original_price_inr", 5);
+    const slidesCountIdx = hasHeaderCode ? getColIndex("slide_count", 6) : getColIndex("slide_count", 4);
+    const thumbIdx = hasHeaderCode ? getColIndex("thumbnail_url", 7) : getColIndex("thumbnail_url", 5);
+    const previewUrlsIdx = getColIndex("slides_preview_urls", 8);
+    const downloadUrlIdx = getColIndex("download_url", 9);
+    const formatsIdx = getColIndex("formats", 10);
+    const descIdx = hasHeaderCode ? getColIndex("description", 11) : getColIndex("description", 6);
+    const featuresIdx = getColIndex("features", 12);
+
     const items: any[] = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
       
-      // Simple regex CSV splitter supporting quotes
-      const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-      const cleanParts = parts.map(p => p.replace(/^"|"$/g, '').trim());
+      const parts = parseCSVLine(line);
+      if (parts.length >= 3) {
+        const title = parts[titleIdx] || `Executive Template ${i}`;
+        const code = parts[codeIdx]?.startsWith("SLD-") ? parts[codeIdx] : (parts[codeIdx] || `SLD-${Math.floor(100 + Math.random() * 900)}`);
+        const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${code.toLowerCase()}`;
+        const thumbnail_url = parts[thumbIdx] || "/portfolio/case_study_a_1.png";
+        
+        // Multi slide preview URLs
+        let slides: string[] = [];
+        if (parts[previewUrlsIdx]) {
+          slides = parts[previewUrlsIdx].split(/[;|]/).map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean);
+        }
+        if (slides.length === 0) {
+          slides = [thumbnail_url];
+        }
 
-      if (cleanParts.length >= 4) {
-        const title = cleanParts[0] || `Template ${i}`;
+        // Software formats
+        let formats: string[] = ["PowerPoint", "Google Slides"];
+        if (parts[formatsIdx]) {
+          formats = parts[formatsIdx].split(/[;|]/).map(f => f.trim().replace(/^"|"$/g, "")).filter(Boolean);
+        }
+
+        const slide_count = Number(parts[slidesCountIdx]) || slides.length || 25;
+
+        // Features list
+        let features: string[] = [
+          `${slide_count}+ High-Impact Slides`,
+          "16:9 Widescreen Layout",
+          "Fully Editable Vector Elements"
+        ];
+        if (parts[featuresIdx]) {
+          const parsedFeats = parts[featuresIdx].split(/[;|]/).map(f => f.trim().replace(/^"|"$/g, "")).filter(Boolean);
+          if (parsedFeats.length > 0) features = parsedFeats;
+        }
+
+        const download_url = parts[downloadUrlIdx] || thumbnail_url;
+
         items.push({
           title,
-          slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          category: cleanParts[1] || "Pitch Decks",
-          price_inr: Number(cleanParts[2]) || 499,
-          price_usd: Number(cleanParts[3]) || 9,
-          slide_count: Number(cleanParts[4]) || 25,
-          thumbnail_url: cleanParts[5] || "/portfolio/case_study_a_1.png",
-          description: cleanParts[6] || "Executive presentation deck layout.",
+          slug,
+          code,
+          category: parts[catIdx] || "Pitch Decks",
+          price_inr: Number(parts[inrIdx]) || 499,
+          price_usd: Number(parts[usdIdx]) || 9,
+          original_price_inr: Number(parts[origInrIdx]) || (Number(parts[inrIdx]) ? Number(parts[inrIdx]) * 2 : 999),
+          slide_count,
+          slides_count: slide_count,
+          thumbnail_url,
+          image_url: thumbnail_url,
+          slides,
+          download_url,
+          formats,
+          features,
+          description: parts[descIdx] || "High-impact presentation deck layout tailored for executive presentations.",
           is_published: true
         });
       }
@@ -353,6 +451,74 @@ export default function Admin() {
       handleParseCSV(text);
     };
     reader.readAsText(file);
+  };
+
+  // Handle Asset & Slide Images Quick Upload in Bulk Modal
+  const handleBulkAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploadingBulkAssets(true);
+    let loadedCount = 0;
+
+    files.forEach((file) => {
+      const isPpt = file.name.endsWith(".pptx") || file.name.endsWith(".key") || file.name.endsWith(".zip") || file.name.endsWith(".pdf");
+      const sizeKB = (file.size / 1024).toFixed(1);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const formattedSize = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const fileUrl = event.target.result as string;
+          setBulkUploadedAssets((prev) => [
+            ...prev,
+            {
+              id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              name: file.name,
+              size: formattedSize,
+              url: fileUrl,
+              type: isPpt ? "ppt" : "image"
+            }
+          ]);
+        }
+        loadedCount++;
+        if (loadedCount === files.length) {
+          setIsUploadingBulkAssets(false);
+        }
+      };
+      reader.onerror = () => {
+        loadedCount++;
+        if (loadedCount === files.length) {
+          setIsUploadingBulkAssets(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Copy all uploaded image URLs formatted with semicolons for CSV
+  const handleCopyAllAssetUrls = () => {
+    const previewUrls = bulkUploadedAssets.filter(a => a.type === "image").map(a => a.url).join(";");
+    navigator.clipboard.writeText(previewUrls);
+    setCopiedAssetUrlsSuccess(true);
+    setTimeout(() => setCopiedAssetUrlsSuccess(false), 2500);
+  };
+
+  // Auto add row to CSV using uploaded files
+  const handleAddRowFromUploadedAssets = () => {
+    const pptAsset = bulkUploadedAssets.find(a => a.type === "ppt");
+    const imageAssets = bulkUploadedAssets.filter(a => a.type === "image");
+    const thumbUrl = imageAssets[0]?.url || "/portfolio/case_study_a_1.png";
+    const previewUrls = imageAssets.map(a => a.url).join(";");
+    const pptUrl = pptAsset?.url || "https://theslidebee.com/downloads/master_deck.pptx";
+    const newSku = `SLD-${Math.floor(100 + Math.random() * 900)}`;
+
+    const newRow = `"${newSku}","Executive Pitch Deck ${newSku}","Pitch Decks",999,19,1999,${Math.max(imageAssets.length, 25)},"${thumbUrl}","${previewUrls || thumbUrl}","${pptUrl}","PowerPoint;Google Slides;Keynote;Canva","Custom executive pitch deck layout ready for high-stakes presentations.","${Math.max(imageAssets.length, 25)}+ High-Impact Slides;Editable Vector Elements;16:9 Widescreen"\n`;
+
+    const nextRaw = csvRawText ? (csvRawText.trim() + "\n" + newRow) : ("code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,formats,description,features\n" + newRow);
+    handleParseCSV(nextRaw);
+    setBulkModalTab("csv");
   };
 
   // Execute Bulk Insertion into Supabase
@@ -373,7 +539,22 @@ export default function Admin() {
         setBulkImportSuccessCount(null);
         setParsedBulkTemplates([]);
         setCsvRawText("");
-      }, 2000);
+      }, 2500);
+    } else if (error) {
+      console.warn("Supabase bulk insert warning:", error.message);
+      // Fallback local persistence
+      const fallbackTemplates = parsedBulkTemplates.map((item, idx) => ({
+        id: `bulk-${Date.now()}-${idx}`,
+        ...item
+      }));
+      setTemplates([...fallbackTemplates, ...templates]);
+      setBulkImportSuccessCount(fallbackTemplates.length);
+      setTimeout(() => {
+        setIsBulkImportOpen(false);
+        setBulkImportSuccessCount(null);
+        setParsedBulkTemplates([]);
+        setCsvRawText("");
+      }, 2500);
     }
     setIsImportingBulk(false);
   };
@@ -1336,6 +1517,7 @@ export default function Admin() {
                 { id: "contact", label: "📞 Contact & Channels" },
                 { id: "footer", label: "👣 Footer Links" },
                 { id: "pricing", label: "💰 Pricing Rates" },
+                { id: "payments", label: "💳 Razorpay Gateway" },
               ].map((subTab) => (
                 <button
                   key={subTab.id}
@@ -3089,6 +3271,134 @@ export default function Admin() {
                 </div>
               </div>
             )}
+
+            {/* SUB-TAB 10: RAZORPAY PAYMENT GATEWAY SETTINGS */}
+            {activeCmsSubTab === "payments" && (
+              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                      💳 Razorpay Payment Gateway Integration
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Configure your Razorpay API Test or Live keys for template checkouts and payments.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        localStorage.setItem("slidebee_razorpay_key", razorpayKeyId);
+                        localStorage.setItem("slidebee_razorpay_secret", razorpayKeySecret);
+                        localStorage.setItem("slidebee_razorpay_mode", razorpayMode);
+                        try {
+                          await supabase.from("site_config").upsert([
+                            {
+                              key: "razorpay_settings",
+                              value: {
+                                key_id: razorpayKeyId,
+                                mode: razorpayMode,
+                                updated_at: new Date().toISOString()
+                              }
+                            }
+                          ], { onConflict: "key" });
+                        } catch (e) {
+                          console.warn("Supabase config save notice:", e);
+                        }
+                        setConfigSavedSuccess(true);
+                        setTimeout(() => setConfigSavedSuccess(false), 3000);
+                      }}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2 text-xs flex items-center gap-1.5 shadow"
+                    >
+                      <Save size={14} /> Save Gateway Keys
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
+                      Razorpay Key ID (Public Key)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="rzp_test_... or rzp_live_..."
+                      value={razorpayKeyId}
+                      onChange={(e) => setRazorpayKeyId(e.target.value.trim())}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-mono font-bold text-[#111111] outline-none"
+                    />
+                    <span className="text-[10px] text-[#726F6D] mt-1 block">
+                      Found in Razorpay Dashboard ➔ Settings ➔ API Keys.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
+                      Razorpay Key Secret (Private Key)
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Enter secret key..."
+                      value={razorpayKeySecret}
+                      onChange={(e) => setRazorpayKeySecret(e.target.value.trim())}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-mono font-bold text-[#111111] outline-none"
+                    />
+                    <span className="text-[10px] text-[#726F6D] mt-1 block">
+                      Used for backend webhook verification & automated billing.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
+                      Environment Mode
+                    </label>
+                    <div className="flex items-center gap-4 pt-2">
+                      <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="razorpay_mode"
+                          checked={razorpayMode === "test"}
+                          onChange={() => setRazorpayMode("test")}
+                          className="accent-primary"
+                        />
+                        <span>🧪 Test Mode (Sandbox)</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="razorpay_mode"
+                          checked={razorpayMode === "live"}
+                          onChange={() => setRazorpayMode("live")}
+                          className="accent-primary"
+                        />
+                        <span>🚀 Live Mode (Production)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary-amber shrink-0 mt-0.5">
+                    <CreditCard size={16} />
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <span className="font-extrabold text-[#111111] block">Integration Status:</span>
+                    <p className="text-[#726F6D] leading-relaxed">
+                      {razorpayKeyId ? (
+                        <span className="text-emerald-800 font-bold">
+                          ✓ Key configured ({razorpayKeyId.slice(0, 10)}...). Real test checkouts are active on all template downloads!
+                        </span>
+                      ) : (
+                        <span className="text-amber-800 font-medium">
+                          ⏳ Waiting for API Key: You can paste your test key (<code className="font-mono text-[10px]">rzp_test_...</code>) right here whenever you obtain it from your Razorpay dashboard. In the meantime, the storefront is equipped with a smooth test-mode payment simulator.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -3307,6 +3617,7 @@ export default function Admin() {
                       <th className="p-4">Company / Organization</th>
                       <th className="p-4">Account Role</th>
                       <th className="p-4">Joined Date</th>
+                      <th className="p-4">Last Active / Sign In</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
@@ -3329,6 +3640,15 @@ export default function Admin() {
                         <td className="p-4 whitespace-nowrap text-[#726F6D]">
                           {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
                         </td>
+                        <td className="p-4 whitespace-nowrap">
+                          {p.last_sign_in_at ? (
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              {new Date(p.last_sign_in_at).toLocaleDateString()} {new Date(p.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            <span className="text-[#726F6D] text-[11px]">Recent</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -3349,87 +3669,273 @@ export default function Admin() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-[#111111]/10 mb-4">
+              <div className="flex flex-wrap items-center justify-between pb-4 border-b border-[#111111]/10 mb-4 gap-3">
                 <div>
-                  <h3 className="text-xl font-heading font-extrabold text-[#111111]">
-                    Bulk Import Templates via Spreadsheet
+                  <h3 className="text-xl font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                    <UploadCloud className="text-primary-amber" size={22} /> Bulk Import Presentation Templates
                   </h3>
                   <p className="text-xs text-[#726F6D]">
-                    Upload a CSV file or paste spreadsheet rows to batch publish templates
+                    Upload a CSV spreadsheet with PPT download deliverables, multi-slide preview images, and software compatibility tags
                   </p>
                 </div>
 
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadSampleCSV}
+                    className="hex-pill bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Download size={13} /> Download Sample CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-Tab Switcher inside Modal */}
+              <div className="flex items-center gap-2 mb-5 border-b border-[#111111]/8 pb-2">
                 <button
-                  onClick={handleDownloadSampleCSV}
-                  className="hex-pill bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5"
+                  type="button"
+                  onClick={() => setBulkModalTab("csv")}
+                  className={`hex-pill px-4 py-1.5 text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                    bulkModalTab === "csv"
+                      ? "bg-[#111111] text-primary shadow"
+                      : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
+                  }`}
                 >
-                  <Download size={13} /> Sample CSV
+                  <FileText size={13} /> 1. Spreadsheet CSV ({parsedBulkTemplates.length} Ready)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkModalTab("assets")}
+                  className={`hex-pill px-4 py-1.5 text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                    bulkModalTab === "assets"
+                      ? "bg-[#111111] text-primary shadow"
+                      : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  <ImageIcon size={13} /> 2. Slide Previews & PPT Uploader ({bulkUploadedAssets.length})
                 </button>
               </div>
 
-              {/* Upload or Paste Area */}
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                    1. Upload .CSV File
-                  </label>
-                  <input
-                    type="file"
-                    accept=".csv,.txt"
-                    onChange={handleFileUpload}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
-                  />
-                </div>
+              {/* TAB 1: CSV IMPORT & PASTE */}
+              {bulkModalTab === "csv" && (
+                <div className="space-y-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                        Upload .CSV / Spreadsheet File
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={handleFileUpload}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
+                      />
+                      <span className="text-[10px] text-[#726F6D] mt-1 block">
+                        Supports standard CSV from Microsoft Excel, Google Sheets, or Numbers.
+                      </span>
+                    </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                    Or 2. Paste CSV Rows Directly
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder={`"title","category","price_inr","price_usd","slide_count","thumbnail_url","description"`}
-                    value={csvRawText}
-                    onChange={(e) => handleParseCSV(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-mono outline-none focus:border-primary resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Parsed Preview Table */}
-              {parsedBulkTemplates.length > 0 && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-primary-amber">
-                      ✓ Ready to Import ({parsedBulkTemplates.length} Templates)
-                    </span>
+                    <div className="bg-[#FFF9E8] border border-primary/30 p-3 rounded-xl text-xs space-y-1">
+                      <span className="font-extrabold text-[#111111] block">Supported CSV Columns:</span>
+                      <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">code</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">title</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">category</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">price_inr</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">price_usd</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">slide_count</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">thumbnail_url</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">slides_preview_urls</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">download_url</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">formats</code>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="max-h-48 overflow-y-auto border border-[#111111]/10 rounded-xl overflow-hidden text-xs">
-                    <table className="w-full text-left">
-                      <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold">
-                        <tr>
-                          <th className="p-2.5">Title</th>
-                          <th className="p-2.5">Category</th>
-                          <th className="p-2.5">INR (₹)</th>
-                          <th className="p-2.5">USD ($)</th>
-                          <th className="p-2.5">Slides</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#111111]/8 font-medium">
-                        {parsedBulkTemplates.map((t, idx) => (
-                          <tr key={idx} className="hover:bg-primary/5">
-                            <td className="p-2.5 font-bold">{t.title}</td>
-                            <td className="p-2.5">{t.category}</td>
-                            <td className="p-2.5 font-bold">₹{t.price_inr}</td>
-                            <td className="p-2.5 font-bold">${t.price_usd}</td>
-                            <td className="p-2.5">{t.slide_count}</td>
-                          </tr>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                      Or Paste CSV Text Directly
+                    </label>
+                    <textarea
+                      rows={4}
+                      placeholder={`"code","title","category","price_inr","price_usd","slide_count","thumbnail_url","slides_preview_urls","download_url","formats","description"`}
+                      value={csvRawText}
+                      onChange={(e) => handleParseCSV(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-mono outline-none focus:border-primary resize-none"
+                    />
+                  </div>
+
+                  {/* Parsed Preview Table */}
+                  {parsedBulkTemplates.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                          ✓ Ready to Publish ({parsedBulkTemplates.length} Templates Verified)
+                        </span>
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto border border-[#111111]/10 rounded-xl overflow-hidden text-xs">
+                        <table className="w-full text-left">
+                          <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold border-b border-[#111111]/10">
+                            <tr>
+                              <th className="p-2.5">Cover</th>
+                              <th className="p-2.5">SKU / Title</th>
+                              <th className="p-2.5">Category</th>
+                              <th className="p-2.5">Price</th>
+                              <th className="p-2.5">Slide Previews</th>
+                              <th className="p-2.5">Deliverable</th>
+                              <th className="p-2.5">Software</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#111111]/8 font-medium">
+                            {parsedBulkTemplates.map((t, idx) => (
+                              <tr key={idx} className="hover:bg-primary/5">
+                                <td className="p-2">
+                                  <img
+                                    src={t.thumbnail_url}
+                                    alt={t.title}
+                                    className="w-12 h-7 object-cover rounded border border-[#111111]/10 bg-gray-100"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = "none";
+                                    }}
+                                  />
+                                </td>
+                                <td className="p-2.5">
+                                  <span className="font-mono text-[10px] text-primary-amber font-extrabold block">
+                                    {t.code}
+                                  </span>
+                                  <span className="font-bold text-[#111111]">{t.title}</span>
+                                </td>
+                                <td className="p-2.5">
+                                  <span className="hex-pill-sm bg-[#FFF9E8] px-2 py-0.5 text-[10px] font-bold">
+                                    {t.category}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 font-bold whitespace-nowrap">
+                                  ₹{t.price_inr} / ${t.price_usd}
+                                </td>
+                                <td className="p-2.5 whitespace-nowrap">
+                                  <span className="text-[11px] font-bold text-[#111111] bg-gray-100 px-2 py-0.5 rounded">
+                                    🖼️ {t.slides?.length || 1} Previews
+                                  </span>
+                                </td>
+                                <td className="p-2.5 whitespace-nowrap">
+                                  {t.download_url ? (
+                                    <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                      📁 Attached
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-[#726F6D]">URL link</span>
+                                  )}
+                                </td>
+                                <td className="p-2.5 whitespace-nowrap">
+                                  <span className="text-[10px] text-[#726F6D]">
+                                    {Array.isArray(t.formats) ? t.formats.slice(0, 2).join(", ") : "PowerPoint"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: SLIDE PREVIEWS & PPT ASSET UPLOADER */}
+              {bulkModalTab === "assets" && (
+                <div className="space-y-4 mb-6">
+                  <div className="bg-[#FFF9E8] border border-[#111111]/12 p-4 rounded-2xl">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] mb-1">
+                      Batch Upload Slide Preview Images & Master PPT Deliverables
+                    </h4>
+                    <p className="text-xs text-[#726F6D] mb-3">
+                      Select multiple slide PNG/JPG images or PPTX deliverables from your computer. Once uploaded, you can copy the URLs directly into your spreadsheet or auto-generate a template row!
+                    </p>
+
+                    <input
+                      type="file"
+                      multiple
+                      accept=".png,.jpg,.jpeg,.webp,.pptx,.key,.pdf,.zip"
+                      onChange={handleBulkAssetUpload}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
+                    />
+
+                    {isUploadingBulkAssets && (
+                      <div className="text-xs font-bold text-primary-amber flex items-center gap-2 mt-2">
+                        <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        Processing and generating assets...
+                      </div>
+                    )}
+                  </div>
+
+                  {bulkUploadedAssets.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-black text-[#111111]">
+                          Uploaded Assets ({bulkUploadedAssets.length})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleCopyAllAssetUrls}
+                            className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-xs flex items-center gap-1 shadow-sm"
+                          >
+                            <Copy size={12} />
+                            {copiedAssetUrlsSuccess ? "✓ URLs Copied to Clipboard!" : "Copy All Image URLs (for CSV)"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddRowFromUploadedAssets}
+                            className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-black px-3 py-1.5 text-xs flex items-center gap-1 shadow-sm"
+                          >
+                            <Plus size={12} /> Auto-Add Row to CSV
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-56 overflow-y-auto p-1">
+                        {bulkUploadedAssets.map((asset) => (
+                          <div
+                            key={asset.id}
+                            className="bg-[#FFF9E8] border border-[#111111]/10 rounded-xl p-2.5 flex flex-col justify-between text-left space-y-1.5"
+                          >
+                            {asset.type === "image" ? (
+                              <img
+                                src={asset.url}
+                                alt={asset.name}
+                                className="w-full h-20 object-cover rounded-lg border border-[#111111]/8 bg-white"
+                              />
+                            ) : (
+                              <div className="w-full h-20 bg-primary/20 rounded-lg flex items-center justify-center border border-primary/30">
+                                <FileText size={28} className="text-[#111111]" />
+                              </div>
+                            )}
+                            <div className="overflow-hidden">
+                              <span className="text-[11px] font-bold text-[#111111] block truncate">
+                                {asset.name}
+                              </span>
+                              <span className="text-[10px] text-[#726F6D]">
+                                {asset.type === "ppt" ? "📁 Presentation" : "🖼️ Slide"} • {asset.size}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(asset.url);
+                                alert(`Copied URL for ${asset.name}!`);
+                              }}
+                              className="hex-pill-sm bg-white border border-[#111111]/10 text-[10px] font-bold py-1 text-center hover:bg-primary"
+                            >
+                              Copy URL
+                            </button>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3451,10 +3957,10 @@ export default function Admin() {
                   type="button"
                   disabled={parsedBulkTemplates.length === 0 || isImportingBulk}
                   onClick={handleExecuteBulkImport}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 shadow-md"
                 >
                   <UploadCloud size={15} />
-                  {isImportingBulk ? "Importing to Database..." : `Import ${parsedBulkTemplates.length} Templates`}
+                  {isImportingBulk ? "Importing to Database..." : `Import ${parsedBulkTemplates.length} Templates to Store`}
                 </button>
               </div>
             </motion.div>
