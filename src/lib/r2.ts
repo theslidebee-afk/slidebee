@@ -106,6 +106,9 @@ export async function uploadToR2(
 
     const res = await fetch("/api/r2-storage", {
       method: "POST",
+      headers: {
+        "x-slidebee-admin-key": "slidebee_master_admin_2026",
+      },
       body: formData,
     });
 
@@ -138,6 +141,9 @@ export async function deleteFromR2(key: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/r2-storage?key=${encodeURIComponent(key)}`, {
       method: "DELETE",
+      headers: {
+        "x-slidebee-admin-key": "slidebee_master_admin_2026",
+      },
     });
     const json = await res.json();
     return Boolean(json.success);

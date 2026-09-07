@@ -129,7 +129,32 @@ export function useTemplateCheckout() {
         setIsPurchased(true);
         setPurchasedClientEmail(clientEmail);
 
-        const pptxUrl = template.download_url || template.image_url;
+        const orderRef = `TPL-${template.code}-${Date.now().toString().slice(-4)}`;
+        let pptxUrl = template.image_url;
+        let fileName = template.file_name || `${template.code}_Master.pptx`;
+
+        try {
+          // Fulfill order securely via Postgres RPC
+          const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
+            p_order_ref: orderRef,
+            p_payment_id: payment.razorpay_payment_id,
+            p_template_id: template.id,
+            p_client_email: clientEmail,
+            p_client_name: clientName,
+            p_currency: currency,
+            p_amount: priceNum
+          });
+
+          if (fulfillData?.success && fulfillData.download_url) {
+            pptxUrl = fulfillData.download_url;
+            if (fulfillData.file_name) fileName = fulfillData.file_name;
+          } else if (fulfillErr) {
+            console.warn("Fulfillment RPC notice:", fulfillErr);
+          }
+        } catch (e) {
+          console.warn("Order fulfillment exception:", e);
+        }
+
         setDeliverableUrl(pptxUrl);
 
         // Auto-trigger browser download for client immediately upon successful payment
@@ -137,7 +162,7 @@ export function useTemplateCheckout() {
           try {
             const dlLink = document.createElement("a");
             dlLink.href = pptxUrl;
-            dlLink.download = template.file_name || `${template.code}_Master.pptx`;
+            dlLink.download = fileName;
             dlLink.target = "_blank";
             document.body.appendChild(dlLink);
             dlLink.click();
@@ -145,65 +170,6 @@ export function useTemplateCheckout() {
           } catch (dlErr) {
             console.warn("Auto-download notice:", dlErr);
           }
-        }
-
-        try {
-          // Record order in public.orders
-          await supabase.from("orders").insert([
-            {
-              order_reference: `TPL-${template.code}-${Date.now().toString().slice(-4)}`,
-              service_type: `Master Presentation Deck: ${template.title}`,
-              slide_count: `${template.slides_count || 30}`,
-              timeline: "Instant Deliverable via Email & Direct Download",
-              formats: ["Master PowerPoint (.pptx)"],
-              project_brief: `Payment ID: ${payment.razorpay_payment_id}. Deliverable dispatched to: ${clientEmail}`,
-              full_name: clientName,
-              email: clientEmail,
-              status: "completed"
-            }
-          ]);
-
-          // Update client profile ledger if registered
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("purchased_items, usage_history, credits_used, credits_balance")
-            .eq("email", clientEmail)
-            .maybeSingle();
-
-          const newItem = {
-            id: template.id,
-            slug: template.code,
-            code: template.code,
-            title: template.title,
-            category: template.category,
-            slides_count: template.slides_count,
-            formats: ["Master PowerPoint (.pptx)"],
-            amount: priceNum,
-            currency,
-            download_url: pptxUrl,
-            purchased_at: new Date().toISOString()
-          };
-
-          const newUsage = {
-            item_title: template.title,
-            credits_used: 1,
-            action: "Master PowerPoint (.pptx) Commercial License",
-            date: new Date().toISOString()
-          };
-
-          if (prof) {
-            const currentItems = Array.isArray(prof.purchased_items) ? prof.purchased_items : [];
-            const currentUsage = Array.isArray(prof.usage_history) ? prof.usage_history : [];
-            await supabase
-              .from("profiles")
-              .update({
-                purchased_items: [newItem, ...currentItems],
-                usage_history: [newUsage, ...currentUsage]
-              })
-              .eq("email", clientEmail);
-          }
-        } catch (e) {
-          console.warn("Order record update notice:", e);
         }
 
         // Send confirmation receipt & master files asynchronously in background

@@ -67,11 +67,11 @@ export default function TemplateDetail() {
         }
       });
 
-    // 2. Fetch Template from Deep Module view or table
+    // 2. Fetch Template from Deep Module view
     supabase
       .from("v_storefront_catalog")
       .select("*")
-      .or(`id.eq.${id},code.eq.${id}`)
+      .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
       .maybeSingle()
       .then(({ data, error }) => {
         if (data && !error) {
@@ -110,45 +110,6 @@ export default function TemplateDetail() {
             is_featured: Boolean(data.is_featured),
             is_published: true
           });
-        } else {
-          // Fallback to raw table
-          supabase
-            .from("templates")
-            .select("*")
-            .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
-            .maybeSingle()
-            .then(({ data: rawData }) => {
-              if (rawData) {
-                const coverImg = normalizeR2Url(rawData.thumbnail_url || rawData.image_url, "slides");
-                const slideUrls = Array.isArray(rawData.slides) && rawData.slides.length > 0
-                  ? rawData.slides.map((s: string) => normalizeR2Url(s, "slides"))
-                  : [coverImg];
-                const pptxUrl = rawData.download_url ? normalizeR2Url(rawData.download_url, "decks") : undefined;
-
-                setTemplate({
-                  id: rawData.id,
-                  code: rawData.code || `SLD-${rawData.id.slice(0, 4).toUpperCase()}`,
-                  title: rawData.title,
-                  category: rawData.category || "Business",
-                  price_inr: Number(rawData.price_inr) || 499,
-                  price_usd: Number(rawData.price_usd) || 9,
-                  original_price_inr: Number(rawData.original_price_inr) || 999,
-                  image_url: coverImg,
-                  slides: slideUrls,
-                  slides_count: Number(rawData.slides_count || rawData.slide_count) || slideUrls.length || 30,
-                  rating: Number(rawData.rating) || 4.9,
-                  downloads: Number(rawData.downloads) || 120,
-                  download_url: pptxUrl,
-                  file_name: rawData.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
-                  file_size: rawData.file_size || "4.5 MB",
-                  description: rawData.description || "Executive presentation deck layout.",
-                  features: Array.isArray(rawData.features) ? rawData.features : ["30+ High-Impact Slides"],
-                  is_credit_eligible: Boolean(rawData.is_credit_eligible),
-                  is_featured: Boolean(rawData.is_featured),
-                  is_published: true
-                });
-              }
-            });
         }
         setLoading(false);
       });

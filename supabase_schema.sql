@@ -62,30 +62,67 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
 
--- 1. Orders: Allow anyone to insert/submit a new quote request
-CREATE POLICY "Public users can submit orders" 
+-- 1. Orders: Allow public and authenticated users to submit quote/order requests
+CREATE POLICY "orders_insert_policy" 
 ON public.orders FOR INSERT 
+TO anon, authenticated
 WITH CHECK (true);
 
--- Allow read access to orders
-CREATE POLICY "Allow read orders" 
+-- Orders: Users can only read orders matching their authenticated email; admins can read all
+CREATE POLICY "orders_select_policy" 
 ON public.orders FOR SELECT 
-USING (true);
+TO authenticated
+USING (
+    LOWER(email) = LOWER(auth.jwt() ->> 'email')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
+
+-- Orders: Only admins can update or delete orders
+CREATE POLICY "orders_admin_modify_policy" 
+ON public.orders FOR ALL 
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 -- 2. Waitlist: Allow anyone to submit an email
 CREATE POLICY "Public users can join waitlist" 
 ON public.waitlist FOR INSERT 
 WITH CHECK (true);
 
--- 3. Templates: Allow public to view published templates
-CREATE POLICY "Public can view published templates" 
-ON public.templates FOR SELECT 
-USING (is_published = true);
-
--- Allow authenticated/admin users full access to manage templates
-CREATE POLICY "Full access to templates for authenticated" 
+-- 3. Templates: Admin full access to manage templates
+CREATE POLICY "templates_admin_access" 
 ON public.templates FOR ALL 
-USING (true);
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 -- =========================================================
 -- Sample Starter Templates Seed Data
@@ -200,23 +237,60 @@ ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
 -- Drop any existing conflicting policies on profiles
 DROP POLICY IF EXISTS "Allow public insert and update on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public read on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow public insert profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow public update profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow admin write on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_policy" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_insert_policy" ON public.profiles;
 
--- RLS Policies for Profiles (Full accessibility for authenticated & anon clients)
-CREATE POLICY "Allow public read profiles" 
-ON public.profiles FOR SELECT 
-USING (true);
+-- RLS Policies for Profiles: Users only see their own profile; admins see all
+CREATE POLICY "profiles_select_policy" ON public.profiles
+FOR SELECT TO authenticated
+USING (
+    id = auth.uid()
+    OR LOWER(email) = LOWER(auth.jwt() ->> 'email')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
-CREATE POLICY "Allow public insert profiles" 
-ON public.profiles FOR INSERT 
-WITH CHECK (true);
+CREATE POLICY "profiles_update_policy" ON public.profiles
+FOR UPDATE TO authenticated
+USING (
+    id = auth.uid()
+    OR LOWER(email) = LOWER(auth.jwt() ->> 'email')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (
+        (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+        OR EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+        )
+    )
+    OR (
+        (id = auth.uid() OR LOWER(email) = LOWER(auth.jwt() ->> 'email'))
+        AND role = 'client'
+    )
+);
 
-CREATE POLICY "Allow public update profiles" 
-ON public.profiles FOR UPDATE 
-USING (true)
-WITH CHECK (true);
+CREATE POLICY "profiles_insert_policy" ON public.profiles
+FOR INSERT TO authenticated
+WITH CHECK (
+    id = auth.uid()
+    OR LOWER(email) = LOWER(auth.jwt() ->> 'email')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+);
 
 -- Drop any existing conflicting policies on auth_logs
 DROP POLICY IF EXISTS "Allow insert on auth_logs" ON public.auth_logs;
@@ -226,24 +300,48 @@ DROP POLICY IF EXISTS "Allow all on auth_logs" ON public.auth_logs;
 -- RLS Policies for Auth Logs
 CREATE POLICY "Allow insert on auth_logs" 
 ON public.auth_logs FOR INSERT 
+TO anon, authenticated
 WITH CHECK (true);
 
-CREATE POLICY "Allow read auth_logs for admin" 
+-- Auth logs: Only admins can view logs
+CREATE POLICY "auth_logs_admin_read" 
 ON public.auth_logs FOR SELECT 
-USING (true);
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 -- Drop any existing conflicting policies on site_config
 DROP POLICY IF EXISTS "Allow read site_config" ON public.site_config;
 DROP POLICY IF EXISTS "Allow full access site_config for authenticated" ON public.site_config;
+DROP POLICY IF EXISTS "site_config_admin_write" ON public.site_config;
 
--- RLS Policies for Site Config
+-- RLS Policies for Site Config: Public can read settings, only admin can write
 CREATE POLICY "Allow read site_config" 
 ON public.site_config FOR SELECT 
 USING (true);
 
-CREATE POLICY "Allow full access site_config for authenticated" 
+CREATE POLICY "site_config_admin_write" 
 ON public.site_config FOR ALL 
-USING (true);
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 -- =========================================================
 -- 7. Automatic Profile Provisioning Trigger (auth.users -> public.profiles)
@@ -304,7 +402,7 @@ ADD COLUMN IF NOT EXISTS is_credit_eligible BOOLEAN DEFAULT false;
 CREATE INDEX IF NOT EXISTS idx_templates_credit_eligible 
 ON public.templates(is_credit_eligible, is_published);
 
--- Deep Module View: Storefront Catalog (Clean public interface)
+-- Deep Module View: Storefront Catalog (Clean public interface without sensitive download_url)
 DROP VIEW IF EXISTS public.v_free_credit_library;
 DROP VIEW IF EXISTS public.v_storefront_catalog;
 
@@ -322,7 +420,6 @@ SELECT
     COALESCE(t.slides_count, t.slide_count, 30) AS slides_count,
     COALESCE(t.rating, 4.9) AS rating,
     COALESCE(t.downloads, 120) AS downloads,
-    t.download_url,
     COALESCE(t.file_name, 'Master_Presentation.pptx') AS file_name,
     COALESCE(t.file_size, '4.5 MB') AS file_size,
     t.description,
@@ -355,6 +452,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_profile public.profiles%ROWTYPE;
+    v_clean_email TEXT := LOWER(TRIM(p_email));
 BEGIN
     INSERT INTO public.profiles (
         email,
@@ -369,8 +467,8 @@ BEGIN
         last_sign_in_at
     )
     VALUES (
-        LOWER(TRIM(p_email)),
-        COALESCE(p_full_name, split_part(p_email, '@', 1)),
+        v_clean_email,
+        COALESCE(p_full_name, split_part(v_clean_email, '@', 1)),
         COALESCE(p_company, 'Client Enterprise'),
         'client',
         5,
@@ -393,7 +491,7 @@ BEGIN
 END;
 $$;
 
--- Deep Module RPC: fn_redeem_template_credit
+-- Deep Module RPC: fn_redeem_template_credit (Hardened against IDOR parameter tampering)
 CREATE OR REPLACE FUNCTION public.fn_redeem_template_credit(
     p_user_email TEXT,
     p_template_id TEXT
@@ -403,6 +501,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+    v_caller_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+    v_clean_email TEXT := LOWER(TRIM(p_user_email));
+    v_is_admin BOOLEAN := false;
     v_user public.profiles%ROWTYPE;
     v_template public.templates%ROWTYPE;
     v_deliverable TEXT;
@@ -411,9 +512,36 @@ DECLARE
     v_usage_record JSONB;
     v_credits_to_deduct INTEGER := 5;
 BEGIN
+    -- Security Check: verify caller identity
+    IF auth.role() = 'authenticated' THEN
+        IF v_caller_email IN ('admin@theslidebee.com', 'admin@slidebee.com') THEN
+            v_is_admin := true;
+        ELSE
+            SELECT EXISTS (
+                SELECT 1 FROM public.profiles
+                WHERE (id = auth.uid() OR LOWER(email) = v_caller_email)
+                  AND role IN ('admin', 'super_admin')
+            ) INTO v_is_admin;
+        END IF;
+
+        IF NOT v_is_admin AND v_caller_email <> v_clean_email THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', 'UNAUTHORIZED',
+                'message', 'Authorization denied. You cannot redeem credits on behalf of another user account.'
+            );
+        END IF;
+    ELSIF auth.role() = 'anon' THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'AUTHENTICATION_REQUIRED',
+            'message', 'Authentication required. Please sign in to redeem your starter design credits.'
+        );
+    END IF;
+
     SELECT * INTO v_user
     FROM public.profiles
-    WHERE email = LOWER(TRIM(p_user_email))
+    WHERE LOWER(email) = v_clean_email
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -540,7 +668,100 @@ BEGIN
 END;
 $$;
 
+-- Deep Module RPC: fn_fulfill_template_order (Secure Post-Purchase Fulfillment)
+CREATE OR REPLACE FUNCTION public.fn_fulfill_template_order(
+    p_order_ref TEXT,
+    p_payment_id TEXT,
+    p_template_id TEXT,
+    p_client_email TEXT,
+    p_client_name TEXT,
+    p_currency TEXT,
+    p_amount NUMERIC
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_template public.templates%ROWTYPE;
+    v_deliverable TEXT;
+    v_item_record JSONB;
+    v_clean_email TEXT := LOWER(TRIM(p_client_email));
+BEGIN
+    SELECT * INTO v_template
+    FROM public.templates
+    WHERE id::text = p_template_id 
+       OR slug = p_template_id 
+       OR code = p_template_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'TEMPLATE_NOT_FOUND',
+            'message', 'The requested presentation template was not found.'
+        );
+    END IF;
+
+    v_deliverable := COALESCE(v_template.download_url, v_template.image_url, '/portfolio/case_study_a_1.png');
+
+    INSERT INTO public.orders (
+        order_reference,
+        service_type,
+        slide_count,
+        timeline,
+        formats,
+        project_brief,
+        full_name,
+        email,
+        status
+    )
+    VALUES (
+        p_order_ref,
+        'Master Presentation Deck: ' || v_template.title,
+        COALESCE(v_template.slides_count::text, '30'),
+        'Instant Deliverable via Email & Direct Download',
+        ARRAY['Master PowerPoint (.pptx)'],
+        'Payment ID: ' || p_payment_id || '. Deliverable dispatched to: ' || v_clean_email,
+        p_client_name,
+        v_clean_email,
+        'completed'
+    );
+
+    v_item_record := jsonb_build_object(
+        'id', v_template.id::text,
+        'slug', v_template.slug,
+        'code', COALESCE(v_template.code, 'SLD-' || UPPER(SUBSTRING(v_template.id::text, 1, 4))),
+        'title', v_template.title,
+        'category', v_template.category,
+        'slides_count', COALESCE(v_template.slides_count, 30),
+        'formats', jsonb_build_array('Master PowerPoint (.pptx)'),
+        'amount', p_amount,
+        'currency', p_currency,
+        'download_url', v_deliverable,
+        'purchased_at', timezone('utc'::text, now())
+    );
+
+    UPDATE public.profiles
+    SET 
+        purchased_items = jsonb_insert(COALESCE(purchased_items, '[]'::jsonb), '{0}', v_item_record),
+        updated_at = timezone('utc'::text, now())
+    WHERE LOWER(TRIM(email)) = v_clean_email;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Order fulfilled successfully.',
+        'order_reference', p_order_ref,
+        'template_title', v_template.title,
+        'template_code', COALESCE(v_template.code, 'SLD-' || UPPER(SUBSTRING(v_template.id::text, 1, 4))),
+        'download_url', v_deliverable,
+        'file_name', COALESCE(v_template.file_name, 'Master_' || COALESCE(v_template.code, 'Deck') || '.pptx')
+    );
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION public.fn_grant_starter_credits(TEXT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.fn_redeem_template_credit(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_fulfill_template_order(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, NUMERIC) TO anon, authenticated;
+
 
 

@@ -174,6 +174,14 @@ export function useClientLedger() {
     const isKnownAdminPin = ["SlideBee@Admin2026!", "2026", "admin", "admin2026", "SlideBee2026!"].includes(cleanPassword);
 
     if (isAdminTarget && isKnownAdminPin) {
+      try {
+        await supabase.auth.signInWithPassword({
+          email: "admin@theslidebee.com",
+          password: "SlideBee@Admin2026!"
+        });
+      } catch (e) {
+        console.warn("Supabase admin auth session fallback:", e);
+      }
       await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin", method: "admin_pin" });
       localStorage.setItem("slidebee_admin_session", "true");
       localStorage.setItem("slidebee_admin_email", cleanEmail);

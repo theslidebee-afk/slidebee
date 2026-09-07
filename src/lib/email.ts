@@ -17,6 +17,7 @@ export async function sendEmail({ to, subject, html, fromEmail, fromName, replyT
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-slidebee-app-token': 'slidebee_internal_app_2026',
       },
       body: JSON.stringify({ to, subject, html, fromEmail, fromName, replyTo }),
     });

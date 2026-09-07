@@ -939,7 +939,10 @@ export default function Admin() {
     try {
       const res = await fetch("/api/send-email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-slidebee-app-token": "slidebee_internal_app_2026"
+        },
         body: JSON.stringify({
           to: testEmailRecipient.trim(),
           fromEmail: senderEmail,

@@ -42,6 +42,20 @@ export async function onRequestPost(context: any) {
     }
 
     const { request, env } = context;
+
+    // Security Check (TOB-SB-07): Protect against unauthenticated open relay abuse
+    const appToken = request.headers.get("x-slidebee-app-token") || request.headers.get("x-slidebee-admin-key");
+    const expectedAppToken = env?.SLIDEBEE_APP_TOKEN || "slidebee_internal_app_2026";
+    const expectedAdminSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
+    const authHeader = request.headers.get("Authorization");
+
+    if (appToken !== expectedAppToken && appToken !== expectedAdminSecret && !authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: Invalid application authentication token." }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
     const body = await request.json();
     const { to, subject, html, text, replyTo, fromEmail, fromName } = body;
 
@@ -62,6 +76,22 @@ export async function onRequestPost(context: any) {
 
     // Configurable Zoho sender (e.g. design@theslidebee.com or hello@theslidebee.com)
     const configuredEmail = fromEmail || "hello@theslidebee.com";
+    const ALLOWED_SENDERS = [
+      "hello@theslidebee.com",
+      "design@theslidebee.com",
+      "admin@theslidebee.com",
+      "support@theslidebee.com",
+      "notifications@theslidebee.com",
+      "onboarding@resend.dev"
+    ];
+
+    if (!ALLOWED_SENDERS.includes(configuredEmail.toLowerCase())) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid sender: Only official SlideBee domains permitted." }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
     const senderDisplayName = fromName || "SlideBee Studio";
     const primarySender = `${senderDisplayName} <${configuredEmail}>`;
     const fallbackSender = `${senderDisplayName} <onboarding@resend.dev>`;

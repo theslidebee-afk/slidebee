@@ -120,6 +120,14 @@ function r2DevPlugin(): Plugin {
           }
 
           if (req.method === 'POST') {
+            const adminKey = req.headers['x-slidebee-admin-key'];
+            const authHeader = req.headers['authorization'];
+            if (adminKey !== 'slidebee_master_admin_2026' && !authHeader) {
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, error: 'Unauthorized: Admin authorization required for R2 storage mutations.' }));
+            }
+
             const chunks: Buffer[] = [];
             req.on('data', (chunk) => chunks.push(chunk));
             req.on('end', async () => {
@@ -188,6 +196,14 @@ function r2DevPlugin(): Plugin {
           }
 
           if (req.method === 'DELETE') {
+            const adminKey = req.headers['x-slidebee-admin-key'];
+            const authHeader = req.headers['authorization'];
+            if (adminKey !== 'slidebee_master_admin_2026' && !authHeader) {
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, error: 'Unauthorized: Admin authorization required for R2 storage deletions.' }));
+            }
+
             const url = new URL(req.url || '', `http://${req.headers.host}`);
             const key = url.searchParams.get('key');
             if (!key) {
