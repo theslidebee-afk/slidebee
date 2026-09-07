@@ -293,17 +293,17 @@ export default function TemplateDetail() {
           {/* Left Column: Interactive Full HD Multi-Slide Previewer */}
           <div className="lg:col-span-7 space-y-4">
             
-            <div className="hex-card-dark bg-[#111111] border-2 border-primary/50 overflow-hidden shadow-2xl relative aspect-video flex items-center justify-center group">
+            <div className="hex-card-dark bg-[#FFF9E8] border-2 border-primary/50 overflow-hidden shadow-2xl relative w-full flex items-center justify-center group">
               <AnimatePresence mode="wait">
                 <motion.img
                   key={activeSlideIdx}
                   src={currentSlideImg}
                   alt={`${template.title} - Slide ${activeSlideIdx + 1}`}
-                  initial={{ opacity: 0, scale: 0.99 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.99 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="w-full h-full object-cover select-none"
+                  className="w-full h-auto block select-none rounded-xl"
                 />
               </AnimatePresence>
 
@@ -348,13 +348,13 @@ export default function TemplateDetail() {
                   <button
                     key={idx}
                     onClick={() => setActiveSlideIdx(idx)}
-                    className={`relative aspect-video w-28 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+                    className={`relative w-28 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-[#FFF9E8] ${
                       activeSlideIdx === idx
                         ? "border-primary shadow-md scale-105"
                         : "border-[#111111]/15 opacity-70 hover:opacity-100"
                     }`}
                   >
-                    <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-auto block object-cover" />
                     <span className="absolute bottom-1 right-1 bg-black/75 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
                       #{idx + 1}
                     </span>

@@ -370,11 +370,11 @@ export default function Examples() {
                 const currentSlideImg = normalizeSlideUrl(modalSlides[activeModalSlide] || activeModalItem.image);
                 return (
                   <div>
-                    <div className="aspect-video bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
+                    <div className="w-full bg-[#FFF9E8] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
                       <img
                         src={currentSlideImg}
                         alt={`${activeModalItem.title} - Slide ${activeModalSlide + 1}`}
-                        className="w-full h-full object-cover select-none"
+                        className="w-full h-auto block select-none rounded-xl"
                         onError={(e) => {
                           const fallback = `${STORAGE_BASE}/accenture_slide-1.jpg`;
                           if (e.currentTarget.src !== fallback) {

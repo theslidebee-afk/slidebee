@@ -688,7 +688,7 @@ export default function Admin() {
       : (tpl.thumbnail_url || tpl.image_url || tpl.image ? [tpl.thumbnail_url || tpl.image_url || tpl.image] : []);
     const rawFormats = Array.isArray(tpl.formats) && tpl.formats.length > 0
       ? tpl.formats
-      : ["PowerPoint", "Google Slides"];
+      : ["PowerPoint"];
     const rawFeatures = Array.isArray(tpl.features) && tpl.features.length > 0
       ? tpl.features
       : [`${tpl.slide_count || tpl.slides_count || 25}+ High-Impact Slides`, "16:9 Widescreen Layout", "Fully Editable Vector Elements"];
@@ -4750,7 +4750,7 @@ export default function Admin() {
                     <UploadCloud className="text-primary-amber" size={22} /> Bulk Import Presentation Templates
                   </h3>
                   <p className="text-xs text-[#726F6D]">
-                    Upload a CSV spreadsheet with PPT download deliverables, multi-slide preview images, and software compatibility tags
+                    Upload a CSV spreadsheet with Master PowerPoint (.pptx) deliverables and multi-slide preview images
                   </p>
                 </div>
 
