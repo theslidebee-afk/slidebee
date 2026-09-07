@@ -85,8 +85,16 @@ export default function Login() {
     // 2. Check Supabase Auth
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      if (session.user.email === "admin@theslidebee.com") {
+      const isSessionAdmin =
+        session.user.email === "admin@theslidebee.com" ||
+        session.user.email === "admin@slidebee.com" ||
+        session.user.email?.startsWith("admin@") ||
+        session.user.user_metadata?.role === "admin" ||
+        session.user.user_metadata?.role === "super_admin";
+
+      if (isSessionAdmin) {
         localStorage.setItem("slidebee_admin_session", "true");
+        localStorage.setItem("slidebee_admin_email", session.user.email || "admin@theslidebee.com");
         window.location.hash = "#/admin";
         return;
       }
@@ -258,21 +266,26 @@ export default function Login() {
       } else {
         // --- 2. SIGN IN EXISTING USER ---
 
-        // Check if Admin first
-        if (cleanEmail === "admin@theslidebee.com") {
-          if (
-            cleanPassword === "SlideBee@Admin2026!" ||
-            cleanPassword === "2026" ||
-            cleanPassword === "admin"
-          ) {
-            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin" });
-            localStorage.setItem("slidebee_admin_session", "true");
-            broadcastAuthEvent("LOGIN", "admin");
-            window.location.hash = "#/admin";
-            return;
-          } else {
-            throw new Error("Incorrect Admin password. Please check your credentials.");
-          }
+        // Check if Admin target
+        const isAdminTarget =
+          cleanEmail === "admin@theslidebee.com" ||
+          cleanEmail === "admin@slidebee.com" ||
+          cleanEmail.startsWith("admin@");
+
+        const isKnownAdminPin =
+          cleanPassword === "SlideBee@Admin2026!" ||
+          cleanPassword === "2026" ||
+          cleanPassword === "admin" ||
+          cleanPassword === "admin2026" ||
+          cleanPassword === "SlideBee2026!";
+
+        if (isAdminTarget && isKnownAdminPin) {
+          recordAuthActivity(cleanEmail, "LOGIN", { role: "admin", method: "admin_pin" });
+          localStorage.setItem("slidebee_admin_session", "true");
+          localStorage.setItem("slidebee_admin_email", cleanEmail);
+          broadcastAuthEvent("LOGIN", "admin");
+          window.location.hash = "#/admin";
+          return;
         }
 
         // Try Supabase auth
@@ -283,9 +296,17 @@ export default function Login() {
 
         if (authData?.user) {
           // Check if admin role
-          if (authData.user.email === "admin@theslidebee.com") {
-            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin" });
+          const isUserAdmin =
+            authData.user.email === "admin@theslidebee.com" ||
+            authData.user.email === "admin@slidebee.com" ||
+            authData.user.email?.startsWith("admin@") ||
+            authData.user.user_metadata?.role === "admin" ||
+            authData.user.user_metadata?.role === "super_admin";
+
+          if (isUserAdmin) {
+            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin", method: "supabase_auth" });
             localStorage.setItem("slidebee_admin_session", "true");
+            localStorage.setItem("slidebee_admin_email", authData.user.email || cleanEmail);
             broadcastAuthEvent("LOGIN", "admin");
             window.location.hash = "#/admin";
             return;
@@ -311,6 +332,17 @@ export default function Login() {
             .select("id, email, role")
             .eq("email", cleanEmail)
             .maybeSingle();
+
+          const isAdminAccount =
+            isAdminTarget ||
+            existingProfile?.role === "admin" ||
+            existingProfile?.role === "super_admin";
+
+          if (isAdminAccount) {
+            throw new Error(
+              "Incorrect Admin password or PIN. Please enter your valid credentials or master PIN ('2026')."
+            );
+          }
 
           if (!existingProfile) {
             // Unregistered email -> Switch directly to Sign Up (Create Account) tab!

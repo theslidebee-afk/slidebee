@@ -205,14 +205,16 @@ export default function Admin() {
       () => {
         const localPinAuth = localStorage.getItem("slidebee_admin_session");
         if (localPinAuth === "true") {
-          setSession({ user: { email: "admin@theslidebee.com", role: "super_admin" } });
+          const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+          setSession({ user: { email, role: "super_admin" } });
         }
       }
     );
 
     const localPinAuth = localStorage.getItem("slidebee_admin_session");
     if (localPinAuth === "true") {
-      setSession({ user: { email: "admin@theslidebee.com", role: "super_admin" } });
+      const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+      setSession({ user: { email, role: "super_admin" } });
       setLoading(false);
       return () => unsubscribeSync();
     }

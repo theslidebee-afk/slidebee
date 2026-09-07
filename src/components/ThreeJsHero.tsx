@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { createSlideBeeHoneycombModel } from './createSlideBeeHoneycombModel';
 
 export default function ThreeJsHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -9,7 +10,7 @@ export default function ThreeJsHero() {
 
     const container = containerRef.current;
     
-    // Three.js Full Hero Section Interactive 3D Hexagonal Prism Deck Carousel & Golden Floating Particles
+    // Three.js Full Hero Section Interactive 3D Honeycomb Structure & Golden Floating Particles
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
@@ -44,17 +45,21 @@ export default function ThreeJsHero() {
     const ambientLight = new THREE.AmbientLight(0xfff5dd, 1.8);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
     dirLight.position.set(12, 16, 14);
     scene.add(dirLight);
 
-    const goldPointLight = new THREE.PointLight(0xfcbf14, 4.0, 36);
+    const goldPointLight = new THREE.PointLight(0xfcbf14, 4.5, 36);
     goldPointLight.position.set(2, 3, 10);
     scene.add(goldPointLight);
 
-    const rimLight = new THREE.DirectionalLight(0xd99f06, 1.4);
+    const rimLight = new THREE.DirectionalLight(0xd99f06, 1.6);
     rimLight.position.set(-14, -8, -6);
     scene.add(rimLight);
+
+    // Master Procedural Honeycomb Model (SlideBEE 3D Architecture)
+    const honeycombModel = createSlideBeeHoneycombModel();
+    scene.add(honeycombModel.rootGroup);
 
     const rootGroup = new THREE.Group();
     scene.add(rootGroup);
@@ -70,15 +75,15 @@ export default function ThreeJsHero() {
     hexShape.closePath();
 
     const extrudeSettings = {
-      depth: 0.15, // Core thickness
+      depth: 0.15,
       bevelEnabled: true,
-      bevelSegments: 5, // Number of rounding layers
+      bevelSegments: 5,
       steps: 1,
-      bevelSize: 0.15, // Outward rounding size
-      bevelThickness: 0.15 // Inward rounding depth
+      bevelSize: 0.15,
+      bevelThickness: 0.15
     };
     const hexGeo = new THREE.ExtrudeGeometry(hexShape, extrudeSettings);
-    hexGeo.center(); // Center the geometry for correct rotation
+    hexGeo.center();
     
     // Honey Gold Material
     const hexGoldMat = new THREE.MeshStandardMaterial({
@@ -96,11 +101,8 @@ export default function ThreeJsHero() {
       metalness: 0.6
     });
 
+    // Ambient background peripheral floating hexagons
     const positions = [
-      // Hero cluster (top of the page)
-      { x: 5.5, y: 1.5, z: 1.2, scale: 1.3, rot: 0 },
-      { x: 9.2, y: 3.8, z: -1.8, scale: 1.05, rot: 0.25 },
-      { x: 8.4, y: -2.8, z: 0.8, scale: 1.15, rot: -0.2 },
       { x: -5.8, y: 3.2, z: -4.0, scale: 1.0, rot: -0.3 },
       { x: -7.5, y: -3.5, z: -3.2, scale: 1.1, rot: 0.2 }
     ];
@@ -220,6 +222,18 @@ export default function ThreeJsHero() {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+
+      // Responsive Honeycomb Positioning & Scale
+      if (w < 1024) {
+        honeycombModel.rootGroup.position.set(0, -3.2, -1.5);
+        honeycombModel.rootGroup.scale.setScalar(0.70);
+      } else if (w < 1440) {
+        honeycombModel.rootGroup.position.set(4.8, 0.25, 0.4);
+        honeycombModel.rootGroup.scale.setScalar(0.95);
+      } else {
+        honeycombModel.rootGroup.position.set(5.3, 0.4, 0.8);
+        honeycombModel.rootGroup.scale.setScalar(1.05);
+      }
     }
     window.addEventListener('resize', onResize);
     onResize();
@@ -229,6 +243,7 @@ export default function ThreeJsHero() {
 
     function animate() {
       reqId = requestAnimationFrame(animate);
+      const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
       // Parallax rotation
@@ -241,8 +256,34 @@ export default function ThreeJsHero() {
       const scrollOffset = scrollY * 0.015;
       rootGroup.position.y = scrollOffset;
 
-      // Raycaster for magnetic repulsion
+      // Honeycomb Model Parallax & Scroll
+      const targetHCX = -mouseY * 0.14;
+      const targetHCY = mouseX * 0.18;
+      honeycombModel.rootGroup.rotation.x += (targetHCX - honeycombModel.rootGroup.rotation.x) * 0.05;
+      honeycombModel.rootGroup.rotation.y += (targetHCY - honeycombModel.rootGroup.rotation.y) * 0.05;
+      honeycombModel.rootGroup.position.y = (container.clientWidth < 1024 ? -3.2 : 0.25) + scrollOffset * 0.5;
+
+      // Raycaster for Honeycomb Cell Hover
       raycaster.setFromCamera(mouseVector, camera);
+      const hcIntersects = raycaster.intersectObjects(honeycombModel.rootGroup.children, true);
+      let foundCellIdx: number | null = null;
+      if (hcIntersects.length > 0) {
+        for (const hit of hcIntersects) {
+          let curr: THREE.Object3D | null = hit.object;
+          while (curr && curr !== honeycombModel.rootGroup) {
+            if (curr.userData && typeof curr.userData.cellIndex === 'number') {
+              foundCellIdx = curr.userData.cellIndex;
+              break;
+            }
+            curr = curr.parent;
+          }
+          if (foundCellIdx !== null) break;
+        }
+      }
+      honeycombModel.setHoveredCell(foundCellIdx);
+      honeycombModel.update(delta, elapsedTime);
+
+      // Raycaster for magnetic repulsion on background hexagons
       const intersects = raycaster.intersectObject(invisiblePlane);
       let targetPoint: THREE.Vector3 | null = null;
       if (intersects.length > 0) {
@@ -255,7 +296,6 @@ export default function ThreeJsHero() {
           const pA = hexPrisms[i];
           const pB = hexPrisms[j];
           const dist = pA.position.distanceTo(pB.position);
-          // Approximate radius based on scale (base geometry is ~2 units)
           const rA = pA.scale.x * 2.2;
           const rB = pB.scale.x * 2.2;
           const minDist = rA + rB;
@@ -264,7 +304,6 @@ export default function ThreeJsHero() {
             const overlap = minDist - dist;
             const dir = pA.position.clone().sub(pB.position).normalize();
             
-            // Apply bounce impulse to velocities
             pA.userData.vx += dir.x * overlap * 0.08;
             pA.userData.vy += dir.y * overlap * 0.08;
             pA.userData.vz += dir.z * overlap * 0.08;
@@ -279,51 +318,42 @@ export default function ThreeJsHero() {
       hexPrisms.forEach((prism) => {
         const { initialX, initialY, initialZ, speed, phase, rotSpeed } = prism.userData;
         
-        // Baseline animation targets
         let tx = initialX;
         let ty = initialY + Math.sin(elapsedTime * speed + phase) * 0.24;
         let tz = initialZ;
         
-        // Repulsion logic
         if (targetPoint) {
           const worldPos = new THREE.Vector3(tx, ty + rootGroup.position.y, tz);
           const dist = worldPos.distanceTo(targetPoint);
           const repelRadius = 6.0;
           
           if (dist < repelRadius) {
-            const force = Math.pow((repelRadius - dist) / repelRadius, 1.5) * 2.5; // push up to 2.5 units
+            const force = Math.pow((repelRadius - dist) / repelRadius, 1.5) * 2.5;
             const dir = worldPos.clone().sub(targetPoint).normalize();
             
             tx += dir.x * force;
             ty += dir.y * force;
-            tz -= force * 1.5; // push deeper into the screen
+            tz -= force * 1.5;
             
-            // Spin faster when repelled
             prism.rotation.z += rotSpeed * (force * 10);
             prism.rotation.x += rotSpeed * force * 5;
             prism.rotation.y += rotSpeed * force * 5;
           }
         }
 
-        // Apply bounce physics velocity
         tx += prism.userData.vx;
         ty += prism.userData.vy;
         tz += prism.userData.vz;
         
-        // Decay velocity for realistic bounce damping
         prism.userData.vx *= 0.85;
         prism.userData.vy *= 0.85;
         prism.userData.vz *= 0.85;
         
-        // Smoothly lerp towards the target positions
         prism.position.x += (tx - prism.position.x) * 0.08;
         prism.position.y += (ty - prism.position.y) * 0.08;
         prism.position.z += (tz - prism.position.z) * 0.08;
         
-        // Base idle rotation
         prism.rotation.z += rotSpeed;
-        
-        // Decay the extreme rotation bounds back to normal
         prism.rotation.x += (0 - prism.rotation.x) * 0.05;
         prism.rotation.y += (0 - prism.rotation.y) * 0.05;
       });
@@ -334,7 +364,7 @@ export default function ThreeJsHero() {
       // Particles rotate slowly, and also scroll slightly
       particles.rotation.y = elapsedTime * 0.025;
       particles.rotation.x = elapsedTime * 0.012;
-      particles.position.y = scrollOffset * 0.3; // Particles parallax at a slower rate
+      particles.position.y = scrollOffset * 0.3;
 
       renderer.render(scene, camera);
     }
@@ -349,6 +379,7 @@ export default function ThreeJsHero() {
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
+      honeycombModel.dispose();
       renderer.dispose();
       scene.clear();
     };
