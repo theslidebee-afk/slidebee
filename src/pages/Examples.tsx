@@ -15,10 +15,22 @@ interface PortfolioItem {
   highlights: string[];
 }
 
+const STORAGE_BASE = "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples";
+
+export function normalizeSlideUrl(url: string): string {
+  if (!url) return `${STORAGE_BASE}/accenture_slide-1.jpg`;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const filename = url.split("/").pop();
+  if (filename && (filename.endsWith(".jpg") || filename.endsWith(".png") || filename.endsWith(".jpeg"))) {
+    return `${STORAGE_BASE}/${filename}`;
+  }
+  return url;
+}
+
 function getSlideSet(item: PortfolioItem): string[] {
-  if (item.slides && item.slides.length > 0) return item.slides;
-  if (item.image) return [item.image];
-  return [];
+  if (item.slides && item.slides.length > 0) return item.slides.map(normalizeSlideUrl);
+  if (item.image) return [normalizeSlideUrl(item.image)];
+  return [`${STORAGE_BASE}/accenture_slide-1.jpg`];
 }
 
 function PortfolioCard({ 
@@ -50,12 +62,19 @@ function PortfolioCard({
       onMouseLeave={() => setIsHovered(false)}
       className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group flex flex-col justify-between"
     >
-      <div className="aspect-[16/10] bg-[#111111] overflow-hidden relative select-none">
+      <div className="aspect-[16/10] bg-[#FFF9E8] overflow-hidden relative select-none border-b border-primary/20">
         {/* Active Slide with smooth fade */}
         <img
           src={slides[activeIdx]}
           alt={`${item.title} - Slide ${activeIdx + 1}`}
           className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+          loading="lazy"
+          onError={(e) => {
+            const fallback = `${STORAGE_BASE}/accenture_slide-1.jpg`;
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
         />
 
         {/* Client Badge */}
@@ -348,7 +367,7 @@ export default function Examples() {
               {/* Main Slide Viewer */}
               {(() => {
                 const modalSlides = getSlideSet(activeModalItem);
-                const currentSlideImg = modalSlides[activeModalSlide] || activeModalItem.image;
+                const currentSlideImg = normalizeSlideUrl(modalSlides[activeModalSlide] || activeModalItem.image);
                 return (
                   <div>
                     <div className="aspect-[16/9] bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
@@ -356,6 +375,12 @@ export default function Examples() {
                         src={currentSlideImg}
                         alt={`${activeModalItem.title} - Slide ${activeModalSlide + 1}`}
                         className="w-full h-full object-contain select-none"
+                        onError={(e) => {
+                          const fallback = `${STORAGE_BASE}/accenture_slide-1.jpg`;
+                          if (e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
+                          }
+                        }}
                       />
                       
                       {/* Slide Indicator Badge */}
@@ -403,7 +428,7 @@ export default function Examples() {
                             }`}
                           >
                             <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                              <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                              <img src={normalizeSlideUrl(s)} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
                             </div>
                             <div className="flex items-center justify-between px-1">
                               <span className="text-[10px] font-extrabold text-[#111111] truncate">

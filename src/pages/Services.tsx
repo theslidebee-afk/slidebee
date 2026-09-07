@@ -18,12 +18,35 @@ import {
   CheckCircle2
 } from "lucide-react";
 
+const STORAGE_BASE = "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples";
+
+const defaultTopMarqueeSlides = [
+  `${STORAGE_BASE}/accenture_slide-1.jpg`,
+  `${STORAGE_BASE}/nike_slide-1.jpg`,
+  `${STORAGE_BASE}/volvo_slide-1.jpg`,
+  `${STORAGE_BASE}/intel_slide-1.jpg`,
+  `${STORAGE_BASE}/hsbc_slide-1.jpg`,
+  `${STORAGE_BASE}/tag_slide-1.jpg`,
+];
+
+const defaultBottomMarqueeSlides = [
+  `${STORAGE_BASE}/cvs_health_slide-1.jpg`,
+  `${STORAGE_BASE}/british_american_slide-1.jpg`,
+  `${STORAGE_BASE}/levis_slide-1.jpg`,
+  `${STORAGE_BASE}/accenture_slide-2.jpg`,
+  `${STORAGE_BASE}/nike_slide-2.jpg`,
+  `${STORAGE_BASE}/volvo_slide-2.jpg`,
+];
+
 export default function Services() {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [selectedService, setSelectedService] = useState<string>("redesign");
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
+  const [topMarqueeSlides, setTopMarqueeSlides] = useState<string[]>(defaultTopMarqueeSlides);
+  const [bottomMarqueeSlides, setBottomMarqueeSlides] = useState<string[]>(defaultBottomMarqueeSlides);
 
   useEffect(() => {
+    // 1. Fetch custom services configuration
     supabase
       .from("site_config")
       .select("value")
@@ -32,27 +55,48 @@ export default function Services() {
       .then(({ data }) => {
         if (data?.value) setCustomServices(data.value);
       });
+
+    // 2. Fetch custom marquee configuration or dynamically pull from portfolio examples
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "services_marquee_cms")
+      .single()
+      .then(({ data }) => {
+        if (data?.value && (data.value.topSlides?.length > 0 || data.value.bottomSlides?.length > 0)) {
+          if (Array.isArray(data.value.topSlides) && data.value.topSlides.length > 0) {
+            setTopMarqueeSlides(data.value.topSlides);
+          }
+          if (Array.isArray(data.value.bottomSlides) && data.value.bottomSlides.length > 0) {
+            setBottomMarqueeSlides(data.value.bottomSlides);
+          }
+        } else {
+          // Dynamic fallback to portfolio examples
+          supabase
+            .from("site_config")
+            .select("value")
+            .eq("key", "portfolio_cms")
+            .single()
+            .then(({ data: pData }) => {
+              if (pData?.value?.caseStudies && Array.isArray(pData.value.caseStudies)) {
+                const allSlides: string[] = [];
+                pData.value.caseStudies.forEach((cs: any) => {
+                  if (Array.isArray(cs.slides) && cs.slides.length > 0) {
+                    allSlides.push(...cs.slides);
+                  } else if (cs.imageUrl) {
+                    allSlides.push(cs.imageUrl);
+                  }
+                });
+                if (allSlides.length >= 4) {
+                  const mid = Math.ceil(allSlides.length / 2);
+                  setTopMarqueeSlides(allSlides.slice(0, mid));
+                  setBottomMarqueeSlides(allSlides.slice(mid));
+                }
+              }
+            });
+        }
+      });
   }, []);
-
-  // Top marquee slide images
-  const topMarqueeSlides = [
-    "/portfolio/case_study_a_1.png",
-    "/portfolio/nike_hsbc_cvs_1.png",
-    "/portfolio/global_brands_1.png",
-    "/portfolio/levis_yuengling_1.png",
-    "/portfolio/case_study_a_8.png",
-    "/portfolio/nike_hsbc_cvs_8.png",
-  ];
-
-  // Bottom marquee slide images
-  const bottomMarqueeSlides = [
-    "/portfolio/case_study_a_14.png",
-    "/portfolio/nike_hsbc_cvs_2.png",
-    "/portfolio/levis_yuengling_6.png",
-    "/portfolio/nike_hsbc_cvs_10.png",
-    "/portfolio/case_study_a_2.png",
-    "/portfolio/levis_yuengling_7.png",
-  ];
 
   // 6 Services with detailed comparisons
   const servicesData = {
@@ -61,8 +105,8 @@ export default function Services() {
       title: "Presentation Redesign",
       tagline: "From Cluttered Drafts to Clean, Executive Impact",
       icon: <Paintbrush className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-      afterImg: "/portfolio/case_study_a_1.png",
+      beforeImg: `${STORAGE_BASE}/hsbc_slide-2.jpg`,
+      afterImg: `${STORAGE_BASE}/accenture_slide-1.jpg`,
       beforeTitle: "Raw Draft / Before",
       afterTitle: "SlideBee Redesign / After",
       beforeIssues: [
@@ -83,8 +127,8 @@ export default function Services() {
       title: "Investor Pitch Decks",
       tagline: "Engineered to Capture VC Attention & Secure Funding",
       icon: <TrendingUp className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-      afterImg: "/portfolio/global_brands_1.png",
+      beforeImg: `${STORAGE_BASE}/british_american_slide-3.jpg`,
+      afterImg: `${STORAGE_BASE}/nike_slide-1.jpg`,
       beforeTitle: "Rough Founder Notes",
       afterTitle: "Investor-Ready Pitch Deck",
       beforeIssues: [
@@ -105,8 +149,8 @@ export default function Services() {
       title: "Executive & Board Keynotes",
       tagline: "High-Stakes Strategic Alignment for C-Suite Leaders",
       icon: <Award className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-      afterImg: "/portfolio/case_study_a_14.png",
+      beforeImg: `${STORAGE_BASE}/tag_slide-3.jpg`,
+      afterImg: `${STORAGE_BASE}/volvo_slide-1.jpg`,
       beforeTitle: "Dense Department Report",
       afterTitle: "Board-Ready Executive Keynote",
       beforeIssues: [
@@ -127,8 +171,8 @@ export default function Services() {
       title: "Data & Financial Visualization",
       tagline: "Turn Complex Spreadsheets into Intuitive Visual Stories",
       icon: <BarChart3 className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/nike_hsbc_cvs_2.png",
-      afterImg: "/portfolio/case_study_a_8.png",
+      beforeImg: `${STORAGE_BASE}/cvs_health_slide-3.jpg`,
+      afterImg: `${STORAGE_BASE}/intel_slide-1.jpg`,
       beforeTitle: "Raw Spreadsheet Screenshot",
       afterTitle: "Dynamic Visual Dashboard",
       beforeIssues: [
@@ -149,8 +193,8 @@ export default function Services() {
       title: "Master Branded Template Systems",
       tagline: "Empower Your Entire Organization with Cohesive Design",
       icon: <LayoutGrid className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/levis_yuengling_1.png",
-      afterImg: "/portfolio/levis_yuengling_6.png",
+      beforeImg: `${STORAGE_BASE}/hsbc_slide-4.jpg`,
+      afterImg: `${STORAGE_BASE}/levis_slide-1.jpg`,
       beforeTitle: "Fragmented Slide Library",
       afterTitle: "Unified Master Template System",
       beforeIssues: [
@@ -171,8 +215,8 @@ export default function Services() {
       title: "Sales & Marketing Collateral",
       tagline: "High-Conversion Proposals That Close Deals Faster",
       icon: <Megaphone className="w-5 h-5 text-primary-amber" />,
-      beforeImg: "/portfolio/case_study_a_2.png",
-      afterImg: "/portfolio/levis_yuengling_7.png",
+      beforeImg: `${STORAGE_BASE}/intel_slide-3.jpg`,
+      afterImg: `${STORAGE_BASE}/tag_slide-1.jpg`,
       beforeTitle: "Text-Heavy Word Document",
       afterTitle: "Compelling Client Proposal",
       beforeIssues: [
@@ -217,12 +261,19 @@ export default function Services() {
             {[...topMarqueeSlides, ...topMarqueeSlides, ...topMarqueeSlides].map((img, i) => (
               <div
                 key={`top-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
+                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-[#111111]/5 border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
               >
                 <img
                   src={img}
                   alt="Presentation Slide"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
+                  loading="lazy"
+                  onError={(e) => {
+                    const fallback = defaultTopMarqueeSlides[i % defaultTopMarqueeSlides.length];
+                    if (e.currentTarget.src !== fallback) {
+                      e.currentTarget.src = fallback;
+                    }
+                  }}
                 />
               </div>
             ))}
@@ -274,12 +325,19 @@ export default function Services() {
             {[...bottomMarqueeSlides, ...bottomMarqueeSlides, ...bottomMarqueeSlides].map((img, i) => (
               <div
                 key={`bot-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-white border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
+                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-[#111111]/5 border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
               >
                 <img
                   src={img}
                   alt="Presentation Slide"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
+                  loading="lazy"
+                  onError={(e) => {
+                    const fallback = defaultBottomMarqueeSlides[i % defaultBottomMarqueeSlides.length];
+                    if (e.currentTarget.src !== fallback) {
+                      e.currentTarget.src = fallback;
+                    }
+                  }}
                 />
               </div>
             ))}

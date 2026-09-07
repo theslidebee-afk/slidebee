@@ -191,6 +191,10 @@ export default function Admin() {
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
   const [configValidationError, setConfigValidationError] = useState("");
+  const [activeMarqueeTarget, setActiveMarqueeTarget] = useState<"services_top" | "services_bottom" | "hero">("services_top");
+  const [isUploadingMarquee, setIsUploadingMarquee] = useState(false);
+  const [isUploadingSlide, setIsUploadingSlide] = useState(false);
+  const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
 
   // 1. Check active session on mount
   useEffect(() => {
@@ -878,40 +882,95 @@ export default function Admin() {
     }
   };
 
-  // Upload Multiple Slide Images for Portfolio Case Study
-  const handleCaseStudySlidesUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Multiple Slide Images for Portfolio Case Study directly to Supabase Storage
+  const handleCaseStudySlidesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    setIsUploadingSlide(true);
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const imgUrl = event.target.result as string;
-          setSiteConfigs((prevConfigs) => {
-            const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
-            if (!currentStudies[idx]) return prevConfigs;
-            const existingSlides: string[] = Array.isArray(currentStudies[idx].slides) && currentStudies[idx].slides.length > 0
-              ? [...currentStudies[idx].slides]
-              : (currentStudies[idx].imageUrl ? [currentStudies[idx].imageUrl] : []);
-            existingSlides.push(imgUrl);
-            currentStudies[idx] = {
-              ...currentStudies[idx],
-              slides: existingSlides,
-              imageUrl: currentStudies[idx].imageUrl || existingSlides[0]
-            };
-            return {
-              ...prevConfigs,
-              portfolio_cms: {
-                ...prevConfigs["portfolio_cms"],
-                caseStudies: currentStudies
-              }
-            };
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const fileName = `slide_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+        const { error } = await supabase.storage.from("examples").upload(fileName, file, { upsert: true });
+        if (error) throw error;
+        const { data: publicData } = supabase.storage.from("examples").getPublicUrl(fileName);
+        const imgUrl = publicData.publicUrl;
+
+        setSiteConfigs((prevConfigs) => {
+          const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
+          if (!currentStudies[idx]) return prevConfigs;
+          const existingSlides: string[] = Array.isArray(currentStudies[idx].slides) && currentStudies[idx].slides.length > 0
+            ? [...currentStudies[idx].slides]
+            : (currentStudies[idx].imageUrl ? [currentStudies[idx].imageUrl] : []);
+          existingSlides.push(imgUrl);
+          currentStudies[idx] = {
+            ...currentStudies[idx],
+            slides: existingSlides,
+            imageUrl: currentStudies[idx].imageUrl || existingSlides[0]
+          };
+          return {
+            ...prevConfigs,
+            portfolio_cms: {
+              ...prevConfigs["portfolio_cms"],
+              caseStudies: currentStudies
+            }
+          };
+        });
+      }
+    } catch (err: any) {
+      alert("Failed to upload slide to Supabase Storage: " + (err.message || err));
+    } finally {
+      setIsUploadingSlide(false);
+      e.target.value = "";
+    }
+  };
+
+  // Upload Custom Image for Services / Hero Marquee
+  const handleUploadMarqueeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingMarquee(true);
+
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `marquee_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+      const { error } = await supabase.storage.from("examples").upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: publicData } = supabase.storage.from("examples").getPublicUrl(fileName);
+      const imgUrl = publicData.publicUrl;
+
+      if (activeMarqueeTarget === "hero") {
+        const current = siteConfigs["hero"]?.marqueeSlides || [];
+        setSiteConfigs({
+          ...siteConfigs,
+          hero: { ...siteConfigs["hero"], marqueeSlides: [...current, imgUrl] }
+        });
+      } else if (activeMarqueeTarget === "services_top") {
+        const current = siteConfigs["services_marquee_cms"]?.topSlides || [];
+        setSiteConfigs({
+          ...siteConfigs,
+          services_marquee_cms: {
+            ...(siteConfigs["services_marquee_cms"] || {}),
+            topSlides: [...current, imgUrl]
+          }
+        });
+      } else {
+        const current = siteConfigs["services_marquee_cms"]?.bottomSlides || [];
+        setSiteConfigs({
+          ...siteConfigs,
+          services_marquee_cms: {
+            ...(siteConfigs["services_marquee_cms"] || {}),
+            bottomSlides: [...current, imgUrl]
+          }
+        });
+      }
+    } catch (err: any) {
+      alert("Failed to upload marquee slide: " + (err.message || err));
+    } finally {
+      setIsUploadingMarquee(false);
+      e.target.value = "";
+    }
   };
 
 
@@ -2180,86 +2239,267 @@ export default function Admin() {
             {/* SUB-TAB: MARQUEE CMS */}
             {activeCmsSubTab === "marquee" && (
               <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🎠 Moving Marquee Presentation Slides
+                      🎠 Services & Hero Marquee Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Update the gliding presentation cards shown in the hero section.
+                      Select slides from existing presentation examples or upload custom images to feature in the gliding marquees.
                     </p>
                   </div>
                   <button
-                    onClick={() => handleSaveConfig("hero", siteConfigs["hero"])}
+                    onClick={async () => {
+                      if (siteConfigs["services_marquee_cms"]) {
+                        await handleSaveConfig("services_marquee_cms", siteConfigs["services_marquee_cms"]);
+                      }
+                      if (siteConfigs["hero"]) {
+                        await handleSaveConfig("hero", siteConfigs["hero"]);
+                      }
+                    }}
                     disabled={configSaving}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
                   >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save Marquee"}
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Marquees"}
                   </button>
                 </div>
 
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-bold text-[#111111] block">
-                      Slide Images
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const currentSlides = siteConfigs["hero"]?.marqueeSlides || [];
-                        setSiteConfigs({
-                          ...siteConfigs,
-                          hero: { ...siteConfigs["hero"], marqueeSlides: [...currentSlides, "/portfolio/case_study_a_1.png"] }
-                        });
-                      }}
-                      className="text-[11px] font-bold text-primary-amber hover:underline"
-                    >
-                      + Add Slide Image
-                    </button>
+                {/* 1. Target Selector Tabs */}
+                <div>
+                  <label className="text-xs font-extrabold text-[#111111] block mb-2">
+                    Select Marquee to Configure:
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { 
+                        id: "services_top", 
+                        label: "🌟 Services Page — Top Marquee", 
+                        count: (siteConfigs["services_marquee_cms"]?.topSlides || []).length 
+                      },
+                      { 
+                        id: "services_bottom", 
+                        label: "✨ Services Page — Bottom Marquee", 
+                        count: (siteConfigs["services_marquee_cms"]?.bottomSlides || []).length 
+                      },
+                      { 
+                        id: "hero", 
+                        label: "🏠 Homepage Hero Marquee", 
+                        count: (siteConfigs["hero"]?.marqueeSlides || []).length 
+                      },
+                    ].map((target) => (
+                      <button
+                        key={target.id}
+                        type="button"
+                        onClick={() => setActiveMarqueeTarget(target.id as any)}
+                        className={`hex-pill px-4 py-2 text-xs font-black transition-all border ${
+                          activeMarqueeTarget === target.id
+                            ? "bg-[#111111] text-[#FCBF14] border-primary shadow-md scale-105"
+                            : "bg-white text-[#111111] border-primary/30 hover:border-primary hover:bg-[#FFF9E8]"
+                        }`}
+                      >
+                        {target.label} ({target.count})
+                      </button>
+                    ))}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(siteConfigs["hero"]?.marqueeSlides || [
-                      '/portfolio/case_study_a_14.png',
-                      '/portfolio/global_brands_1.png',
-                      '/portfolio/levis_yuengling_6.png',
-                      '/portfolio/pepsico_1.png',
-                      '/portfolio/case_study_b_2.png',
-                      '/portfolio/global_brands_3.png'
-                    ]).map((slide: string, idx: number) => (
-                      <div key={idx} className="flex items-center bg-[#FFF9E8] border border-[#111111]/10 rounded overflow-hidden">
-                        <div className="w-8 h-8 bg-[#111111]/5 flex-shrink-0 flex items-center justify-center border-r border-[#111111]/10">
-                          <img src={slide} alt="Slide" className="w-full h-full object-cover" />
+                </div>
+
+                {/* 2. Active Slides in Selected Marquee */}
+                {(() => {
+                  const getActiveList = (): string[] => {
+                    if (activeMarqueeTarget === "hero") return siteConfigs["hero"]?.marqueeSlides || [];
+                    if (activeMarqueeTarget === "services_top") return siteConfigs["services_marquee_cms"]?.topSlides || [];
+                    return siteConfigs["services_marquee_cms"]?.bottomSlides || [];
+                  };
+
+                  const updateActiveList = (newList: string[]) => {
+                    if (activeMarqueeTarget === "hero") {
+                      setSiteConfigs({
+                        ...siteConfigs,
+                        hero: { ...siteConfigs["hero"], marqueeSlides: newList }
+                      });
+                    } else if (activeMarqueeTarget === "services_top") {
+                      setSiteConfigs({
+                        ...siteConfigs,
+                        services_marquee_cms: {
+                          ...(siteConfigs["services_marquee_cms"] || {}),
+                          topSlides: newList
+                        }
+                      });
+                    } else {
+                      setSiteConfigs({
+                        ...siteConfigs,
+                        services_marquee_cms: {
+                          ...(siteConfigs["services_marquee_cms"] || {}),
+                          bottomSlides: newList
+                        }
+                      });
+                    }
+                  };
+
+                  const activeSlides = getActiveList();
+
+                  return (
+                    <div className="space-y-4 pt-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                            Currently Active Slides ({activeSlides.length})
+                          </h4>
+                          <p className="text-[11px] text-[#726F6D]">
+                            These slides glide continuously on the page.
+                          </p>
                         </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm">
+                            <UploadCloud size={14} />
+                            <span>{isUploadingMarquee ? "Uploading..." : "Upload New Image"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleUploadMarqueeImage}
+                              disabled={isUploadingMarquee}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Visual Slides Grid */}
+                      {activeSlides.length === 0 ? (
+                        <div className="p-6 text-center border-2 border-dashed border-primary/30 rounded-xl bg-[#FFF9E8]/50">
+                          <p className="text-xs font-bold text-[#726F6D]">No slides in this marquee yet. Select from examples below or upload an image.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {activeSlides.map((slideUrl: string, idx: number) => (
+                            <div key={idx} className="hex-card bg-white border border-primary/40 rounded-lg overflow-hidden shadow-sm relative group flex flex-col">
+                              <div className="aspect-[16/10] bg-[#FFF9E8] overflow-hidden relative">
+                                <img src={slideUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => updateActiveList(activeSlides.filter((_: any, i: number) => i !== idx))}
+                                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity shadow"
+                                  title="Remove from marquee"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                              <div className="p-1.5 text-[10px] font-bold text-[#111111] truncate bg-white">
+                                #{idx + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Manual Image URL Adder */}
+                      <div className="flex items-center gap-2 pt-2">
                         <input
                           type="text"
-                          value={slide}
-                          onChange={(e) => {
-                            const updated = [...(siteConfigs["hero"]?.marqueeSlides || [])];
-                            updated[idx] = e.target.value;
-                            setSiteConfigs({
-                              ...siteConfigs,
-                              hero: { ...siteConfigs["hero"], marqueeSlides: updated }
-                            });
-                          }}
-                          className="w-full bg-white border border-[#111111]/10 rounded px-2 py-1 text-[11px] font-mono text-[#111111]"
+                          placeholder="Or paste any custom image URL to add..."
+                          value={marqueeManualUrl}
+                          onChange={(e) => setMarqueeManualUrl(e.target.value)}
+                          className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-mono"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = (siteConfigs["hero"]?.marqueeSlides || []).filter((_: any, i: number) => i !== idx);
-                            setSiteConfigs({
-                              ...siteConfigs,
-                              hero: { ...siteConfigs["hero"], marqueeSlides: updated }
-                            });
+                            if (marqueeManualUrl.trim()) {
+                              updateActiveList([...activeSlides, marqueeManualUrl.trim()]);
+                              setMarqueeManualUrl("");
+                            }
                           }}
-                          className="text-red-500 hover:text-red-700 font-bold px-1 text-xs"
+                          className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs"
                         >
-                          ✕
+                          + Add URL
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
+
+                      {/* 3. Mapped Selection from Portfolio Examples */}
+                      <div className="pt-6 border-t border-[#111111]/10 space-y-4">
+                        <div>
+                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
+                            <Sparkles size={14} className="text-primary-amber" />
+                            Select Directly from Example Decks (Mapped to Portfolio)
+                          </h4>
+                          <p className="text-[11px] text-[#726F6D]">
+                            Click on any presentation slide to toggle it in/out of the currently selected marquee ({activeMarqueeTarget.replace("_", " ")}).
+                          </p>
+                        </div>
+
+                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                          {(siteConfigs["portfolio_cms"]?.caseStudies || []).map((cs: any) => {
+                            const csSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
+                              ? cs.slides
+                              : (cs.imageUrl ? [cs.imageUrl] : []);
+
+                            return (
+                              <div key={cs.id} className="bg-[#FFF9E8]/70 border border-primary/30 p-3.5 rounded-xl space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[10px] font-black px-2.5 py-0.5">
+                                      {cs.client}
+                                    </span>
+                                    <span className="text-xs font-extrabold text-[#111111]">
+                                      {cs.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-[#726F6D]">
+                                    {cs.category} • {csSlides.length} slides
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                  {csSlides.map((slideUrl: string, sIdx: number) => {
+                                    const isSelected = activeSlides.includes(slideUrl);
+
+                                    return (
+                                      <div
+                                        key={sIdx}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            updateActiveList(activeSlides.filter((s: string) => s !== slideUrl));
+                                          } else {
+                                            updateActiveList([...activeSlides, slideUrl]);
+                                          }
+                                        }}
+                                        className={`hex-card rounded-lg overflow-hidden border-2 cursor-pointer transition-all p-1 group ${
+                                          isSelected
+                                            ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
+                                            : "border-primary/30 bg-white hover:border-primary"
+                                        }`}
+                                      >
+                                        <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden mb-1 relative">
+                                          <img src={slideUrl} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                          {isSelected && (
+                                            <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
+                                              <Check size={12} />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] px-1">
+                                          <span className="font-extrabold text-[#111111]">
+                                            Slide {sIdx + 1}
+                                          </span>
+                                          <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
+                                            {isSelected ? "✓ Active" : "+ Add"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })()}
+
               </div>
             )}
 
@@ -2916,13 +3156,14 @@ export default function Admin() {
 
                             {/* Add Slides Action Bar */}
                             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#111111]/8">
-                              <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                              <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
                                 <UploadCloud size={12} className="text-primary-amber" />
-                                <span>Upload Slides from Computer</span>
+                                <span>{isUploadingSlide ? "Uploading to Storage..." : "Upload Slides to Cloud Storage"}</span>
                                 <input
                                   type="file"
                                   multiple
                                   accept="image/*"
+                                  disabled={isUploadingSlide}
                                   onChange={(e) => handleCaseStudySlidesUpload(idx, e)}
                                   className="hidden"
                                 />
@@ -2994,18 +3235,17 @@ export default function Admin() {
                       const current = siteConfigs["portfolio_cms"]?.caseStudies || [];
                       const newCS = {
                         id: Date.now(),
-                        title: "New Venture Deck",
-                        client: "Acme Corp",
-                        category: "Healthcare & Tech",
+                        title: "Enterprise Strategy & Digital Keynote",
+                        client: "New Enterprise Brand",
+                        category: "Strategy & Operations",
                         slides: [
-                          "/portfolio/case_study_a_14.png",
-                          "/portfolio/case_study_a_15.png",
-                          "/portfolio/case_study_a_16.png"
+                          "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg",
+                          "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-2.jpg"
                         ],
-                        imageUrl: "/portfolio/case_study_a_14.png",
-                        impact: "$10M Series A",
-                        description: "High-impact presentation narrative and custom infographics.",
-                        deliverables: ["PPTX Master", "Google Slides", "PDF"]
+                        imageUrl: "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg",
+                        impact: "Executive Alignment",
+                        description: "High-impact presentation deck crafted for leadership and strategic alignment.",
+                        deliverables: ["PowerPoint Master Deck", "Executive Keynote", "Custom Vector Icons"]
                       };
                       setSiteConfigs({
                         ...siteConfigs,
@@ -3014,7 +3254,7 @@ export default function Admin() {
                     }}
                     className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
                   >
-                    + Add New Case Study
+                    + Add New Case Study (Maps to Examples & Services Marquee)
                   </button>
                 </div>
               </div>
