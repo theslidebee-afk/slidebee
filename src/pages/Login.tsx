@@ -213,9 +213,9 @@ export default function Login() {
                 full_name: fullName.trim(),
                 company: company.trim() || "Client Enterprise",
                 role: "client",
-                credits_total: 10,
+                credits_total: 5,
                 credits_used: 0,
-                credits_balance: 10,
+                credits_balance: 5,
                 purchased_items: [],
                 usage_history: [],
                 last_sign_in_at: nowIso
@@ -318,7 +318,7 @@ export default function Login() {
             setFormError("");
             setPassword("");
             setSignUpSuccessMessage(
-              `✨ No registered account found for "${cleanEmail}". We've pre-filled your email — enter your name and choose a password below to create your account and claim 10 free slide credits!`
+              `No registered account found for ${cleanEmail}`
             );
             return;
           } else {
@@ -363,7 +363,7 @@ export default function Login() {
     const clientRole = userProfile?.role || "client";
     
     // Credits calculation
-    const creditsTotal = userProfile?.credits_total ?? 10;
+    const creditsTotal = userProfile?.credits_total ?? 5;
     const creditsUsed = userProfile?.credits_used ?? 0;
     const creditsBalance = userProfile?.credits_balance ?? Math.max(0, creditsTotal - creditsUsed);
     

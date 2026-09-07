@@ -246,7 +246,7 @@ export default function TemplateDetail() {
                 purchased_items: [newItem, ...currentItems],
                 usage_history: [newUsage, ...currentUsage],
                 credits_used: (prof.credits_used || 0) + 1,
-                credits_balance: Math.max(0, (prof.credits_balance || 10) - 1)
+                credits_balance: Math.max(0, (prof.credits_balance || 5) - 1)
               })
               .eq("email", clientEmail);
           } else {
@@ -255,9 +255,9 @@ export default function TemplateDetail() {
                 email: clientEmail,
                 full_name: clientName,
                 role: "client",
-                credits_total: 10,
+                credits_total: 5,
                 credits_used: 1,
-                credits_balance: 9,
+                credits_balance: 4,
                 purchased_items: [newItem],
                 usage_history: [newUsage]
               }

@@ -152,9 +152,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     role TEXT DEFAULT 'client' NOT NULL CHECK (role IN ('client', 'admin', 'super_admin')),
     last_sign_in_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    credits_total INTEGER DEFAULT 10,
+    credits_total INTEGER DEFAULT 5,
     credits_used INTEGER DEFAULT 0,
-    credits_balance INTEGER DEFAULT 10,
+    credits_balance INTEGER DEFAULT 5,
     purchased_items JSONB DEFAULT '[]'::JSONB,
     usage_history JSONB DEFAULT '[]'::JSONB
 );
@@ -272,9 +272,9 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'company', 'Client Enterprise'),
     'client',
     now(),
-    10,
+    5,
     0,
-    10,
+    5,
     '[]'::jsonb,
     '[]'::jsonb
   )
