@@ -286,7 +286,7 @@ const HexagonItem: React.FC<HexagonItemProps> = ({
             )}
             {isCenter && (
               <span className="text-[10px] font-black uppercase tracking-wider text-[#111111] bg-white/70 px-2 py-0.5 rounded ml-auto">
-                ⭐ START
+                START
               </span>
             )}
           </div>

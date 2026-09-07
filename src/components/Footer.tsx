@@ -61,7 +61,7 @@ export default function Footer() {
                   className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
                   aria-label="Twitter / X"
                 >
-                  𝕏
+                  X
                 </a>
               )}
               {footerConfig.instagramUrl && (

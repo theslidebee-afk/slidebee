@@ -4,8 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import ThreeJsHero from "../components/ThreeJsHero";
 import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { MagneticButton } from "../components/MagneticButton";
-import SoftwareBadge from "../components/SoftwareIcons";
-import { templateCatalog } from "./Templates";
 import { supabase } from "../lib/supabase";
 import { 
   Search, 
@@ -62,9 +60,9 @@ export default function Home() {
         }
       });
 
-    // Also fetch live templates from database
+    // Also fetch live templates from database using the Deep Module storefront catalog view
     supabase
-      .from("templates")
+      .from("v_storefront_catalog")
       .select("*")
       .then(({ data, error }) => {
         if (data && !error && data.length > 0) {
@@ -75,12 +73,12 @@ export default function Home() {
             category: t.category,
             price: t.price_inr || 499,
             originalPrice: t.original_price_inr || (t.price_inr ? t.price_inr * 2 : 999),
-            image: t.thumbnail_url || "/portfolio/case_study_a_1.png",
-            slides: t.slides || [],
-            slidesCount: t.slide_count || 25,
+            image: t.image_url || t.thumbnail_url || "/portfolio/case_study_a_1.png",
+            slides: Array.isArray(t.slides) ? t.slides : [],
+            slidesCount: t.slides_count || t.slide_count || 25,
             rating: 4.9,
             downloads: 80,
-            formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint", "Google Slides", "Canva"],
+            formats: ["Master PowerPoint (.pptx)"],
             description: t.description || "Executive presentation deck tailored for high-stakes business meetings."
           }));
           setDbTemplates(mapped);
@@ -254,15 +252,14 @@ export default function Home() {
                 </div>
               </motion.form>
 
-              {/* Bottom Subtle Brand / Format Badges */}
+              {/* Deliverable Format Guarantee */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                  Compatible With:
+                  Exclusive Deliverable:
                 </span>
-                <SoftwareBadge format="PowerPoint" size="sm" showLabel={true} />
-                <SoftwareBadge format="Google Slides" size="sm" showLabel={true} />
-                <SoftwareBadge format="Keynote" size="sm" showLabel={true} />
-                <SoftwareBadge format="Canva" size="sm" showLabel={true} />
+                <span className="hex-pill-sm bg-[#FFF9E8] border border-primary/30 text-[#111111] font-bold text-xs px-3 py-1 shadow-sm">
+                  Master PowerPoint Presentation (.pptx)
+                </span>
               </div>
             </div>
 
@@ -320,10 +317,11 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
             {(() => {
-              const allTemplates = [...dbTemplates, ...templateCatalog];
-              const displayed = featuredTemplateIds.length > 0 
+              const allTemplates = dbTemplates;
+              const matching = featuredTemplateIds.length > 0 
                 ? allTemplates.filter(t => featuredTemplateIds.includes(String(t.id))) 
-                : allTemplates.slice(0, 8);
+                : [];
+              const displayed = matching.length > 0 ? matching : allTemplates.slice(0, 8);
               return displayed.map((item) => (
               <Link
                 key={item.id}
@@ -331,7 +329,7 @@ export default function Home() {
                 className="hex-card group bg-white border-2 border-primary/35 hover:border-primary overflow-hidden hover:shadow-2xl transition-all duration-300 shadow-sm flex flex-col justify-between"
               >
                 {/* Preview Image */}
-                <div className="relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-primary/20">
+                <div className="relative aspect-video overflow-hidden bg-black/5 border-b border-primary/20">
                   <img
                     src={item.image}
                     alt={item.title}
@@ -340,12 +338,16 @@ export default function Home() {
                   <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-3 py-0.5">
                     {item.category}
                   </div>
+                  <div className="hex-pill-sm absolute bottom-2.5 left-2.5 bg-[#111111]/90 backdrop-blur-md text-primary text-[10px] font-black px-2.5 py-0.5 shadow border border-primary/40">
+                    {item.code}
+                  </div>
                 </div>
 
-                <div className="p-4 pt-3 flex flex-col flex-grow justify-between">
+                {/* Card Body */}
+                <div className="p-4 flex flex-col justify-between flex-grow">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
+                    <div className="flex items-start justify-between mb-1">
+                      <h3 className="font-heading font-extrabold text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
                         {item.title}
                       </h3>
                       <span className="text-xs sm:text-sm font-heading font-black text-[#111111] ml-2">
@@ -354,11 +356,10 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Branded Software Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-primary/15 mt-2.5">
-                    {item.formats.map((fmt: string) => (
-                      <SoftwareBadge key={fmt} format={fmt} size="sm" showLabel={true} />
-                    ))}
+                  {/* Deliverable Badge */}
+                  <div className="flex items-center gap-1.5 pt-2.5 border-t border-primary/15 mt-2.5 text-[10px] font-extrabold text-[#111111]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                    <span>Master PowerPoint (.pptx)</span>
                   </div>
                 </div>
               </Link>

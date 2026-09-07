@@ -33,6 +33,40 @@ export interface ProceduralModelRuntime {
   dispose: () => void;
 }
 
+function createBacklitTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  const grad = ctx.createRadialGradient(256, 256, 30, 256, 256, 250);
+  grad.addColorStop(0, '#FFFFFF');
+  grad.addColorStop(0.25, '#FFF6BD');
+  grad.addColorStop(0.60, '#FCBF14');
+  grad.addColorStop(0.85, '#D99F06');
+  grad.addColorStop(1, '#7A5208');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2;
+    const x = 256 + Math.cos(ang) * 205;
+    const y = 256 + Math.sin(ang) * 205;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 /**
  * Creates high-resolution procedural canvas textures for the honeycomb display faces
  */
@@ -65,22 +99,21 @@ function createDisplayTexture(type: 'display_chart' | 'display_kpi' | 'display_l
   ctx.stroke();
 
   if (type === 'display_chart') {
-    // Header Label
     ctx.fillStyle = '#FCBF14';
     ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('GROWTH METRICS', 110, 150);
+    ctx.textAlign = 'center';
+    ctx.fillText('GROWTH METRICS', 256, 140);
 
-    ctx.fillStyle = 'rgba(255, 249, 232, 0.65)';
+    ctx.fillStyle = 'rgba(255, 249, 232, 0.75)';
     ctx.font = '500 16px sans-serif';
-    ctx.fillText('Q3 Performance', 110, 178);
+    ctx.fillText('Q3 Performance', 256, 168);
 
-    // Bar Chart Columns
-    const bars = [45, 68, 85, 115, 145, 185];
-    const startX = 110;
-    const baseY = 340;
-    const barWidth = 36;
-    const gap = 16;
+    const bars = [40, 65, 85, 115, 145, 185];
+    const barWidth = 32;
+    const gap = 14;
+    const totalWidth = bars.length * barWidth + (bars.length - 1) * gap;
+    const startX = 256 - totalWidth / 2;
+    const baseY = 330;
     const points: [number, number][] = [];
 
     bars.forEach((h, i) => {
@@ -89,17 +122,16 @@ function createDisplayTexture(type: 'display_chart' | 'display_kpi' | 'display_l
       points.push([x + barWidth / 2, y]);
 
       const barGrad = ctx.createLinearGradient(x, y, x, baseY);
-      barGrad.addColorStop(0, '#FFE082');
+      barGrad.addColorStop(0, '#FFE885');
       barGrad.addColorStop(0.4, '#FCBF14');
       barGrad.addColorStop(1, '#936610');
       ctx.fillStyle = barGrad;
       ctx.fillRect(x, y, barWidth, h);
 
-      ctx.fillStyle = '#FFF9E8';
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(x, y - 2, barWidth, 3);
     });
 
-    // Trend line
     ctx.strokeStyle = '#FFEAA7';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -120,11 +152,10 @@ function createDisplayTexture(type: 'display_chart' | 'display_kpi' | 'display_l
       ctx.fill();
     });
 
-    // Metric stat
     ctx.fillStyle = '#FCBF14';
     ctx.font = '900 36px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('+185%', 400, 395);
+    ctx.textAlign = 'center';
+    ctx.fillText('+185% KPI', 256, 385);
   } else if (type === 'display_kpi') {
     // Circular KPI Gauge
     const cx = 256;
@@ -177,9 +208,9 @@ function createDisplayTexture(type: 'display_chart' | 'display_kpi' | 'display_l
     ctx.stroke();
 
     ctx.fillStyle = '#FCBF14';
-    ctx.font = '900 52px sans-serif';
+    ctx.font = '900 44px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('🐝', cx, cy + 18);
+    ctx.fillText('SB', cx, cy + 15);
 
     ctx.fillStyle = '#FFF9E8';
     ctx.font = '800 26px sans-serif';
@@ -316,16 +347,17 @@ export function createSlideBeeHoneycombModel(options: ProceduralModelOptions = {
     wireframe: !!options.wireframe
   });
 
-  // Backlit Warm Gold Diffuser Material (Frosted Glass with internal luminescence)
-  const backlitGoldMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color('#FFE885'),
-    emissive: new THREE.Color('#FCBF14'),
-    emissiveIntensity: 0.85,
-    roughness: 0.35,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.92,
-    wireframe: !!options.wireframe
+  // Reusable Display & Backlit Textures
+  const backlitTexture = createBacklitTexture();
+  const chartTexture = createDisplayTexture('display_chart');
+  const kpiTexture = createDisplayTexture('display_kpi');
+  const logoTexture = createDisplayTexture('display_logo');
+  const slidesTexture = createDisplayTexture('display_slides');
+
+  // Backlit Warm Gold Diffuser Material (Glowing Honeycomb Cells)
+  const backlitGoldMat = new THREE.MeshBasicMaterial({
+    map: backlitTexture,
+    side: THREE.DoubleSide
   });
 
   // Deep recessed chamber back material
@@ -336,16 +368,10 @@ export function createSlideBeeHoneycombModel(options: ProceduralModelOptions = {
     wireframe: !!options.wireframe
   });
 
-  // Reusable Display Textures
-  const chartTexture = createDisplayTexture('display_chart');
-  const kpiTexture = createDisplayTexture('display_kpi');
-  const logoTexture = createDisplayTexture('display_logo');
-  const slidesTexture = createDisplayTexture('display_slides');
-
-  const chartMat = new THREE.MeshBasicMaterial({ map: chartTexture });
-  const kpiMat = new THREE.MeshBasicMaterial({ map: kpiTexture });
-  const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture });
-  const slidesMat = new THREE.MeshBasicMaterial({ map: slidesTexture });
+  const chartMat = new THREE.MeshBasicMaterial({ map: chartTexture, side: THREE.DoubleSide });
+  const kpiMat = new THREE.MeshBasicMaterial({ map: kpiTexture, side: THREE.DoubleSide });
+  const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, side: THREE.DoubleSide });
+  const slidesMat = new THREE.MeshBasicMaterial({ map: slidesTexture, side: THREE.DoubleSide });
 
   // 3. Honeycomb Layout Definitions
   const dx = cellRadius * 1.55;
@@ -402,10 +428,10 @@ export function createSlideBeeHoneycombModel(options: ProceduralModelOptions = {
     baseMesh.receiveShadow = options.receiveShadow !== false;
     cellGroup.add(baseMesh);
 
-    // Golden Front Beveled Rim
+    // Golden Front Beveled Rim (sits on front face)
     const rimMatInstance = goldRimMat.clone();
     const rimMesh = new THREE.Mesh(rimGeo, rimMatInstance);
-    rimMesh.position.z = cellDepth / 2 + 0.04;
+    rimMesh.position.z = 0.51;
     cellGroup.add(rimMesh);
 
     // Face Plate (Content / Glow / Cavity)
@@ -432,13 +458,14 @@ export function createSlideBeeHoneycombModel(options: ProceduralModelOptions = {
     }
 
     const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-    faceMesh.position.z = cellDepth / 2 - 0.01;
+    // Position face plate right inside the rim
+    faceMesh.position.z = config.type === 'deep_obsidian' ? 0.15 : 0.505;
     cellGroup.add(faceMesh);
 
     // Add point light inside backlit honey cells
     if (config.type === 'backlit_gold') {
       const innerLight = new THREE.PointLight(0xfcbf14, 2.5, 4.0);
-      innerLight.position.set(0, 0, 0.2);
+      innerLight.position.set(0, 0, 0.6);
       cellGroup.add(innerLight);
     }
 
@@ -568,6 +595,7 @@ export function createSlideBeeHoneycombModel(options: ProceduralModelOptions = {
     goldRimMat.dispose();
     backlitGoldMat.dispose();
     cavityBackMat.dispose();
+    backlitTexture.dispose();
     chartTexture.dispose();
     kpiTexture.dispose();
     logoTexture.dispose();

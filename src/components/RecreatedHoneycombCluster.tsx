@@ -264,7 +264,7 @@ export const RecreatedHoneycombCluster: React.FC = () => {
             MASTER TEMPLATES
           </text>
           <text x="45" y="14" textAnchor="end" fill="#726F6D" fontSize="9" fontWeight="600">
-            PPT, Slides & Keynote
+            Master PowerPoint (.pptx)
           </text>
           <text x="45" y="26" textAnchor="end" fill="#726F6D" fontSize="9" fontWeight="600">
             100% Fully Editable

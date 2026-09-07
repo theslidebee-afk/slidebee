@@ -19,20 +19,16 @@ import {
   History,
   Layers,
   Check,
-  FileText
+  FileText,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { performGlobalLogout, subscribeToAuthSync, broadcastAuthEvent } from "../lib/authSync";
-import { sendWelcomeEmail } from "../lib/email";
+import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [userSubscription, setUserSubscription] = useState<any>(null);
-  const [userOrders, setUserOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [portalTab, setPortalTab] = useState<"purchases" | "credits" | "projects">("purchases");
 
   // Form State
@@ -45,320 +41,58 @@ export default function Login() {
   const [formError, setFormError] = useState("");
   const [signUpSuccessMessage, setSignUpSuccessMessage] = useState("");
 
-  // Check current auth session and sync across tabs
+  // Deep Module: ClientLedgerAuth
+  const {
+    currentUser,
+    userProfile,
+    userOrders,
+    loading,
+    creditsBalance,
+    creditsUsed,
+    purchasedItems,
+    usageHistory,
+    signIn,
+    signUp,
+    logout
+  } = useClientLedger();
+
+  const [userSubscription, setUserSubscription] = useState<any>(null);
+
   useEffect(() => {
-    checkUserSession();
-
-    const unsubscribe = subscribeToAuthSync(
-      () => {
-        setCurrentUser(null);
-        setUserProfile(null);
-        setUserSubscription(null);
-        setUserOrders([]);
-      },
-      () => {
-        checkUserSession();
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  const checkUserSession = async () => {
-    // 0. Check admin session first
-    const localAdmin = localStorage.getItem("slidebee_admin_session");
-    if (localAdmin === "true") {
-      window.location.hash = "#/admin";
-      return;
+    if (currentUser?.email) {
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_email", currentUser.email)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setUserSubscription(data);
+        });
     }
+  }, [currentUser?.email]);
 
-    // 1. Check local client session
-    const localClient = localStorage.getItem("slidebee_client_user");
-    if (localClient) {
-      const parsed = JSON.parse(localClient);
-      setCurrentUser(parsed);
-      fetchClientData(parsed.email);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Check Supabase Auth
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const isSessionAdmin =
-        session.user.email === "admin@theslidebee.com" ||
-        session.user.email === "admin@slidebee.com" ||
-        session.user.email?.startsWith("admin@") ||
-        session.user.user_metadata?.role === "admin" ||
-        session.user.user_metadata?.role === "super_admin";
-
-      if (isSessionAdmin) {
-        localStorage.setItem("slidebee_admin_session", "true");
-        localStorage.setItem("slidebee_admin_email", session.user.email || "admin@theslidebee.com");
-        window.location.hash = "#/admin";
-        return;
-      }
-      setCurrentUser(session.user);
-      fetchClientData(session.user.email || "");
-    }
-    setLoading(false);
-  };
-
-  const fetchClientData = async (userEmail: string) => {
-    if (!userEmail) return;
-
-    // Fetch Profile (includes credits & purchased items)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("email", userEmail)
-      .maybeSingle();
-    if (profile) setUserProfile(profile);
-
-    // Fetch Subscription
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_email", userEmail)
-      .maybeSingle();
-    if (sub) setUserSubscription(sub);
-
-    // Fetch Client Orders (matches email column)
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("email", userEmail)
-      .order("created_at", { ascending: false });
-    if (ords) setUserOrders(ords);
-  };
-
-  // Record user authentication activity into database
-  const recordAuthActivity = async (userEmail: string, event: "LOGIN" | "SIGNUP", meta: any = {}) => {
-    try {
-      // 1. Update last_sign_in_at in profiles table
-      await supabase
-        .from("profiles")
-        .update({ last_sign_in_at: new Date().toISOString() })
-        .eq("email", userEmail);
-
-      // 2. Insert record in auth_logs
-      await supabase
-        .from("auth_logs")
-        .insert([
-          {
-            user_email: userEmail,
-            event,
-            metadata: {
-              ...meta,
-              timestamp: new Date().toISOString(),
-              userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "browser"
-            }
-          }
-        ]);
-    } catch (err) {
-      console.warn("Auth activity logging notice:", err);
-    }
-  };
-
-  // Handle Sign In / Sign Up
+  // Handle Sign In / Sign Up via Deep Module
   const handleSubmitAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setFormError("");
     setSignUpSuccessMessage("");
 
-    const cleanEmail = email.toLowerCase().trim();
-    const cleanPassword = password.trim();
-
     try {
       if (isSignUp) {
-        // --- 1. SIGN UP NEW CLIENT ---
-        if (!fullName.trim()) {
-          throw new Error("Please enter your full name.");
-        }
-        if (cleanPassword.length < 6) {
-          throw new Error("Password must be at least 6 characters long.");
-        }
-
-        // Check if an account already exists
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id, email")
-          .eq("email", cleanEmail)
-          .maybeSingle();
-
-        if (existingProfile) {
-          throw new Error("An account with this email already exists. Please sign in instead.");
-        }
-
-        // Register in Supabase Auth
-        const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password: cleanPassword,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              company: company.trim() || "Client Enterprise"
-            }
-          }
-        });
-
-        if (authErr) {
-          throw new Error(authErr.message || "Failed to register account.");
-        }
-
-        const nowIso = new Date().toISOString();
-
-        // Safely record in public.profiles table
-        let newProfile = null;
-        try {
-          const { data: pData } = await supabase
-            .from("profiles")
-            .upsert([
-              {
-                id: authData?.user?.id,
-                email: cleanEmail,
-                full_name: fullName.trim(),
-                company: company.trim() || "Client Enterprise",
-                role: "client",
-                credits_total: 5,
-                credits_used: 0,
-                credits_balance: 5,
-                purchased_items: [],
-                usage_history: [],
-                last_sign_in_at: nowIso
-              }
-            ], { onConflict: "email" })
-            .select()
-            .maybeSingle();
-          newProfile = pData;
-        } catch (pErr) {
-          console.warn("Profiles RLS notice (handled safely):", pErr);
-        }
-
-        // Log registration to database auth_logs
-        recordAuthActivity(cleanEmail, "SIGNUP", { fullName, company });
-
-        // Trigger Welcome Email from Zoho Mail (hello@theslidebee.com)
-        sendWelcomeEmail({
-          clientName: fullName.trim() || cleanEmail.split("@")[0],
-          clientEmail: cleanEmail,
-          company: company.trim() || "Client Enterprise"
-        }).catch(err => console.warn("Welcome email notice:", err));
-
-        // If session exists immediately (email confirmation off in Supabase)
-        if (authData?.session?.user || authData?.user) {
-          const clientObj = authData.session?.user || authData.user;
-          localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
-          broadcastAuthEvent("LOGIN", "client");
-          setCurrentUser(clientObj);
-          if (newProfile) setUserProfile(newProfile);
-          fetchClientData(cleanEmail);
-          return;
-        } else {
-          // Email confirmation fallback notice
-          setSignUpSuccessMessage(
-            "🎉 Account registered successfully! Please sign in below."
-          );
-          setIsSignUp(false);
-          setPassword("");
+        const res = await signUp(email, password, fullName, company);
+        if (res.message) {
+          setSignUpSuccessMessage(res.message);
         }
       } else {
-        // --- 2. SIGN IN EXISTING USER ---
-
-        // Check if Admin target
-        const isAdminTarget =
-          cleanEmail === "admin@theslidebee.com" ||
-          cleanEmail === "admin@slidebee.com" ||
-          cleanEmail.startsWith("admin@");
-
-        const isKnownAdminPin =
-          cleanPassword === "SlideBee@Admin2026!" ||
-          cleanPassword === "2026" ||
-          cleanPassword === "admin" ||
-          cleanPassword === "admin2026" ||
-          cleanPassword === "SlideBee2026!";
-
-        if (isAdminTarget && isKnownAdminPin) {
-          recordAuthActivity(cleanEmail, "LOGIN", { role: "admin", method: "admin_pin" });
-          localStorage.setItem("slidebee_admin_session", "true");
-          localStorage.setItem("slidebee_admin_email", cleanEmail);
-          broadcastAuthEvent("LOGIN", "admin");
-          window.location.hash = "#/admin";
-          return;
+        const res = await signIn(email, password);
+        if (res.isUnregistered) {
+          setIsSignUp(true);
+          setPassword("");
+          setSignUpSuccessMessage(res.unregisteredPrompt || "");
+        } else if (!res.success && res.message) {
+          setFormError(res.message);
         }
-
-        // Try Supabase auth
-        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password: cleanPassword
-        });
-
-        if (authData?.user) {
-          // Check if admin role
-          const isUserAdmin =
-            authData.user.email === "admin@theslidebee.com" ||
-            authData.user.email === "admin@slidebee.com" ||
-            authData.user.email?.startsWith("admin@") ||
-            authData.user.user_metadata?.role === "admin" ||
-            authData.user.user_metadata?.role === "super_admin";
-
-          if (isUserAdmin) {
-            recordAuthActivity(cleanEmail, "LOGIN", { role: "admin", method: "supabase_auth" });
-            localStorage.setItem("slidebee_admin_session", "true");
-            localStorage.setItem("slidebee_admin_email", authData.user.email || cleanEmail);
-            broadcastAuthEvent("LOGIN", "admin");
-            window.location.hash = "#/admin";
-            return;
-          }
-          recordAuthActivity(cleanEmail, "LOGIN", { provider: "supabase_auth" });
-          setCurrentUser(authData.user);
-          localStorage.setItem("slidebee_client_user", JSON.stringify(authData.user));
-          broadcastAuthEvent("LOGIN", "client");
-          fetchClientData(cleanEmail);
-          return;
-        }
-
-        if (authErr) {
-          if (authErr.message?.toLowerCase().includes("email not confirmed")) {
-            throw new Error(
-              "Your email has not been confirmed yet. Please check your inbox for the verification link."
-            );
-          }
-
-          // Check if user even exists in profiles table
-          const { data: existingProfile } = await supabase
-            .from("profiles")
-            .select("id, email, role")
-            .eq("email", cleanEmail)
-            .maybeSingle();
-
-          const isAdminAccount =
-            isAdminTarget ||
-            existingProfile?.role === "admin" ||
-            existingProfile?.role === "super_admin";
-
-          if (isAdminAccount) {
-            throw new Error(
-              "Incorrect Admin password or PIN. Please enter your valid credentials or master PIN ('2026')."
-            );
-          }
-
-          if (!existingProfile) {
-            // Unregistered email -> Switch directly to Sign Up (Create Account) tab!
-            setIsSignUp(true);
-            setFormError("");
-            setPassword("");
-            setSignUpSuccessMessage(
-              `No registered account found for ${cleanEmail}`
-            );
-            return;
-          } else {
-            throw new Error("Incorrect password. Please verify your password and try again.");
-          }
-        }
-
-        throw new Error("Authentication failed. Please verify your credentials or sign up.");
       }
     } catch (err: any) {
       setFormError(err.message || "Authentication failed. Please check details.");
@@ -368,11 +102,7 @@ export default function Login() {
   };
 
   const handleLogout = async () => {
-    await performGlobalLogout();
-    setCurrentUser(null);
-    setUserProfile(null);
-    setUserSubscription(null);
-    setUserOrders([]);
+    await logout();
   };
 
   if (loading) {
@@ -396,15 +126,13 @@ export default function Login() {
     
     // Credits calculation
     const creditsTotal = userProfile?.credits_total ?? 5;
-    const creditsUsed = userProfile?.credits_used ?? 0;
-    const creditsBalance = userProfile?.credits_balance ?? Math.max(0, creditsTotal - creditsUsed);
     
     // Purchases & usage data
-    const directPurchases: any[] = Array.isArray(userProfile?.purchased_items) ? userProfile.purchased_items : [];
+    const directPurchases: any[] = Array.isArray(purchasedItems) ? purchasedItems : [];
     const orderTemplatePurchases = userOrders.filter(o => o.service_type?.toLowerCase().includes("template"));
     const allPurchasedCount = directPurchases.length > 0 ? directPurchases.length : orderTemplatePurchases.length;
 
-    const usageEvents: any[] = Array.isArray(userProfile?.usage_history) ? userProfile.usage_history : [];
+    const usageEvents: any[] = Array.isArray(usageHistory) ? usageHistory : [];
     const customBriefs = userOrders.filter(o => !o.service_type?.toLowerCase().includes("template"));
 
     return (
@@ -558,8 +286,15 @@ export default function Login() {
                   <span className="text-[#726F6D] text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
                     <CreditCard size={13} className="text-primary-amber" /> Account Status
                   </span>
-                  <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5 border border-primary/30">
-                    {userSubscription?.status ? `● ${userSubscription.status}` : "Active Client"}
+                  <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5 border border-primary/30 flex items-center gap-1">
+                    {userSubscription?.status ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                        {userSubscription.status}
+                      </>
+                    ) : (
+                      "Active Client"
+                    )}
                   </span>
                 </div>
 
@@ -718,8 +453,8 @@ export default function Login() {
                                       {item.category}
                                     </span>
                                   )}
-                                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                    ✓ Commercial License
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                    <Check size={10} /> Commercial License
                                   </span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-[#726F6D]">
@@ -861,8 +596,8 @@ export default function Login() {
                                 </p>
                               </div>
                             </div>
-                            <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto">
-                              ✓ Deducted
+                            <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
+                              <Check size={9} /> Deducted
                             </span>
                           </div>
                         ))}
@@ -926,8 +661,8 @@ export default function Login() {
                                   {ord.service_type}
                                 </span>
                                 {ord.timeline && (
-                                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5">
-                                    ⚡ {ord.timeline}
+                                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5 inline-flex items-center gap-1">
+                                    <Zap size={9} /> {ord.timeline}
                                   </span>
                                 )}
                               </div>
@@ -1130,10 +865,16 @@ export default function Login() {
             and{" "}
             <span className="text-[#111111] font-bold underline cursor-pointer">Privacy Policy</span>.
           </p>
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-semibold">
-            <span>🔒 256-Bit SSL Encrypted</span>
+          <div className="flex items-center justify-center gap-2 text-[10px] text-[#726F6D] font-semibold">
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck size={12} className="text-primary-amber" />
+              256-Bit SSL Encrypted
+            </span>
             <span>•</span>
-            <span>Strict NDA Protection</span>
+            <span className="inline-flex items-center gap-1">
+              <Lock size={11} className="text-primary-amber" />
+              Strict NDA Protection
+            </span>
           </div>
         </div>
 

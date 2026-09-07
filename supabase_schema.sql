@@ -293,3 +293,254 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- =========================================================
+-- 8. Deep Module Views & Atomic RPC Functions
+-- =========================================================
+
+-- Ensure is_credit_eligible column exists on templates
+ALTER TABLE public.templates 
+ADD COLUMN IF NOT EXISTS is_credit_eligible BOOLEAN DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_templates_credit_eligible 
+ON public.templates(is_credit_eligible, is_published);
+
+-- Deep Module View: Storefront Catalog (Clean public interface)
+DROP VIEW IF EXISTS public.v_free_credit_library;
+DROP VIEW IF EXISTS public.v_storefront_catalog;
+
+CREATE OR REPLACE VIEW public.v_storefront_catalog AS
+SELECT 
+    t.id,
+    COALESCE(t.code, 'SLD-' || UPPER(SUBSTRING(t.id::text, 1, 4))) AS code,
+    t.title,
+    COALESCE(t.category, 'Business') AS category,
+    COALESCE(t.price_inr, 499) AS price_inr,
+    COALESCE(t.price_usd, 9) AS price_usd,
+    COALESCE(t.original_price_inr, 999) AS original_price_inr,
+    COALESCE(t.image_url, t.thumbnail_url, '/portfolio/case_study_a_1.png') AS image_url,
+    COALESCE(t.slides, jsonb_build_array(COALESCE(t.image_url, t.thumbnail_url, '/portfolio/case_study_a_1.png'))) AS slides,
+    COALESCE(t.slides_count, t.slide_count, 30) AS slides_count,
+    COALESCE(t.rating, 4.9) AS rating,
+    COALESCE(t.downloads, 120) AS downloads,
+    t.download_url,
+    COALESCE(t.file_name, 'Master_Presentation.pptx') AS file_name,
+    COALESCE(t.file_size, '4.5 MB') AS file_size,
+    t.description,
+    COALESCE(t.features, ARRAY['30+ High-Impact Slides', '16:9 Widescreen Format', 'Master PowerPoint (.pptx)']) AS features,
+    COALESCE(t.is_credit_eligible, false) AS is_credit_eligible,
+    COALESCE(t.is_featured, false) AS is_featured,
+    COALESCE(t.is_published, true) AS is_published,
+    t.created_at
+FROM public.templates t
+WHERE COALESCE(t.is_published, true) = true;
+
+-- Deep Module View: Free Credit Library (Exclusively credit-eligible templates)
+CREATE OR REPLACE VIEW public.v_free_credit_library AS
+SELECT *
+FROM public.v_storefront_catalog
+WHERE is_credit_eligible = true;
+
+GRANT SELECT ON public.v_storefront_catalog TO anon, authenticated;
+GRANT SELECT ON public.v_free_credit_library TO anon, authenticated;
+
+-- Deep Module RPC: fn_grant_starter_credits
+CREATE OR REPLACE FUNCTION public.fn_grant_starter_credits(
+    p_email TEXT,
+    p_full_name TEXT DEFAULT NULL,
+    p_company TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_profile public.profiles%ROWTYPE;
+BEGIN
+    INSERT INTO public.profiles (
+        email,
+        full_name,
+        company,
+        role,
+        credits_total,
+        credits_used,
+        credits_balance,
+        purchased_items,
+        usage_history,
+        last_sign_in_at
+    )
+    VALUES (
+        LOWER(TRIM(p_email)),
+        COALESCE(p_full_name, split_part(p_email, '@', 1)),
+        COALESCE(p_company, 'Client Enterprise'),
+        'client',
+        5,
+        0,
+        5,
+        '[]'::jsonb,
+        '[]'::jsonb,
+        now()
+    )
+    ON CONFLICT (email) DO UPDATE
+    SET last_sign_in_at = now()
+    RETURNING * INTO v_profile;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'email', v_profile.email,
+        'credits_balance', v_profile.credits_balance,
+        'credits_total', v_profile.credits_total
+    );
+END;
+$$;
+
+-- Deep Module RPC: fn_redeem_template_credit
+CREATE OR REPLACE FUNCTION public.fn_redeem_template_credit(
+    p_user_email TEXT,
+    p_template_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user public.profiles%ROWTYPE;
+    v_template public.templates%ROWTYPE;
+    v_deliverable TEXT;
+    v_already_purchased BOOLEAN := false;
+    v_item_record JSONB;
+    v_usage_record JSONB;
+    v_credits_to_deduct INTEGER := 5;
+BEGIN
+    SELECT * INTO v_user
+    FROM public.profiles
+    WHERE email = LOWER(TRIM(p_user_email))
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'USER_NOT_FOUND',
+            'message', 'User account not found.'
+        );
+    END IF;
+
+    IF v_user.credits_balance < 1 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'INSUFFICIENT_CREDITS',
+            'message', 'You do not have sufficient design credits remaining.'
+        );
+    END IF;
+
+    SELECT * INTO v_template
+    FROM public.templates
+    WHERE id::text = p_template_id 
+       OR slug = p_template_id 
+       OR code = p_template_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'TEMPLATE_NOT_FOUND',
+            'message', 'The requested presentation template does not exist.'
+        );
+    END IF;
+
+    IF COALESCE(v_template.is_credit_eligible, false) = false THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'NOT_CREDIT_ELIGIBLE',
+            'message', 'This premium master deck is not in the free credits library. Free starter credits apply exclusively to tagged free templates.'
+        );
+    END IF;
+
+    IF v_user.purchased_items IS NOT NULL THEN
+        SELECT EXISTS (
+            SELECT 1 
+            FROM jsonb_array_elements(v_user.purchased_items) elem
+            WHERE elem->>'id' = v_template.id::text 
+               OR elem->>'slug' = v_template.slug 
+               OR elem->>'code' = v_template.code
+        ) INTO v_already_purchased;
+    END IF;
+
+    IF v_already_purchased THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ALREADY_CLAIMED',
+            'message', 'You have already claimed this master presentation deck.'
+        );
+    END IF;
+
+    v_credits_to_deduct := LEAST(v_user.credits_balance, 5);
+    v_deliverable := COALESCE(v_template.download_url, v_template.image_url, '/portfolio/case_study_a_1.png');
+
+    v_item_record := jsonb_build_object(
+        'id', v_template.id::text,
+        'slug', v_template.slug,
+        'code', COALESCE(v_template.code, 'SLD-' || UPPER(SUBSTRING(v_template.id::text, 1, 4))),
+        'title', v_template.title,
+        'category', v_template.category,
+        'slides_count', COALESCE(v_template.slides_count, 30),
+        'formats', jsonb_build_array('Master PowerPoint (.pptx)'),
+        'amount', 0,
+        'currency', 'INR',
+        'download_url', v_deliverable,
+        'is_credit_redemption', true,
+        'purchased_at', timezone('utc'::text, now())
+    );
+
+    v_usage_record := jsonb_build_object(
+        'item_title', v_template.title,
+        'credits_used', v_credits_to_deduct,
+        'action', 'Free Starter Credit Redemption (Master PPTX)',
+        'date', timezone('utc'::text, now())
+    );
+
+    UPDATE public.profiles
+    SET 
+        credits_balance = GREATEST(0, v_user.credits_balance - v_credits_to_deduct),
+        credits_used = v_user.credits_used + v_credits_to_deduct,
+        purchased_items = jsonb_insert(COALESCE(purchased_items, '[]'::jsonb), '{0}', v_item_record),
+        usage_history = jsonb_insert(COALESCE(usage_history, '[]'::jsonb), '{0}', v_usage_record),
+        updated_at = timezone('utc'::text, now())
+    WHERE id = v_user.id;
+
+    INSERT INTO public.orders (
+        order_reference,
+        service_type,
+        slide_count,
+        timeline,
+        formats,
+        project_brief,
+        full_name,
+        email,
+        status
+    )
+    VALUES (
+        'CRD-' || UPPER(SUBSTRING(gen_random_uuid()::text, 1, 8)),
+        'Starter Credit Claim: ' || v_template.title,
+        COALESCE(v_template.slides_count::text, '30'),
+        'Instant Credit Dispatch',
+        ARRAY['Master PowerPoint (.pptx)'],
+        'Redeemed via 5 Free Starter Design Credits for tagged template.',
+        COALESCE(v_user.full_name, split_part(v_user.email, '@', 1)),
+        v_user.email,
+        'completed'
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Template claimed successfully with your design credits!',
+        'template_title', v_template.title,
+        'template_code', COALESCE(v_template.code, 'SLD-' || UPPER(SUBSTRING(v_template.id::text, 1, 4))),
+        'download_url', v_deliverable,
+        'credits_remaining', GREATEST(0, v_user.credits_balance - v_credits_to_deduct)
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.fn_grant_starter_credits(TEXT, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_redeem_template_credit(TEXT, TEXT) TO anon, authenticated;
+
+

@@ -12,7 +12,8 @@ import {
   Shield, 
   Layers,
   ChevronDown,
-  Check
+  Check,
+  ArrowRight
 } from 'lucide-react';
 
 interface SlideBeeSelectProps {
@@ -144,7 +145,7 @@ export default function OrderNow() {
     service: 'Presentation Redesign',
     slideCount: '10–25 Slides',
     timeline: '48h Fast Turnaround',
-    format: 'PowerPoint (.pptx) + Google Slides',
+    format: 'Master PowerPoint (.pptx)',
     stylePreference: 'Modern & High-Impact',
     driveLink: '',
     projectNotes: '',
@@ -171,18 +172,16 @@ export default function OrderNow() {
   ];
 
   const timelines = [
-    '⚡ Urgent 24-Hour Rush',
+    'Urgent 24-Hour Rush',
     '48h Fast Turnaround',
     '3–5 Business Days',
     'Flexible / Milestone Based'
   ];
 
   const formats = [
-    'PowerPoint (.pptx)',
-    'Google Slides',
-    'PowerPoint + Google Slides',
-    'Canva Editable',
-    'Apple Keynote (.key)'
+    'Master PowerPoint (.pptx)',
+    'Master PowerPoint (.pptx) + High-Res PDF',
+    'Enterprise Master Template (.potx)'
   ];
 
   const stylePreferences = [
@@ -299,7 +298,7 @@ export default function OrderNow() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block mb-2">
-            SlideBee Project Request & Quote Intake 🐝
+            SlideBee Project Request & Quote Intake
           </span>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] mb-3 leading-tight">
             Start Your Presentation Project
@@ -324,7 +323,7 @@ export default function OrderNow() {
             </span>
 
             <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111] mt-4 mb-3">
-              Project Request Received! 🎉
+              Project Request Received
             </h2>
 
             <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-lg mx-auto mb-8 leading-relaxed">
@@ -353,9 +352,9 @@ export default function OrderNow() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/"
-                className="bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-8 py-3.5 rounded-full text-xs sm:text-sm shadow-lg hover:scale-105 transition-all"
+                className="bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-8 py-3.5 rounded-full text-xs sm:text-sm shadow-lg hover:scale-105 transition-all inline-flex items-center justify-center gap-1.5"
               >
-                Return to Homepage ➔
+                Return to Homepage <ArrowRight size={14} />
               </Link>
               <button
                 onClick={() => setIsSuccess(false)}

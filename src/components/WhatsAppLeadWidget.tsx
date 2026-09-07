@@ -12,7 +12,7 @@ export const WhatsAppLeadWidget: React.FC = () => {
 
   const handleSendToWhatsApp = (e: React.FormEvent) => {
     e.preventDefault();
-    const formattedText = `Hi SlideBee team! 🐝%0A%0A*Name:* ${encodeURIComponent(name || 'Client')}%0A*Service:* ${encodeURIComponent(serviceType)}%0A*Scope:* ${encodeURIComponent(slideCount)}%0A*Notes:* ${encodeURIComponent(customNote || 'Need a fast quote and turnaround.')}%0A%0ALooking forward to discussing!`;
+    const formattedText = `Hi SlideBee team!%0A%0A*Name:* ${encodeURIComponent(name || 'Client')}%0A*Service:* ${encodeURIComponent(serviceType)}%0A*Scope:* ${encodeURIComponent(slideCount)}%0A*Notes:* ${encodeURIComponent(customNote || 'Need a fast quote and turnaround.')}%0A%0ALooking forward to discussing!`;
     const url = `https://wa.me/${WHATSAPP_CONFIG.phoneNumber}?text=${formattedText}`;
     window.open(url, '_blank');
     setIsOpen(false);
@@ -133,7 +133,7 @@ export const WhatsAppLeadWidget: React.FC = () => {
                   onClick={handleDirectWhatsApp}
                   className="text-[11px] text-gray-400 hover:text-primary transition-colors underline"
                 >
-                  Or start instant direct WhatsApp chat ➔
+                  Or start instant direct WhatsApp chat
                 </button>
               </div>
             </form>

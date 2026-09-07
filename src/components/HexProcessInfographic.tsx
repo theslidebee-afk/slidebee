@@ -28,7 +28,7 @@ const steps = [
     num: "04", 
     badge: "STEP 04", 
     title: "Present & Win", 
-    desc: "Receive 100% editable PPTX & Google Slides ready to impress stakeholders.", 
+    desc: "Receive 100% editable Master PowerPoint (.pptx) ready to impress stakeholders.", 
     icon: <Trophy className="w-5 h-5 text-[#FCBF14]" />
   }
 ];

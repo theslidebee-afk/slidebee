@@ -28,13 +28,23 @@ import {
   Trash2,
   Copy,
   Edit3,
-  Send
+  Send,
+  Zap,
+  Home,
+  MessageSquare,
+  Settings,
+  Building2,
+  Phone,
+  Compass,
+  DollarSign,
+  Star,
+  Eye,
+  EyeOff,
+  RefreshCw
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import SlideBeeLogo from "../components/SlideBeeLogo";
-import SoftwareBadge from "../components/SoftwareIcons";
-import { templateCatalog } from "./Templates";
 
 export const ORDER_MILESTONES = [
   { 
@@ -118,6 +128,10 @@ export default function Admin() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [siteConfigs, setSiteConfigs] = useState<Record<string, any>>({});
+  const [templateMetricsSettings, setTemplateMetricsSettings] = useState<{ show_stars: boolean; show_downloads: boolean }>({
+    show_stars: false,
+    show_downloads: false
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [orderMilestoneFilter, setOrderMilestoneFilter] = useState<string>("all");
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
@@ -133,12 +147,13 @@ export default function Admin() {
   const [newDesc, setNewDesc] = useState("");
   const [newThumbnail, setNewThumbnail] = useState("/portfolio/case_study_a_1.png");
   const [newSlides, setNewSlides] = useState<string[]>([]);
-  const [newSoftwareFormats, setNewSoftwareFormats] = useState<string[]>(["PowerPoint", "Google Slides", "Canva"]);
   const [newPptUrl, setNewPptUrl] = useState("");
   const [newPptFilename, setNewPptFilename] = useState("");
   const [newPptSize, setNewPptSize] = useState("");
   const [isUploadingPpt, setIsUploadingPpt] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [newIsCreditEligible, setNewIsCreditEligible] = useState(false);
+  const [adminTemplateFilter, setAdminTemplateFilter] = useState<"all" | "published" | "draft" | "free">("all");
 
   // Edit Template Modal State
   const [isEditTemplateOpen, setIsEditTemplateOpen] = useState(false);
@@ -195,6 +210,8 @@ export default function Admin() {
   const [isUploadingMarquee, setIsUploadingMarquee] = useState(false);
   const [isUploadingSlide, setIsUploadingSlide] = useState(false);
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
+  const [newWorkedCompanyName, setNewWorkedCompanyName] = useState("");
+  const [newWorkedCompanyCategory, setNewWorkedCompanyCategory] = useState("");
 
   // 1. Check active session on mount
   useEffect(() => {
@@ -294,6 +311,12 @@ export default function Admin() {
         configMap[c.key] = c.value;
       });
       setSiteConfigs(configMap);
+      if (configMap["show_template_metrics"]) {
+        setTemplateMetricsSettings({
+          show_stars: Boolean(configMap["show_template_metrics"].show_stars),
+          show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
+        });
+      }
     }
   };
 
@@ -331,11 +354,11 @@ export default function Admin() {
 
   // Download Comprehensive Sample Bulk Template CSV
   const handleDownloadSampleCSV = () => {
-    const sampleHeaders = "code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,formats,description,features\n";
+    const sampleHeaders = "code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,is_credit_eligible,description,features\n";
     const sampleRows = 
-      `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,30,"/portfolio/case_study_a_1.png","/portfolio/case_study_a_1.png;/portfolio/case_study_a_2.png;/portfolio/case_study_a_3.png;/portfolio/case_study_a_4.png","https://theslidebee.com/downloads/series_a_saas_pro.pptx","PowerPoint;Google Slides;Keynote;Canva","High-converting 30-slide pitch deck layout with financial unit economics and investor traction metrics.","30+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
-      `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"/portfolio/case_study_a_14.png","/portfolio/case_study_a_14.png;/portfolio/case_study_a_15.png;/portfolio/case_study_a_16.png","https://theslidebee.com/downloads/executive_board_review.pptx","PowerPoint;Google Slides;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable PPTX & Keynote"\n` +
-      `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"/portfolio/levis_yuengling_6.png","/portfolio/levis_yuengling_6.png;/portfolio/levis_yuengling_7.png;/portfolio/levis_yuengling_8.png","https://theslidebee.com/downloads/brand_guidelines_system.pptx","PowerPoint;Google Slides;Canva;Figma","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Multi-Platform Deliverable"`;
+      `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,30,"/portfolio/case_study_a_1.png","/portfolio/case_study_a_1.png;/portfolio/case_study_a_2.png;/portfolio/case_study_a_3.png;/portfolio/case_study_a_4.png","https://theslidebee.com/downloads/series_a_saas_pro.pptx","true","High-converting 30-slide pitch deck layout with financial unit economics and investor traction metrics.","30+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
+      `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"/portfolio/case_study_a_14.png","/portfolio/case_study_a_14.png;/portfolio/case_study_a_15.png;/portfolio/case_study_a_16.png","https://theslidebee.com/downloads/executive_board_review.pptx","false","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable Master PPTX"\n` +
+      `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"/portfolio/levis_yuengling_6.png","/portfolio/levis_yuengling_6.png;/portfolio/levis_yuengling_7.png;/portfolio/levis_yuengling_8.png","https://theslidebee.com/downloads/brand_guidelines_system.pptx","false","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Master PowerPoint (.pptx)"`;
     
     const blob = new Blob([sampleHeaders + sampleRows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -401,9 +424,9 @@ export default function Admin() {
     const thumbIdx = hasHeaderCode ? getColIndex("thumbnail_url", 7) : getColIndex("thumbnail_url", 5);
     const previewUrlsIdx = getColIndex("slides_preview_urls", 8);
     const downloadUrlIdx = getColIndex("download_url", 9);
-    const formatsIdx = getColIndex("formats", 10);
     const descIdx = hasHeaderCode ? getColIndex("description", 11) : getColIndex("description", 6);
     const featuresIdx = getColIndex("features", 12);
+    const creditEligibleIdx = getColIndex("is_credit_eligible", -1);
 
     const items: any[] = [];
     for (let i = 1; i < lines.length; i++) {
@@ -426,12 +449,6 @@ export default function Admin() {
           slides = [thumbnail_url];
         }
 
-        // Software formats
-        let formats: string[] = ["PowerPoint", "Google Slides"];
-        if (parts[formatsIdx]) {
-          formats = parts[formatsIdx].split(/[;|]/).map(f => f.trim().replace(/^"|"$/g, "")).filter(Boolean);
-        }
-
         const slide_count = Number(parts[slidesCountIdx]) || slides.length || 25;
 
         // Features list
@@ -446,6 +463,9 @@ export default function Admin() {
         }
 
         const download_url = parts[downloadUrlIdx] || thumbnail_url;
+        const is_credit_eligible = creditEligibleIdx !== -1
+          ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
+          : false;
 
         items.push({
           title,
@@ -461,9 +481,12 @@ export default function Admin() {
           image_url: thumbnail_url,
           slides,
           download_url,
-          formats,
+          file_name: "Master Presentation.pptx",
+          file_size: "18.5 MB",
+          formats: ["Master PowerPoint (.pptx)"],
           features,
           description: parts[descIdx] || "High-impact presentation deck layout tailored for executive presentations.",
+          is_credit_eligible,
           is_published: true
         });
       }
@@ -506,9 +529,9 @@ export default function Admin() {
             {
               id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               name: file.name,
-              size: formattedSize,
               url: fileUrl,
-              type: isPpt ? "ppt" : "image"
+              type: isPpt ? "ppt" : "image",
+              size: formattedSize
             }
           ]);
         }
@@ -527,24 +550,30 @@ export default function Admin() {
     });
   };
 
-  // Copy all uploaded image URLs formatted with semicolons for CSV
+  // Copy all uploaded asset URLs to clipboard
   const handleCopyAllAssetUrls = () => {
-    const previewUrls = bulkUploadedAssets.filter(a => a.type === "image").map(a => a.url).join(";");
-    navigator.clipboard.writeText(previewUrls);
+    const urls = bulkUploadedAssets.map(a => a.url).join("\n");
+    navigator.clipboard.writeText(urls);
     setCopiedAssetUrlsSuccess(true);
-    setTimeout(() => setCopiedAssetUrlsSuccess(false), 2500);
+    setTimeout(() => setCopiedAssetUrlsSuccess(false), 3000);
   };
 
-  // Auto add row to CSV using uploaded files
+  // Auto add template row from bulk assets
   const handleAddRowFromUploadedAssets = () => {
     const pptAsset = bulkUploadedAssets.find(a => a.type === "ppt");
     const imageAssets = bulkUploadedAssets.filter(a => a.type === "image");
-    const thumbUrl = imageAssets[0]?.url || "/portfolio/case_study_a_1.png";
-    const previewUrls = imageAssets.map(a => a.url).join(";");
-    const pptUrl = pptAsset?.url || "https://theslidebee.com/downloads/master_deck.pptx";
-    const newSku = `SLD-${Math.floor(100 + Math.random() * 900)}`;
 
-    const newRow = `"${newSku}","Executive Pitch Deck ${newSku}","Pitch Decks",999,19,1999,${Math.max(imageAssets.length, 25)},"${thumbUrl}","${previewUrls || thumbUrl}","${pptUrl}","PowerPoint;Google Slides;Keynote;Canva","Custom executive pitch deck layout ready for high-stakes presentations.","${Math.max(imageAssets.length, 25)}+ High-Impact Slides;Editable Vector Elements;16:9 Widescreen"\n`;
+    if (imageAssets.length === 0 && !pptAsset) {
+      alert("Please upload at least 1 image or PPT file first!");
+      return;
+    }
+
+    const newSku = `SB-${Math.floor(100 + Math.random() * 900)}`;
+    const thumbUrl = imageAssets[0]?.url || "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&auto=format&fit=crop&q=80";
+    const previewUrls = imageAssets.map(a => a.url).join(";");
+    const pptUrl = pptAsset?.url || "";
+
+    const newRow = `"${newSku}","Executive Pitch Deck ${newSku}","Pitch Decks",999,19,1999,${Math.max(imageAssets.length, 25)},"${thumbUrl}","${previewUrls || thumbUrl}","${pptUrl}","PowerPoint (.pptx)","Custom executive pitch deck layout ready for high-stakes presentations.","${Math.max(imageAssets.length, 25)}+ High-Impact Slides;Editable Vector Elements;16:9 Widescreen"\n`;
 
     const nextRaw = csvRawText ? (csvRawText.trim() + "\n" + newRow) : ("code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,formats,description,features\n" + newRow);
     handleParseCSV(nextRaw);
@@ -616,12 +645,13 @@ export default function Admin() {
       image_url: newThumbnail,
       slides: effectiveSlides,
       download_url: newPptUrl || newThumbnail,
-      formats: newSoftwareFormats.length > 0 ? newSoftwareFormats : ["PowerPoint", "Google Slides"],
+      formats: ["Master PowerPoint (.pptx)"],
       features: [
         `${effectiveSlideCount}+ High-Impact Slides`,
         "16:9 Widescreen Layout",
         "Fully Editable Vector Elements"
       ],
+      is_credit_eligible: Boolean(newIsCreditEligible),
       is_published: true
     };
 
@@ -640,8 +670,8 @@ export default function Admin() {
       setNewPptUrl("");
       setNewPptFilename("");
       setNewPptSize("");
+      setNewIsCreditEligible(false);
       setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
-      setNewSoftwareFormats(["PowerPoint", "Google Slides", "Canva"]);
     } else {
       // Fallback local persistence if insert notice
       const fallbackItem = { id: `tpl-${Date.now()}`, ...payload };
@@ -676,7 +706,9 @@ export default function Admin() {
       slides: rawSlides,
       download_url: tpl.download_url || "",
       formats: rawFormats,
-      features: rawFeatures
+      features: rawFeatures,
+      is_published: tpl.is_published !== false,
+      is_credit_eligible: Boolean(tpl.is_credit_eligible)
     });
     setIsEditTemplateOpen(true);
   };
@@ -705,7 +737,9 @@ export default function Admin() {
       download_url: editingTemplate.download_url,
       formats: editingTemplate.formats,
       description: editingTemplate.description,
-      features: editingTemplate.features
+      features: editingTemplate.features,
+      is_published: Boolean(editingTemplate.is_published),
+      is_credit_eligible: Boolean(editingTemplate.is_credit_eligible)
     };
 
     try {
@@ -768,16 +802,16 @@ export default function Admin() {
 
     let senderEmail = zohoDeliverableEmail;
     let senderName = "SlideBee Design Studio";
-    let subject = "🐝 SlideBee Deliverables Test: Master File Dispatch";
+    let subject = "SlideBee Deliverables Test: Master File Dispatch";
 
     if (testEmailSenderType === "hello") {
       senderEmail = zohoInquiriesEmail;
       senderName = "SlideBee Studio";
-      subject = "🐝 SlideBee Inquiry Test: General Desk Routing";
+      subject = "SlideBee Inquiry Test: General Desk Routing";
     } else if (testEmailSenderType === "billing") {
       senderEmail = zohoBillingEmail;
       senderName = "SlideBee Billing";
-      subject = "🐝 SlideBee Billing Test: Invoice & Payment Receipt";
+      subject = "SlideBee Billing Test: Invoice & Payment Receipt";
     }
 
     try {
@@ -792,7 +826,7 @@ export default function Admin() {
           subject,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; background-color: #FFF9E8; padding: 28px; border-radius: 14px; color: #111111;">
-              <h2 style="color: #936610; margin-top: 0;">🐝 SlideBee Zoho Mail Test Dispatch</h2>
+              <h2 style="color: #936610; margin-top: 0;">SlideBee Zoho Mail Test Dispatch</h2>
               <p style="font-size: 14px; line-height: 1.6; color: #374151;">
                 This diagnostic test confirms that your custom domain Zoho email routing is operational on <strong>theslidebee.com</strong>.
               </p>
@@ -809,7 +843,7 @@ export default function Admin() {
 
       const data = await res.json();
       if (res.ok) {
-        setTestEmailStatus(`✓ Success! Test email dispatched from ${senderEmail} to ${testEmailRecipient.trim()}.`);
+        setTestEmailStatus(`Success: Test email dispatched from ${senderEmail} to ${testEmailRecipient.trim()}.`);
       } else {
         setTestEmailStatus(`Notice: ${data?.error || data?.message || "Delivery queued via mail router."}`);
       }
@@ -871,17 +905,6 @@ export default function Admin() {
       };
       reader.readAsDataURL(file);
     });
-  };
-
-  // Toggle Software Format Tag for Template Creation
-  const toggleSoftwareFormat = (fmt: string) => {
-    if (newSoftwareFormats.includes(fmt)) {
-      if (newSoftwareFormats.length > 1) {
-        setNewSoftwareFormats(newSoftwareFormats.filter((f) => f !== fmt));
-      }
-    } else {
-      setNewSoftwareFormats([...newSoftwareFormats, fmt]);
-    }
   };
 
   // Upload Multiple Slide Images for Portfolio Case Study directly to Supabase Storage
@@ -1497,7 +1520,7 @@ export default function Admin() {
                             <td className="p-4 whitespace-nowrap">
                               {ord.rush_delivery ? (
                                 <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-1 border border-red-200 shadow-sm flex items-center gap-1 w-fit">
-                                  ⚡ 24h Rush
+                                  <Zap size={11} className="inline" /> 24h Rush
                                 </span>
                               ) : (
                                 <span className="hex-pill-sm bg-gray-100 text-[#726F6D] text-[10px] font-bold px-2.5 py-0.5 border border-gray-200">
@@ -1547,7 +1570,7 @@ export default function Admin() {
                                         <div className="flex items-center justify-center">
                                           {isPassed ? (
                                             <div className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[9px] font-black">
-                                              ✓
+                                              <Check size={9} strokeWidth={3} />
                                             </div>
                                           ) : isCurrent ? (
                                             <div className="w-4 h-4 rounded-full bg-primary text-[#111111] flex items-center justify-center text-[9px] font-black animate-pulse">
@@ -1648,81 +1671,257 @@ export default function Admin() {
 
         {/* TAB 3: TEMPLATES */}
         {activeTab === "templates" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {templates.map((tpl) => (
-              <div
-                key={tpl.id}
-                className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
-              >
-                <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
-                  <img
-                    src={tpl.thumbnail_url}
-                    alt={tpl.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="p-5">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider">
-                      {tpl.category}
-                    </div>
-                    {tpl.code && (
-                      <span className="text-[10px] font-black text-[#726F6D] uppercase">
-                        {tpl.code}
-                      </span>
-                    )}
-                  </div>
-
-                  <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
-                    {tpl.title}
-                  </h4>
-                  <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-3">
-                    {tpl.description}
-                  </p>
-
-                  {/* Software Compatibility Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-3">
-                    {(Array.isArray(tpl.formats) && tpl.formats.length > 0 ? tpl.formats : ["PowerPoint", "Google Slides"]).map((fmt: string) => (
-                      <SoftwareBadge key={fmt} format={fmt} size="sm" showLabel={true} />
-                    ))}
-                  </div>
-
-                  {tpl.download_url && (
-                    <div className="text-[10px] text-emerald-800 font-extrabold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md flex items-center gap-1 mb-3">
-                      <FileText size={11} className="text-emerald-600" />
-                      <span className="truncate">Deliverable file attached</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
-                    <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
-                    <span className="text-primary-amber font-extrabold">
-                      ₹{tpl.price_inr} / ${tpl.price_usd}
-                    </span>
-                  </div>
-
-                  {/* Template Card Controls: Edit & Delete */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-[#111111]/8 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => openEditTemplateModal(tpl)}
-                      className="hex-pill-sm flex-1 bg-primary hover:bg-primary-dark text-[#111111] font-black py-1.5 text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                    >
-                      <Edit3 size={13} /> Edit Template
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
-                      className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                      title="Delete Template"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
+          <div className="space-y-6">
+            {/* Storefront Metrics Visibility Controls */}
+            <div className="hex-card bg-white border-2 border-primary/40 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-heading font-extrabold text-sm text-[#111111] flex items-center gap-2">
+                  <Sliders size={16} className="text-primary-amber" />
+                  Storefront Star Ratings & Download Metrics Controls
+                </h4>
+                <p className="text-xs text-[#726F6D]">
+                  Control whether clients see star ratings and download counts on public template cards and detail pages.
+                </p>
               </div>
-            ))}
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Star Ratings Toggle */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = { ...templateMetricsSettings, show_stars: !templateMetricsSettings.show_stars };
+                    setTemplateMetricsSettings(next);
+                    await handleSaveConfig("show_template_metrics", next);
+                  }}
+                  className={`hex-pill px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    templateMetricsSettings.show_stars
+                      ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-400 shadow-sm"
+                      : "bg-[#FFF9E8] text-[#726F6D] border border-primary/30"
+                  }`}
+                >
+                  <Star size={13} className={templateMetricsSettings.show_stars ? "fill-amber-500 text-amber-500" : ""} />
+                  <span>Star Ratings: {templateMetricsSettings.show_stars ? "Visible on Site" : "Hidden from Clients"}</span>
+                </button>
+
+                {/* Downloads Count Toggle */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = { ...templateMetricsSettings, show_downloads: !templateMetricsSettings.show_downloads };
+                    setTemplateMetricsSettings(next);
+                    await handleSaveConfig("show_template_metrics", next);
+                  }}
+                  className={`hex-pill px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    templateMetricsSettings.show_downloads
+                      ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-400 shadow-sm"
+                      : "bg-[#FFF9E8] text-[#726F6D] border border-primary/30"
+                  }`}
+                >
+                  <Download size={13} />
+                  <span>Downloads Count: {templateMetricsSettings.show_downloads ? "Visible on Site" : "Hidden from Clients"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Template Status Filter Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-3.5 rounded-2xl border border-[#111111]/10 shadow-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAdminTemplateFilter("all")}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+                    adminTemplateFilter === "all"
+                      ? "bg-[#111111] text-[#FCBF14]"
+                      : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  All Templates ({templates.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTemplateFilter("published")}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTemplateFilter === "published"
+                      ? "bg-emerald-700 text-white"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                  }`}
+                >
+                  <Eye size={12} />
+                  <span>Enabled on Storefront ({templates.filter(t => t.is_published !== false).length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTemplateFilter("draft")}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTemplateFilter === "draft"
+                      ? "bg-gray-800 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <EyeOff size={12} />
+                  <span>Hidden / Draft ({templates.filter(t => t.is_published === false).length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTemplateFilter("free")}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTemplateFilter === "free"
+                      ? "bg-primary text-[#111111]"
+                      : "bg-primary/20 text-[#111111] hover:bg-primary/30"
+                  }`}
+                >
+                  <Sparkles size={12} />
+                  <span>5 Free Credits Tag ({templates.filter(t => t.is_credit_eligible).length})</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-[#726F6D] font-bold">
+                Showing {templates.filter(t => {
+                  if (adminTemplateFilter === "published") return t.is_published !== false;
+                  if (adminTemplateFilter === "draft") return t.is_published === false;
+                  if (adminTemplateFilter === "free") return Boolean(t.is_credit_eligible);
+                  return true;
+                }).length} Decks
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {templates
+                .filter(t => {
+                  if (adminTemplateFilter === "published") return t.is_published !== false;
+                  if (adminTemplateFilter === "draft") return t.is_published === false;
+                  if (adminTemplateFilter === "free") return Boolean(t.is_credit_eligible);
+                  return true;
+                })
+                .map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
+                >
+                  <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
+                    <img
+                      src={tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png"}
+                      alt={tpl.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="p-5">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider">
+                        {tpl.category}
+                      </div>
+                      {tpl.code && (
+                        <span className="text-[10px] font-black text-[#726F6D] uppercase">
+                          {tpl.code}
+                        </span>
+                      )}
+                    </div>
+
+                    <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
+                      {tpl.title}
+                    </h4>
+                    <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-3">
+                      {tpl.description}
+                    </p>
+
+                    {/* Master Deliverable Format Badge */}
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-3 text-[11px] font-bold text-[#111111]">
+                      <FileText size={13} className="text-primary-amber" />
+                      <span>Deliverable: Master PowerPoint (.pptx)</span>
+                    </div>
+
+                    {tpl.download_url && (
+                      <div className="text-[10px] text-emerald-800 font-extrabold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md flex items-center gap-1 mb-3">
+                        <Check size={11} className="text-emerald-600" />
+                        <span className="truncate">{tpl.file_name || "Direct PPTX Deliverable Attached"}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
+                      <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
+                      <span className="text-primary-amber font-extrabold">
+                        ₹{tpl.price_inr} / ${tpl.price_usd}
+                      </span>
+                    </div>
+
+                    {/* Storefront Marketplace Visibility Toggle */}
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#111111]/8 text-[11px] font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${tpl.is_published !== false ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
+                        <span className="text-[10px] font-extrabold text-[#726F6D]">
+                          {tpl.is_published !== false ? "Storefront: Visible" : "Storefront: Hidden"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const nextVal = tpl.is_published === false ? true : false;
+                          await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_published: nextVal } : t));
+                        }}
+                        className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                          tpl.is_published !== false
+                            ? "bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200"
+                            : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                        }`}
+                      >
+                        {tpl.is_published !== false ? (
+                          <>
+                            <Eye size={12} className="text-emerald-700" />
+                            <span>Enabled</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff size={12} className="text-gray-500" />
+                            <span>Disabled</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Free Starter Credits Tag & Toggle */}
+                    <div className="flex items-center justify-between pt-2 border-t border-[#111111]/8 text-[11px] font-bold">
+                      <span className="text-[10px] font-extrabold text-[#726F6D]">5 Free Credits Tag:</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const nextVal = !tpl.is_credit_eligible;
+                          await supabase.from("templates").update({ is_credit_eligible: nextVal }).eq("id", tpl.id);
+                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal } : t));
+                        }}
+                        className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
+                          tpl.is_credit_eligible
+                            ? "bg-primary text-[#111111] border border-[#111111]/20 shadow-xs"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
+                        }`}
+                      >
+                        {tpl.is_credit_eligible ? "Eligible (Free Tag)" : "+ Tag as Free"}
+                      </button>
+                    </div>
+
+                    {/* Template Card Controls: Edit & Delete */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-[#111111]/8 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplateModal(tpl)}
+                        className="hex-pill-sm flex-1 bg-primary hover:bg-primary-dark text-[#111111] font-black py-1.5 text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <Edit3 size={13} /> Edit Template
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
+                        className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                        title="Delete Template"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1781,30 +1980,34 @@ export default function Admin() {
             {/* Page Customizer Sub-Navigation Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
               {[
-                { id: "home", label: "🏠 Homepage Header" },
-                { id: "marquee", label: "🎠 Hero Marquee" },
-                { id: "testimonials", label: "💬 Client Testimonials" },
-                { id: "services", label: "⚙️ Services & Before/After" },
-                { id: "portfolio", label: "🖼️ Portfolio & Case Studies" },
-                { id: "about", label: "🏢 About & Story" },
-                { id: "contact", label: "📞 Contact & Channels" },
-                { id: "footer", label: "👣 Footer Links" },
-                { id: "pricing", label: "💰 Pricing Rates" },
-                { id: "payments", label: "💳 Razorpay Gateway" },
-                { id: "emails", label: "📧 Zoho Mail Senders" },
-              ].map((subTab) => (
-                <button
-                  key={subTab.id}
-                  onClick={() => setActiveCmsSubTab(subTab.id as any)}
-                  className={`hex-pill px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all ${
-                    activeCmsSubTab === subTab.id
-                      ? "bg-primary text-[#111111] shadow-md scale-105"
-                      : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                  }`}
-                >
-                  {subTab.label}
-                </button>
-              ))}
+                { id: "home", label: "Homepage Header", icon: Home },
+                { id: "marquee", label: "Hero Marquee", icon: Layers },
+                { id: "testimonials", label: "Client Testimonials", icon: MessageSquare },
+                { id: "services", label: "Services & Before/After", icon: Settings },
+                { id: "portfolio", label: "Portfolio & Case Studies", icon: ImageIcon },
+                { id: "about", label: "About & Story", icon: Building2 },
+                { id: "contact", label: "Contact & Channels", icon: Phone },
+                { id: "footer", label: "Footer Links", icon: Compass },
+                { id: "pricing", label: "Pricing Rates", icon: DollarSign },
+                { id: "payments", label: "Razorpay Gateway", icon: CreditCard },
+                { id: "emails", label: "Zoho Mail Senders", icon: Mail },
+              ].map((subTab) => {
+                const IconComponent = subTab.icon;
+                return (
+                  <button
+                    key={subTab.id}
+                    onClick={() => setActiveCmsSubTab(subTab.id as any)}
+                    className={`hex-pill px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      activeCmsSubTab === subTab.id
+                        ? "bg-primary text-[#111111] shadow-md scale-105"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <IconComponent size={13} />
+                    {subTab.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* SUB-TAB 1: HOMEPAGE CMS */}
@@ -1813,7 +2016,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🏠 Homepage Hero Customizer
+                      Homepage Hero Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Update the hero headlines and call-to-action buttons.
@@ -1828,138 +2031,142 @@ export default function Admin() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#111111] block mb-1">
                       Hero Badge Text
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.badgeText ?? "SlideBee Design Studio"}
+                      value={siteConfigs["hero"]?.badge || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...siteConfigs["hero"], badgeText: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), badge: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                      placeholder="e.g. SLIDEBEE PRESENTATION ATELIER"
                     />
                   </div>
 
                   <div>
                     <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Primary CTA Button Text
+                      Delivery Guarantee Headline
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.ctaText ?? "Start Your Project Brief"}
+                      value={siteConfigs["hero"]?.guarantee || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...siteConfigs["hero"], ctaText: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), guarantee: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                      placeholder="e.g. 24–48hr turnaround · Venture-grade polish"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Hero H1 Headline (HTML allowed)
+                    Main Hero Headline (Title)
                   </label>
                   <input
                     type="text"
-                    value={siteConfigs["hero"]?.headline ?? 'Present With <br class="hidden sm:inline" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-[#D99F06] to-[#FCD34D]">Unfair Advantage</span>'}
+                    value={siteConfigs["hero"]?.title || ""}
                     onChange={(e) => setSiteConfigs({
                       ...siteConfigs,
-                      hero: { ...siteConfigs["hero"], headline: e.target.value }
+                      hero: { ...(siteConfigs["hero"] || {}), title: e.target.value }
                     })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-bold text-[#111111]"
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                    placeholder="e.g. Decks That Win Deals & Capital"
                   />
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Secondary CTA Button Text
-                  </label>
-                  <input
-                    type="text"
-                    value={siteConfigs["hero"]?.secondaryCtaText ?? "Hire a Designer"}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      hero: { ...siteConfigs["hero"], secondaryCtaText: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-bold text-[#111111]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Hero Sub-Headline / Supporting Paragraph
+                    Supporting Subtitle Paragraph
                   </label>
                   <textarea
-                    rows={2}
-                    value={siteConfigs["hero"]?.subheadline ?? "From 24-hour investor pitch deck redesigns to enterprise master templates — we help founders and executives command the room."}
+                    rows={3}
+                    value={siteConfigs["hero"]?.subtitle || ""}
                     onChange={(e) => setSiteConfigs({
                       ...siteConfigs,
-                      hero: { ...siteConfigs["hero"], subheadline: e.target.value }
+                      hero: { ...(siteConfigs["hero"] || {}), subtitle: e.target.value }
                     })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    placeholder="Description paragraph appearing below the headline..."
                   />
                 </div>
 
-                {/* FEATURED TEMPLATES ON HOMEPAGE */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Primary CTA Button Label
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["hero"]?.ctaPrimary || ""}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        hero: { ...(siteConfigs["hero"] || {}), ctaPrimary: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Secondary CTA Button Label
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["hero"]?.ctaSecondary || ""}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        hero: { ...(siteConfigs["hero"] || {}), ctaSecondary: e.target.value }
+                      })}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                    />
+                  </div>
+                </div>
+
+                {/* FEATURED TEMPLATES PICKER ON HOMEPAGE */}
                 <div className="pt-6 border-t border-[#111111]/8 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                        ⭐ Featured Templates On Homepage Grid
+                        Featured Templates on Homepage
                       </h4>
                       <p className="text-xs text-[#726F6D]">
-                        Select which templates appear in the 8-card showcase on the homepage.
+                        Choose which presentation templates appear in the curated storefront showcase on the landing page.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const first8 = templateCatalog.slice(0, 8).map(t => t.id);
-                          setSiteConfigs({
-                            ...siteConfigs,
-                            featured_templates: { ids: first8 }
-                          });
-                        }}
-                        className="text-[11px] font-bold text-primary-amber hover:underline px-2 py-1 bg-[#FFF9E8] rounded border border-primary/20"
-                      >
-                        Reset to First 8
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveConfig("featured_templates", siteConfigs["featured_templates"] || { ids: templateCatalog.slice(0, 8).map(t => t.id) })}
-                        disabled={configSaving}
-                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
-                      >
-                        Save Templates
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveConfig("featured_templates", siteConfigs["featured_templates"] || { ids: templates.slice(0, 8).map(t => t.id) })}
+                      disabled={configSaving}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
+                    >
+                      Save Featured Picks
+                    </button>
                   </div>
 
-                  {/* Grid of Templates for Toggle Selection */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-h-[380px] overflow-y-auto p-1 bg-[#FFF9E8]/50 rounded-xl border border-[#111111]/8">
-                    {templateCatalog.map((tmpl) => {
-                      const selectedIds: string[] = siteConfigs["featured_templates"]?.ids || templateCatalog.slice(0, 8).map(t => t.id);
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto p-2 bg-[#FFF9E8] rounded-xl border border-[#111111]/10">
+                    {templates.map((tmpl) => {
+                      const selectedIds: string[] = siteConfigs["featured_templates"]?.ids || templates.slice(0, 8).map(t => t.id);
                       const isSelected = selectedIds.includes(tmpl.id);
 
                       return (
                         <div
                           key={tmpl.id}
                           onClick={() => {
-                            let newIds: string[];
+                            let updated: string[];
                             if (isSelected) {
-                              newIds = selectedIds.filter(id => id !== tmpl.id);
+                              updated = selectedIds.filter(id => id !== tmpl.id);
                             } else {
-                              newIds = [...selectedIds, tmpl.id];
+                              updated = [...selectedIds, tmpl.id];
                             }
                             setSiteConfigs({
                               ...siteConfigs,
-                              featured_templates: { ids: newIds }
+                              featured_templates: { ids: updated }
                             });
                           }}
                           className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
@@ -1969,7 +2176,7 @@ export default function Admin() {
                           }`}
                         >
                           <img 
-                            src={tmpl.image} 
+                            src={tmpl.image_url || tmpl.thumbnail_url || tmpl.image || "/portfolio/case_study_a_1.png"} 
                             alt={tmpl.title} 
                             className="w-12 h-9 object-cover rounded-md border border-[#111111]/10 flex-shrink-0" 
                           />
@@ -1981,7 +2188,7 @@ export default function Admin() {
                               <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${
                                 isSelected ? "bg-primary text-[#111111]" : "bg-gray-200 text-gray-500"
                               }`}>
-                                {isSelected ? "✓" : "+"}
+                                {isSelected ? <Check size={8} strokeWidth={3} /> : <Plus size={8} strokeWidth={3} />}
                               </span>
                             </div>
                             <h5 className="text-xs font-bold text-[#111111] truncate">
@@ -1992,9 +2199,6 @@ export default function Admin() {
                       );
                     })}
                   </div>
-                  <div className="text-[11px] text-[#726F6D] font-medium">
-                    Currently Selected: <strong>{(siteConfigs["featured_templates"]?.ids || templateCatalog.slice(0, 8).map(t => t.id)).length}</strong> templates active on the homepage.
-                  </div>
                 </div>
 
                 {/* BEFORE & AFTER SLIDER CUSTOMIZER */}
@@ -2002,7 +2206,7 @@ export default function Admin() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                        🔄 Homepage Before & After Comparison Decks
+                        Homepage Before & After Comparison Decks
                       </h4>
                       <p className="text-xs text-[#726F6D]">
                         Configure the slide images, titles, and critique descriptions for the comparison slider.
@@ -2098,7 +2302,7 @@ export default function Admin() {
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-[10px] font-extrabold text-red-700">
-                                ❌ Before Image
+                                Before Image (Raw Draft)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                 <UploadCloud size={11} /> Choose File
@@ -2145,7 +2349,7 @@ export default function Admin() {
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-[10px] font-extrabold text-green-700">
-                                ✨ After Image
+                                After Image (SlideBee Polish)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                 <UploadCloud size={11} /> Choose File
@@ -2244,7 +2448,7 @@ export default function Admin() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🎠 Services & Hero Marquee Customizer
+                      Services & Hero Marquee Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Select slides from existing presentation examples or upload custom images to feature in the gliding marquees.
@@ -2275,17 +2479,17 @@ export default function Admin() {
                     {[
                       { 
                         id: "services_top", 
-                        label: "🌟 Services Page — Top Marquee", 
+                        label: "Services Page — Top Marquee", 
                         count: (siteConfigs["services_marquee_cms"]?.topSlides || []).length 
                       },
                       { 
                         id: "services_bottom", 
-                        label: "✨ Services Page — Bottom Marquee", 
+                        label: "Services Page — Bottom Marquee", 
                         count: (siteConfigs["services_marquee_cms"]?.bottomSlides || []).length 
                       },
                       { 
                         id: "hero", 
-                        label: "🏠 Homepage Hero Marquee", 
+                        label: "Homepage Hero Marquee", 
                         count: (siteConfigs["hero"]?.marqueeSlides || []).length 
                       },
                     ].map((target) => (
@@ -2485,7 +2689,87 @@ export default function Admin() {
                                             Slide {sIdx + 1}
                                           </span>
                                           <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
-                                            {isSelected ? "✓ Active" : "+ Add"}
+                                            {isSelected ? "Active" : "+ Add"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 4. Mapped Selection from Storefront Templates (Cover & Interior Slides) */}
+                      <div className="pt-6 border-t border-[#111111]/10 space-y-4">
+                        <div>
+                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
+                            <Layers size={14} className="text-primary-amber" />
+                            Select Directly from Storefront Templates (Cover & Slide Previews)
+                          </h4>
+                          <p className="text-[11px] text-[#726F6D]">
+                            Click any presentation template cover or interior preview slide to toggle it in/out of the {activeMarqueeTarget.replace("_", " ")} marquee.
+                          </p>
+                        </div>
+
+                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                          {templates.map((tpl: any) => {
+                            const tplSlides: string[] = Array.isArray(tpl.slides) && tpl.slides.length > 0
+                              ? tpl.slides
+                              : [tpl.thumbnail_url || tpl.image_url || "/portfolio/case_study_a_1.png"];
+
+                            return (
+                              <div key={tpl.id} className="bg-[#FFF9E8]/70 border border-primary/30 p-3.5 rounded-xl space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2.5 py-0.5">
+                                      {tpl.code || "SLD"}
+                                    </span>
+                                    <span className="text-xs font-extrabold text-[#111111]">
+                                      {tpl.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-[#726F6D]">
+                                    {tpl.category} • {tplSlides.length} slide{tplSlides.length > 1 ? "s" : ""}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                                  {tplSlides.map((slideUrl: string, sIdx: number) => {
+                                    const isSelected = activeSlides.includes(slideUrl);
+
+                                    return (
+                                      <div
+                                        key={sIdx}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            updateActiveList(activeSlides.filter((s: string) => s !== slideUrl));
+                                          } else {
+                                            updateActiveList([...activeSlides, slideUrl]);
+                                          }
+                                        }}
+                                        className={`hex-card rounded-lg overflow-hidden border-2 cursor-pointer transition-all p-1 group ${
+                                          isSelected
+                                            ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
+                                            : "border-primary/30 bg-white hover:border-primary"
+                                        }`}
+                                      >
+                                        <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden mb-1 relative">
+                                          <img src={slideUrl} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                          {isSelected && (
+                                            <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
+                                              <Check size={12} />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] px-1">
+                                          <span className="font-extrabold text-[#111111]">
+                                            {sIdx === 0 ? "Cover" : `Slide ${sIdx + 1}`}
+                                          </span>
+                                          <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
+                                            {isSelected ? "Active" : "+ Add"}
                                           </span>
                                         </div>
                                       </div>
@@ -2511,7 +2795,7 @@ export default function Admin() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      💬 Client Testimonials & Social Proof Customizer
+                      Client Testimonials & Social Proof Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Add, edit, or remove executive reviews, star ratings, quotes, names, roles, and avatar photos.
@@ -2570,7 +2854,7 @@ export default function Admin() {
                           }}
                           className="text-red-500 hover:text-red-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-red-50"
                         >
-                          ✕ Delete
+                          Delete
                         </button>
                       </div>
 
@@ -2693,7 +2977,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      ⚙️ Services & Before / After Slider Customizer
+                      Services & Before / After Slider Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Update the 6 service tiers, turnaround times, and before/after comparison decks
@@ -2801,7 +3085,7 @@ export default function Admin() {
                           <div className="bg-white p-3 rounded-xl border border-red-200">
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-[11px] font-extrabold text-red-700 block">
-                                ❌ Raw Draft (Before Image)
+                                Raw Draft (Before Image)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                 <UploadCloud size={11} /> Upload Image
@@ -2851,7 +3135,7 @@ export default function Admin() {
                           <div className="bg-white p-3 rounded-xl border border-green-200">
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-[11px] font-extrabold text-green-700 block">
-                                ✨ SlideBee Polish (After Image)
+                                SlideBee Polish (After Image)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                 <UploadCloud size={11} /> Upload Image
@@ -2902,6 +3186,129 @@ export default function Admin() {
                     );
                   })}
                 </div>
+
+                {/* PREVIOUS WORKED COMPANIES MARQUEE CUSTOMIZER */}
+                <div className="pt-6 border-t border-[#111111]/8 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10">
+                    <div>
+                      <h4 className="text-sm font-heading font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
+                        <Sparkles size={15} className="text-primary-amber" />
+                        Previous Worked Companies Brand Marquee (/services)
+                      </h4>
+                      <p className="text-xs text-[#726F6D]">
+                        Manage the continuous scrolling brand marquee of enterprise clients and partners.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const caseStudies = siteConfigs["portfolio_cms"]?.caseStudies || [];
+                          const existingNames = new Set((siteConfigs["worked_companies"]?.companies || []).map((c: any) => c.name.toLowerCase()));
+                          const newCompanies = [...(siteConfigs["worked_companies"]?.companies || [])];
+                          
+                          caseStudies.forEach((cs: any) => {
+                            const rawClient = cs.client || cs.title.split(" ")[0];
+                            if (rawClient && !existingNames.has(rawClient.toLowerCase())) {
+                              existingNames.add(rawClient.toLowerCase());
+                              newCompanies.push({
+                                name: rawClient,
+                                category: cs.category || "Enterprise Partner"
+                              });
+                            }
+                          });
+                          
+                          setSiteConfigs({
+                            ...siteConfigs,
+                            worked_companies: { companies: newCompanies }
+                          });
+                        }}
+                        className="hex-pill bg-white hover:bg-primary/10 text-[#111111] border border-primary/40 font-black px-3.5 py-1.5 text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <RefreshCw size={13} className="text-primary-amber" /> Sync from Portfolio Case Studies
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveConfig("worked_companies", siteConfigs["worked_companies"] || { companies: [] })}
+                        disabled={configSaving}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow cursor-pointer"
+                      >
+                        <Save size={13} /> {configSaving ? "Saving..." : "Save Companies"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Current Companies Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {(siteConfigs["worked_companies"]?.companies || []).map((comp: any, cIdx: number) => (
+                      <div key={cIdx} className="hex-card bg-white p-3 rounded-xl border border-primary/30 flex items-center justify-between shadow-xs">
+                        <div>
+                          <div className="font-heading font-extrabold text-xs text-[#111111]">
+                            {comp.name}
+                          </div>
+                          <div className="text-[10px] text-[#726F6D] font-medium">
+                            {comp.category || "Enterprise Partner"}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = (siteConfigs["worked_companies"]?.companies || []).filter((_: any, i: number) => i !== cIdx);
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              worked_companies: { companies: updated }
+                            });
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                          title="Remove company"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add New Company Form */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-[#111111]/8">
+                    <input
+                      type="text"
+                      placeholder="Company Name (e.g. Goldman Sachs)"
+                      value={newWorkedCompanyName}
+                      onChange={(e) => setNewWorkedCompanyName(e.target.value)}
+                      className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-medium"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Industry Category (e.g. Investment Banking)"
+                      value={newWorkedCompanyCategory}
+                      onChange={(e) => setNewWorkedCompanyCategory(e.target.value)}
+                      className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newWorkedCompanyName.trim()) {
+                          const updated = [
+                            ...(siteConfigs["worked_companies"]?.companies || []),
+                            {
+                              name: newWorkedCompanyName.trim(),
+                              category: newWorkedCompanyCategory.trim() || "Enterprise Client"
+                            }
+                          ];
+                          setSiteConfigs({
+                            ...siteConfigs,
+                            worked_companies: { companies: updated }
+                          });
+                          setNewWorkedCompanyName("");
+                          setNewWorkedCompanyCategory("");
+                        }
+                      }}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs whitespace-nowrap cursor-pointer shadow-sm"
+                    >
+                      + Add Company
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2911,7 +3318,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🖼️ Portfolio & Case Studies Customizer (/examples)
+                      Portfolio & Case Studies Customizer (/examples)
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Add, edit, or remove client presentation showcase items and impact statistics
@@ -2944,7 +3351,7 @@ export default function Admin() {
                           }}
                           className="text-red-600 hover:text-red-800 text-xs font-bold"
                         >
-                          🗑️ Remove
+                          Remove
                         </button>
                       </div>
 
@@ -3102,7 +3509,7 @@ export default function Admin() {
                                     </div>
                                     <div className="flex items-center justify-between text-[9px]">
                                       <span className="font-extrabold text-[#111111]">
-                                        {sIdx === 0 ? "★ Cover" : `#${sIdx + 1}`}
+                                        {sIdx === 0 ? "Cover" : `#${sIdx + 1}`}
                                       </span>
                                       <div className="flex items-center gap-1">
                                         {sIdx > 0 && (
@@ -3268,7 +3675,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      🏢 About Page Story & Mission Customizer
+                      About Page Story & Mission Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Update brand story, mission, and company background (/about)
@@ -3337,7 +3744,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      📞 Contact & Channels Customizer (/contact)
+                      Contact & Channels Customizer (/contact)
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Update studio support emails, WhatsApp hotline, and response time guarantee
@@ -3437,7 +3844,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      👣 Footer Social Media & Brand Links Customizer
+                      Footer Social Media & Brand Links Customizer
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Update LinkedIn, Twitter/X, Instagram, and Dribbble channels
@@ -3537,7 +3944,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8 mb-6">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      💰 Service Pricing Rates & Retainers
+                      Service Pricing Rates & Retainers
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Control per-slide prices for all tiers in USD ($) and INR (₹)
@@ -3665,7 +4072,7 @@ export default function Admin() {
                 {/* Pro Access Subscription & Yearly 50% Off Config */}
                 <div className="mt-8 pt-6 border-t border-[#111111]/8">
                   <h4 className="text-sm font-heading font-extrabold text-[#111111] mb-1">
-                    👑 SlideBee Pro Access Subscription & Yearly Deal
+                    SlideBee Pro Access Subscription & Yearly Deal
                   </h4>
                   <p className="text-xs text-[#726F6D] mb-4">
                     Set monthly base price and yearly discount percentage (automatically calculates 50% off yearly billing).
@@ -3733,7 +4140,7 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                      💳 Razorpay Payment Gateway Integration
+                      Razorpay Payment Gateway Integration
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Configure your Razorpay API Test or Live keys for template checkouts and payments.
@@ -3784,7 +4191,7 @@ export default function Admin() {
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-mono font-bold text-[#111111] outline-none"
                     />
                     <span className="text-[10px] text-[#726F6D] mt-1 block">
-                      Found in Razorpay Dashboard ➔ Settings ➔ API Keys.
+                      Found in Razorpay Dashboard &gt; Settings &gt; API Keys.
                     </span>
                   </div>
 
@@ -3817,7 +4224,7 @@ export default function Admin() {
                           onChange={() => setRazorpayMode("test")}
                           className="accent-primary"
                         />
-                        <span>🧪 Test Mode (Sandbox)</span>
+                        <span>Test Mode (Sandbox)</span>
                       </label>
                       <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
                         <input
@@ -3827,7 +4234,7 @@ export default function Admin() {
                           onChange={() => setRazorpayMode("live")}
                           className="accent-primary"
                         />
-                        <span>🚀 Live Mode (Production)</span>
+                        <span>Live Mode (Production)</span>
                       </label>
                     </div>
                   </div>
@@ -3842,11 +4249,11 @@ export default function Admin() {
                     <p className="text-[#726F6D] leading-relaxed">
                       {razorpayKeyId ? (
                         <span className="text-emerald-800 font-bold">
-                          ✓ Key configured ({razorpayKeyId.slice(0, 10)}...). Real test checkouts are active on all template downloads!
+                          Key configured ({razorpayKeyId.slice(0, 10)}...). Real test checkouts are active on all template downloads!
                         </span>
                       ) : (
                         <span className="text-amber-800 font-medium">
-                          ⏳ Waiting for API Key: You can paste your test key (<code className="font-mono text-[10px]">rzp_test_...</code>) right here whenever you obtain it from your Razorpay dashboard. In the meantime, the storefront is equipped with a smooth test-mode payment simulator.
+                          Waiting for API Key: You can paste your test key (<code className="font-mono text-[10px]">rzp_test_...</code>) right here whenever you obtain it from your Razorpay dashboard. In the meantime, the storefront is equipped with a smooth test-mode payment simulator.
                         </span>
                       )}
                     </p>
@@ -3861,7 +4268,7 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                      📧 Zoho Mail Senders & Deliverable Dispatcher
+                      Zoho Mail Senders & Deliverable Dispatcher
                     </h3>
                     <p className="text-xs text-[#726F6D]">
                       Configure which Zoho custom domain address dispatches templates, inquiry replies, and invoices.
@@ -4021,9 +4428,9 @@ export default function Admin() {
                         onChange={(e) => setTestEmailSenderType(e.target.value as any)}
                         className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-bold text-[#111111] outline-none cursor-pointer"
                       >
-                        <option value="design">🎨 design@theslidebee.com (Deliverables)</option>
-                        <option value="hello">💬 hello@theslidebee.com (General / Welcome)</option>
-                        <option value="billing">💳 billing@theslidebee.com (Billing)</option>
+                        <option value="design">design@theslidebee.com (Deliverables)</option>
+                        <option value="hello">hello@theslidebee.com (General / Welcome)</option>
+                        <option value="billing">billing@theslidebee.com (Billing)</option>
                       </select>
                     </div>
 
@@ -4055,7 +4462,7 @@ export default function Admin() {
 
                   {testEmailStatus && (
                     <div className={`p-3 rounded-xl text-xs font-bold ${
-                      testEmailStatus.includes("✓") 
+                      testEmailStatus.toLowerCase().includes("success") 
                         ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
                         : "bg-amber-50 border border-amber-200 text-amber-800"
                     }`}>
@@ -4088,7 +4495,7 @@ export default function Admin() {
                 </div>
 
                 <div className="hex-pill bg-[#FFF9E8] border border-primary/30 px-4 py-2 text-xs font-extrabold text-[#111111]">
-                  Status: 🟢 Connected & Active
+                  Status: Connected & Active
                 </div>
               </div>
 
@@ -4414,7 +4821,7 @@ export default function Admin() {
                         <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">thumbnail_url</code>,{" "}
                         <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">slides_preview_urls</code>,{" "}
                         <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">download_url</code>,{" "}
-                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">formats</code>
+                        <code className="bg-white px-1 py-0.5 rounded font-mono text-[10px]">is_credit_eligible</code>
                       </p>
                     </div>
                   </div>
@@ -4425,7 +4832,7 @@ export default function Admin() {
                     </label>
                     <textarea
                       rows={4}
-                      placeholder={`"code","title","category","price_inr","price_usd","slide_count","thumbnail_url","slides_preview_urls","download_url","formats","description"`}
+                      placeholder={`"code","title","category","price_inr","price_usd","slide_count","thumbnail_url","slides_preview_urls","download_url","is_credit_eligible","description"`}
                       value={csvRawText}
                       onChange={(e) => handleParseCSV(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-mono outline-none focus:border-primary resize-none"
@@ -4437,7 +4844,7 @@ export default function Admin() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                          ✓ Ready to Publish ({parsedBulkTemplates.length} Templates Verified)
+                          Ready to Publish ({parsedBulkTemplates.length} Templates Verified)
                         </span>
                       </div>
 
@@ -4451,7 +4858,7 @@ export default function Admin() {
                               <th className="p-2.5">Price</th>
                               <th className="p-2.5">Slide Previews</th>
                               <th className="p-2.5">Deliverable</th>
-                              <th className="p-2.5">Software</th>
+                              <th className="p-2.5">Free Tag</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#111111]/8 font-medium">
@@ -4483,22 +4890,28 @@ export default function Admin() {
                                 </td>
                                 <td className="p-2.5 whitespace-nowrap">
                                   <span className="text-[11px] font-bold text-[#111111] bg-gray-100 px-2 py-0.5 rounded">
-                                    🖼️ {t.slides?.length || 1} Previews
+                                    {t.slides?.length || 1} Previews
                                   </span>
                                 </td>
                                 <td className="p-2.5 whitespace-nowrap">
                                   {t.download_url ? (
                                     <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                      📁 Attached
+                                      Attached (.pptx)
                                     </span>
                                   ) : (
                                     <span className="text-[10px] text-[#726F6D]">URL link</span>
                                   )}
                                 </td>
                                 <td className="p-2.5 whitespace-nowrap">
-                                  <span className="text-[10px] text-[#726F6D]">
-                                    {Array.isArray(t.formats) ? t.formats.slice(0, 2).join(", ") : "PowerPoint"}
-                                  </span>
+                                  {t.is_credit_eligible ? (
+                                    <span className="text-[10px] font-black text-[#111111] bg-primary px-2 py-0.5 rounded shadow-xs">
+                                      Eligible (Free Tag)
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-[#726F6D] bg-gray-100 px-2 py-0.5 rounded">
+                                      Standard
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -4550,7 +4963,7 @@ export default function Admin() {
                             className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-xs flex items-center gap-1 shadow-sm"
                           >
                             <Copy size={12} />
-                            {copiedAssetUrlsSuccess ? "✓ URLs Copied to Clipboard!" : "Copy All Image URLs (for CSV)"}
+                            {copiedAssetUrlsSuccess ? "URLs Copied to Clipboard!" : "Copy All Image URLs (for CSV)"}
                           </button>
                           <button
                             type="button"
@@ -4584,7 +4997,7 @@ export default function Admin() {
                                 {asset.name}
                               </span>
                               <span className="text-[10px] text-[#726F6D]">
-                                {asset.type === "ppt" ? "📁 Presentation" : "🖼️ Slide"} • {asset.size}
+                                {asset.type === "ppt" ? "Presentation (.pptx)" : "Slide Preview"} • {asset.size}
                               </span>
                             </div>
                             <button
@@ -4670,7 +5083,7 @@ export default function Admin() {
                         1. Presentation Deliverable File (.pptx / Download Link)
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        The file buyers receive upon purchase or download (PPTX, Keynote, PDF, or Cloud Drive link)
+                        The Master PowerPoint (.pptx) file buyers receive upon checkout or instant download
                       </p>
                     </div>
                   </div>
@@ -4680,14 +5093,14 @@ export default function Admin() {
                   {/* Option A: Upload from local computer */}
                   <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
                     <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option A: Upload Source File
+                      Option A: Upload Source File (.pptx)
                     </span>
                     <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
                       <HardDrive size={13} className="text-primary-amber" />
-                      <span>{isUploadingPpt ? "Attaching File..." : "Choose .PPTX / .PDF / .KEY"}</span>
+                      <span>{isUploadingPpt ? "Attaching File..." : "Choose Master PowerPoint (.pptx)"}</span>
                       <input
                         type="file"
-                        accept=".pptx,.ppt,.pdf,.key,.zip"
+                        accept=".pptx,.ppt"
                         disabled={isUploadingPpt}
                         onChange={handlePptFileUpload}
                         className="hidden"
@@ -4714,29 +5127,6 @@ export default function Admin() {
                       </div>
                     )}
                   </div>
-
-                  {/* Option B: Direct Cloud / Drive Link */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option B: Cloud Download URL
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="https://drive.google.com/file/d/... or direct link"
-                      value={newPptUrl.startsWith("data:") ? "" : newPptUrl}
-                      onChange={(e) => {
-                        setNewPptUrl(e.target.value);
-                        if (e.target.value) {
-                          setNewPptFilename("Cloud Link Deliverable");
-                          setNewPptSize("Cloud");
-                        }
-                      }}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
-                    <p className="text-[9px] text-[#726F6D]">
-                      Paste a Google Drive, Dropbox, or OneDrive shareable link.
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -4752,7 +5142,7 @@ export default function Admin() {
                         2. Template Previews & Slide Deck Gallery
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        Add cover thumbnail and interior slide previews for customer marketplace inspection
+                        Upload local image files from your computer (Cover thumbnail and interior slides)
                       </p>
                     </div>
                   </div>
@@ -4770,7 +5160,7 @@ export default function Admin() {
                       Primary Cover / Thumbnail Image *
                     </label>
                     <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2.5 py-1 text-[10px] inline-flex items-center gap-1 cursor-pointer shadow-sm">
-                      <UploadCloud size={11} className="text-primary-amber" /> Upload Cover Photo
+                      <UploadCloud size={11} className="text-primary-amber" /> Choose Local Cover Image
                       <input
                         type="file"
                         accept="image/*"
@@ -4791,16 +5181,12 @@ export default function Admin() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-16 h-11 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                    <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
                       <img src={newThumbnail} alt="Cover Preview" className="w-full h-full object-cover" />
                     </div>
-                    <input
-                      type="text"
-                      value={newThumbnail}
-                      onChange={(e) => setNewThumbnail(e.target.value)}
-                      placeholder="Cover image URL or upload from computer"
-                      className="flex-1 bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
+                    <span className="text-xs text-[#726F6D] font-medium">
+                      Cover image selected. Appears as primary storefront display card.
+                    </span>
                   </div>
                 </div>
 
@@ -4812,7 +5198,7 @@ export default function Admin() {
                     </span>
                     <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
                       <UploadCloud size={12} />
-                      <span>Upload Slide Images (Multi-Select)</span>
+                      <span>Upload Local Slides (Multi-Select)</span>
                       <input
                         type="file"
                         multiple
@@ -4836,7 +5222,7 @@ export default function Admin() {
                           </div>
                           <div className="flex items-center justify-between px-0.5">
                             <span className="text-[9px] font-black text-[#111111]">
-                              {idx === 0 ? "★ Cover" : `Slide #${idx + 1}`}
+                              {idx === 0 ? "Cover" : `Slide #${idx + 1}`}
                             </span>
                             <div className="flex items-center gap-1">
                               {idx > 0 && (
@@ -4876,100 +5262,10 @@ export default function Admin() {
                       ))}
                     </div>
                   )}
-
-                  {/* Add Individual Slide by URL */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      placeholder="Or paste slide image URL and press Enter..."
-                      id="template-add-slide-url"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const input = e.currentTarget;
-                          const val = input.value.trim();
-                          if (val) {
-                            setNewSlides((prev) => {
-                              const next = [...prev, val];
-                              setNewSlideCount(next.length);
-                              return next;
-                            });
-                            input.value = "";
-                          }
-                        }
-                      }}
-                      className="flex-1 bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.getElementById("template-add-slide-url") as HTMLInputElement;
-                        if (input && input.value.trim()) {
-                          const val = input.value.trim();
-                          setNewSlides((prev) => {
-                            const next = [...prev, val];
-                            setNewSlideCount(next.length);
-                            return next;
-                          });
-                          input.value = "";
-                        }
-                      }}
-                      className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px]"
-                    >
-                      + Add Slide
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS */}
-              <div className="bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
-                      <Sliders size={15} />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
-                        3. Software Compatibility Tags *
-                      </h4>
-                      <p className="text-[10px] text-[#726F6D]">
-                        Select the presentation applications supported (matches homepage badges)
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-primary-amber">
-                    {newSoftwareFormats.length} Formats Selected
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {["PowerPoint", "Google Slides", "Keynote", "Canva", "Figma"].map((fmt) => {
-                    const isSelected = newSoftwareFormats.includes(fmt);
-                    return (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => toggleSoftwareFormat(fmt)}
-                        className={`hex-pill px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                          isSelected
-                            ? "bg-[#111111] text-white border-2 border-primary shadow-sm scale-105"
-                            : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/15 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <SoftwareBadge format={fmt} size="sm" showLabel={true} />
-                        {isSelected ? (
-                          <Check size={12} className="text-primary" />
-                        ) : (
-                          <Plus size={12} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SECTION 4: TEMPLATE METADATA FORM */}
+              {/* SECTION 3: TEMPLATE METADATA FORM */}
               <form onSubmit={handleCreateTemplate} className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
@@ -5074,6 +5370,45 @@ export default function Admin() {
                   />
                 </div>
 
+                {/* Prominent Free Template Tag Toggle */}
+                <div className={`p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                  newIsCreditEligible 
+                    ? "bg-primary/20 border-primary shadow-sm" 
+                    : "bg-[#FFF9E8] border-primary/30"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#111111] text-primary flex items-center justify-center font-bold">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                          Free Template Tag (Free for Normal Users / 5 Starter Credits)
+                        </span>
+                        {newIsCreditEligible && (
+                          <span className="hex-pill-sm bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
+                            FREE TAG ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-[#726F6D] font-medium">
+                        Eligible for registered users to redeem for 0 rupees using their 5 free starter credits.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewIsCreditEligible(!Boolean(newIsCreditEligible))}
+                    className={`hex-pill px-4 py-2 text-xs font-black transition-all cursor-pointer shadow-xs ${
+                      newIsCreditEligible
+                        ? "bg-[#111111] text-primary border border-primary"
+                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {newIsCreditEligible ? "Tagged as Free" : "+ Tag as Free Template"}
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
                   <button
                     type="button"
@@ -5151,7 +5486,7 @@ export default function Admin() {
                         1. Presentation Deliverable File (.pptx / Download Link)
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        Dispatched securely via Zoho Mail directly to client's email upon purchase
+                        Dispatched securely directly to client's email with instant browser download upon checkout
                       </p>
                     </div>
                   </div>
@@ -5165,10 +5500,10 @@ export default function Admin() {
                     </span>
                     <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
                       <HardDrive size={13} className="text-primary-amber" />
-                      <span>{isUploadingEditPpt ? "Attaching File..." : "Choose .PPTX / .PDF / .KEY"}</span>
+                      <span>{isUploadingEditPpt ? "Attaching File..." : "Choose Master PowerPoint (.pptx)"}</span>
                       <input
                         type="file"
-                        accept=".pptx,.ppt,.pdf,.key,.zip"
+                        accept=".pptx,.ppt"
                         disabled={isUploadingEditPpt}
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -5191,28 +5526,6 @@ export default function Admin() {
                       />
                     </label>
                   </div>
-
-                  {/* Option B: Direct Cloud / Drive Link */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Cloud Deliverable URL
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="https://drive.google.com/file/d/... or direct link"
-                      value={editingTemplate.download_url?.startsWith("data:") ? "Attached local file (ready)" : (editingTemplate.download_url || "")}
-                      onChange={(e) => {
-                        setEditingTemplate({
-                          ...editingTemplate,
-                          download_url: e.target.value
-                        });
-                      }}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
-                    <p className="text-[9px] text-[#726F6D]">
-                      Paste Google Drive, Dropbox, or OneDrive shareable link.
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -5228,7 +5541,7 @@ export default function Admin() {
                         2. Cover Thumbnail & Slide Gallery Previews
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        Inspect and update slide previews for storefront browsing
+                        Upload local image files from computer to update slide previews
                       </p>
                     </div>
                   </div>
@@ -5246,7 +5559,7 @@ export default function Admin() {
                       Primary Cover / Thumbnail Image *
                     </label>
                     <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2.5 py-1 text-[10px] inline-flex items-center gap-1 cursor-pointer shadow-sm">
-                      <UploadCloud size={11} className="text-primary-amber" /> Replace Cover Photo
+                      <UploadCloud size={11} className="text-primary-amber" /> Choose Local Cover Image
                       <input
                         type="file"
                         accept="image/*"
@@ -5262,16 +5575,12 @@ export default function Admin() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-16 h-11 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                    <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
                       <img src={editingTemplate.thumbnail_url} alt="Cover Preview" className="w-full h-full object-cover" />
                     </div>
-                    <input
-                      type="text"
-                      value={editingTemplate.thumbnail_url}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, thumbnail_url: e.target.value })}
-                      placeholder="Cover image URL or upload"
-                      className="flex-1 bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
+                    <span className="text-xs text-[#726F6D] font-medium">
+                      Cover image selected.
+                    </span>
                   </div>
                 </div>
 
@@ -5283,7 +5592,7 @@ export default function Admin() {
                     </span>
                     <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
                       <UploadCloud size={12} />
-                      <span>Upload More Slides</span>
+                      <span>Upload Local Slides (Multi-Select)</span>
                       <input
                         type="file"
                         multiple
@@ -5328,7 +5637,7 @@ export default function Admin() {
                           </div>
                           <div className="flex items-center justify-between px-0.5">
                             <span className="text-[9px] font-black text-[#111111]">
-                              {idx === 0 ? "★ Cover" : `Slide #${idx + 1}`}
+                              {idx === 0 ? "Cover" : `Slide #${idx + 1}`}
                             </span>
                             <div className="flex items-center gap-1">
                               {idx > 0 && (
@@ -5372,109 +5681,10 @@ export default function Admin() {
                       ))}
                     </div>
                   )}
-
-                  {/* Add Individual Slide by URL */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      placeholder="Or paste slide image URL and press Enter..."
-                      id="edit-template-add-slide-url"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const input = e.currentTarget;
-                          const val = input.value.trim();
-                          if (val) {
-                            const curSlides = Array.isArray(editingTemplate.slides) ? editingTemplate.slides : [];
-                            const next = [...curSlides, val];
-                            setEditingTemplate({
-                              ...editingTemplate,
-                              slides: next,
-                              slide_count: next.length
-                            });
-                            input.value = "";
-                          }
-                        }
-                      }}
-                      className="flex-1 bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs text-[#111111] font-mono outline-none focus:border-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.getElementById("edit-template-add-slide-url") as HTMLInputElement;
-                        if (input && input.value.trim()) {
-                          const val = input.value.trim();
-                          const curSlides = Array.isArray(editingTemplate.slides) ? editingTemplate.slides : [];
-                          const next = [...curSlides, val];
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            slides: next,
-                            slide_count: next.length
-                          });
-                          input.value = "";
-                        }
-                      }}
-                      className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] cursor-pointer"
-                    >
-                      + Add Slide
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* SECTION 3: SOFTWARE FORMAT TAGS */}
-              <div className="bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
-                      <Sliders size={15} />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
-                        3. Software Compatibility Tags
-                      </h4>
-                      <p className="text-[10px] text-[#726F6D]">
-                        Select presentation software supported
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-primary-amber">
-                    {editingTemplate.formats?.length || 0} Formats Selected
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {["PowerPoint", "Google Slides", "Keynote", "Canva", "Figma"].map((fmt) => {
-                    const currentFormats = Array.isArray(editingTemplate.formats) ? editingTemplate.formats : [];
-                    const isSelected = currentFormats.includes(fmt);
-                    return (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => {
-                          let nextFormats: string[];
-                          if (isSelected) {
-                            nextFormats = currentFormats.length > 1 ? currentFormats.filter((f: string) => f !== fmt) : currentFormats;
-                          } else {
-                            nextFormats = [...currentFormats, fmt];
-                          }
-                          setEditingTemplate({ ...editingTemplate, formats: nextFormats });
-                        }}
-                        className={`hex-pill px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                          isSelected
-                            ? "bg-[#111111] text-white border-2 border-primary shadow-sm scale-105"
-                            : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/15 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <SoftwareBadge format={fmt} size="sm" showLabel={true} />
-                        {isSelected ? <Check size={12} className="text-primary" /> : <Plus size={12} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SECTION 4: METADATA FORM */}
+              {/* SECTION 3: METADATA FORM */}
               <form onSubmit={handleSaveEditTemplate} className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
@@ -5574,6 +5784,61 @@ export default function Admin() {
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
                     className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
                   />
+                </div>
+
+                {/* Storefront Marketplace Visibility Toggle */}
+                <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-xs font-black text-[#111111] block">Storefront Marketplace Visibility</span>
+                    <span className="text-[10px] text-[#726F6D] font-medium">Show or hide this presentation deck on the public client catalog</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTemplate({ ...editingTemplate, is_published: editingTemplate.is_published === false ? true : false })}
+                    className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                      editingTemplate.is_published !== false
+                        ? "bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200"
+                        : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                    }`}
+                  >
+                    {editingTemplate.is_published !== false ? (
+                      <>
+                        <Eye size={12} className="text-emerald-700" />
+                        <span>Enabled on Storefront</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={12} className="text-gray-500" />
+                        <span>Hidden (Draft)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Free Starter Credits Library Tag */}
+                <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-xs font-black text-[#111111] block">5 Free Starter Credits Tag</span>
+                    <span className="text-[10px] text-[#726F6D] font-medium">Allow registered clients to claim this template using their 5 free starter credits</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTemplate({ ...editingTemplate, is_credit_eligible: !editingTemplate.is_credit_eligible })}
+                    className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                      editingTemplate.is_credit_eligible
+                        ? "bg-primary text-[#111111] border border-[#111111]/20 shadow-xs"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
+                    }`}
+                  >
+                    {editingTemplate.is_credit_eligible ? (
+                      <>
+                        <Sparkles size={12} className="text-[#111111]" />
+                        <span>Tagged (Eligible)</span>
+                      </>
+                    ) : (
+                      <span>+ Tag as Free</span>
+                    )}
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
@@ -5731,8 +5996,8 @@ export default function Admin() {
                   Order #{selectedOrderForModal.id?.slice(0, 8) || "N/A"}
                 </span>
                 {selectedOrderForModal.rush_delivery && (
-                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-0.5 border border-red-200">
-                    ⚡ 24h Rush Order
+                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-0.5 border border-red-200 flex items-center gap-1">
+                    <Zap size={10} /> 24h Rush Order
                   </span>
                 )}
               </div>
@@ -5782,7 +6047,7 @@ export default function Admin() {
                           <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
                             isCurrent ? "bg-primary text-[#111111]" : isPassed ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600"
                           }`}>
-                            {isPassed ? "✓ Done" : isCurrent ? "Active" : `Step ${m.step}`}
+                            {isPassed ? "Done" : isCurrent ? "Active" : `Step ${m.step}`}
                           </span>
                         </div>
                         <div className={`font-extrabold text-xs mb-0.5 ${isCurrent ? "text-primary" : "text-[#111111]"}`}>

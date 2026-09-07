@@ -48,7 +48,7 @@ export default function About() {
     {
       icon: <Award className="w-6 h-6 text-primary-amber" />,
       title: "100% Editable Vector Assets",
-      desc: "No locked images or uneditable PDFs. You receive native PowerPoint and Google Slides files your team can edit forever."
+      desc: "No locked images or uneditable PDFs. You receive native Master PowerPoint (.pptx) files your team can edit forever."
     }
   ];
 

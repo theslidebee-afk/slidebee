@@ -250,9 +250,9 @@ export default function Navbar() {
                 )}
                 <Link
                   to="/ordernow"
-                  className="hex-cut-btn text-[#111111] text-base font-black py-3.5 shadow-lg"
+                  className="hex-cut-btn text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5"
                 >
-                  Get a Quote ➔
+                  Get a Quote <ArrowRight size={15} />
                 </Link>
               </div>
             </nav>

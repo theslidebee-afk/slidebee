@@ -50,12 +50,12 @@ export async function sendOrderConfirmationEmail({
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Design Studio</h1>
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
         <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Executive Presentation Design on Demand</p>
       </div>
       
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
-        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Presentation Brief! 🎉</h2>
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Presentation Brief</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
           Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
           Thank you for choosing SlideBee. A senior art director is currently reviewing your project requirements and asset links.
@@ -66,7 +66,7 @@ export async function sendOrderConfirmationEmail({
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
             <li><strong>Service Tier:</strong> ${serviceType}</li>
             <li><strong>Total Slides:</strong> ${slideCount} Slides</li>
-            <li><strong>Turnaround Priority:</strong> ${rushDelivery ? '⚡ 24h Rush Guarantee' : 'Standard 48h Delivery'}</li>
+            <li><strong>Turnaround Priority:</strong> ${rushDelivery ? '24h Rush Guarantee' : 'Standard 48h Delivery'}</li>
             ${driveLink ? `<li><strong>Assets / Draft Link:</strong> <a href="${driveLink}" style="color: #936610; font-weight: 700;">View Uploaded Files</a></li>` : ''}
           </ul>
         </div>
@@ -80,7 +80,7 @@ export async function sendOrderConfirmationEmail({
       </div>
 
       <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
-        🔒 All files and corporate data are protected under strict mutual NDA.<br/>
+        All files and corporate data are protected under strict mutual NDA.<br/>
         Questions? Reply directly to this email or reach us at <a href="mailto:hello@theslidebee.com" style="color: #936610;">hello@theslidebee.com</a>.
       </div>
     </div>
@@ -91,7 +91,7 @@ export async function sendOrderConfirmationEmail({
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
     replyTo: 'design@theslidebee.com',
-    subject: `🐝 Brief Received: ${serviceType} (${slideCount} Slides) — SlideBee Studio`,
+    subject: `Brief Received: ${serviceType} (${slideCount} Slides) — SlideBee Studio`,
     html,
   });
 }
@@ -111,7 +111,7 @@ export async function sendWelcomeEmail({
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 Welcome to SlideBee</h1>
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">Welcome to SlideBee</h1>
         <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Your Executive Presentation Design Portal</p>
       </div>
 
@@ -134,7 +134,7 @@ export async function sendWelcomeEmail({
 
         <div style="text-align: center; margin: 24px 0;">
           <a href="https://theslidebee.com/#/account" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 12px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">
-            Access Client Portal →
+            Access Client Portal
           </a>
         </div>
       </div>
@@ -146,7 +146,7 @@ export async function sendWelcomeEmail({
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
     replyTo: 'hello@theslidebee.com',
-    subject: `🐝 Welcome to SlideBee Studio — Your Client Account is Ready`,
+    subject: `Welcome to SlideBee Studio — Your Client Account is Ready`,
     html,
   });
 }
@@ -164,12 +164,12 @@ export async function sendWaitlistConfirmationEmail({
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Design Studio</h1>
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
         <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Exclusive Early Access Reservation</p>
       </div>
 
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
-        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">You're on the VIP Waitlist! 🎉</h2>
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">You're on the VIP Waitlist</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
           Thank you for joining the SlideBee early access list. We are putting the final touches on our on-demand executive presentation design studio and master PowerPoint template store.
         </p>
@@ -199,7 +199,7 @@ export async function sendWaitlistConfirmationEmail({
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
     replyTo: 'hello@theslidebee.com',
-    subject: `🐝 VIP Access Confirmed: You're on the SlideBee Waitlist`,
+    subject: `VIP Access Confirmed: You're on the SlideBee Waitlist`,
     html,
   });
 }
@@ -221,7 +221,7 @@ export async function sendContactNotificationEmail({
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Studio</h1>
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Studio</h1>
         <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Inquiry Confirmation</p>
       </div>
 
@@ -245,7 +245,7 @@ export async function sendContactNotificationEmail({
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
     replyTo: 'hello@theslidebee.com',
-    subject: `🐝 We Received Your Note: ${subject} — SlideBee Studio`,
+    subject: `We Received Your Note: ${subject} — SlideBee Studio`,
     html,
   });
 }
@@ -273,12 +273,12 @@ export async function sendTemplatePurchaseReceiptEmail({
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">🐝 SlideBee Template Store</h1>
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Template Store</h1>
         <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Order Confirmed & Deliverables Ready</p>
       </div>
 
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
-        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">Your Master Presentation Files Are Ready! 🎉</h2>
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">Your Master Presentation Files Are Ready</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
           Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
           Thank you for purchasing <strong>${templateTitle}</strong> (${templateCode}). Your commercial license is active.
@@ -301,7 +301,7 @@ export async function sendTemplatePurchaseReceiptEmail({
 
         <div style="text-align: center; margin: 24px 0;">
           <a href="${downloadUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
-            Download Master Presentation (.pptx) →
+            Download Master Presentation (.pptx)
           </a>
         </div>
 
@@ -322,7 +322,7 @@ export async function sendTemplatePurchaseReceiptEmail({
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
     replyTo: 'design@theslidebee.com',
-    subject: `🐝 Your Master Presentation Files: ${templateTitle} (${templateCode}) — SlideBee`,
+    subject: `Your Master Presentation Files: ${templateTitle} (${templateCode}) — SlideBee`,
     html,
   });
 }

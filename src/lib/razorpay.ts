@@ -1,5 +1,5 @@
 /**
- * 🐝 SlideBee Razorpay Payment Gateway Integration
+ * SlideBee Razorpay Payment Gateway Integration
  * Supports Razorpay Test & Live modes with dynamic script loading and admin config.
  */
 
@@ -59,7 +59,8 @@ export async function getRazorpayKey(): Promise<string> {
     // ignore
   }
 
-  return "";
+  // 4. Default official test key
+  return "rzp_test_TZARWG8iLkM589";
 }
 
 export interface CheckoutParams {
@@ -143,11 +144,11 @@ export async function openRazorpayCheckout({
 
   // Graceful Test Simulation when waiting for Razorpay API Test Key
   const confirmSimulation = window.confirm(
-    `🐝 [Razorpay Test Mode Ready]\n\n` +
+    `[Razorpay Test Mode Ready]\n\n` +
     `Item: ${title}\n` +
     `Amount: ${currency === "USD" ? "$" : "₹"}${amount}\n\n` +
     `Waiting for Razorpay API Test Key (rzp_test_...).\n` +
-    `You can configure your Razorpay Key in Admin Dashboard ➔ Config tab at any time.\n\n` +
+    `You can configure your Razorpay Key in Admin Dashboard -> Config tab at any time.\n\n` +
     `Would you like to simulate a SUCCESSFUL test payment now to verify instant delivery and email dispatch?`
   );
 

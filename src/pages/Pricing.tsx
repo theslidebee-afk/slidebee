@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { 
   Check, 
   ArrowRight, 
-  ChevronDown
+  ChevronDown,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -57,7 +58,7 @@ export default function Pricing() {
         "Brand typography & color harmony",
         "Clean table & data alignment",
         "High-resolution vector icons",
-        "100% editable PPTX & Google Slides",
+        "100% editable Master PowerPoint (.pptx)",
         "1 Round of revisions included"
       ],
       cta: "Order Redesign",
@@ -77,7 +78,7 @@ export default function Pricing() {
         "Investor-grade unit economics & cap-table visualizers",
         "Custom bespoke vector illustrations & charts",
         "TAM / SAM / SOM market sizing diagrams",
-        "Fully editable PPTX, Keynote, & Google Slides",
+        "Fully editable Master PowerPoint (.pptx) presentation",
         "Unlimited revisions until final sign-off",
         "Signed Non-Disclosure Agreement (NDA)"
       ],
@@ -98,7 +99,7 @@ export default function Pricing() {
         "Stage-optimized ultra-high contrast visual layouts",
         "Custom 3D isometric systems & architecture graphics",
         "Dedicated senior art director on direct WhatsApp/Slack",
-        "PowerPoint, Keynote, Google Slides + PDF export",
+        "Master PowerPoint (.pptx) + High-Res Vector PDF export",
         "Full Master Template & Brand Style Guide included",
         "Priority 24-hour turnaround guarantee"
       ],
@@ -114,7 +115,7 @@ export default function Pricing() {
     },
     {
       q: "What files do I receive upon completion?",
-      a: "You receive 100% fully editable PowerPoint (.pptx), Google Slides (cloud link), and Keynote files with all embedded vector assets and fonts, plus a print-ready PDF."
+      a: "You receive 100% fully editable Master PowerPoint (.pptx) presentation files with all embedded vector assets and fonts, plus a print-ready PDF."
     },
     {
       q: "How fast can you deliver my presentation?",
@@ -162,7 +163,7 @@ export default function Pricing() {
                 : "text-[#111111] hover:text-primary-amber"
             }`}
           >
-            🇺🇸 USD ($)
+            USD ($)
           </button>
           <button
             onClick={() => setCurrency("INR")}
@@ -172,7 +173,7 @@ export default function Pricing() {
                 : "text-[#111111] hover:text-primary-amber"
             }`}
           >
-            🇮🇳 INR (₹)
+            INR (₹)
           </button>
         </div>
       </section>
@@ -190,8 +191,8 @@ export default function Pricing() {
               }`}
             >
               {plan.popular && (
-                <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md">
-                  ★ {plan.badge}
+                <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
+                  <Sparkles size={11} className="text-[#FCBF14]" /> {plan.badge}
                 </div>
               )}
 

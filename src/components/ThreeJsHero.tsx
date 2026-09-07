@@ -101,23 +101,19 @@ export default function ThreeJsHero() {
       metalness: 0.6
     });
 
-    // Ambient background peripheral floating hexagons
-    const positions = [
-      { x: -5.8, y: 3.2, z: -4.0, scale: 1.0, rot: -0.3 },
-      { x: -7.5, y: -3.5, z: -3.2, scale: 1.1, rot: 0.2 }
-    ];
+    // Ambient background peripheral floating hexagons for lower sections (strictly below hero)
+    const positions: { x: number; y: number; z: number; scale: number; rot: number }[] = [];
 
-    // Distribute 25 more hexagons deep down the page for the other sections
-    for (let i = 0; i < 25; i++) {
-      // Keep them strictly on the left/right peripheral edges to maintain a center safe zone for text readability
+    // Distribute 20 hexagons deep down the page for the other sections
+    for (let i = 0; i < 20; i++) {
       const isLeft = Math.random() > 0.5;
-      const xOffset = isLeft ? -(8 + Math.random() * 12) : (8 + Math.random() * 12);
+      const xOffset = isLeft ? -(12 + Math.random() * 8) : (12 + Math.random() * 8);
       
       positions.push({
         x: xOffset,
-        y: -(Math.random() * 85) - 6, // Spread from Y=-6 down to Y=-91
-        z: -(Math.random() * 15) - 4, // Push deeper (-4 to -19)
-        scale: 0.5 + Math.random() * 1.2,
+        y: -(Math.random() * 75) - 16, // Strictly below Y=-16
+        z: -(Math.random() * 15) - 4,
+        scale: 0.5 + Math.random() * 1.0,
         rot: Math.random() * Math.PI
       });
     }

@@ -15,7 +15,8 @@ import {
   Award, 
   Megaphone,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from "lucide-react";
 
 const STORAGE_BASE = "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples";
@@ -38,12 +39,25 @@ const defaultBottomMarqueeSlides = [
   `${STORAGE_BASE}/volvo_slide-2.jpg`,
 ];
 
+const defaultWorkedCompanies = [
+  { name: "Accenture", category: "Consulting & Strategy" },
+  { name: "Nike", category: "Retail & Innovation" },
+  { name: "Volvo", category: "Automotive & Mobility" },
+  { name: "Intel", category: "Silicon & Cloud Compute" },
+  { name: "HSBC", category: "Global Banking & Compliance" },
+  { name: "CVS Health", category: "Healthcare & Omnichannel" },
+  { name: "British American", category: "Global Enterprise Strategy" },
+  { name: "Levi's", category: "Consumer Brands" },
+  { name: "Williams Lea Tag", category: "Creative Production & RFP" }
+];
+
 export default function Services() {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [selectedService, setSelectedService] = useState<string>("redesign");
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
   const [topMarqueeSlides, setTopMarqueeSlides] = useState<string[]>(defaultTopMarqueeSlides);
   const [bottomMarqueeSlides, setBottomMarqueeSlides] = useState<string[]>(defaultBottomMarqueeSlides);
+  const [workedCompanies, setWorkedCompanies] = useState<{ name: string; category: string }[]>(defaultWorkedCompanies);
 
   useEffect(() => {
     // 1. Fetch custom services configuration
@@ -56,7 +70,19 @@ export default function Services() {
         if (data?.value) setCustomServices(data.value);
       });
 
-    // 2. Fetch custom marquee configuration or dynamically pull from portfolio examples
+    // 2. Fetch worked companies configuration
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "worked_companies")
+      .single()
+      .then(({ data }) => {
+        if (data?.value?.companies && Array.isArray(data.value.companies) && data.value.companies.length > 0) {
+          setWorkedCompanies(data.value.companies);
+        }
+      });
+
+    // 3. Fetch custom marquee configuration or dynamically pull from portfolio examples
     supabase
       .from("site_config")
       .select("value")
@@ -117,7 +143,7 @@ export default function Services() {
       afterBenefits: [
         "Executive visual hierarchy guided by senior art directors",
         "Bespoke iconography, high-contrast KPI highlight cards",
-        "100% editable vector shapes in PowerPoint and Google Slides"
+        "100% editable vector shapes in Master PowerPoint (.pptx)"
       ],
       turnaround: "24h – 48h",
       idealFor: "Corporate decks, weekly business reviews, conference presentations"
@@ -346,6 +372,41 @@ export default function Services() {
 
       </section>
 
+      {/* 1.5 PREVIOUS WORKED COMPANIES BRAND MARQUEE */}
+      <section className="py-8 bg-white border-b border-primary/25 overflow-hidden">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 text-center mb-5">
+          <span className="text-[11px] font-black uppercase tracking-widest text-[#726F6D] inline-block">
+            Trusted by Leaders & Executives Across Global Enterprises
+          </span>
+        </div>
+        <div className="w-full overflow-hidden">
+          <motion.div
+            animate={{ x: [0, -1400] }}
+            transition={{ repeat: Infinity, duration: 32, ease: "linear" }}
+            className="flex items-center gap-6 w-max"
+          >
+            {[...workedCompanies, ...workedCompanies, ...workedCompanies].map((comp, idx) => (
+              <div
+                key={`comp-${idx}`}
+                className="hex-card px-6 py-3 bg-[#FFF9E8] border border-primary/40 rounded-xl flex items-center gap-3 shrink-0 shadow-xs hover:border-primary transition-all group"
+              >
+                <div className="w-2.5 h-2.5 rounded-full bg-primary-amber group-hover:scale-125 transition-transform" />
+                <div className="text-left">
+                  <div className="font-heading font-extrabold text-sm text-[#111111] tracking-tight group-hover:text-primary-amber transition-colors">
+                    {comp.name}
+                  </div>
+                  {comp.category && (
+                    <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                      {comp.category}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
       {/* 2. THE 6 CORE SERVICES WITH INTERACTIVE BEFORE/AFTER SHOWCASE */}
       <section id="services-grid" className="py-20 bg-[#FFF9E8] large-hex-grid">
         <div className="container mx-auto px-4 md:px-8">
@@ -477,7 +538,7 @@ export default function Services() {
                     </div>
                   </div>
                   <p className="text-center text-[11px] text-[#726F6D] font-medium mt-2.5">
-                    👈 Drag slider left and right to inspect the redesign details 👉
+                    Drag slider left and right to inspect the redesign details
                   </p>
                 </div>
 
@@ -488,7 +549,7 @@ export default function Services() {
                   <div className="hex-card p-[1.5px] bg-red-500/20">
                     <div className="hex-card bg-red-500/5 p-4">
                       <h5 className="text-xs font-extrabold uppercase tracking-wider text-red-600 mb-2 flex items-center gap-1.5">
-                        ❌ Before (Raw Draft Flaws):
+                        <X size={13} className="text-red-600" /> Before (Raw Draft Flaws):
                       </h5>
                       <ul className="space-y-1.5 text-xs text-[#726F6D] font-medium">
                         {(activeServiceData.beforeIssues || []).map((issue: string, idx: number) => (
@@ -521,7 +582,7 @@ export default function Services() {
                   {/* Ideal For */}
                   <div className="pt-2">
                     <span className="text-[11px] text-[#726F6D] font-bold uppercase tracking-wider block mb-1">
-                      🎯 Best Suited For:
+                      Best Suited For:
                     </span>
                     <p className="text-xs text-[#111111] font-bold">
                       {activeServiceData.idealFor}
@@ -596,7 +657,7 @@ export default function Services() {
                 Fully Editable Files
               </h4>
               <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed max-w-[200px]">
-                Receive PPTX, Google Slides, Keynote, and vector assets.
+                Receive 100% editable Master PowerPoint (.pptx) presentation and vector assets.
               </p>
             </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
-import { X, ArrowRight, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ArrowRight, Search, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 interface PortfolioItem {
@@ -370,11 +370,11 @@ export default function Examples() {
                 const currentSlideImg = normalizeSlideUrl(modalSlides[activeModalSlide] || activeModalItem.image);
                 return (
                   <div>
-                    <div className="aspect-[16/9] bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
+                    <div className="aspect-video bg-[#111111] rounded-2xl overflow-hidden mb-4 shadow-inner relative flex items-center justify-center border-2 border-primary/40 group/viewer">
                       <img
                         src={currentSlideImg}
                         alt={`${activeModalItem.title} - Slide ${activeModalSlide + 1}`}
-                        className="w-full h-full object-contain select-none"
+                        className="w-full h-full object-cover select-none"
                         onError={(e) => {
                           const fallback = `${STORAGE_BASE}/accenture_slide-1.jpg`;
                           if (e.currentTarget.src !== fallback) {
@@ -476,9 +476,9 @@ export default function Examples() {
                   {activeModalItem.highlights.map((h, i) => (
                     <span
                       key={i}
-                      className="hex-pill bg-[#FFF9E8] border border-primary/30 text-xs text-[#111111] font-bold px-3 py-1"
+                      className="hex-pill bg-[#FFF9E8] border border-primary/30 text-xs text-[#111111] font-bold px-3 py-1 inline-flex items-center gap-1.5"
                     >
-                      ✓ {h}
+                      <Check size={11} className="text-emerald-600" /> {h}
                     </span>
                   ))}
                 </div>
