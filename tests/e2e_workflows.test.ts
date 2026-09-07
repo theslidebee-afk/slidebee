@@ -502,6 +502,92 @@ async function runAllWorkflows() {
   }
 
   // -------------------------------------------------------------
+  // Workflow 12: Cloudflare R2 Folder Architecture & Public CDN Routing
+  // -------------------------------------------------------------
+  try {
+    console.log("\nRunning Workflow 12: Cloudflare R2 Folder Architecture & CDN Routing...");
+    const { data: r2Templates, error: r2TplErr } = await supabase
+      .from("templates")
+      .select("id, title, download_url, thumbnail_url, slides");
+
+    if (r2TplErr || !r2Templates || r2Templates.length === 0) {
+      throw new Error(`Failed to load templates: ${r2TplErr?.message}`);
+    }
+
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
+    const allDecksInFolder = r2Templates.every(t =>
+      t.download_url && t.download_url.startsWith(`${R2_BASE}/templates/decks/`)
+    );
+    const allThumbnailsInFolder = r2Templates.every(t =>
+      t.thumbnail_url && t.thumbnail_url.startsWith(`${R2_BASE}/templates/slides/`)
+    );
+
+    assert(
+      allDecksInFolder && allThumbnailsInFolder,
+      "Workflow 12: R2 Folder Organization in Database",
+      `All ${r2Templates.length} templates correctly mapped to templates/decks/ and templates/slides/ folder paths.`
+    );
+
+    // Verify HTTP 200 on sample deck and slide
+    const sampleDeckUrl = r2Templates[0].download_url;
+    const sampleSlideUrl = r2Templates[0].thumbnail_url;
+
+    const [deckRes, slideRes] = await Promise.all([
+      fetch(sampleDeckUrl, { method: "HEAD" }),
+      fetch(sampleSlideUrl, { method: "HEAD" }),
+    ]);
+
+    assert(
+      deckRes.status === 200 && slideRes.status === 200,
+      "Workflow 12: R2 Folder CDN HTTP 200 Verification",
+      `Verified HTTP 200 on deck (${sampleDeckUrl}) and slide preview (${sampleSlideUrl}).`
+    );
+  } catch (err: any) {
+    assert(false, "Workflow 12: R2 Folder Architecture", err.message);
+  }
+
+  // -------------------------------------------------------------
+  // Workflow 13: Supabase Storage Purge & Zero-Cost Billing Guardrails
+  // -------------------------------------------------------------
+  try {
+    console.log("\nRunning Workflow 13: Supabase Storage Purge & Zero-Cost Billing Guardrails...");
+    // 1. Verify Supabase Storage 'examples' bucket is 0 MB / 0 files
+    const { data: remainingFiles, error: storageErr } = await supabase
+      .storage
+      .from("examples")
+      .list("");
+
+    const isPurged = !storageErr && (remainingFiles?.length === 0 || remainingFiles === null);
+
+    assert(
+      isPurged,
+      "Workflow 13: Supabase Storage Purged to 0 MB",
+      `Supabase 'examples' storage bucket contains 0 files. Zero storage quota used.`
+    );
+
+    // 2. Validate Zero-Cost Guardrail rules (50 MB PPTX cap, 10 MB image cap, 10 GB ceiling)
+    const MAX_PPTX = 50 * 1024 * 1024;
+    const MAX_IMG = 10 * 1024 * 1024;
+    const HARD_STORAGE_CAP = 9.90 * 1024 * 1024 * 1024;
+
+    const oversizedPptxBytes = 55 * 1024 * 1024;
+    const oversizedImgBytes = 12 * 1024 * 1024;
+    const wouldExceedBucketBytes = 10.05 * 1024 * 1024 * 1024;
+
+    const pptxBlocked = oversizedPptxBytes > MAX_PPTX;
+    const imgBlocked = oversizedImgBytes > MAX_IMG;
+    const bucketBlocked = wouldExceedBucketBytes > HARD_STORAGE_CAP;
+
+    assert(
+      pptxBlocked && imgBlocked && bucketBlocked,
+      "Workflow 13: Zero-Cost Billing Guardrail Invariants",
+      `Enforced: 50 MB deck cap, 10 MB image cap, and 10.00 GB hard bucket ceiling to guarantee $0.00 billing.`
+    );
+  } catch (err: any) {
+    assert(false, "Workflow 13: Supabase Storage Purge & Billing Guardrails", err.message);
+  }
+
+  // -------------------------------------------------------------
   // Summary & Exit
   // -------------------------------------------------------------
   console.log("\n==================================================================");

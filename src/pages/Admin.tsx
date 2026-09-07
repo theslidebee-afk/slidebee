@@ -41,7 +41,8 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  LayoutTemplate
+  LayoutTemplate,
+  ShieldCheck
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -138,6 +139,7 @@ export default function Admin() {
   const [orderMilestoneFilter, setOrderMilestoneFilter] = useState<string>("all");
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
   const [storageSearchTerm, setStorageSearchTerm] = useState("");
+  const [storageFolderFilter, setStorageFolderFilter] = useState<string>("all");
   const [copiedUrlKey, setCopiedUrlKey] = useState<string | null>(null);
 
   // Single Template Modal State
@@ -399,9 +401,9 @@ export default function Admin() {
   const handleDownloadSampleCSV = () => {
     const sampleHeaders = "code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,is_credit_eligible,formats,description,features\n";
     const sampleRows = 
-      `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,20,"https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-2.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-3.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-4.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture.pptx","true","PowerPoint;Google Slides","High-converting 20-slide pitch deck layout with financial unit economics and investor traction metrics.","20+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
-      `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health_slide-1.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health_slide-1.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health_slide-2.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health_slide-3.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health_slide-4.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/cvs_health.pptx","false","PowerPoint;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable Master PPTX"\n` +
-      `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike_slide-1.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike_slide-1.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike_slide-2.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike_slide-3.jpg;https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike_slide-4.jpg","https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/nike.pptx","false","PowerPoint;Canva","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Master PowerPoint (.pptx)"`;
+      `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,20,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/accenture.pptx","true","PowerPoint;Google Slides","High-converting 20-slide pitch deck layout with financial unit economics and investor traction metrics.","20+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
+      `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/cvs_health.pptx","false","PowerPoint;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable Master PPTX"\n` +
+      `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/nike.pptx","false","PowerPoint;Canva","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Master PowerPoint (.pptx)"`;
     
     const blob = new Blob([sampleHeaders + sampleRows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -3781,10 +3783,10 @@ export default function Admin() {
                         client: "New Enterprise Brand",
                         category: "Strategy & Operations",
                         slides: [
-                          "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg",
-                          "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-2.jpg"
+                          "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
+                          "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-2.jpg"
                         ],
-                        imageUrl: "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/accenture_slide-1.jpg",
+                        imageUrl: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
                         impact: "Executive Alignment",
                         description: "High-impact presentation deck crafted for leadership and strategic alignment.",
                         deliverables: ["PowerPoint Master Deck", "Executive Keynote", "Custom Vector Icons"]
@@ -4685,6 +4687,40 @@ export default function Admin() {
                 </div>
               </div>
 
+              {/* Zero-Billing Safety & Hard Caps Banner */}
+              <div className="mt-6 bg-[#111111] text-white p-5 rounded-2xl border border-primary/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center shrink-0">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading font-black text-sm text-white">Strict Zero-Cost Billing Policy</span>
+                      <span className="hex-pill-sm bg-green-500/20 text-green-400 border border-green-500/30 text-[9px] font-black uppercase tracking-wider px-2 py-0.5">
+                        Active & Enforced
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/70 mt-0.5">
+                      Hard storage ceiling at 10.00 GB (9.90 GB cutoff). Over-quota uploads automatically blocked to guarantee $0.00 zero billing.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+                  <span className="hex-pill-sm bg-white/10 text-white/90 border border-white/10 px-2.5 py-1">
+                    Storage Cap: 10.00 GB
+                  </span>
+                  <span className="hex-pill-sm bg-white/10 text-white/90 border border-white/10 px-2.5 py-1">
+                    Max PPTX: 50 MB
+                  </span>
+                  <span className="hex-pill-sm bg-white/10 text-white/90 border border-white/10 px-2.5 py-1">
+                    Max Image: 10 MB
+                  </span>
+                  <span className="hex-pill-sm bg-green-500/20 text-green-300 border border-green-500/30 px-2.5 py-1">
+                    Supabase Storage: 0 MB (Purged)
+                  </span>
+                </div>
+              </div>
+
             </div>
 
             {/* SECTION 1: TEMPLATES TABLE DATABASE AUDIT */}
@@ -4820,45 +4856,74 @@ export default function Admin() {
 
             {/* SECTION 2: LIVE CLOUDFLARE R2 BUCKET EXPLORER */}
             <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                    <HardDrive size={18} className="text-primary-amber" />
-                    <span>Live Cloudflare R2 Bucket Explorer (slidebee)</span>
-                  </h3>
-                  <p className="text-xs text-[#726F6D]">
-                    Public Edge CDN: <code className="bg-black/5 px-1 py-0.5 rounded text-[11px] font-mono">{R2_PUBLIC_BASE_URL}</code>
-                  </p>
+              <div className="p-6 border-b border-[#111111]/8 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                      <HardDrive size={18} className="text-primary-amber" />
+                      <span>Live Cloudflare R2 Bucket Explorer (slidebee)</span>
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Public Edge CDN: <code className="bg-black/5 px-1 py-0.5 rounded text-[11px] font-mono">{R2_PUBLIC_BASE_URL}</code>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-48 sm:w-64">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#726F6D]" />
+                      <input
+                        type="text"
+                        placeholder="Search R2 files..."
+                        value={storageSearchTerm}
+                        onChange={(e) => setStorageSearchTerm(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-primary font-medium"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const data = await fetchR2Telemetry();
+                        if (data?.success) {
+                          setStorageStats((prev) => ({
+                            ...prev,
+                            ...data,
+                            objects: data.objects || [],
+                          }));
+                        }
+                      }}
+                      className="hex-pill-sm bg-black/5 hover:bg-black/10 text-[#111111] font-bold text-xs p-2"
+                      title="Refresh telemetry from Cloudflare R2"
+                    >
+                      <RefreshCw size={13} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative w-48 sm:w-64">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#726F6D]" />
-                    <input
-                      type="text"
-                      placeholder="Search R2 files..."
-                      value={storageSearchTerm}
-                      onChange={(e) => setStorageSearchTerm(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-primary font-medium"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const data = await fetchR2Telemetry();
-                      if (data?.success) {
-                        setStorageStats((prev) => ({
-                          ...prev,
-                          ...data,
-                          objects: data.objects || [],
-                        }));
-                      }
-                    }}
-                    className="hex-pill-sm bg-black/5 hover:bg-black/10 text-[#111111] font-bold text-xs p-2"
-                    title="Refresh telemetry from Cloudflare R2"
-                  >
-                    <RefreshCw size={13} />
-                  </button>
+                {/* Folder Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#111111]/6">
+                  <span className="text-[10px] font-extrabold text-[#726F6D] uppercase tracking-wider mr-1">
+                    Folder:
+                  </span>
+                  {[
+                    { id: "all", label: "All Objects", count: (storageStats.objects || []).length },
+                    { id: "templates/decks", label: "templates/decks/", count: (storageStats.objects || []).filter(o => o.key.startsWith("templates/decks/")).length },
+                    { id: "templates/slides", label: "templates/slides/", count: (storageStats.objects || []).filter(o => o.key.startsWith("templates/slides/")).length },
+                    { id: "marquee", label: "marquee/", count: (storageStats.objects || []).filter(o => o.key.startsWith("marquee/")).length },
+                    { id: "bulk-ingest", label: "bulk-ingest/", count: (storageStats.objects || []).filter(o => o.key.startsWith("bulk-ingest/")).length },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setStorageFolderFilter(f.id)}
+                      className={`hex-pill-sm text-[11px] font-bold px-3 py-1 transition-all ${
+                        storageFolderFilter === f.id
+                          ? "bg-primary text-[#111111] shadow-xs"
+                          : "bg-black/5 hover:bg-black/10 text-[#726F6D]"
+                      }`}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -4876,9 +4941,13 @@ export default function Admin() {
                     </thead>
                     <tbody className="divide-y divide-[#111111]/5">
                       {storageStats.objects
-                        .filter((o) => !storageSearchTerm || o.key.toLowerCase().includes(storageSearchTerm.toLowerCase()))
+                        .filter((o) => {
+                          const matchesSearch = !storageSearchTerm || o.key.toLowerCase().includes(storageSearchTerm.toLowerCase());
+                          const matchesFolder = storageFolderFilter === "all" || o.key.startsWith(`${storageFolderFilter}/`);
+                          return matchesSearch && matchesFolder;
+                        })
                         .map((obj) => {
-                          const folder = obj.key.includes("/") ? obj.key.split("/")[0] : "root";
+                          const folder = obj.key.includes("/") ? obj.key.split("/").slice(0, -1).join("/") : "root";
                           const isPpt = obj.key.endsWith(".pptx") || obj.key.endsWith(".ppt");
                           const isImg = obj.key.match(/\.(jpg|jpeg|png|webp|svg)$/i);
 

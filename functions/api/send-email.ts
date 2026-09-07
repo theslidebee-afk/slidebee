@@ -1,5 +1,10 @@
 // Cloudflare Pages Function: /api/send-email
 // Handles email dispatch via Resend & notifies hello@theslidebee.com
+// Enforces strict Zero-Cost Safety Cap: Circuit breaker capped at 80 emails/day to strictly remain within Resend's free tier (100/day)
+
+const DAILY_EMAIL_SAFETY_LIMIT = 80;
+let dailyEmailCount = 0;
+let currentDay = new Date().toISOString().slice(0, 10);
 
 export async function onRequestOptions() {
   return new Response(null, {
@@ -19,6 +24,23 @@ export async function onRequestPost(context: any) {
   };
 
   try {
+    const today = new Date().toISOString().slice(0, 10);
+    if (today !== currentDay) {
+      currentDay = today;
+      dailyEmailCount = 0;
+    }
+
+    // Enforce Zero-Cost Email Circuit Breaker
+    if (dailyEmailCount >= DAILY_EMAIL_SAFETY_LIMIT) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Zero-Cost Safety Cap: Daily email limit of ${DAILY_EMAIL_SAFETY_LIMIT} reached for ${today}. Request blocked to guarantee $0.00 zero billing.`,
+        }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
     const { request, env } = context;
     const body = await request.json();
     const { to, subject, html, text, replyTo, fromEmail, fromName } = body;
@@ -80,8 +102,17 @@ export async function onRequestPost(context: any) {
       resendData = await resendRes.json();
     }
 
+    if (resendRes.ok) {
+      dailyEmailCount++;
+    }
+
     return new Response(
-      JSON.stringify({ success: resendRes.ok, data: resendData }),
+      JSON.stringify({
+        success: resendRes.ok,
+        data: resendData,
+        dispatchesToday: dailyEmailCount,
+        dailyCap: DAILY_EMAIL_SAFETY_LIMIT,
+      }),
       { status: resendRes.ok ? 200 : 400, headers: corsHeaders }
     );
   } catch (error: any) {

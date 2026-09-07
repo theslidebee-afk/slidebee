@@ -15,10 +15,14 @@ interface PortfolioItem {
   highlights: string[];
 }
 
-const STORAGE_BASE = "https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples";
+const STORAGE_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides";
 
 export function normalizeSlideUrl(url: string): string {
   if (!url) return `${STORAGE_BASE}/accenture_slide-1.jpg`;
+  if (url.includes("whwyfqtvuubkfypmgosi.supabase.co")) {
+    const filename = url.split("/").pop();
+    if (filename) return `${STORAGE_BASE}/${filename}`;
+  }
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   const filename = url.split("/").pop();
   if (filename && (filename.endsWith(".jpg") || filename.endsWith(".png") || filename.endsWith(".jpeg"))) {
