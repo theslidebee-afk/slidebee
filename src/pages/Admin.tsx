@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
+import { uploadToR2, fetchR2Telemetry, deleteFromR2, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export const ORDER_MILESTONES = [
@@ -136,6 +137,8 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [orderMilestoneFilter, setOrderMilestoneFilter] = useState<string>("all");
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
+  const [storageSearchTerm, setStorageSearchTerm] = useState("");
+  const [copiedUrlKey, setCopiedUrlKey] = useState<string | null>(null);
 
   // Single Template Modal State
   const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
@@ -193,13 +196,17 @@ export default function Admin() {
   const [shouldMirrorAssets, setShouldMirrorAssets] = useState(true);
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
 
-  // Live Supabase Storage Quota State (Replacing dummy formula)
+  // Live Cloudflare R2 Object Storage Quota & Inventory State
   const [storageStats, setStorageStats] = useState({
-    pptxMB: 44.5,
+    pptxMB: 44.48,
     pptxCount: 9,
-    imagesMB: 6.6,
+    imagesMB: 6.57,
     imagesCount: 37,
-    totalUsedMB: 51.1,
+    totalUsedMB: 51.05,
+    remainingGB: 9.95,
+    percentUsed: 0.5,
+    totalFiles: 47,
+    objects: [] as any[],
     loading: false
   });
 
@@ -334,38 +341,25 @@ export default function Admin() {
       }
     }
 
-    // Fetch Live Storage Metrics from Supabase Storage examples bucket
+    // Fetch Live Storage Telemetry from Cloudflare R2 bucket (slidebee)
     try {
-      const { data: storageFiles } = await supabase.storage.from("examples").list();
-      if (storageFiles && storageFiles.length > 0) {
-        let pptxBytes = 0;
-        let pptxCount = 0;
-        let imagesBytes = 0;
-        let imagesCount = 0;
-        storageFiles.forEach((f) => {
-          const size = f.metadata?.size || 0;
-          if (f.name.toLowerCase().endsWith(".pptx")) {
-            pptxBytes += size;
-            pptxCount++;
-          } else if (!f.name.endsWith(".txt")) {
-            imagesBytes += size;
-            imagesCount++;
-          }
-        });
-        const pptxMB = Number((pptxBytes / (1024 * 1024)).toFixed(1));
-        const imagesMB = Number((imagesBytes / (1024 * 1024)).toFixed(1));
-        const totalUsedMB = Number(((pptxBytes + imagesBytes) / (1024 * 1024)).toFixed(1));
+      const r2Data = await fetchR2Telemetry();
+      if (r2Data && r2Data.success) {
         setStorageStats({
-          pptxMB,
-          pptxCount,
-          imagesMB,
-          imagesCount,
-          totalUsedMB,
-          loading: false
+          pptxMB: r2Data.pptxMB,
+          pptxCount: r2Data.pptxCount,
+          imagesMB: r2Data.imagesMB,
+          imagesCount: r2Data.imagesCount,
+          totalUsedMB: r2Data.totalUsedMB,
+          remainingGB: r2Data.remainingGB,
+          percentUsed: r2Data.percentUsed,
+          totalFiles: r2Data.totalFiles,
+          objects: r2Data.objects || [],
+          loading: false,
         });
       }
     } catch (err) {
-      console.warn("Storage telemetry fetch error:", err);
+      console.warn("Cloudflare R2 telemetry fetch error:", err);
     }
   };
 
@@ -643,7 +637,7 @@ export default function Admin() {
     let templatesToInsert = [...parsedBulkTemplates];
 
     if (shouldMirrorAssets) {
-      setIngestStatus("Scanning for external image assets to mirror to Supabase CDN...");
+      setIngestStatus("Scanning for external image assets to mirror to Cloudflare R2 CDN...");
       let ingestedCount = 0;
       const totalSlides = templatesToInsert.reduce((sum, t) => sum + (Array.isArray(t.slides) ? t.slides.length : 1), 0);
 
@@ -653,21 +647,18 @@ export default function Admin() {
           let updatedSlides: string[] = Array.isArray(tpl.slides) ? [...tpl.slides] : [tpl.thumbnail_url];
 
           // Mirror thumbnail if external
-          if (updatedThumb && updatedThumb.startsWith("http") && !updatedThumb.includes("supabase.co")) {
+          if (updatedThumb && updatedThumb.startsWith("http") && !updatedThumb.includes("r2.dev")) {
             try {
               const res = await fetch(updatedThumb);
               if (res.ok) {
                 const blob = await res.blob();
                 const ext = updatedThumb.split(".").pop()?.split(/[?#]/)[0] || "jpg";
                 const fileName = `ingest_${tpl.code || Date.now()}_thumb_${tplIdx}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
-                const { error: upErr } = await supabase.storage.from("examples").upload(fileName, blob, {
-                  upsert: true,
-                  contentType: blob.type || "image/jpeg"
-                });
-                if (!upErr) {
-                  updatedThumb = `https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/${fileName}`;
+                const r2Res = await uploadToR2(blob, { folder: "bulk-ingest", fileName });
+                if (r2Res.success && r2Res.publicUrl) {
+                  updatedThumb = r2Res.publicUrl;
                   ingestedCount++;
-                  setIngestStatus(`Mirroring assets to Supabase CDN: ${ingestedCount} / ${totalSlides}...`);
+                  setIngestStatus(`Mirroring assets to Cloudflare R2 CDN: ${ingestedCount} / ${totalSlides}...`);
                 }
               }
             } catch (e) {
@@ -678,21 +669,18 @@ export default function Admin() {
           // Mirror interior slides if external
           const newSlidesArray = await Promise.all(
             updatedSlides.map(async (slideUrl, sIdx) => {
-              if (slideUrl && slideUrl.startsWith("http") && !slideUrl.includes("supabase.co")) {
+              if (slideUrl && slideUrl.startsWith("http") && !slideUrl.includes("r2.dev")) {
                 try {
                   const res = await fetch(slideUrl);
                   if (res.ok) {
                     const blob = await res.blob();
                     const ext = slideUrl.split(".").pop()?.split(/[?#]/)[0] || "jpg";
                     const fileName = `ingest_${tpl.code || Date.now()}_slide_${sIdx + 1}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
-                    const { error: upErr } = await supabase.storage.from("examples").upload(fileName, blob, {
-                      upsert: true,
-                      contentType: blob.type || "image/jpeg"
-                    });
-                    if (!upErr) {
+                    const r2Res = await uploadToR2(blob, { folder: "bulk-ingest", fileName });
+                    if (r2Res.success && r2Res.publicUrl) {
                       ingestedCount++;
-                      setIngestStatus(`Mirroring assets to Supabase CDN: ${ingestedCount} / ${totalSlides}...`);
-                      return `https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/${fileName}`;
+                      setIngestStatus(`Mirroring assets to Cloudflare R2 CDN: ${ingestedCount} / ${totalSlides}...`);
+                      return r2Res.publicUrl;
                     }
                   }
                 } catch (e) {
@@ -986,7 +974,7 @@ export default function Admin() {
   };
 
   // Upload Local PPT / PPTX / PDF File
-  const handlePptFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePptFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -996,17 +984,18 @@ export default function Admin() {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
     setNewPptSize(file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setNewPptUrl(event.target.result as string);
+    try {
+      const r2Res = await uploadToR2(file, { folder: "templates/decks", fileName: file.name });
+      if (r2Res.success && r2Res.publicUrl) {
+        setNewPptUrl(r2Res.publicUrl);
+      } else {
+        throw new Error(r2Res.error || "Upload failed");
       }
+    } catch (err: any) {
+      alert("Failed to upload Master PPTX to Cloudflare R2: " + (err.message || err));
+    } finally {
       setIsUploadingPpt(false);
-    };
-    reader.onerror = () => {
-      setIsUploadingPpt(false);
-    };
-    reader.readAsDataURL(file);
+    }
 
     if (!newTitle) {
       const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
@@ -1014,31 +1003,36 @@ export default function Admin() {
     }
   };
 
-  // Upload Multiple Slide Images for Template Gallery
-  const handleSlideImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Multiple Slide Images for Template Gallery to Cloudflare R2
+  const handleSlideImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    setIsUploadingSlide(true);
 
-    files.forEach((file, index) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const imgUrl = event.target.result as string;
-          setNewSlides((prev) => {
-            const next = [...prev, imgUrl];
-            setNewSlideCount(next.length);
-            return next;
-          });
-          if (index === 0 && (!newThumbnail || newThumbnail.startsWith("/portfolio/case_study_a_1"))) {
-            setNewThumbnail(imgUrl);
-          }
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+        if (r2Res.success && r2Res.publicUrl) {
+          uploadedUrls.push(r2Res.publicUrl);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+      setNewSlides((prev) => {
+        const next = [...prev, ...uploadedUrls];
+        setNewSlideCount(next.length);
+        return next;
+      });
+      if (!newThumbnail || newThumbnail.startsWith("/portfolio/case_study_a_1")) {
+        if (uploadedUrls.length > 0) setNewThumbnail(uploadedUrls[0]);
+      }
+    } catch (err: any) {
+      alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
+    } finally {
+      setIsUploadingSlide(false);
+    }
   };
 
-  // Upload Multiple Slide Images for Portfolio Case Study directly to Supabase Storage
+  // Upload Multiple Slide Images for Portfolio Case Study directly to Cloudflare R2
   const handleCaseStudySlidesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -1046,12 +1040,9 @@ export default function Admin() {
 
     try {
       for (const file of files) {
-        const fileExt = file.name.split('.').pop() || 'jpg';
-        const fileName = `slide_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-        const { error } = await supabase.storage.from("examples").upload(fileName, file, { upsert: true });
-        if (error) throw error;
-        const { data: publicData } = supabase.storage.from("examples").getPublicUrl(fileName);
-        const imgUrl = publicData.publicUrl;
+        const r2Res = await uploadToR2(file, { folder: "portfolio", fileName: file.name });
+        if (!r2Res.success || !r2Res.publicUrl) continue;
+        const imgUrl = r2Res.publicUrl;
 
         setSiteConfigs((prevConfigs) => {
           const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
@@ -1075,26 +1066,23 @@ export default function Admin() {
         });
       }
     } catch (err: any) {
-      alert("Failed to upload slide to Supabase Storage: " + (err.message || err));
+      alert("Failed to upload slide to Cloudflare R2: " + (err.message || err));
     } finally {
       setIsUploadingSlide(false);
       e.target.value = "";
     }
   };
 
-  // Upload Custom Image for Services / Hero Marquee
+  // Upload Custom Image for Services / Hero Marquee to Cloudflare R2
   const handleUploadMarqueeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingMarquee(true);
 
     try {
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `marquee_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const { error } = await supabase.storage.from("examples").upload(fileName, file, { upsert: true });
-      if (error) throw error;
-      const { data: publicData } = supabase.storage.from("examples").getPublicUrl(fileName);
-      const imgUrl = publicData.publicUrl;
+      const r2Res = await uploadToR2(file, { folder: "marquee", fileName: file.name });
+      if (!r2Res.success || !r2Res.publicUrl) throw new Error(r2Res.error || "Upload failed");
+      const imgUrl = r2Res.publicUrl;
 
       if (activeMarqueeTarget === "hero") {
         const current = siteConfigs["hero"]?.marqueeSlides || [];
@@ -1122,13 +1110,28 @@ export default function Admin() {
         });
       }
     } catch (err: any) {
-      alert("Failed to upload marquee slide: " + (err.message || err));
+      alert("Failed to upload marquee image to Cloudflare R2: " + (err.message || err));
     } finally {
       setIsUploadingMarquee(false);
       e.target.value = "";
     }
   };
 
+
+  // Delete an object from Cloudflare R2
+  const handleDeleteR2Object = async (key: string) => {
+    if (!confirm(`Are you sure you want to delete "${key}" from Cloudflare R2?`)) return;
+    const ok = await deleteFromR2(key);
+    if (ok) {
+      setStorageStats((prev) => ({
+        ...prev,
+        objects: prev.objects.filter((o) => o.key !== key),
+        totalFiles: Math.max(0, prev.totalFiles - 1),
+      }));
+    } else {
+      alert("Failed to delete object from Cloudflare R2");
+    }
+  };
 
   // Save / Update Asset
   const handleSaveAsset = async (e: React.FormEvent) => {
@@ -4683,6 +4686,304 @@ export default function Admin() {
               </div>
 
             </div>
+
+            {/* SECTION 1: TEMPLATES TABLE DATABASE AUDIT */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-primary-amber" />
+                    <span>Storefront Templates & Master PPTX Inventory (Database Audit)</span>
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Cross-referenced with live Supabase database. All presentation deliverables & previews are hosted on Cloudflare R2 CDN.
+                  </p>
+                </div>
+                <div className="hex-pill bg-[#FFF9E8] border border-primary/20 text-[#111111] px-3.5 py-1.5 text-xs font-bold">
+                  {templates.length} Storefront Templates Registered
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold text-[10px] uppercase tracking-wider border-b border-[#111111]/8">
+                    <tr>
+                      <th className="px-5 py-3">Template / SKU</th>
+                      <th className="px-5 py-3">Master PPTX Deliverable</th>
+                      <th className="px-5 py-3">Slide Previews</th>
+                      <th className="px-5 py-3">Pricing & Credits</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#111111]/5">
+                    {templates.map((tpl) => {
+                      const pptxUrl = tpl.download_url || "";
+                      const slides = Array.isArray(tpl.slides) ? tpl.slides : [tpl.thumbnail_url || tpl.image_url];
+                      const fileName = tpl.file_name || (pptxUrl.split("/").pop() || "presentation.pptx");
+                      const fileSize = tpl.file_size || "4.5 MB";
+
+                      return (
+                        <tr key={tpl.id} className="hover:bg-black/[0.01] transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-8 rounded-lg overflow-hidden bg-black/5 shrink-0 border border-[#111111]/10">
+                                <img
+                                  src={tpl.thumbnail_url || tpl.image_url || "/portfolio/case_study_a_1.png"}
+                                  alt={tpl.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-[#111111] text-xs flex items-center gap-2">
+                                  <span>{tpl.title}</span>
+                                  <span className="hex-pill-sm bg-black/5 text-[#726F6D] text-[9px] font-mono px-1.5 py-0.5">
+                                    {tpl.code || "SLD"}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-[#726F6D]">{tpl.category || "General"}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 font-bold text-xs text-[#111111]">
+                                <FileText size={13} className="text-primary-amber shrink-0" />
+                                <span className="truncate max-w-[180px]">{fileName}</span>
+                                <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[9px] font-bold px-1.5 py-0.5">
+                                  {fileSize}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-[#726F6D] font-mono block truncate max-w-[220px]">
+                                {pptxUrl.replace("https://", "")}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-extrabold text-[#111111]">
+                                {tpl.slide_count || tpl.slides_count || slides.length} Slides
+                              </span>
+                              <div className="flex -space-x-1.5 overflow-hidden py-1">
+                                {slides.slice(0, 3).map((s: string, idx: number) => (
+                                  <img
+                                    key={idx}
+                                    src={s}
+                                    alt={`Slide ${idx + 1}`}
+                                    className="w-5 h-5 rounded-full object-cover border border-white shadow-xs"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="text-[11px] font-extrabold text-[#111111]">
+                              ₹{tpl.price_inr} / ${tpl.price_usd}
+                            </div>
+                            <span className="text-[10px] text-[#726F6D]">
+                              {tpl.is_credit_eligible ? "Eligible for 5 Credits" : "Standard Direct Purchase"}
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {pptxUrl && (
+                                <a
+                                  href={pptxUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                  className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1.5 flex items-center gap-1 shadow-xs transition-all"
+                                  title="Test download from Cloudflare R2"
+                                >
+                                  <Download size={11} /> Test PPTX
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => openEditTemplateModal(tpl)}
+                                className="hex-pill-sm bg-black/5 hover:bg-black/10 text-[#111111] font-bold text-[10px] px-2.5 py-1.5 flex items-center gap-1"
+                              >
+                                <Edit3 size={11} /> Edit
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SECTION 2: LIVE CLOUDFLARE R2 BUCKET EXPLORER */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                    <HardDrive size={18} className="text-primary-amber" />
+                    <span>Live Cloudflare R2 Bucket Explorer (slidebee)</span>
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Public Edge CDN: <code className="bg-black/5 px-1 py-0.5 rounded text-[11px] font-mono">{R2_PUBLIC_BASE_URL}</code>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative w-48 sm:w-64">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#726F6D]" />
+                    <input
+                      type="text"
+                      placeholder="Search R2 files..."
+                      value={storageSearchTerm}
+                      onChange={(e) => setStorageSearchTerm(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-primary font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const data = await fetchR2Telemetry();
+                      if (data?.success) {
+                        setStorageStats((prev) => ({
+                          ...prev,
+                          ...data,
+                          objects: data.objects || [],
+                        }));
+                      }
+                    }}
+                    className="hex-pill-sm bg-black/5 hover:bg-black/10 text-[#111111] font-bold text-xs p-2"
+                    title="Refresh telemetry from Cloudflare R2"
+                  >
+                    <RefreshCw size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {storageStats.objects && storageStats.objects.length > 0 ? (
+                <div className="overflow-x-auto max-h-[500px]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold text-[10px] uppercase tracking-wider border-b border-[#111111]/8 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-5 py-3">Object Key / File Name</th>
+                        <th className="px-5 py-3">Storage Class</th>
+                        <th className="px-5 py-3">Size</th>
+                        <th className="px-5 py-3">Last Modified</th>
+                        <th className="px-5 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#111111]/5">
+                      {storageStats.objects
+                        .filter((o) => !storageSearchTerm || o.key.toLowerCase().includes(storageSearchTerm.toLowerCase()))
+                        .map((obj) => {
+                          const folder = obj.key.includes("/") ? obj.key.split("/")[0] : "root";
+                          const isPpt = obj.key.endsWith(".pptx") || obj.key.endsWith(".ppt");
+                          const isImg = obj.key.match(/\.(jpg|jpeg|png|webp|svg)$/i);
+
+                          return (
+                            <tr key={obj.key} className="hover:bg-black/[0.01] transition-colors">
+                              <td className="px-5 py-3.5">
+                                <div className="flex items-center gap-2.5">
+                                  {isPpt ? (
+                                    <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-center shrink-0 font-bold text-[9px]">
+                                      PPT
+                                    </div>
+                                  ) : isImg ? (
+                                    <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 flex items-center justify-center shrink-0">
+                                      <ImageIcon size={13} />
+                                    </div>
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 flex items-center justify-center shrink-0">
+                                      <FileText size={13} />
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <div className="font-bold text-[#111111] text-xs font-mono break-all">
+                                      {obj.key}
+                                    </div>
+                                    <span className="hex-pill-sm bg-black/5 text-[#726F6D] text-[9px] font-mono px-1.5 py-0.5">
+                                      folder: {folder}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-3.5">
+                                <span className="hex-pill-sm bg-green-50 text-green-800 border border-green-200 text-[10px] font-bold px-2 py-0.5">
+                                  Standard R2
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-3.5 font-bold text-[#111111]">
+                                {obj.sizeMB} MB
+                                <span className="text-[10px] text-[#726F6D] font-normal block">
+                                  {(obj.size / 1024).toFixed(0)} KB
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-3.5 text-[#726F6D] text-[11px]">
+                                {obj.uploaded ? new Date(obj.uploaded).toLocaleDateString() : "Active"}
+                              </td>
+
+                              <td className="px-5 py-3.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(obj.publicUrl);
+                                      setCopiedUrlKey(obj.key);
+                                      setTimeout(() => setCopiedUrlKey(null), 2000);
+                                    }}
+                                    className="hex-pill-sm bg-black/5 hover:bg-black/10 text-[#111111] font-bold text-[10px] px-2.5 py-1.5 flex items-center gap-1"
+                                    title="Copy Cloudflare R2 Public CDN URL"
+                                  >
+                                    {copiedUrlKey === obj.key ? (
+                                      <>
+                                        <Check size={11} className="text-green-700" /> Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy size={11} /> Copy URL
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <a
+                                    href={obj.publicUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1.5 flex items-center gap-1 shadow-xs"
+                                  >
+                                    <ExternalLink size={11} /> Open
+                                  </a>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteR2Object(obj.key)}
+                                    className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 font-bold text-[10px] p-1.5"
+                                    title="Delete from R2"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-[#726F6D]">
+                  <HardDrive size={28} className="mx-auto text-gray-300 mb-2" />
+                  <p className="font-extrabold text-xs text-[#111111]">Loading live objects from Cloudflare R2...</p>
+                  <p className="text-[11px] mt-1">Bucket: slidebee • Region: APAC • 10.00 GB Free Storage</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -5714,22 +6015,25 @@ export default function Admin() {
                         type="file"
                         accept=".pptx,.ppt"
                         disabled={isUploadingEditPpt}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           setIsUploadingEditPpt(true);
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
+                          try {
+                            const r2Res = await uploadToR2(file, { folder: "templates/decks", fileName: file.name });
+                            if (r2Res.success && r2Res.publicUrl) {
                               setEditingTemplate({
                                 ...editingTemplate,
-                                download_url: event.target.result as string
+                                download_url: r2Res.publicUrl
                               });
+                            } else {
+                              throw new Error(r2Res.error || "Upload failed");
                             }
+                          } catch (err: any) {
+                            alert("Failed to upload Master PPTX to Cloudflare R2: " + (err.message || err));
+                          } finally {
                             setIsUploadingEditPpt(false);
-                          };
-                          reader.onerror = () => setIsUploadingEditPpt(false);
-                          reader.readAsDataURL(file);
+                          }
                         }}
                         className="hidden"
                       />
@@ -5806,27 +6110,29 @@ export default function Admin() {
                         type="file"
                         multiple
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const files = Array.from(e.target.files || []);
                           if (files.length === 0) return;
-                          files.forEach((file) => {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              if (ev.target?.result) {
-                                const imgUrl = ev.target.result as string;
-                                setEditingTemplate((prev: any) => {
-                                  const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
-                                  const nextSlides = [...curSlides, imgUrl];
-                                  return {
-                                    ...prev,
-                                    slides: nextSlides,
-                                    slide_count: nextSlides.length
-                                  };
-                                });
+                          try {
+                            const uploadedUrls: string[] = [];
+                            for (const file of files) {
+                              const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+                              if (r2Res.success && r2Res.publicUrl) {
+                                uploadedUrls.push(r2Res.publicUrl);
                               }
-                            };
-                            reader.readAsDataURL(file);
-                          });
+                            }
+                            setEditingTemplate((prev: any) => {
+                              const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
+                              const nextSlides = [...curSlides, ...uploadedUrls];
+                              return {
+                                ...prev,
+                                slides: nextSlides,
+                                slide_count: nextSlides.length
+                              };
+                            });
+                          } catch (err: any) {
+                            alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
+                          }
                         }}
                         className="hidden"
                       />
