@@ -142,6 +142,8 @@ export async function onRequestGet(context: any) {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
+}
+
 function isAuthorizedAdmin(request: Request, env?: any): boolean {
   const adminKey = request.headers.get("x-slidebee-admin-key");
   const authHeader = request.headers.get("Authorization");
