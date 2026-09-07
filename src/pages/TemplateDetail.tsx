@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
+import { normalizeR2Url } from "../lib/r2";
 import { useTemplateCheckout, type StoreTemplate } from "../modules/StudioStoreClient";
 
 export default function TemplateDetail() {
@@ -74,6 +75,12 @@ export default function TemplateDetail() {
       .maybeSingle()
       .then(({ data, error }) => {
         if (data && !error) {
+          const coverImg = normalizeR2Url(data.thumbnail_url || data.image_url, "slides");
+          const slideUrls = Array.isArray(data.slides) && data.slides.length > 0
+            ? data.slides.map((s: string) => normalizeR2Url(s, "slides"))
+            : [coverImg];
+          const pptxUrl = data.download_url ? normalizeR2Url(data.download_url, "decks") : undefined;
+
           setTemplate({
             id: data.id,
             code: data.code || `SLD-${data.id.slice(0, 4).toUpperCase()}`,
@@ -82,13 +89,13 @@ export default function TemplateDetail() {
             price_inr: Number(data.price_inr) || 499,
             price_usd: Number(data.price_usd) || 9,
             original_price_inr: Number(data.original_price_inr) || 999,
-            image_url: data.image_url || "/portfolio/case_study_a_1.png",
-            slides: Array.isArray(data.slides) && data.slides.length > 0 ? data.slides : [data.image_url],
-            slides_count: Number(data.slides_count) || 30,
+            image_url: coverImg,
+            slides: slideUrls,
+            slides_count: Number(data.slides_count || data.slide_count) || slideUrls.length || 30,
             rating: Number(data.rating) || 4.9,
             downloads: Number(data.downloads) || 120,
-            download_url: data.download_url,
-            file_name: data.file_name || "Master_Deck.pptx",
+            download_url: pptxUrl,
+            file_name: data.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
             file_size: data.file_size || "4.5 MB",
             description: data.description || "Executive presentation deck tailored for high-stakes business meetings.",
             features: Array.isArray(data.features) && data.features.length > 0
@@ -112,6 +119,12 @@ export default function TemplateDetail() {
             .maybeSingle()
             .then(({ data: rawData }) => {
               if (rawData) {
+                const coverImg = normalizeR2Url(rawData.thumbnail_url || rawData.image_url, "slides");
+                const slideUrls = Array.isArray(rawData.slides) && rawData.slides.length > 0
+                  ? rawData.slides.map((s: string) => normalizeR2Url(s, "slides"))
+                  : [coverImg];
+                const pptxUrl = rawData.download_url ? normalizeR2Url(rawData.download_url, "decks") : undefined;
+
                 setTemplate({
                   id: rawData.id,
                   code: rawData.code || `SLD-${rawData.id.slice(0, 4).toUpperCase()}`,
@@ -120,13 +133,13 @@ export default function TemplateDetail() {
                   price_inr: Number(rawData.price_inr) || 499,
                   price_usd: Number(rawData.price_usd) || 9,
                   original_price_inr: Number(rawData.original_price_inr) || 999,
-                  image_url: rawData.image_url || rawData.thumbnail_url || "/portfolio/case_study_a_1.png",
-                  slides: Array.isArray(rawData.slides) && rawData.slides.length > 0 ? rawData.slides : [rawData.image_url || rawData.thumbnail_url],
-                  slides_count: Number(rawData.slides_count || rawData.slide_count) || 30,
+                  image_url: coverImg,
+                  slides: slideUrls,
+                  slides_count: Number(rawData.slides_count || rawData.slide_count) || slideUrls.length || 30,
                   rating: Number(rawData.rating) || 4.9,
                   downloads: Number(rawData.downloads) || 120,
-                  download_url: rawData.download_url,
-                  file_name: rawData.file_name || "Master_Deck.pptx",
+                  download_url: pptxUrl,
+                  file_name: rawData.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
                   file_size: rawData.file_size || "4.5 MB",
                   description: rawData.description || "Executive presentation deck layout.",
                   features: Array.isArray(rawData.features) ? rawData.features : ["30+ High-Impact Slides"],
@@ -151,28 +164,36 @@ export default function TemplateDetail() {
       .limit(4)
       .then(({ data }) => {
         if (data && data.length > 0) {
-          const mapped: StoreTemplate[] = data.map((t: any) => ({
-            id: t.id,
-            code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
-            title: t.title,
-            category: t.category || "Business",
-            price_inr: Number(t.price_inr) || 499,
-            price_usd: Number(t.price_usd) || 9,
-            original_price_inr: Number(t.original_price_inr) || 999,
-            image_url: t.image_url || "/portfolio/case_study_a_1.png",
-            slides: Array.isArray(t.slides) ? t.slides : [t.image_url],
-            slides_count: Number(t.slides_count) || 30,
-            rating: Number(t.rating) || 4.9,
-            downloads: Number(t.downloads) || 120,
-            download_url: t.download_url,
-            file_name: t.file_name || "Master_Deck.pptx",
-            file_size: t.file_size || "4.5 MB",
-            description: t.description || "Executive presentation deck layout.",
-            features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
-            is_credit_eligible: Boolean(t.is_credit_eligible),
-            is_featured: Boolean(t.is_featured),
-            is_published: true
-          }));
+          const mapped: StoreTemplate[] = data.map((t: any) => {
+            const coverImg = normalizeR2Url(t.thumbnail_url || t.image_url, "slides");
+            const slideUrls = Array.isArray(t.slides) && t.slides.length > 0
+              ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
+              : [coverImg];
+            const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
+
+            return {
+              id: t.id,
+              code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
+              title: t.title,
+              category: t.category || "Business",
+              price_inr: Number(t.price_inr) || 499,
+              price_usd: Number(t.price_usd) || 9,
+              original_price_inr: Number(t.original_price_inr) || 999,
+              image_url: coverImg,
+              slides: slideUrls,
+              slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
+              rating: Number(t.rating) || 4.9,
+              downloads: Number(t.downloads) || 120,
+              download_url: pptxUrl,
+              file_name: t.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
+              file_size: t.file_size || "4.5 MB",
+              description: t.description || "Executive presentation deck layout.",
+              features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
+              is_credit_eligible: Boolean(t.is_credit_eligible),
+              is_featured: Boolean(t.is_featured),
+              is_published: true
+            };
+          });
           setSimilarTemplates(mapped);
         }
       });

@@ -5,6 +5,7 @@ import ThreeJsHero from "../components/ThreeJsHero";
 import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { MagneticButton } from "../components/MagneticButton";
 import { supabase } from "../lib/supabase";
+import { normalizeR2Url } from "../lib/r2";
 import { 
   Search, 
   ArrowRight, 
@@ -73,8 +74,8 @@ export default function Home() {
             category: t.category,
             price: t.price_inr || 499,
             originalPrice: t.original_price_inr || (t.price_inr ? t.price_inr * 2 : 999),
-            image: t.image_url || t.thumbnail_url || "/portfolio/case_study_a_1.png",
-            slides: Array.isArray(t.slides) ? t.slides : [],
+            image: normalizeR2Url(t.image_url || t.thumbnail_url || "/portfolio/case_study_a_1.png"),
+            slides: Array.isArray(t.slides) ? t.slides.map((s: string) => normalizeR2Url(s)) : [],
             slidesCount: t.slides_count || t.slide_count || 25,
             rating: 4.9,
             downloads: 80,

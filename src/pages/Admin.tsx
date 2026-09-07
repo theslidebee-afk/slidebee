@@ -42,11 +42,12 @@ import {
   EyeOff,
   RefreshCw,
   LayoutTemplate,
-  ShieldCheck
+  ShieldCheck,
+  Cloud
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
-import { uploadToR2, fetchR2Telemetry, deleteFromR2, R2_PUBLIC_BASE_URL } from "../lib/r2";
+import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 
 export const ORDER_MILESTONES = [
@@ -1165,10 +1166,25 @@ export default function Admin() {
     setIsSavingAsset(false);
   };
 
-  // Upload Local Image File to Data URL
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (dataUrl: string) => void) => {
+  // Upload Local Image File to Cloudflare R2 (or fallback to Data URL)
+  const handleImageFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    callback: (url: string) => void,
+    folder: string = "templates/slides"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    try {
+      const r2Res = await uploadToR2(file, { folder, fileName: file.name });
+      if (r2Res.success && r2Res.publicUrl) {
+        callback(r2Res.publicUrl);
+        return;
+      }
+    } catch (err) {
+      console.warn("R2 direct upload fallback to dataURL:", err);
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
@@ -1935,7 +1951,7 @@ export default function Admin() {
                 >
                   <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
                     <img
-                      src={tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png"}
+                      src={normalizeR2Url(tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png")}
                       alt={tpl.title}
                       className="w-full h-full object-cover"
                     />
@@ -1961,17 +1977,45 @@ export default function Admin() {
                     </p>
 
                     {/* Master Deliverable Format Badge */}
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-3 text-[11px] font-bold text-[#111111]">
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-2 text-[11px] font-bold text-[#111111]">
                       <FileText size={13} className="text-primary-amber" />
                       <span>Deliverable: Master PowerPoint (.pptx)</span>
                     </div>
 
-                    {tpl.download_url && (
-                      <div className="text-[10px] text-emerald-800 font-extrabold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md flex items-center gap-1 mb-3">
-                        <Check size={11} className="text-emerald-600" />
-                        <span className="truncate">{tpl.file_name || "Direct PPTX Deliverable Attached"}</span>
+                    {/* Cloud Storage Mapping Badge */}
+                    <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-2.5 mb-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold text-[#111111]">
+                        <span className="flex items-center gap-1">
+                          <Cloud size={12} className="text-primary-amber" />
+                          R2 Cloud Storage:
+                        </span>
+                        <span className="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-black text-[9px]">
+                          {tpl.download_url && tpl.download_url.includes("r2.dev") ? "Mapped to R2" : "Connected"}
+                        </span>
                       </div>
-                    )}
+                      <div className="text-[10px] text-[#726F6D] font-mono truncate flex items-center justify-between">
+                        <span className="truncate" title={tpl.download_url || tpl.file_name}>
+                          {tpl.download_url ? tpl.download_url.split("/").slice(-2).join("/") : (tpl.file_name ? `templates/decks/${tpl.file_name}` : "templates/decks/pending")}
+                        </span>
+                        {tpl.download_url && (
+                          <a
+                            href={normalizeR2Url(tpl.download_url, "decks")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="ml-2 text-primary-amber hover:underline font-sans font-black text-[9px] shrink-0"
+                          >
+                            Test PPTX
+                          </a>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-[#726F6D] flex items-center justify-between pt-0.5 border-t border-primary/10">
+                        <span>Slide Previews: {Array.isArray(tpl.slides) ? tpl.slides.length : (tpl.slide_count || 0)} cached</span>
+                        <span className="font-mono text-[9px] text-emerald-800 font-bold">
+                          {tpl.thumbnail_url && tpl.thumbnail_url.includes("r2.dev") ? "R2 CDN Active" : "Live CDN"}
+                        </span>
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
                       <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
@@ -5664,6 +5708,43 @@ export default function Admin() {
                       </div>
                     )}
                   </div>
+
+                  {/* Option B: Select existing Master PPTX from Cloudflare R2 */}
+                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
+                      Option B: Select from Cloud Storage (.pptx)
+                    </span>
+                    <select
+                      value={newPptUrl}
+                      onChange={(e) => {
+                        const selectedUrl = e.target.value;
+                        setNewPptUrl(selectedUrl);
+                        if (selectedUrl) {
+                          const found = (storageStats.objects || []).find((o: any) => o.publicUrl === selectedUrl);
+                          const fname = found ? found.key.split("/").pop() || found.key : selectedUrl.split("/").pop() || "deck.pptx";
+                          setNewPptFilename(fname);
+                          setNewPptSize(found ? found.sizeMB + " MB" : "R2 Cloud File");
+                          if (!newTitle) {
+                            const cleanTitle = fname.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+                            setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
+                          }
+                        }
+                      }}
+                      className="w-full bg-[#FFF9E8]/60 border border-[#111111]/20 rounded-lg p-2 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
+                    >
+                      <option value="">-- Choose from R2 Storage Bucket --</option>
+                      {(storageStats.objects || [])
+                        .filter((o: any) => o.isPptx || o.key.startsWith("templates/decks/"))
+                        .map((o: any) => (
+                          <option key={o.key} value={o.publicUrl}>
+                            {o.key.replace("templates/decks/", "")} ({o.sizeMB} MB)
+                          </option>
+                        ))}
+                    </select>
+                    <span className="text-[10px] text-[#726F6D] block">
+                      Pre-uploaded master presentations stored in Cloudflare R2 (10 GB free tier).
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -5717,13 +5798,45 @@ export default function Admin() {
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                      <img src={newThumbnail} alt="Cover Preview" className="w-full h-full object-cover" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#726F6D] block mb-1">Or Select from R2 Slide Previews:</span>
+                      <select
+                        value={newThumbnail}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          if (url) {
+                            setNewThumbnail(url);
+                            if (newSlides.length === 0) {
+                              setNewSlides([url]);
+                              setNewSlideCount(1);
+                            } else {
+                              const updated = [...newSlides];
+                              updated[0] = url;
+                              setNewSlides(updated);
+                            }
+                          }
+                        }}
+                        className="w-full bg-white border border-[#111111]/20 rounded-lg p-1.5 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
+                      >
+                        <option value="">-- Choose R2 Cover Preview --</option>
+                        {(storageStats.objects || [])
+                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
+                          .map((o: any) => (
+                            <option key={o.key} value={o.publicUrl}>
+                              {o.key.replace("templates/slides/", "")}
+                            </option>
+                          ))}
+                      </select>
                     </div>
-                    <span className="text-xs text-[#726F6D] font-medium">
-                      Cover image selected. Appears as primary storefront display card.
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                        <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-xs text-[#726F6D] font-medium">
+                        Cover image selected. Appears as primary storefront display card.
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -5733,17 +5846,40 @@ export default function Admin() {
                     <span className="text-[11px] font-extrabold text-[#111111] flex items-center gap-1.5">
                       <Layers size={13} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
                     </span>
-                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                      <UploadCloud size={12} />
-                      <span>Upload Local Slides (Multi-Select)</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleSlideImagesUpload}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <select
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          if (url && !newSlides.includes(url)) {
+                            const next = [...newSlides, url];
+                            setNewSlides(next);
+                            setNewSlideCount(next.length);
+                          }
+                          e.target.value = "";
+                        }}
+                        className="bg-[#FFF9E8] border border-primary/40 rounded-lg px-2 py-1 text-[10px] font-bold text-[#111111] focus:border-primary focus:outline-none cursor-pointer"
+                      >
+                        <option value="">+ Add from R2 Cloud</option>
+                        {(storageStats.objects || [])
+                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
+                          .map((o: any) => (
+                            <option key={o.key} value={o.publicUrl}>
+                              {o.key.replace("templates/slides/", "")}
+                            </option>
+                          ))}
+                      </select>
+                      <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                        <UploadCloud size={12} />
+                        <span>Upload Local Slides</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleSlideImagesUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   {/* Visual Slide Thumbnails Strip */}
@@ -6075,7 +6211,7 @@ export default function Admin() {
                   {/* Option A: Upload from local computer */}
                   <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
                     <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Replace Source File (.pptx)
+                      Option A: Replace Source File (.pptx)
                     </span>
                     <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
                       <HardDrive size={13} className="text-primary-amber" />
@@ -6093,7 +6229,8 @@ export default function Admin() {
                             if (r2Res.success && r2Res.publicUrl) {
                               setEditingTemplate({
                                 ...editingTemplate,
-                                download_url: r2Res.publicUrl
+                                download_url: r2Res.publicUrl,
+                                file_name: file.name
                               });
                             } else {
                               throw new Error(r2Res.error || "Upload failed");
@@ -6107,6 +6244,43 @@ export default function Admin() {
                         className="hidden"
                       />
                     </label>
+                  </div>
+
+                  {/* Option B: Select existing Master PPTX from Cloudflare R2 */}
+                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
+                      Option B: Select from Cloud Storage (.pptx)
+                    </span>
+                    <select
+                      value={editingTemplate.download_url || ""}
+                      onChange={(e) => {
+                        const selectedUrl = e.target.value;
+                        if (selectedUrl) {
+                          const found = (storageStats.objects || []).find((o: any) => o.publicUrl === selectedUrl);
+                          const fname = found ? found.key.split("/").pop() || found.key : selectedUrl.split("/").pop() || "deck.pptx";
+                          setEditingTemplate({
+                            ...editingTemplate,
+                            download_url: selectedUrl,
+                            file_name: fname
+                          });
+                        }
+                      }}
+                      className="w-full bg-[#FFF9E8]/60 border border-[#111111]/20 rounded-lg p-2 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
+                    >
+                      <option value="">-- Choose from R2 Storage Bucket --</option>
+                      {(storageStats.objects || [])
+                        .filter((o: any) => o.isPptx || o.key.startsWith("templates/decks/"))
+                        .map((o: any) => (
+                          <option key={o.key} value={o.publicUrl}>
+                            {o.key.replace("templates/decks/", "")} ({o.sizeMB} MB)
+                          </option>
+                        ))}
+                    </select>
+                    {editingTemplate.download_url && (
+                      <div className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 p-1 rounded truncate">
+                        Attached: {editingTemplate.download_url.split("/").pop()}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -6148,7 +6322,8 @@ export default function Admin() {
                         onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
                           setEditingTemplate({
                             ...editingTemplate,
-                            thumbnail_url: dataUrl
+                            thumbnail_url: dataUrl,
+                            image_url: dataUrl
                           });
                         })}
                         className="hidden"
@@ -6156,13 +6331,41 @@ export default function Admin() {
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                      <img src={editingTemplate.thumbnail_url} alt="Cover Preview" className="w-full h-full object-cover" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#726F6D] block mb-1">Or Select from R2 Slide Previews:</span>
+                      <select
+                        value={editingTemplate.thumbnail_url || ""}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          if (url) {
+                            setEditingTemplate({
+                              ...editingTemplate,
+                              thumbnail_url: url,
+                              image_url: url
+                            });
+                          }
+                        }}
+                        className="w-full bg-white border border-[#111111]/20 rounded-lg p-1.5 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
+                      >
+                        <option value="">-- Choose R2 Cover Preview --</option>
+                        {(storageStats.objects || [])
+                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
+                          .map((o: any) => (
+                            <option key={o.key} value={o.publicUrl}>
+                              {o.key.replace("templates/slides/", "")}
+                            </option>
+                          ))}
+                      </select>
                     </div>
-                    <span className="text-xs text-[#726F6D] font-medium">
-                      Cover image selected.
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                        <img src={normalizeR2Url(editingTemplate.thumbnail_url)} alt="Cover Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-xs text-[#726F6D] font-medium">
+                        Cover image selected.
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -6172,40 +6375,66 @@ export default function Admin() {
                     <span className="text-[11px] font-extrabold text-[#111111] flex items-center gap-1.5">
                       <Layers size={13} className="text-primary-amber" /> Interior Slide Images ({editingTemplate.slides?.length || 0} Slides)
                     </span>
-                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                      <UploadCloud size={12} />
-                      <span>Upload Local Slides (Multi-Select)</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length === 0) return;
-                          try {
-                            const uploadedUrls: string[] = [];
-                            for (const file of files) {
-                              const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
-                              if (r2Res.success && r2Res.publicUrl) {
-                                uploadedUrls.push(r2Res.publicUrl);
-                              }
-                            }
+                    <div className="flex items-center gap-2">
+                      <select
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          if (url) {
                             setEditingTemplate((prev: any) => {
-                              const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
-                              const nextSlides = [...curSlides, ...uploadedUrls];
-                              return {
-                                ...prev,
-                                slides: nextSlides,
-                                slide_count: nextSlides.length
-                              };
+                              const cur = Array.isArray(prev.slides) ? prev.slides : [];
+                              if (cur.includes(url)) return prev;
+                              const next = [...cur, url];
+                              return { ...prev, slides: next, slide_count: next.length };
                             });
-                          } catch (err: any) {
-                            alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
                           }
+                          e.target.value = "";
                         }}
-                        className="hidden"
-                      />
-                    </label>
+                        className="bg-[#FFF9E8] border border-primary/40 rounded-lg px-2 py-1 text-[10px] font-bold text-[#111111] focus:border-primary focus:outline-none cursor-pointer"
+                      >
+                        <option value="">+ Add from R2 Cloud</option>
+                        {(storageStats.objects || [])
+                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
+                          .map((o: any) => (
+                            <option key={o.key} value={o.publicUrl}>
+                              {o.key.replace("templates/slides/", "")}
+                            </option>
+                          ))}
+                      </select>
+                      <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                        <UploadCloud size={12} />
+                        <span>Upload Local Slides</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length === 0) return;
+                            try {
+                              const uploadedUrls: string[] = [];
+                              for (const file of files) {
+                                const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+                                if (r2Res.success && r2Res.publicUrl) {
+                                  uploadedUrls.push(r2Res.publicUrl);
+                                }
+                              }
+                              setEditingTemplate((prev: any) => {
+                                const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
+                                const nextSlides = [...curSlides, ...uploadedUrls];
+                                return {
+                                  ...prev,
+                                  slides: nextSlides,
+                                  slide_count: nextSlides.length
+                                };
+                              });
+                            } catch (err: any) {
+                              alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   {/* Visual Slide Thumbnails Strip */}

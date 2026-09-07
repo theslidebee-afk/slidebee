@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
+import { normalizeR2Url } from "../../lib/r2";
 
 export interface StoreTemplate {
   id: string;
@@ -74,29 +75,37 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
 
       if (catErr) throw catErr;
 
-      const normalized: StoreTemplate[] = (catalogData || []).map((t: any) => ({
-        id: t.id,
-        code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
-        title: t.title,
-        category: t.category || "Business",
-        price_inr: Number(t.price_inr) || 499,
-        price_usd: Number(t.price_usd) || 9,
-        original_price_inr: Number(t.original_price_inr) || 999,
-        image_url: t.image_url || "/portfolio/case_study_a_1.png",
-        slides: Array.isArray(t.slides) ? t.slides : [t.image_url],
-        slides_count: Number(t.slides_count) || 30,
-        rating: Number(t.rating) || 4.9,
-        downloads: Number(t.downloads) || 120,
-        download_url: t.download_url,
-        file_name: t.file_name || "Master_Presentation.pptx",
-        file_size: t.file_size || "4.5 MB",
-        description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
-        features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
-        is_credit_eligible: Boolean(t.is_credit_eligible),
-        is_featured: Boolean(t.is_featured),
-        is_published: Boolean(t.is_published),
-        created_at: t.created_at
-      }));
+      const normalized: StoreTemplate[] = (catalogData || []).map((t: any) => {
+        const coverImg = normalizeR2Url(t.thumbnail_url || t.image_url, "slides");
+        const slideUrls = Array.isArray(t.slides) && t.slides.length > 0
+          ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
+          : [coverImg];
+        const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
+
+        return {
+          id: t.id,
+          code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
+          title: t.title,
+          category: t.category || "Business",
+          price_inr: Number(t.price_inr) || 499,
+          price_usd: Number(t.price_usd) || 9,
+          original_price_inr: Number(t.original_price_inr) || 999,
+          image_url: coverImg,
+          slides: slideUrls,
+          slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
+          rating: Number(t.rating) || 4.9,
+          downloads: Number(t.downloads) || 120,
+          download_url: pptxUrl,
+          file_name: t.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Presentation.pptx" : "Master_Presentation.pptx"),
+          file_size: t.file_size || "4.5 MB",
+          description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
+          features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
+          is_credit_eligible: Boolean(t.is_credit_eligible),
+          is_featured: Boolean(t.is_featured),
+          is_published: Boolean(t.is_published),
+          created_at: t.created_at
+        };
+      });
 
       setTemplates(normalized);
       setFreeTemplates(normalized.filter(t => t.is_credit_eligible));

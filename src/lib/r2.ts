@@ -146,3 +146,54 @@ export async function deleteFromR2(key: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Normalizes any asset URL (legacy Supabase storage, flat R2 root, or relative)
+ * to its exact structured Cloudflare R2 folder CDN URL.
+ */
+export function normalizeR2Url(url: string | undefined | null, type: "slides" | "decks" = "slides"): string {
+  if (!url || typeof url !== "string") {
+    return `${R2_PUBLIC_BASE_URL}/templates/${type}/accenture_slide-1.jpg`;
+  }
+
+  // If already proper structured R2 URL, return as-is
+  if (url.includes("/templates/slides/") || url.includes("/templates/decks/") || url.includes("/marquee/") || url.includes("/bulk-ingest/")) {
+    return url;
+  }
+
+  // If pointing to old Supabase storage URL
+  if (url.includes("supabase.co/storage")) {
+    const filename = url.split("/").pop() || "";
+    if (filename.endsWith(".pptx") || filename.endsWith(".ppt")) {
+      return `${R2_PUBLIC_BASE_URL}/templates/decks/${filename}`;
+    }
+    if (filename.startsWith("marquee_")) {
+      return `${R2_PUBLIC_BASE_URL}/marquee/${filename}`;
+    }
+    return `${R2_PUBLIC_BASE_URL}/templates/slides/${filename}`;
+  }
+
+  // If pointing to flat R2 root URL without folder prefix (e.g. pub-*.r2.dev/volvo_slide-1.jpg)
+  if (url.includes("r2.dev/")) {
+    const pathPart = url.split("r2.dev/")[1];
+    if (pathPart && !pathPart.includes("/")) {
+      if (pathPart.endsWith(".pptx") || pathPart.endsWith(".ppt")) {
+        return `${R2_PUBLIC_BASE_URL}/templates/decks/${pathPart}`;
+      }
+      if (pathPart.startsWith("marquee_")) {
+        return `${R2_PUBLIC_BASE_URL}/marquee/${pathPart}`;
+      }
+      return `${R2_PUBLIC_BASE_URL}/templates/slides/${pathPart}`;
+    }
+  }
+
+  // If raw filename without protocol (e.g. "volvo_slide-1.jpg")
+  if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
+    if (url.endsWith(".pptx") || url.endsWith(".ppt")) {
+      return `${R2_PUBLIC_BASE_URL}/templates/decks/${url}`;
+    }
+    return `${R2_PUBLIC_BASE_URL}/templates/slides/${url}`;
+  }
+
+  return url;
+}
