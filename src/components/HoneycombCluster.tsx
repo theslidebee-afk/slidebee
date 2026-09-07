@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, MotionValue, useTransform } from 'framer-motion';
+import { motion, MotionValue, useTransform, useMotionValue } from 'framer-motion';
 
 interface HoneycombClusterProps {
   scrollYProgress?: MotionValue<number>;
@@ -180,38 +180,33 @@ const HexagonItem: React.FC<HexagonItemProps> = ({
   isCenter, 
   scrollYProgress 
 }) => {
-  // If scroll progress is provided, bind transforms; otherwise show assembled
-  const x = scrollYProgress
-    ? useTransform(
-        scrollYProgress,
-        isCenter ? [0, 0.01] : item.scrollRange,
-        isCenter ? [0, 0] : [item.x + item.initialOffset.x, item.x]
-      )
-    : item.x;
+  // Unconditional motion hooks to satisfy React Rules of Hooks
+  const defaultProgress = useMotionValue(1);
+  const activeProgress = scrollYProgress ?? defaultProgress;
 
-  const y = scrollYProgress
-    ? useTransform(
-        scrollYProgress,
-        isCenter ? [0, 0.01] : item.scrollRange,
-        isCenter ? [0, 0] : [item.y + item.initialOffset.y, item.y]
-      )
-    : item.y;
+  const x = useTransform(
+    activeProgress,
+    isCenter ? [0, 0.01] : item.scrollRange,
+    isCenter ? [0, 0] : [item.x + item.initialOffset.x, item.x]
+  );
 
-  const opacity = scrollYProgress
-    ? useTransform(
-        scrollYProgress,
-        isCenter ? [0, 0.01] : [item.scrollRange[0], item.scrollRange[0] + 0.08],
-        isCenter ? [1, 1] : [0, 1]
-      )
-    : 1;
+  const y = useTransform(
+    activeProgress,
+    isCenter ? [0, 0.01] : item.scrollRange,
+    isCenter ? [0, 0] : [item.y + item.initialOffset.y, item.y]
+  );
 
-  const scale = scrollYProgress
-    ? useTransform(
-        scrollYProgress,
-        isCenter ? [0, 0.01] : [item.scrollRange[0], item.scrollRange[1]],
-        isCenter ? [1, 1] : [0.65, 1]
-      )
-    : 1;
+  const opacity = useTransform(
+    activeProgress,
+    isCenter ? [0, 0.01] : [item.scrollRange[0], item.scrollRange[0] + 0.08],
+    isCenter ? [1, 1] : [0, 1]
+  );
+
+  const scale = useTransform(
+    activeProgress,
+    isCenter ? [0, 0.01] : [item.scrollRange[0], item.scrollRange[1]],
+    isCenter ? [1, 1] : [0.65, 1]
+  );
 
   // Background styling
   let bgClasses = 'bg-[#181d28] border-[#FCBF14]/40 text-white';

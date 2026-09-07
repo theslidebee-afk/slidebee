@@ -6,7 +6,6 @@ import {
   ArrowRight, 
   ChevronLeft,
   ChevronRight,
-  Mail, 
   ShieldCheck, 
   Star, 
   Sparkles, 
@@ -14,7 +13,8 @@ import {
   Check, 
   FileText,
   Download,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
@@ -30,10 +30,6 @@ export default function TemplateDetail() {
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
   const [creditNotice, setCreditNotice] = useState<string | null>(null);
-
-  // Guest checkout state (Buy without login)
-  const [guestEmail, setGuestEmail] = useState("");
-  const [emailValidationError, setEmailValidationError] = useState<string | null>(null);
 
   // Similar templates state
   const [similarTemplates, setSimilarTemplates] = useState<StoreTemplate[]>([]);
@@ -245,26 +241,17 @@ export default function TemplateDetail() {
     }
   };
 
-  // Standard Instant Purchase via Razorpay (Buy Without Login)
+  // Standard Instant Purchase via Razorpay (Requires Login)
   const handleInstantDownload = async () => {
     setCreditNotice(null);
-    setEmailValidationError(null);
     const client = getClientInfo();
-    const clientEmail = (client?.email || guestEmail).trim();
 
-    if (!clientEmail) {
-      setEmailValidationError("Please enter your email address to receive your Master PowerPoint (.pptx) file.");
+    if (!client) {
+      navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(clientEmail)) {
-      setEmailValidationError("Please enter a valid email address (e.g. name@company.com).");
-      return;
-    }
-
-    const clientName = client?.name || clientEmail.split("@")[0];
-    await executeRazorpayCheckout(template, currency === "USD" ? "USD" : "INR", clientEmail, clientName);
+    await executeRazorpayCheckout(template, currency === "USD" ? "USD" : "INR", client.email, client.name);
   };
 
   return (
@@ -504,42 +491,27 @@ export default function TemplateDetail() {
                       </div>
                     )}
 
-                    {/* Guest Checkout: Email Input (Buy Without Login) */}
-                    {!getClientInfo() && (
-                      <div className="space-y-1.5 bg-[#FFF9E8] p-3 rounded-xl border border-primary/30 text-left">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                          <Mail size={13} className="text-primary-amber" />
-                          <span>Enter Email for PPTX Download & Receipt *</span>
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          placeholder="e.g. name@company.com"
-                          value={guestEmail}
-                          onChange={(e) => {
-                            setGuestEmail(e.target.value);
-                            if (emailValidationError) setEmailValidationError(null);
-                          }}
-                          className="w-full bg-white border border-[#111111]/15 hex-pill px-3.5 py-2 text-xs text-[#111111] font-bold focus:outline-none focus:border-primary"
-                        />
-                        {emailValidationError && (
-                          <span className="text-[10px] font-bold text-red-600 block">
-                            {emailValidationError}
-                          </span>
-                        )}
-                      </div>
+                    {/* Commercial Purchase Button (Requires Login) */}
+                    {!getClientInfo() ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))}
+                        className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                      >
+                        <Lock size={15} className="text-primary-amber" />
+                        Sign In to Buy Master PPTX ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={handleInstantDownload}
+                        className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
+                      >
+                        <Download size={16} />
+                        {isProcessing ? "Processing..." : `Instant Commercial PPTX License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                      </button>
                     )}
-
-                    {/* Standard Commercial Purchase Button via Razorpay */}
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      onClick={handleInstantDownload}
-                      className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
-                    >
-                      <Download size={16} />
-                      {isProcessing ? "Processing..." : `Instant Commercial PPTX License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
-                    </button>
 
                     <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                       <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
