@@ -17,19 +17,8 @@ interface PortfolioItem {
 
 function getSlideSet(item: PortfolioItem): string[] {
   if (item.slides && item.slides.length > 0) return item.slides;
-  const match = item.image.match(/\/portfolio\/([a-zA-Z0-9_]+)_(\d+)\.png/);
-  if (match) {
-    const prefix = match[1];
-    const num = parseInt(match[2], 10);
-    const num2 = (num % 16) + 1;
-    const num3 = ((num + 1) % 16) + 1;
-    return [
-      `/portfolio/${prefix}_${num}.png`,
-      `/portfolio/${prefix}_${num2}.png`,
-      `/portfolio/${prefix}_${num3}.png`,
-    ];
-  }
-  return [item.image, item.image, item.image];
+  if (item.image) return [item.image];
+  return [];
 }
 
 function PortfolioCard({ 
@@ -125,180 +114,6 @@ function PortfolioCard({
   );
 }
 
-const portfolioData: PortfolioItem[] = [
-  // Nike & Williams Lea Tag
-  {
-    id: 1,
-    title: "Keynote Agenda & Introduction",
-    client: "Nike x WLT",
-    category: "Brand & Marketing",
-    image: "/portfolio/nike_hsbc_cvs_1.png",
-    description: "High-impact brand keynote presentation introducing strategic partnership agenda.",
-    highlights: ["Custom typography & layout", "Dynamic brand visuals", "Clear agenda hierarchy"]
-  },
-  {
-    id: 2,
-    title: "Executive Chapter Divider",
-    client: "Nike x WLT",
-    category: "Brand & Marketing",
-    image: "/portfolio/nike_hsbc_cvs_2.png",
-    description: "Editorial style chapter divider emphasizing focal product visuals.",
-    highlights: ["Minimalist luxury aesthetic", "High-contrast focal point", "Brand consistency"]
-  },
-  {
-    id: 3,
-    title: "Core Competencies Diagram",
-    client: "Williams Lea Tag",
-    category: "Strategy & Operations",
-    image: "/portfolio/nike_hsbc_cvs_3.png",
-    description: "Multi-layered capability matrix visualizing end-to-end creative production services.",
-    highlights: ["Interactive workflow map", "Structured data categorization", "Corporate branding"]
-  },
-  {
-    id: 4,
-    title: "Sourcing & Print Supply Chain",
-    client: "Global Retail",
-    category: "Strategy & Operations",
-    image: "/portfolio/nike_hsbc_cvs_4.png",
-    description: "Technical procurement architecture and global supplier sourcing process flow.",
-    highlights: ["Process blueprinting", "Technical infographic", "Clean linear progression"]
-  },
-
-  // HSBC
-  {
-    id: 5,
-    title: "Mailroom & Scanning Services Pitch",
-    client: "HSBC",
-    category: "Corporate & Finance",
-    image: "/portfolio/nike_hsbc_cvs_5.png",
-    description: "Executive service capability presentation for global banking operations.",
-    highlights: ["Corporate identity compliance", "Clean modern typography", "Executive summary layout"]
-  },
-  {
-    id: 6,
-    title: "Greater China Footprint & Roadmap",
-    client: "HSBC",
-    category: "Corporate & Finance",
-    image: "/portfolio/nike_hsbc_cvs_6.png",
-    description: "Strategic geographic footprint roadmap spanning 2011 to 2018 milestones.",
-    highlights: ["Timeline data visualization", "Map infographic", "Multi-year milestone tracking"]
-  },
-  {
-    id: 7,
-    title: "Optional Technical Solution Architecture",
-    client: "HSBC",
-    category: "Corporate & Finance",
-    image: "/portfolio/nike_hsbc_cvs_7.png",
-    description: "Technical scanner fleet hardware and process optimization breakdown.",
-    highlights: ["Hardware specs diagram", "Efficiency comparison metrics", "Step-by-step phasing"]
-  },
-  {
-    id: 8,
-    title: "Cost Savings & Headcount Matrix",
-    client: "HSBC",
-    category: "Corporate & Finance",
-    image: "/portfolio/nike_hsbc_cvs_8.png",
-    description: "Financial savings model demonstrating 40+ FTE reductions and frozen management fees.",
-    highlights: ["Financial modeling visuals", "Headcount delta metrics", "Year-over-year cost analysis"]
-  },
-
-  // CVS Health
-  {
-    id: 9,
-    title: "Industry Expertise & Pharma Ecosystem",
-    client: "CVS Health",
-    category: "Healthcare & Tech",
-    image: "/portfolio/nike_hsbc_cvs_9.png",
-    description: "Healthcare stakeholder ecosystem mapping shopper behaviors, trends, and R&D insights.",
-    highlights: ["Healthcare stakeholder map", "Trend & demographic data", "Custom pharmaceutical icons"]
-  },
-  {
-    id: 10,
-    title: "Client Roster & Market Leadership",
-    client: "CVS Health",
-    category: "Healthcare & Tech",
-    image: "/portfolio/nike_hsbc_cvs_10.png",
-    description: "Marquee client trust showcase visualizing industry tier rankings and partnership longevity.",
-    highlights: ["Social proof layout", "Brand logo grid architecture", "Authority building visual matrix"]
-  },
-  {
-    id: 11,
-    title: "Omnichannel Creative Capabilities",
-    client: "CVS Health",
-    category: "Healthcare & Tech",
-    image: "/portfolio/nike_hsbc_cvs_11.png",
-    description: "Point-of-sale, digital, and print collateral execution matrix across health retail stores.",
-    highlights: ["3D retail mockup layout", "Omnichannel workflow", "Color-coded service pillars"]
-  },
-  {
-    id: 12,
-    title: "Global Supply Chain Footprint",
-    client: "CVS Health",
-    category: "Healthcare & Tech",
-    image: "/portfolio/nike_hsbc_cvs_12.png",
-    description: "Worldwide operational hubs, delivery routes, and automated fulfillment network map.",
-    highlights: ["Global hub infographic", "Cross-border transit metrics", "Executive route visualization"]
-  },
-
-  // Levi's
-  {
-    id: 13,
-    title: "Global Brand Strategy & Marketing Team",
-    client: "Levi's",
-    category: "Brand & Marketing",
-    image: "/portfolio/levis_yuengling_2.png",
-    description: "Global marketing team ideation alignment and regional campaign orchestration.",
-    highlights: ["Brand team collaboration map", "Regional insight capture", "Global rollout roadmap"]
-  },
-  {
-    id: 14,
-    title: "Benefits & Cost Optimization Framework",
-    client: "Levi's",
-    category: "Brand & Marketing",
-    image: "/portfolio/levis_yuengling_3.png",
-    description: "Time savings, money savings, and global alignment metric dashboard.",
-    highlights: ["Three-pillar benefit model", "Time & cost saving metrics", "Visual alignment framework"]
-  },
-  {
-    id: 15,
-    title: "Milestone Review (2016 – Present)",
-    client: "Levi's",
-    category: "Brand & Marketing",
-    image: "/portfolio/levis_yuengling_4.png",
-    description: "Partnership evolution journey tracking campaign fulfillment and strategy workshops.",
-    highlights: ["Cyclical timeline diagram", "Discovery workshop milestones", "Campaign delivery lifecycle"]
-  },
-
-  // Yuengling
-  {
-    id: 16,
-    title: "Integrated End-to-End Solutions",
-    client: "Yuengling",
-    category: "Strategy & Operations",
-    image: "/portfolio/levis_yuengling_6.png",
-    description: "Supply chain fulfillment flowchart from ideation to distribution center delivery.",
-    highlights: ["Linear supply chain flow", "Technology & people integration", "Automated workflow steps"]
-  },
-  {
-    id: 17,
-    title: "Blended Service Delivery Model",
-    client: "Yuengling",
-    category: "Strategy & Operations",
-    image: "/portfolio/levis_yuengling_7.png",
-    description: "On-site, off-site, and hybrid operational staffing and risk management matrix.",
-    highlights: ["Three-tier operational matrix", "Disaster recovery SLAs", "Cost-effective staffing models"]
-  },
-  {
-    id: 18,
-    title: "Global Capability & Media Ecosystem",
-    client: "Yuengling",
-    category: "Strategy & Operations",
-    image: "/portfolio/levis_yuengling_8.png",
-    description: "Broadcast, digital, photography, and cultural adaptation media production hub.",
-    highlights: ["Multi-media service wheel", "Asset management ecosystem", "Creative versioning scale"]
-  }
-];
-
 export default function Examples() {
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
@@ -306,7 +121,8 @@ export default function Examples() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeModalItem, setActiveModalItem] = useState<PortfolioItem | null>(null);
   const [activeModalSlide, setActiveModalSlide] = useState<number>(0);
-  const [items, setItems] = useState<PortfolioItem[]>(portfolioData);
+  const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [categoryList, setCategoryList] = useState<string[]>([
     "All",
     "Brand & Marketing",
@@ -316,13 +132,20 @@ export default function Examples() {
   ]);
 
   useEffect(() => {
-    supabase
-      .from("site_config")
-      .select("value")
-      .eq("key", "portfolio_cms")
-      .single()
-      .then(({ data }) => {
-        if (data?.value?.caseStudies && data.value.caseStudies.length > 0) {
+    let isMounted = true;
+    setLoading(true);
+
+    async function fetchPortfolio() {
+      try {
+        const { data, error } = await supabase
+          .from("site_config")
+          .select("value")
+          .eq("key", "portfolio_cms")
+          .single();
+
+        if (!isMounted) return;
+
+        if (!error && data?.value?.caseStudies && Array.isArray(data.value.caseStudies)) {
           const mapped: PortfolioItem[] = data.value.caseStudies.map((cs: any) => {
             const slideList: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
               ? cs.slides
@@ -334,18 +157,30 @@ export default function Examples() {
               title: cs.title,
               client: cs.client,
               category: cs.category,
-              image: cs.imageUrl || slideList[0] || "/portfolio/case_study_a_1.png",
+              image: cs.imageUrl || slideList[0] || "/examples/accenture_slide-1.jpg",
               slides: slideList.length > 0 ? slideList : undefined,
               description: cs.description,
               highlights: cs.deliverables || [cs.impact || "High-impact presentation design"]
             };
           });
-          setItems([...mapped, ...portfolioData]);
+          setItems(mapped);
         }
-        if (data?.value?.categories && data.value.categories.length > 0) {
+
+        if (data?.value?.categories && Array.isArray(data.value.categories)) {
           setCategoryList(data.value.categories);
         }
-      });
+      } catch (err) {
+        console.error("Failed to load portfolio CMS:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    fetchPortfolio();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Keyboard navigation for active modal slides
@@ -440,20 +275,57 @@ export default function Examples() {
         </div>
       </div>
 
-      {/* 3. PORTFOLIO GRID WITH 3-SLIDE HOVER CAROUSEL */}
+      {/* 3. PORTFOLIO GRID WITH 4-SLIDE HOVER CAROUSEL */}
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => (
-            <PortfolioCard
-              key={item.id}
-              item={item}
-              onSelect={(selectedItem, slideIdx) => {
-                setActiveModalItem(selectedItem);
-                setActiveModalSlide(slideIdx);
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className="hex-card-lg bg-white border-2 border-primary/20 p-5 animate-pulse rounded-2xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="aspect-[16/10] bg-[#111111]/10 rounded-xl mb-4" />
+                  <div className="w-24 h-4 bg-primary/20 rounded mb-2" />
+                  <div className="w-4/5 h-5 bg-black/10 rounded mb-3" />
+                  <div className="w-full h-3.5 bg-black/5 rounded mb-1.5" />
+                  <div className="w-2/3 h-3.5 bg-black/5 rounded mb-4" />
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-black/5">
+                  <div className="w-20 h-4 bg-primary/15 rounded" />
+                  <div className="w-24 h-4 bg-primary/15 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-16 bg-white border-2 border-primary/30 rounded-2xl hex-card p-8 max-w-md mx-auto shadow-sm">
+            <p className="text-base font-extrabold text-[#111111] mb-2">No presentations found</p>
+            <p className="text-xs text-[#726F6D] mb-4">Try adjusting your search query or switching to another category filter.</p>
+            <button
+              onClick={() => {
+                setSelectedCategory("All");
+                setSearchTerm("");
               }}
-            />
-          ))}
-        </div>
+              className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs transition-all shadow-sm"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <PortfolioCard
+                key={item.id}
+                item={item}
+                onSelect={(selectedItem, slideIdx) => {
+                  setActiveModalItem(selectedItem);
+                  setActiveModalSlide(slideIdx);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 4. MODAL PREVIEW WITH MULTI-SLIDE NAVIGATION */}
