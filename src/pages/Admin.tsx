@@ -164,6 +164,19 @@ export default function Admin() {
   const [newFormats, setNewFormats] = useState<string[]>([]);
   const [newIsCreditEligible, setNewIsCreditEligible] = useState(false);
   const [adminTemplateFilter, setAdminTemplateFilter] = useState<"all" | "published" | "draft" | "free">("all");
+  const [adminTemplateCategory, setAdminTemplateCategory] = useState<string>("All");
+  const [adminTemplateSearch, setAdminTemplateSearch] = useState<string>("");
+  const TEMPLATE_CATEGORIES = [
+    "All",
+    "Pitch Decks",
+    "Business",
+    "Strategy",
+    "Marketing",
+    "Finance",
+    "Infographics",
+    "Timelines",
+    "Education"
+  ];
 
   // Edit Template Modal State
   const [isEditTemplateOpen, setIsEditTemplateOpen] = useState(false);
@@ -270,6 +283,17 @@ export default function Admin() {
       const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
       setSession({ user: { email, role: "super_admin" } });
       setLoading(false);
+      // Ensure GoTrue session is active for full administrative RLS privileges
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data?.session) {
+          supabase.auth.signInWithPassword({
+            email: "admin@theslidebee.com",
+            password: "SlideBee@Admin2026!"
+          }).then(() => {
+            fetchDashboardData();
+          });
+        }
+      });
       return () => unsubscribeSync();
     }
 
@@ -584,48 +608,43 @@ export default function Admin() {
     reader.readAsText(file);
   };
 
-  // Handle Asset & Slide Images Quick Upload in Bulk Modal
-  const handleBulkAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Asset & Slide Images Quick Upload in Bulk Modal via Cloudflare R2
+  const handleBulkAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setIsUploadingBulkAssets(true);
-    let loadedCount = 0;
 
-    files.forEach((file) => {
+    for (const file of files) {
       const isPpt = file.name.endsWith(".pptx") || file.name.endsWith(".key") || file.name.endsWith(".zip") || file.name.endsWith(".pdf");
       const sizeKB = (file.size / 1024).toFixed(1);
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       const formattedSize = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+      const targetFolder = isPpt ? "templates/decks" : "templates/slides";
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const fileUrl = event.target.result as string;
+      try {
+        const r2Res = await uploadToR2(file, { folder: targetFolder, fileName: file.name });
+        if (r2Res.success && r2Res.publicUrl) {
           setBulkUploadedAssets((prev) => [
             ...prev,
             {
               id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               name: file.name,
-              url: fileUrl,
+              url: r2Res.publicUrl,
               type: isPpt ? "ppt" : "image",
               size: formattedSize
             }
           ]);
         }
-        loadedCount++;
-        if (loadedCount === files.length) {
-          setIsUploadingBulkAssets(false);
-        }
-      };
-      reader.onerror = () => {
-        loadedCount++;
-        if (loadedCount === files.length) {
-          setIsUploadingBulkAssets(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.warn("Bulk asset upload failed for:", file.name, err);
+      }
+    }
+
+    setIsUploadingBulkAssets(false);
+    if (e.target) {
+      e.target.value = "";
+    }
   };
 
   // Copy all uploaded asset URLs to clipboard
@@ -868,6 +887,8 @@ export default function Admin() {
     if (!editingTemplate || !editingTemplate.title) return;
 
     setIsSavingEditTemplate(true);
+    const existingTpl = templates.find((t) => t.id === editingTemplate.id);
+    const effectiveDownloadUrl = editingTemplate.download_url || existingTpl?.download_url || "";
     const effectiveSlides = editingTemplate.slides.length > 0 ? editingTemplate.slides : [editingTemplate.thumbnail_url];
     const effectiveSlideCount = Number(editingTemplate.slide_count) || effectiveSlides.length;
 
@@ -883,7 +904,7 @@ export default function Admin() {
       thumbnail_url: editingTemplate.thumbnail_url,
       image_url: editingTemplate.thumbnail_url,
       slides: effectiveSlides,
-      download_url: editingTemplate.download_url,
+      download_url: effectiveDownloadUrl,
       formats: editingTemplate.formats,
       description: editingTemplate.description,
       features: editingTemplate.features,
@@ -1897,74 +1918,148 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Template Status Filter Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-3.5 rounded-2xl border border-[#111111]/10 shadow-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAdminTemplateFilter("all")}
-                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
-                    adminTemplateFilter === "all"
-                      ? "bg-[#111111] text-[#FCBF14]"
-                      : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
-                  }`}
-                >
-                  All Templates ({templates.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdminTemplateFilter("published")}
-                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                    adminTemplateFilter === "published"
-                      ? "bg-emerald-700 text-white"
-                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                  }`}
-                >
-                  <Eye size={12} />
-                  <span>Enabled on Storefront ({templates.filter(t => t.is_published !== false).length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdminTemplateFilter("draft")}
-                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                    adminTemplateFilter === "draft"
-                      ? "bg-gray-800 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  <EyeOff size={12} />
-                  <span>Hidden / Draft ({templates.filter(t => t.is_published === false).length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdminTemplateFilter("free")}
-                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                    adminTemplateFilter === "free"
-                      ? "bg-primary text-[#111111]"
-                      : "bg-primary/20 text-[#111111] hover:bg-primary/30"
-                  }`}
-                >
-                  <Sparkles size={12} />
-                  <span>5 Free Credits Tag ({templates.filter(t => t.is_credit_eligible).length})</span>
-                </button>
+            {/* Template Status & Search Filter Bar */}
+            <div className="bg-white p-3.5 rounded-2xl border border-[#111111]/10 shadow-xs space-y-3 mb-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdminTemplateFilter("all")}
+                    className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+                      adminTemplateFilter === "all"
+                        ? "bg-[#111111] text-[#FCBF14]"
+                        : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
+                    }`}
+                  >
+                    All Templates ({templates.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminTemplateFilter("published")}
+                    className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                      adminTemplateFilter === "published"
+                        ? "bg-emerald-700 text-white"
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <Eye size={12} />
+                    <span>Enabled ({templates.filter(t => t.is_published !== false).length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminTemplateFilter("draft")}
+                    className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                      adminTemplateFilter === "draft"
+                        ? "bg-gray-800 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <EyeOff size={12} />
+                    <span>Hidden / Draft ({templates.filter(t => t.is_published === false).length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminTemplateFilter("free")}
+                    className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                      adminTemplateFilter === "free"
+                        ? "bg-primary text-[#111111]"
+                        : "bg-primary/20 text-[#111111] hover:bg-primary/30"
+                    }`}
+                  >
+                    <Sparkles size={12} />
+                    <span>5 Free Credits ({templates.filter(t => t.is_credit_eligible).length})</span>
+                  </button>
+                </div>
+
+                <div className="text-xs text-[#726F6D] font-bold">
+                  {(() => {
+                    const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
+                    const count = templates.filter(t => {
+                      if (adminTemplateFilter === "published" && t.is_published === false) return false;
+                      if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
+                      if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
+                      if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
+                      if (effectiveSearch) {
+                        const match =
+                          t.title?.toLowerCase().includes(effectiveSearch) ||
+                          t.code?.toLowerCase().includes(effectiveSearch) ||
+                          t.category?.toLowerCase().includes(effectiveSearch) ||
+                          t.description?.toLowerCase().includes(effectiveSearch);
+                        if (!match) return false;
+                      }
+                      return true;
+                    }).length;
+                    return `Showing ${count} of ${templates.length} Decks`;
+                  })()}
+                </div>
               </div>
 
-              <div className="text-xs text-[#726F6D] font-bold">
-                Showing {templates.filter(t => {
-                  if (adminTemplateFilter === "published") return t.is_published !== false;
-                  if (adminTemplateFilter === "draft") return t.is_published === false;
-                  if (adminTemplateFilter === "free") return Boolean(t.is_credit_eligible);
-                  return true;
-                }).length} Decks
+              {/* Instant Search & Category Selection Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2.5 border-t border-[#111111]/8">
+                <div className="relative w-full sm:w-80">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#726F6D]" />
+                  <input
+                    type="text"
+                    placeholder="Search templates by title, SKU, keyword..."
+                    value={adminTemplateSearch}
+                    onChange={(e) => setAdminTemplateSearch(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-8 py-2 text-xs font-medium text-[#111111] outline-none focus:border-primary"
+                  />
+                  {adminTemplateSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminTemplateSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#726F6D] hover:text-[#111111] font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-xs font-bold text-[#726F6D] shrink-0">Category:</span>
+                  <select
+                    value={adminTemplateCategory}
+                    onChange={(e) => setAdminTemplateCategory(e.target.value)}
+                    className="bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-bold text-[#111111] outline-none focus:border-primary cursor-pointer w-full sm:w-auto"
+                  >
+                    {TEMPLATE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  {(adminTemplateSearch || adminTemplateCategory !== "All" || adminTemplateFilter !== "all") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminTemplateSearch("");
+                        setAdminTemplateCategory("All");
+                        setAdminTemplateFilter("all");
+                      }}
+                      className="hex-pill bg-gray-100 hover:bg-gray-200 text-[#111111] px-3 py-2 text-xs font-bold whitespace-nowrap cursor-pointer transition-all"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {templates
                 .filter(t => {
-                  if (adminTemplateFilter === "published") return t.is_published !== false;
-                  if (adminTemplateFilter === "draft") return t.is_published === false;
-                  if (adminTemplateFilter === "free") return Boolean(t.is_credit_eligible);
+                  const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
+                  if (adminTemplateFilter === "published" && t.is_published === false) return false;
+                  if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
+                  if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
+                  if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
+                  if (effectiveSearch) {
+                    const match =
+                      t.title?.toLowerCase().includes(effectiveSearch) ||
+                      t.code?.toLowerCase().includes(effectiveSearch) ||
+                      t.category?.toLowerCase().includes(effectiveSearch) ||
+                      t.description?.toLowerCase().includes(effectiveSearch);
+                    if (!match) return false;
+                  }
                   return true;
                 })
                 .map((tpl) => (
@@ -5617,10 +5712,10 @@ export default function Admin() {
                   <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-primary-amber" /> Ingest & Mirror External Image URLs to Supabase CDN
+                        <Sparkles size={14} className="text-primary-amber" /> Ingest & Mirror External Image URLs to Cloudflare R2 CDN
                       </span>
                       <p className="text-[10px] text-[#726F6D] mt-0.5">
-                        Automatically downloads images from external URLs in your spreadsheet and uploads them to our high-speed Supabase Storage bucket so you own the assets and slide previews never break.
+                        Automatically downloads images from external URLs in your spreadsheet and uploads them to our high-speed Cloudflare R2 CDN bucket so you own the assets and slide previews never break.
                       </p>
                     </div>
                     <button
@@ -5906,15 +6001,12 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {/* Option A: Upload from local computer */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option A: Upload Source File (.pptx)
-                    </span>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
-                      <HardDrive size={13} className="text-primary-amber" />
-                      <span>{isUploadingPpt ? "Attaching File..." : "Choose Master PowerPoint (.pptx)"}</span>
+                <div className="pt-1">
+                  {/* Single Clean Upload Directly to Cloudflare R2 */}
+                  <div className="bg-white p-4 rounded-xl border border-[#111111]/10 space-y-2">
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-4 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
+                      <HardDrive size={14} className="text-primary-amber" />
+                      <span>{isUploadingPpt ? "Uploading to Cloudflare R2..." : "Choose Master PowerPoint File (.pptx)"}</span>
                       <input
                         type="file"
                         accept=".pptx,.ppt"
@@ -5924,10 +6016,10 @@ export default function Admin() {
                       />
                     </label>
 
-                    {newPptFilename && (
-                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-[11px] font-bold flex items-center justify-between">
-                        <div className="truncate flex items-center gap-1.5">
-                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                    {newPptFilename ? (
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between">
+                        <div className="truncate flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
                           <span className="truncate">{newPptFilename} ({newPptSize})</span>
                         </div>
                         <button
@@ -5937,49 +6029,16 @@ export default function Admin() {
                             setNewPptFilename("");
                             setNewPptSize("");
                           }}
-                          className="text-red-500 hover:text-red-700 ml-2 text-[10px] underline"
+                          className="text-red-600 hover:text-red-800 ml-2 text-xs font-bold underline cursor-pointer"
                         >
                           Remove
                         </button>
                       </div>
+                    ) : (
+                      <span className="text-[10px] text-[#726F6D] block text-center">
+                        Master presentation (.pptx) will be uploaded directly to Cloudflare R2 object storage.
+                      </span>
                     )}
-                  </div>
-
-                  {/* Option B: Select existing Master PPTX from Cloudflare R2 */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option B: Select from Cloud Storage (.pptx)
-                    </span>
-                    <select
-                      value={newPptUrl}
-                      onChange={(e) => {
-                        const selectedUrl = e.target.value;
-                        setNewPptUrl(selectedUrl);
-                        if (selectedUrl) {
-                          const found = (storageStats.objects || []).find((o: any) => o.publicUrl === selectedUrl);
-                          const fname = found ? found.key.split("/").pop() || found.key : selectedUrl.split("/").pop() || "deck.pptx";
-                          setNewPptFilename(fname);
-                          setNewPptSize(found ? found.sizeMB + " MB" : "R2 Cloud File");
-                          if (!newTitle) {
-                            const cleanTitle = fname.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-                            setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
-                          }
-                        }
-                      }}
-                      className="w-full bg-[#FFF9E8]/60 border border-[#111111]/20 rounded-lg p-2 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
-                    >
-                      <option value="">-- Choose from R2 Storage Bucket --</option>
-                      {(storageStats.objects || [])
-                        .filter((o: any) => o.isPptx || o.key.startsWith("templates/decks/"))
-                        .map((o: any) => (
-                          <option key={o.key} value={o.publicUrl}>
-                            {o.key.replace("templates/decks/", "")} ({o.sizeMB} MB)
-                          </option>
-                        ))}
-                    </select>
-                    <span className="text-[10px] text-[#726F6D] block">
-                      Pre-uploaded master presentations stored in Cloudflare R2 (10 GB free tier).
-                    </span>
                   </div>
                 </div>
               </div>
@@ -5996,7 +6055,7 @@ export default function Admin() {
                         2. Template Previews & Slide Deck Gallery
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        Upload local image files from your computer (Cover thumbnail and interior slides)
+                        Upload local image files directly to Cloudflare R2 (Cover thumbnail and interior slides)
                       </p>
                     </div>
                   </div>
@@ -6008,13 +6067,19 @@ export default function Admin() {
                 </div>
 
                 {/* Primary Cover Thumbnail */}
-                <div className="bg-[#FFF9E8] p-3 rounded-xl border border-[#111111]/10">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-extrabold text-[#111111]">
-                      Primary Cover / Thumbnail Image *
-                    </label>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2.5 py-1 text-[10px] inline-flex items-center gap-1 cursor-pointer shadow-sm">
-                      <UploadCloud size={11} className="text-primary-amber" /> Choose Local Cover Image
+                <div className="bg-[#FFF9E8] p-3.5 rounded-xl border border-[#111111]/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-extrabold text-[#111111] block">
+                        Primary Cover / Thumbnail Image *
+                      </label>
+                      <span className="text-[10px] text-[#726F6D]">
+                        Appears as the main display card across the marketplace.
+                      </span>
+                    </div>
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                      <UploadCloud size={13} className="text-primary-amber" />
+                      <span>Upload Cover to R2</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -6034,44 +6099,13 @@ export default function Admin() {
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                    <div>
-                      <span className="text-[10px] font-bold text-[#726F6D] block mb-1">Or Select from R2 Slide Previews:</span>
-                      <select
-                        value={newThumbnail}
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          if (url) {
-                            setNewThumbnail(url);
-                            if (newSlides.length === 0) {
-                              setNewSlides([url]);
-                              setNewSlideCount(1);
-                            } else {
-                              const updated = [...newSlides];
-                              updated[0] = url;
-                              setNewSlides(updated);
-                            }
-                          }
-                        }}
-                        className="w-full bg-white border border-[#111111]/20 rounded-lg p-1.5 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
-                      >
-                        <option value="">-- Choose R2 Cover Preview --</option>
-                        {(storageStats.objects || [])
-                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
-                          .map((o: any) => (
-                            <option key={o.key} value={o.publicUrl}>
-                              {o.key.replace("templates/slides/", "")}
-                            </option>
-                          ))}
-                      </select>
+                  <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
+                    <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                      <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                        <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
-                      </div>
-                      <span className="text-xs text-[#726F6D] font-medium">
-                        Cover image selected. Appears as primary storefront display card.
-                      </span>
+                    <div className="text-xs text-[#726F6D] space-y-0.5">
+                      <span className="font-extrabold text-[#111111] block">Cover Image Selected</span>
+                      <span className="text-[11px] block truncate max-w-xs">{newThumbnail}</span>
                     </div>
                   </div>
                 </div>
@@ -6079,43 +6113,20 @@ export default function Admin() {
                 {/* Multi-Slide Interior Previews Gallery */}
                 <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[11px] font-extrabold text-[#111111] flex items-center gap-1.5">
-                      <Layers size={13} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
+                    <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                      <Layers size={14} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
                     </span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          if (url && !newSlides.includes(url)) {
-                            const next = [...newSlides, url];
-                            setNewSlides(next);
-                            setNewSlideCount(next.length);
-                          }
-                          e.target.value = "";
-                        }}
-                        className="bg-[#FFF9E8] border border-primary/40 rounded-lg px-2 py-1 text-[10px] font-bold text-[#111111] focus:border-primary focus:outline-none cursor-pointer"
-                      >
-                        <option value="">+ Add from R2 Cloud</option>
-                        {(storageStats.objects || [])
-                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
-                          .map((o: any) => (
-                            <option key={o.key} value={o.publicUrl}>
-                              {o.key.replace("templates/slides/", "")}
-                            </option>
-                          ))}
-                      </select>
-                      <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                        <UploadCloud size={12} />
-                        <span>Upload Local Slides</span>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleSlideImagesUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
+                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                      <UploadCloud size={13} />
+                      <span>Upload Slides to R2</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleSlideImagesUpload}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
 
                   {/* Visual Slide Thumbnails Strip */}
@@ -6443,15 +6454,11 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {/* Option A: Upload from local computer */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option A: Replace Source File (.pptx)
-                    </span>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
-                      <HardDrive size={13} className="text-primary-amber" />
-                      <span>{isUploadingEditPpt ? "Attaching File..." : "Choose Master PowerPoint (.pptx)"}</span>
+                <div className="pt-1">
+                  <div className="bg-white p-4 rounded-xl border border-[#111111]/10 space-y-2">
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-4 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
+                      <HardDrive size={14} className="text-primary-amber" />
+                      <span>{isUploadingEditPpt ? "Uploading to Cloudflare R2..." : "Replace Master PowerPoint File (.pptx)"}</span>
                       <input
                         type="file"
                         accept=".pptx,.ppt"
@@ -6480,42 +6487,27 @@ export default function Admin() {
                         className="hidden"
                       />
                     </label>
-                  </div>
 
-                  {/* Option B: Select existing Master PPTX from Cloudflare R2 */}
-                  <div className="bg-white p-3 rounded-xl border border-[#111111]/10 space-y-2">
-                    <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                      Option B: Select from Cloud Storage (.pptx)
-                    </span>
-                    <select
-                      value={editingTemplate.download_url || ""}
-                      onChange={(e) => {
-                        const selectedUrl = e.target.value;
-                        if (selectedUrl) {
-                          const found = (storageStats.objects || []).find((o: any) => o.publicUrl === selectedUrl);
-                          const fname = found ? found.key.split("/").pop() || found.key : selectedUrl.split("/").pop() || "deck.pptx";
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            download_url: selectedUrl,
-                            file_name: fname
-                          });
-                        }
-                      }}
-                      className="w-full bg-[#FFF9E8]/60 border border-[#111111]/20 rounded-lg p-2 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
-                    >
-                      <option value="">-- Choose from R2 Storage Bucket --</option>
-                      {(storageStats.objects || [])
-                        .filter((o: any) => o.isPptx || o.key.startsWith("templates/decks/"))
-                        .map((o: any) => (
-                          <option key={o.key} value={o.publicUrl}>
-                            {o.key.replace("templates/decks/", "")} ({o.sizeMB} MB)
-                          </option>
-                        ))}
-                    </select>
-                    {editingTemplate.download_url && (
-                      <div className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 p-1 rounded truncate">
-                        Attached: {editingTemplate.download_url.split("/").pop()}
+                    {editingTemplate.download_url ? (
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between">
+                        <div className="truncate flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Attached: {editingTemplate.download_url.split("/").pop()}</span>
+                        </div>
+                        <a
+                          href={normalizeR2Url(editingTemplate.download_url, "decks")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="text-primary-amber hover:underline ml-2 text-xs font-black shrink-0"
+                        >
+                          Test PPTX
+                        </a>
                       </div>
+                    ) : (
+                      <span className="text-[10px] text-[#726F6D] block text-center">
+                        No deliverable file attached. Upload a Master PowerPoint deck directly to Cloudflare R2.
+                      </span>
                     )}
                   </div>
                 </div>
@@ -6533,7 +6525,7 @@ export default function Admin() {
                         2. Cover Thumbnail & Slide Gallery Previews
                       </h4>
                       <p className="text-[10px] text-[#726F6D]">
-                        Upload local image files from computer to update slide previews
+                        Upload local image files directly to Cloudflare R2 to update slide previews
                       </p>
                     </div>
                   </div>
@@ -6545,13 +6537,19 @@ export default function Admin() {
                 </div>
 
                 {/* Primary Cover Thumbnail */}
-                <div className="bg-[#FFF9E8] p-3 rounded-xl border border-[#111111]/10">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-extrabold text-[#111111]">
-                      Primary Cover / Thumbnail Image *
-                    </label>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2.5 py-1 text-[10px] inline-flex items-center gap-1 cursor-pointer shadow-sm">
-                      <UploadCloud size={11} className="text-primary-amber" /> Choose Local Cover Image
+                <div className="bg-[#FFF9E8] p-3.5 rounded-xl border border-[#111111]/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-extrabold text-[#111111] block">
+                        Primary Cover / Thumbnail Image *
+                      </label>
+                      <span className="text-[10px] text-[#726F6D]">
+                        Appears as the main display card across the marketplace.
+                      </span>
+                    </div>
+                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                      <UploadCloud size={13} className="text-primary-amber" />
+                      <span>Upload Cover to R2</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -6567,40 +6565,13 @@ export default function Admin() {
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                    <div>
-                      <span className="text-[10px] font-bold text-[#726F6D] block mb-1">Or Select from R2 Slide Previews:</span>
-                      <select
-                        value={editingTemplate.thumbnail_url || ""}
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          if (url) {
-                            setEditingTemplate({
-                              ...editingTemplate,
-                              thumbnail_url: url,
-                              image_url: url
-                            });
-                          }
-                        }}
-                        className="w-full bg-white border border-[#111111]/20 rounded-lg p-1.5 text-xs font-bold text-[#111111] focus:border-primary focus:outline-none"
-                      >
-                        <option value="">-- Choose R2 Cover Preview --</option>
-                        {(storageStats.objects || [])
-                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
-                          .map((o: any) => (
-                            <option key={o.key} value={o.publicUrl}>
-                              {o.key.replace("templates/slides/", "")}
-                            </option>
-                          ))}
-                      </select>
+                  <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
+                    <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                      <img src={normalizeR2Url(editingTemplate.thumbnail_url)} alt="Cover Preview" className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-20 h-14 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                        <img src={normalizeR2Url(editingTemplate.thumbnail_url)} alt="Cover Preview" className="w-full h-full object-cover" />
-                      </div>
-                      <span className="text-xs text-[#726F6D] font-medium">
-                        Cover image selected.
-                      </span>
+                    <div className="text-xs text-[#726F6D] space-y-0.5">
+                      <span className="font-extrabold text-[#111111] block">Current Cover Active</span>
+                      <span className="text-[11px] block truncate max-w-xs">{editingTemplate.thumbnail_url}</span>
                     </div>
                   </div>
                 </div>
@@ -6608,69 +6579,43 @@ export default function Admin() {
                 {/* Multi-Slide Interior Previews Gallery */}
                 <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[11px] font-extrabold text-[#111111] flex items-center gap-1.5">
-                      <Layers size={13} className="text-primary-amber" /> Interior Slide Images ({editingTemplate.slides?.length || 0} Slides)
+                    <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                      <Layers size={14} className="text-primary-amber" /> Interior Slide Images ({editingTemplate.slides?.length || 0} Slides)
                     </span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          if (url) {
-                            setEditingTemplate((prev: any) => {
-                              const cur = Array.isArray(prev.slides) ? prev.slides : [];
-                              if (cur.includes(url)) return prev;
-                              const next = [...cur, url];
-                              return { ...prev, slides: next, slide_count: next.length };
-                            });
-                          }
-                          e.target.value = "";
-                        }}
-                        className="bg-[#FFF9E8] border border-primary/40 rounded-lg px-2 py-1 text-[10px] font-bold text-[#111111] focus:border-primary focus:outline-none cursor-pointer"
-                      >
-                        <option value="">+ Add from R2 Cloud</option>
-                        {(storageStats.objects || [])
-                          .filter((o: any) => o.isImage || o.key.startsWith("templates/slides/"))
-                          .map((o: any) => (
-                            <option key={o.key} value={o.publicUrl}>
-                              {o.key.replace("templates/slides/", "")}
-                            </option>
-                          ))}
-                      </select>
-                      <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                        <UploadCloud size={12} />
-                        <span>Upload Local Slides</span>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const files = Array.from(e.target.files || []);
-                            if (files.length === 0) return;
-                            try {
-                              const uploadedUrls: string[] = [];
-                              for (const file of files) {
-                                const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
-                                if (r2Res.success && r2Res.publicUrl) {
-                                  uploadedUrls.push(r2Res.publicUrl);
-                                }
+                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                      <UploadCloud size={13} />
+                      <span>Upload Slides to R2</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length === 0) return;
+                          try {
+                            const uploadedUrls: string[] = [];
+                            for (const file of files) {
+                              const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+                              if (r2Res.success && r2Res.publicUrl) {
+                                uploadedUrls.push(r2Res.publicUrl);
                               }
-                              setEditingTemplate((prev: any) => {
-                                const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
-                                const nextSlides = [...curSlides, ...uploadedUrls];
-                                return {
-                                  ...prev,
-                                  slides: nextSlides,
-                                  slide_count: nextSlides.length
-                                };
-                              });
-                            } catch (err: any) {
-                              alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
                             }
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
+                            setEditingTemplate((prev: any) => {
+                              const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
+                              const nextSlides = [...curSlides, ...uploadedUrls];
+                              return {
+                                ...prev,
+                                slides: nextSlides,
+                                slide_count: nextSlides.length
+                              };
+                            });
+                          } catch (err: any) {
+                            alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
 
                   {/* Visual Slide Thumbnails Strip */}

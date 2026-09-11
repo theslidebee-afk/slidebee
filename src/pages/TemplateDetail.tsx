@@ -106,6 +106,7 @@ export default function TemplateDetail() {
                   "100% Fully Editable Vector Elements",
                   "Commercial Royalty-Free License"
                 ],
+            formats: Array.isArray(data.formats) && data.formats.length > 0 ? data.formats : ["PowerPoint"],
             is_credit_eligible: Boolean(data.is_credit_eligible),
             is_featured: Boolean(data.is_featured),
             is_published: true
@@ -150,6 +151,7 @@ export default function TemplateDetail() {
               file_size: t.file_size || "4.5 MB",
               description: t.description || "Executive presentation deck layout.",
               features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
+              formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
               is_credit_eligible: Boolean(t.is_credit_eligible),
               is_featured: Boolean(t.is_featured),
               is_published: true
@@ -534,6 +536,16 @@ export default function TemplateDetail() {
                 <div className="flex justify-between">
                   <span>Deliverable Format:</span>
                   <strong className="text-[#111111]">Master PowerPoint Presentation (.pptx)</strong>
+                </div>
+                <div className="flex justify-between items-center py-0.5">
+                  <span>Supported Software:</span>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {(template.formats && template.formats.length > 0 ? template.formats : ["PowerPoint"]).map((fmt, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#111111]/5 text-[#111111] border border-[#111111]/10">
+                        {fmt}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span>Free Credits Library:</span>

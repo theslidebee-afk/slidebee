@@ -20,6 +20,7 @@ export interface StoreTemplate {
   file_size: string;
   description: string;
   features: string[];
+  formats?: string[];
   is_credit_eligible: boolean;
   is_featured: boolean;
   is_published: boolean;
@@ -100,6 +101,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           file_size: t.file_size || "4.5 MB",
           description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
           features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
+          formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
           is_credit_eligible: Boolean(t.is_credit_eligible),
           is_featured: Boolean(t.is_featured),
           is_published: Boolean(t.is_published),
