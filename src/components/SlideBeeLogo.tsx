@@ -1,6 +1,6 @@
 interface SlideBeeLogoProps {
   className?: string;
-  variant?: "light" | "dark" | "auto";
+  variant?: "light" | "dark" | "yellow" | "auto";
   size?: "sm" | "md" | "lg" | "xl";
 }
 
@@ -20,13 +20,19 @@ export default function SlideBeeLogo({
     <div className={`inline-flex items-center select-none ${className}`}>
       {variant === "dark" ? (
         <img
-          src="/slidebee_logo_dark.svg"
+          src="/Slidebee_BlackBG.svg"
           alt="SlideBee"
           className={`${heightMap[size]} w-auto object-contain drop-shadow-sm`}
         />
+      ) : variant === "yellow" ? (
+        <img
+          src="/Slidebee_Yellowbg.svg"
+          alt="SlideBee"
+          className={`${heightMap[size]} w-auto object-contain`}
+        />
       ) : variant === "light" ? (
         <img
-          src="/slidebee_logo_light.svg"
+          src="/Slidebee_WhiteBG.svg"
           alt="SlideBee"
           className={`${heightMap[size]} w-auto object-contain`}
         />
@@ -34,12 +40,12 @@ export default function SlideBeeLogo({
         /* Auto mode - switch based on parent theme */
         <>
           <img
-            src="/slidebee_logo_light.svg"
+            src="/Slidebee_WhiteBG.svg"
             alt="SlideBee"
             className={`dark:hidden ${heightMap[size]} w-auto object-contain`}
           />
           <img
-            src="/slidebee_logo_dark.svg"
+            src="/Slidebee_BlackBG.svg"
             alt="SlideBee"
             className={`hidden dark:block ${heightMap[size]} w-auto object-contain`}
           />
