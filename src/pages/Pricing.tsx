@@ -108,7 +108,12 @@ export default function Pricing() {
     }
   ];
 
-  const faqs = [
+interface FaqItem {
+  q: string;
+  a: string;
+}
+
+  const defaultFaqs: FaqItem[] = [
     {
       q: "How does the pricing per slide work?",
       a: "Our pricing is transparent and per-slide with no hidden fees. You only pay for the exact number of slides in your deck. If you have an existing 12-slide draft, you simply select 12 slides and choose your desired service tier."
@@ -130,6 +135,10 @@ export default function Pricing() {
       a: "All our plans include revisions to ensure you are 100% satisfied with the typography, colors, and layout before your presentation."
     }
   ];
+
+  const faqs: FaqItem[] = (pricingConfig as any).faqs && Array.isArray((pricingConfig as any).faqs) && (pricingConfig as any).faqs.length > 0
+    ? (pricingConfig as any).faqs
+    : defaultFaqs;
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden pt-28 pb-20 large-hex-grid">

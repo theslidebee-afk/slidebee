@@ -15,7 +15,7 @@ export default function Navbar() {
   // Dynamic Auth State
   const [isAdmin, setIsAdmin] = useState(false);
   const [clientUser, setClientUser] = useState<any>(null);
-  const [credits] = useState(5);
+  const [credits, setCredits] = useState(5);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,11 +24,16 @@ export default function Navbar() {
     const adminSession = localStorage.getItem("slidebee_admin_session") === "true";
     setIsAdmin(adminSession);
 
+    let activeEmail = "";
     const localClient = localStorage.getItem("slidebee_client_user");
     if (localClient) {
       try {
         const parsed = JSON.parse(localClient);
         setClientUser(parsed);
+        if (parsed.credits_balance !== undefined) {
+          setCredits(Number(parsed.credits_balance));
+        }
+        activeEmail = parsed.email || "";
       } catch (e) {
         setClientUser(null);
       }
@@ -36,8 +41,24 @@ export default function Navbar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setClientUser(session.user);
+        activeEmail = session.user.email || "";
       } else {
         setClientUser(null);
+      }
+    }
+
+    if (activeEmail) {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("credits_balance")
+          .eq("email", activeEmail)
+          .single();
+        if (profile && profile.credits_balance !== undefined) {
+          setCredits(Number(profile.credits_balance));
+        }
+      } catch (err) {
+        // preserve current state
       }
     }
   };

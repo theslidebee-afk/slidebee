@@ -29,7 +29,13 @@ export default function About() {
       });
   }, []);
 
-  const values = [
+interface ValueItem {
+  icon?: any;
+  title: string;
+  desc: string;
+}
+
+  const defaultValues: ValueItem[] = [
     {
       icon: <Target className="w-6 h-6 text-primary-amber" />,
       title: "Clarity Above All",
@@ -51,6 +57,13 @@ export default function About() {
       desc: "No locked images or uneditable PDFs. You receive native Master PowerPoint (.pptx) files your team can edit forever."
     }
   ];
+
+  const values: ValueItem[] = Array.isArray(aboutConfig?.values) && aboutConfig.values.length > 0
+    ? aboutConfig.values.map((v: any, i: number): ValueItem => ({
+        ...defaultValues[i % defaultValues.length],
+        ...v
+      }))
+    : defaultValues;
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden pt-28 pb-20 large-hex-grid">

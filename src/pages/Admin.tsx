@@ -342,6 +342,17 @@ export default function Admin() {
           show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
         });
       }
+      if (configMap["razorpay_settings"]) {
+        const rz = configMap["razorpay_settings"];
+        if (rz.key_id) setRazorpayKeyId(rz.key_id);
+        if (rz.mode) setRazorpayMode(rz.mode);
+      }
+      if (configMap["zoho_mail_settings"]) {
+        const zh = configMap["zoho_mail_settings"];
+        if (zh.deliverables) setZohoDeliverableEmail(zh.deliverables);
+        if (zh.inquiries) setZohoInquiriesEmail(zh.inquiries);
+        if (zh.billing) setZohoBillingEmail(zh.billing);
+      }
     }
 
     // Fetch Live Storage Telemetry from Cloudflare R2 bucket (slidebee)
@@ -1272,7 +1283,20 @@ export default function Admin() {
     w.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredAssets = assets.filter(a => 
+  const effectiveAssets = assets.length > 0 
+    ? assets 
+    : (storageStats.objects || []).map((obj) => ({
+        id: obj.key,
+        key: obj.key,
+        title: obj.key.split("/").pop() || obj.key,
+        category: obj.key.includes("decks") ? "Master PPTX Deck" : obj.key.includes("marquee") ? "Brand Marquee" : "Slide Preview",
+        url: obj.publicUrl,
+        sizeMB: obj.sizeMB,
+        isPptx: obj.isPptx,
+        isImage: obj.isImage
+      }));
+
+  const filteredAssets = effectiveAssets.filter(a => 
     a.key?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.category?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1466,7 +1490,7 @@ export default function Admin() {
                   : "text-[#111111] hover:text-primary-amber"
               }`}
             >
-              <CreditCard size={14} /> Subscriptions & Users ({subscriptions.length})
+              <Users size={14} /> Client Accounts ({profiles.length})
             </button>
             <button
               onClick={() => setActiveTab("storage")}
@@ -2109,38 +2133,97 @@ export default function Admin() {
 
         {/* TAB 4: ASSETS CMS */}
         {activeTab === "assets" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAssets.map((ast) => (
-              <div
-                key={ast.id}
-                className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm p-4 flex flex-col justify-between"
-              >
-                <div className="aspect-[16/10] bg-[#111111] rounded-xl overflow-hidden mb-3">
-                  <img
-                    src={ast.url}
-                    alt={ast.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2 py-0.5 uppercase">
-                      {ast.category}
-                    </span>
-                    <code className="text-[10px] bg-black/5 px-2 py-0.5 rounded text-[#726F6D]">
-                      {ast.key}
-                    </code>
-                  </div>
-                  <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                    {ast.title}
-                  </h4>
-                  <p className="text-[11px] text-[#726F6D] font-medium truncate">
-                    {ast.url}
-                  </p>
-                </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-heading font-extrabold text-base text-[#111111]">
+                  Cloudflare R2 Asset Inventory
+                </h3>
+                <p className="text-xs text-[#726F6D]">
+                  Live object storage assets ({filteredAssets.length} items) across templates, slides, and marquees.
+                </p>
               </div>
-            ))}
+            </div>
+
+            {filteredAssets.length === 0 ? (
+              <div className="hex-card bg-white border border-[#111111]/10 p-12 text-center">
+                <Cloud className="w-12 h-12 text-[#FCBF14] mx-auto mb-3 opacity-60" />
+                <h4 className="font-heading font-bold text-sm text-[#111111] mb-1">No Assets Found</h4>
+                <p className="text-xs text-[#726F6D]">
+                  No storage objects match "{searchTerm}". Try clearing your search or upload new assets via the Templates or Storage tabs.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAssets.map((ast: any) => (
+                  <div
+                    key={ast.id}
+                    className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm p-4 flex flex-col justify-between"
+                  >
+                    <div className="aspect-[16/10] bg-[#111111] rounded-xl overflow-hidden mb-3 flex items-center justify-center relative group">
+                      {ast.isPptx || ast.url?.endsWith(".pptx") ? (
+                        <div className="text-center p-4">
+                          <FileText className="w-12 h-12 text-[#FCBF14] mx-auto mb-2" />
+                          <span className="text-[10px] font-black text-[#FFF9E8] uppercase tracking-wider block">
+                            PowerPoint Master
+                          </span>
+                          {ast.sizeMB && (
+                            <span className="text-[10px] text-gray-400 block mt-0.5">
+                              {ast.sizeMB} MB
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <img
+                          src={ast.url}
+                          alt={ast.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                      <a
+                        href={ast.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black transition-colors"
+                        title="Open asset directly"
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2 py-0.5 uppercase">
+                          {ast.category}
+                        </span>
+                        {ast.sizeMB && !ast.isPptx && (
+                          <span className="text-[10px] font-bold text-[#726F6D]">
+                            {ast.sizeMB} MB
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1 truncate" title={ast.title}>
+                        {ast.title}
+                      </h4>
+                      <p className="text-[10px] font-mono text-[#726F6D] bg-black/5 px-2 py-1 rounded truncate mb-3" title={ast.url}>
+                        {ast.url}
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(ast.url);
+                          setCopiedUrlKey(ast.key);
+                          setTimeout(() => setCopiedUrlKey(null), 2000);
+                        }}
+                        className="hex-pill w-full bg-[#FFF9E8] hover:bg-primary text-[#111111] font-black text-xs py-2 flex items-center justify-center gap-1.5 transition-all border border-[#111111]/10"
+                      >
+                        {copiedUrlKey === ast.key ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                        {copiedUrlKey === ast.key ? "Copied CDN URL!" : "Copy CDN Link"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -2205,7 +2288,30 @@ export default function Admin() {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleSaveConfig("hero", siteConfigs["hero"])}
+                    onClick={() => {
+                      const current = siteConfigs["hero"] || {};
+                      const badge = current.badge || current.badgeText || "";
+                      const title = current.title || current.headline || "";
+                      const subtitle = current.subtitle || current.subheadline || "";
+                      const ctaPrimary = current.ctaPrimary || current.ctaText || "";
+                      const ctaSecondary = current.ctaSecondary || current.secondaryCtaText || "";
+                      const guarantee = current.guarantee || "";
+                      const synchronizedHero = {
+                        ...current,
+                        badge,
+                        badgeText: badge,
+                        title,
+                        headline: title,
+                        subtitle,
+                        subheadline: subtitle,
+                        ctaPrimary,
+                        ctaText: ctaPrimary,
+                        ctaSecondary,
+                        secondaryCtaText: ctaSecondary,
+                        guarantee
+                      };
+                      handleSaveConfig("hero", synchronizedHero);
+                    }}
                     disabled={configSaving}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
                   >
@@ -2220,10 +2326,10 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.badge || ""}
+                      value={siteConfigs["hero"]?.badge || siteConfigs["hero"]?.badgeText || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), badge: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), badge: e.target.value, badgeText: e.target.value }
                       })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
                       placeholder="e.g. SLIDEBEE PRESENTATION ATELIER"
@@ -2253,10 +2359,10 @@ export default function Admin() {
                   </label>
                   <input
                     type="text"
-                    value={siteConfigs["hero"]?.title || ""}
+                    value={siteConfigs["hero"]?.title || siteConfigs["hero"]?.headline || ""}
                     onChange={(e) => setSiteConfigs({
                       ...siteConfigs,
-                      hero: { ...(siteConfigs["hero"] || {}), title: e.target.value }
+                      hero: { ...(siteConfigs["hero"] || {}), title: e.target.value, headline: e.target.value }
                     })}
                     className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
                     placeholder="e.g. Decks That Win Deals & Capital"
@@ -2269,10 +2375,10 @@ export default function Admin() {
                   </label>
                   <textarea
                     rows={3}
-                    value={siteConfigs["hero"]?.subtitle || ""}
+                    value={siteConfigs["hero"]?.subtitle || siteConfigs["hero"]?.subheadline || ""}
                     onChange={(e) => setSiteConfigs({
                       ...siteConfigs,
-                      hero: { ...(siteConfigs["hero"] || {}), subtitle: e.target.value }
+                      hero: { ...(siteConfigs["hero"] || {}), subtitle: e.target.value, subheadline: e.target.value }
                     })}
                     className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-medium text-[#111111]"
                     placeholder="Description paragraph appearing below the headline..."
@@ -2286,10 +2392,10 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.ctaPrimary || ""}
+                      value={siteConfigs["hero"]?.ctaPrimary || siteConfigs["hero"]?.ctaText || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), ctaPrimary: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), ctaPrimary: e.target.value, ctaText: e.target.value }
                       })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
                     />
@@ -2300,10 +2406,10 @@ export default function Admin() {
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.ctaSecondary || ""}
+                      value={siteConfigs["hero"]?.ctaSecondary || siteConfigs["hero"]?.secondaryCtaText || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), ctaSecondary: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), ctaSecondary: e.target.value, secondaryCtaText: e.target.value }
                       })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
                     />
@@ -3874,6 +3980,38 @@ export default function Admin() {
 
                 <div>
                   <label className="text-xs font-bold text-[#111111] block mb-1">
+                    About Page Main Headline
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["about_cms"]?.headline || "We Turn Complex Business Ideas into Unforgettable Visuals."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      about_cms: { ...siteConfigs["about_cms"], headline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                    placeholder="e.g. We Turn Complex Business Ideas into Unforgettable Visuals."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    About Page Subheadline
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={siteConfigs["about_cms"]?.subheadline || "SlideBee is a dedicated presentation design studio engineered for high-growth startups, C-suite executives, and forward-thinking enterprises."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      about_cms: { ...siteConfigs["about_cms"], subheadline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    placeholder="Supporting mission description paragraph..."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
                     Story Section Heading
                   </label>
                   <input
@@ -3939,6 +4077,38 @@ export default function Admin() {
                   >
                     <Save size={14} /> {configSaving ? "Saving..." : "Save Contact Info"}
                   </button>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Contact Page Main Headline
+                  </label>
+                  <input
+                    type="text"
+                    value={siteConfigs["contact_cms"]?.headline || "Let's Build Something Exceptional."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      contact_cms: { ...siteConfigs["contact_cms"], headline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                    placeholder="e.g. Let's Build Something Exceptional."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#111111] block mb-1">
+                    Contact Page Subheadline
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={siteConfigs["contact_cms"]?.subheadline || "Have an urgent pitch deck, board presentation, or enterprise template system to design? Reach our senior design directors directly."}
+                    onChange={(e) => setSiteConfigs({
+                      ...siteConfigs,
+                      contact_cms: { ...siteConfigs["contact_cms"], subheadline: e.target.value }
+                    })}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                    placeholder="Supporting contact description paragraph..."
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -4310,6 +4480,54 @@ export default function Admin() {
                       <span className="text-[10px] text-green-700 font-bold">
                         Saves {(siteConfigs["pricing"]?.pro_discount_percent ?? 50)}% compared to 12 monthly payments
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enterprise Retainer Pricing Config */}
+                <div className="mt-8 pt-6 border-t border-[#111111]/8">
+                  <h4 className="text-sm font-heading font-extrabold text-[#111111] mb-1">
+                    Dedicated Enterprise Retainer Pricing
+                  </h4>
+                  <p className="text-xs text-[#726F6D] mb-4">
+                    Set the monthly retainer rate displayed in the Dedicated Presentation Team section on /pricing.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <div>
+                      <label className="text-xs font-bold text-[#111111] block mb-1">
+                        Enterprise Retainer Monthly Rate ($ USD)
+                      </label>
+                      <input
+                        type="number"
+                        value={siteConfigs["pricing"]?.monthly_retainer_usd ?? 1490}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          pricing: { 
+                            ...siteConfigs["pricing"], 
+                            monthly_retainer_usd: Number(e.target.value) 
+                          }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-[#111111] block mb-1">
+                        Enterprise Retainer Monthly Rate (₹ INR)
+                      </label>
+                      <input
+                        type="number"
+                        value={siteConfigs["pricing"]?.monthly_retainer_inr ?? 119000}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          pricing: { 
+                            ...siteConfigs["pricing"], 
+                            monthly_retainer_inr: Number(e.target.value) 
+                          }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
+                      />
                     </div>
                   </div>
                 </div>
@@ -5111,18 +5329,6 @@ export default function Admin() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                  Monthly Recurring Revenue (MRR)
-                </span>
-                <div className="text-3xl font-heading font-black text-primary-amber">
-                  ${subscriptions.reduce((acc, s) => acc + (Number(s.amount_usd) || 1490), 0).toLocaleString()}
-                </div>
-                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                  From {subscriptions.filter(s => s.status === 'active').length} active enterprise retainers
-                </span>
-              </div>
-
-              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
                   Total Client Accounts
                 </span>
                 <div className="text-3xl font-heading font-black text-[#111111]">
@@ -5135,13 +5341,25 @@ export default function Admin() {
 
               <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                  Slide Capacity Used This Month
+                  Total Starter Credits Issued
                 </span>
-                <div className="text-3xl font-heading font-black text-[#111111]">
-                  {subscriptions.reduce((acc, s) => acc + (s.slides_used || 0), 0)} / {subscriptions.reduce((acc, s) => acc + (s.slides_limit || 80), 0)}
+                <div className="text-3xl font-heading font-black text-primary-amber">
+                  {profiles.reduce((acc, p) => acc + (Number(p.credits_total) || 5), 0)}
                 </div>
                 <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                  Across all active designer retainers
+                  5 free credits allocated per client
+                </span>
+              </div>
+
+              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                  Active Credits Balance
+                </span>
+                <div className="text-3xl font-heading font-black text-[#111111]">
+                  {profiles.reduce((acc, p) => acc + (Number(p.credits_balance) || 0), 0)} Credits
+                </div>
+                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                  Available design purchasing power
                 </span>
               </div>
             </div>

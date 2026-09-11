@@ -177,8 +177,13 @@ export default function Home() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-[2.5px] bg-[#FCBF14] rounded-full" />
                 <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#726F6D]">
-                  {heroConfig.badgeText || "SlideBee Design Studio"}
+                  {heroConfig.badge || heroConfig.badgeText || "SlideBee Design Studio"}
                 </span>
+                {(heroConfig.guarantee) && (
+                  <span className="hidden sm:inline-block text-[10px] font-bold bg-[#FCBF14]/20 text-[#936610] px-2.5 py-0.5 rounded-full border border-[#FCBF14]/30">
+                    {heroConfig.guarantee}
+                  </span>
+                )}
               </div>
 
               {/* High-Impact Hero Headline */}
@@ -188,7 +193,7 @@ export default function Home() {
                 transition={{ duration: 0.5 }}
                 className="text-4xl sm:text-6xl lg:text-6xl xl:text-7xl font-heading font-black text-[#111111] leading-[1.08] mb-4 tracking-tight"
                 dangerouslySetInnerHTML={{
-                  __html: heroConfig.headline || 'Present With <br class="hidden sm:inline" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-[#D99F06] to-[#FCD34D]">Unfair Advantage</span>'
+                  __html: heroConfig.title || heroConfig.headline || 'Present With <br class="hidden sm:inline" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-[#D99F06] to-[#FCD34D]">Unfair Advantage</span>'
                 }}
               />
 
@@ -199,7 +204,7 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mb-8"
               >
-                {heroConfig.subheadline || "Premium PowerPoint templates and expert presentation design services — all in one hive."}
+                {heroConfig.subtitle || heroConfig.subheadline || "Premium PowerPoint templates and expert presentation design services — all in one hive."}
               </motion.p>
 
               {/* Call-To-Action & Search Group */}
@@ -214,7 +219,7 @@ export default function Home() {
                     to="/templates"
                     className="hex-cut-btn text-[#111111] font-black px-8 py-4 sm:px-9 sm:py-4 text-xs sm:text-sm gap-2"
                   >
-                    {heroConfig.ctaText || "Browse 5,000+ Templates"} <ArrowRight size={16} />
+                    {heroConfig.ctaPrimary || heroConfig.ctaText || "Browse 5,000+ Templates"} <ArrowRight size={16} />
                   </Link>
                 </MagneticButton>
                 <MagneticButton>
@@ -222,7 +227,7 @@ export default function Home() {
                     to="/services"
                     className="hex-cut-btn dark-btn text-[#FCBF14] font-black px-8 py-4 sm:px-9 sm:py-4 text-xs sm:text-sm gap-2"
                   >
-                    {heroConfig.secondaryCtaText || "Hire a Designer"} <ArrowRight size={16} />
+                    {heroConfig.ctaSecondary || heroConfig.secondaryCtaText || "Hire a Designer"} <ArrowRight size={16} />
                   </Link>
                 </MagneticButton>
               </motion.div>
