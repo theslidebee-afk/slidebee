@@ -53,7 +53,21 @@ export default function Home() {
         if (data) {
           data.forEach((item) => {
             if (item.key === "hero" && item.value) setHeroConfig(item.value);
-            if (item.key === "featured_templates" && item.value?.ids) setFeaturedTemplateIds(item.value.ids);
+            if (item.key === "featured_templates") {
+              let ids: string[] = [];
+              if (Array.isArray(item.value)) {
+                ids = item.value.map(String);
+              } else if (item.value && Array.isArray(item.value.ids)) {
+                ids = item.value.ids.map(String);
+              } else if (typeof item.value === "string") {
+                try {
+                  const parsed = JSON.parse(item.value);
+                  if (Array.isArray(parsed)) ids = parsed.map(String);
+                  else if (Array.isArray(parsed?.ids)) ids = parsed.ids.map(String);
+                } catch (e) {}
+              }
+              if (ids.length > 0) setFeaturedTemplateIds(ids);
+            }
             if (item.key === "home_before_after" && item.value) setCustomComparisons(item.value);
             if (item.key === "pricing" && item.value) setPricingConfig(item.value);
             if (item.key === "testimonials" && Array.isArray(item.value)) setCustomTestimonials(item.value);
@@ -69,6 +83,7 @@ export default function Home() {
         if (data && !error && data.length > 0) {
           const mapped = data.map((t: any) => ({
             id: String(t.id),
+            slug: t.slug,
             code: t.code || `SLD-${String(t.id).slice(0, 4).toUpperCase()}`,
             title: t.title,
             category: t.category,
@@ -324,9 +339,13 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
             {(() => {
               const allTemplates = dbTemplates;
-              const matching = featuredTemplateIds.length > 0 
-                ? allTemplates.filter(t => featuredTemplateIds.includes(String(t.id))) 
-                : [];
+              const matching = featuredTemplateIds
+                .map(fid => allTemplates.find(t => 
+                  String(t.id) === String(fid) || 
+                  (t.slug && String(t.slug) === String(fid)) ||
+                  (t.code && String(t.code) === String(fid))
+                ))
+                .filter(Boolean) as any[];
               const displayed = matching.length > 0 ? matching : allTemplates.slice(0, 8);
               return displayed.map((item) => (
               <Link

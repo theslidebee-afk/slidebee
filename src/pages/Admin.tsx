@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Mail, 
@@ -121,14 +121,15 @@ export default function Admin() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<"orders" | "waitlist" | "templates" | "assets" | "config" | "storage" | "subscriptions">("orders");
+  // Dashboard Active Tab & Sub-Page State
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"orders" | "waitlist" | "templates" | "customization" | "billing" | "storage" | "subscriptions">("orders");
 
   // Live Data States
   const [orders, setOrders] = useState<any[]>([]);
   const [waitlist, setWaitlist] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [assets, setAssets] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [siteConfigs, setSiteConfigs] = useState<Record<string, any>>({});
@@ -218,16 +219,9 @@ export default function Admin() {
   const [razorpayKeySecret, setRazorpayKeySecret] = useState(localStorage.getItem("slidebee_razorpay_secret") || "");
   const [razorpayMode, setRazorpayMode] = useState<"test" | "live">((localStorage.getItem("slidebee_razorpay_mode") as any) || "test");
 
-  // New Asset Modal State
-  const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
-  const [assetKey, setAssetKey] = useState("");
-  const [assetTitle, setAssetTitle] = useState("");
-  const [assetCategory, setAssetCategory] = useState("portfolio");
-  const [assetUrl, setAssetUrl] = useState("");
-  const [isSavingAsset, setIsSavingAsset] = useState(false);
-
-  // Site Config Edit State
-  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"pricing" | "home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer" | "payments" | "emails">("home");
+  // Site Customization & Pricing Config States
+  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer">("home");
+  const [activePricingSubTab, setActivePricingSubTab] = useState<"rates" | "payments" | "emails">("rates");
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
   const [configValidationError, setConfigValidationError] = useState("");
@@ -237,6 +231,24 @@ export default function Admin() {
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
   const [newWorkedCompanyName, setNewWorkedCompanyName] = useState("");
   const [newWorkedCompanyCategory, setNewWorkedCompanyCategory] = useState("");
+
+  // Sync activeTab with URL sub-paths
+  useEffect(() => {
+    const path = location.pathname.toLowerCase();
+    if (path.includes("/customization")) {
+      setActiveTab("customization");
+    } else if (path.includes("/templates")) {
+      setActiveTab("templates");
+    } else if (path.includes("/billing") || path.includes("/pricing")) {
+      setActiveTab("billing");
+    } else if (path.includes("/storage")) {
+      setActiveTab("storage");
+    } else if (path.includes("/waitlist")) {
+      setActiveTab("waitlist");
+    } else if (path.includes("/subscriptions") || path.includes("/clients")) {
+      setActiveTab("subscriptions");
+    }
+  }, [location.pathname]);
 
   // 1. Check active session on mount
   useEffect(() => {
@@ -304,14 +316,18 @@ export default function Admin() {
       .from("templates")
       .select("*")
       .order("created_at", { ascending: false });
-    if (templatesData) setTemplates(templatesData);
-
-    // Fetch Assets
-    const { data: assetsData } = await supabase
-      .from("assets")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (assetsData) setAssets(assetsData);
+    if (templatesData && templatesData.length > 0) {
+      setTemplates(templatesData);
+    } else {
+      // Resilient fallback for PIN / local admin session
+      const { data: catalogData } = await supabase
+        .from("v_storefront_catalog")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (catalogData && catalogData.length > 0) {
+        setTemplates(catalogData);
+      }
+    }
 
     // Fetch Profiles & Subscriptions
     const { data: profilesData } = await supabase
@@ -1150,35 +1166,7 @@ export default function Admin() {
     }
   };
 
-  // Save / Update Asset
-  const handleSaveAsset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assetKey || !assetUrl) return;
 
-    setIsSavingAsset(true);
-    const { data, error } = await supabase
-      .from("assets")
-      .upsert([
-        {
-          key: assetKey,
-          title: assetTitle || assetKey,
-          category: assetCategory,
-          url: assetUrl,
-          alt_text: assetTitle || assetKey,
-          updated_at: new Date().toISOString()
-        }
-      ], { onConflict: "key" })
-      .select();
-
-    if (!error && data) {
-      setAssets([data[0], ...assets.filter(a => a.key !== assetKey)]);
-      setIsAddAssetOpen(false);
-      setAssetKey("");
-      setAssetTitle("");
-      setAssetUrl("");
-    }
-    setIsSavingAsset(false);
-  };
 
   // Upload Local Image File to Cloudflare R2 (or fallback to Data URL)
   const handleImageFileUpload = async (
@@ -1283,24 +1271,7 @@ export default function Admin() {
     w.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const effectiveAssets = assets.length > 0 
-    ? assets 
-    : (storageStats.objects || []).map((obj) => ({
-        id: obj.key,
-        key: obj.key,
-        title: obj.key.split("/").pop() || obj.key,
-        category: obj.key.includes("decks") ? "Master PPTX Deck" : obj.key.includes("marquee") ? "Brand Marquee" : "Slide Preview",
-        url: obj.publicUrl,
-        sizeMB: obj.sizeMB,
-        isPptx: obj.isPptx,
-        isImage: obj.isImage
-      }));
 
-  const filteredAssets = effectiveAssets.filter(a => 
-    a.key?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // Storage Stats (10 GB Free Tier Quota - Live Supabase Bucket Telemetry)
   const totalR2QuotaMB = 10240; // 10 GB
@@ -1330,9 +1301,9 @@ export default function Admin() {
           <div className="flex items-center gap-3">
             <button
               onClick={fetchDashboardData}
-              className="hex-pill bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 px-4 py-2 text-xs font-extrabold hover:bg-black/5 transition-all"
+              className="hex-pill bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 px-4 py-2 text-xs font-extrabold hover:bg-black/5 transition-all flex items-center gap-1.5"
             >
-              ↻ Refresh Data
+              <RefreshCw size={12} /> Refresh Data
             </button>
             <button
               onClick={handleLogout}
@@ -1375,7 +1346,10 @@ export default function Admin() {
             </span>
           </div>
 
-          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+          <div 
+            onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
+          >
             <div className="flex items-center justify-between text-primary-amber mb-1.5">
               <Layers size={18} />
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
@@ -1390,18 +1364,21 @@ export default function Admin() {
             </span>
           </div>
 
-          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+          <div 
+            onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
+            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
+          >
             <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <ImageIcon size={18} />
+              <Sliders size={18} />
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Media CMS
+                Site CMS
               </span>
             </div>
             <div className="text-2xl font-heading font-black text-[#111111]">
-              {assets.length}
+              8
             </div>
             <span className="text-[10px] text-[#726F6D] font-medium block">
-              Visual Assets
+              Dynamic Pages
             </span>
           </div>
 
@@ -1428,133 +1405,152 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Tab Selector & Search Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          
-          <div className="inline-flex bg-white border border-[#111111]/10 p-1 hex-pill shadow-sm overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "orders"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <ShoppingBag size={14} /> Orders ({orders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("waitlist")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "waitlist"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <Users size={14} /> Waitlist ({waitlist.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("templates")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "templates"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <Layers size={14} /> Templates ({templates.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("assets")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "assets"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <ImageIcon size={14} /> Media Assets ({assets.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("config")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "config"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <Sliders size={14} /> Pricing & Copy
-            </button>
-            <button
-              onClick={() => setActiveTab("subscriptions")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "subscriptions"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <Users size={14} /> Client Accounts ({profiles.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("storage")}
-              className={`px-4 py-2 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "storage"
-                  ? "bg-[#111111] text-[#FCBF14] shadow"
-                  : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              <HardDrive size={14} /> R2 10 GB Storage
-            </button>
-          </div>
+        {/* Tier 1: Dedicated Admin Sub-Page Navigation */}
+        {(() => {
+          const activeSection = (activeTab === "customization")
+            ? "customization"
+            : (activeTab === "billing")
+            ? "billing"
+            : (activeTab === "templates")
+            ? "templates"
+            : "operations";
 
-          <div className="flex items-center gap-2">
-            {activeTab !== "config" && activeTab !== "storage" && (
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search records..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-white border border-[#111111]/12 hex-pill pl-9 pr-4 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+          return (
+            <div className="space-y-4 mb-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-[#111111]/10 p-2 hex-card shadow-sm">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+                  <button
+                    onClick={() => { setActiveTab("orders"); navigate("/admin"); }}
+                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      activeSection === "operations"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+                    }`}
+                  >
+                    <ShoppingBag size={14} /> Operations Hub
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      activeSection === "templates"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+                    }`}
+                  >
+                    <Layers size={14} /> Template Studio ({templates.length})
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
+                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      activeSection === "customization"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+                    }`}
+                  >
+                    <Sliders size={14} /> Site Customization (8 Pages)
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("billing"); navigate("/admin/billing"); }}
+                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      activeSection === "billing"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+                    }`}
+                  >
+                    <DollarSign size={14} /> Pricing & Gateway
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {activeSection !== "customization" && activeSection !== "billing" && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search records..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-4 py-1.5 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
+                      />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                    </div>
+                  )}
+
+                  {activeTab === "waitlist" && (
+                    <button
+                      onClick={handleExportWaitlistCSV}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
+                  )}
+
+                  {activeSection === "templates" && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsBulkImportOpen(true)}
+                        className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+                      >
+                        <FileSpreadsheet size={14} /> Bulk CSV Import
+                      </button>
+                      <button
+                        onClick={() => setIsAddTemplateOpen(true)}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+                      >
+                        <Plus size={14} /> Add Single
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
 
-            {activeTab === "waitlist" && (
-              <button
-                onClick={handleExportWaitlistCSV}
-                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-              >
-                <Download size={14} /> Export CSV
-              </button>
-            )}
-
-            {activeTab === "templates" && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsBulkImportOpen(true)}
-                  className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                >
-                  <FileSpreadsheet size={14} /> Bulk CSV Import
-                </button>
-                <button
-                  onClick={() => setIsAddTemplateOpen(true)}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                >
-                  <Plus size={14} /> Add Single
-                </button>
-              </div>
-            )}
-
-            {activeTab === "assets" && (
-              <button
-                onClick={() => setIsAddAssetOpen(true)}
-                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-              >
-                <Plus size={14} /> Add Asset
-              </button>
-            )}
-          </div>
-
-        </div>
+              {/* Tier 2: Operations Sub-Tabs */}
+              {activeSection === "operations" && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  <button
+                    onClick={() => setActiveTab("orders")}
+                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                      activeTab === "orders"
+                        ? "bg-primary text-[#111111] shadow"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <ShoppingBag size={13} /> Orders & Briefs ({orders.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("waitlist")}
+                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                      activeTab === "waitlist"
+                        ? "bg-primary text-[#111111] shadow"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <Users size={13} /> Inbound Waitlist ({waitlist.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("subscriptions")}
+                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                      activeTab === "subscriptions"
+                        ? "bg-primary text-[#111111] shadow"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <Users size={13} /> Client Accounts ({profiles.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("storage")}
+                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                      activeTab === "storage"
+                        ? "bg-primary text-[#111111] shadow"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <HardDrive size={13} /> R2 10 GB Storage Monitor
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* TAB 1: ORDERS WITH INTERACTIVE MILESTONE TIMELINE STEPPER */}
         {activeTab === "orders" && (
@@ -2131,104 +2127,10 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB 4: ASSETS CMS */}
-        {activeTab === "assets" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-heading font-extrabold text-base text-[#111111]">
-                  Cloudflare R2 Asset Inventory
-                </h3>
-                <p className="text-xs text-[#726F6D]">
-                  Live object storage assets ({filteredAssets.length} items) across templates, slides, and marquees.
-                </p>
-              </div>
-            </div>
 
-            {filteredAssets.length === 0 ? (
-              <div className="hex-card bg-white border border-[#111111]/10 p-12 text-center">
-                <Cloud className="w-12 h-12 text-[#FCBF14] mx-auto mb-3 opacity-60" />
-                <h4 className="font-heading font-bold text-sm text-[#111111] mb-1">No Assets Found</h4>
-                <p className="text-xs text-[#726F6D]">
-                  No storage objects match "{searchTerm}". Try clearing your search or upload new assets via the Templates or Storage tabs.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredAssets.map((ast: any) => (
-                  <div
-                    key={ast.id}
-                    className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm p-4 flex flex-col justify-between"
-                  >
-                    <div className="aspect-[16/10] bg-[#111111] rounded-xl overflow-hidden mb-3 flex items-center justify-center relative group">
-                      {ast.isPptx || ast.url?.endsWith(".pptx") ? (
-                        <div className="text-center p-4">
-                          <FileText className="w-12 h-12 text-[#FCBF14] mx-auto mb-2" />
-                          <span className="text-[10px] font-black text-[#FFF9E8] uppercase tracking-wider block">
-                            PowerPoint Master
-                          </span>
-                          {ast.sizeMB && (
-                            <span className="text-[10px] text-gray-400 block mt-0.5">
-                              {ast.sizeMB} MB
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <img
-                          src={ast.url}
-                          alt={ast.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      )}
-                      <a
-                        href={ast.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black transition-colors"
-                        title="Open asset directly"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
-                    </div>
 
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2 py-0.5 uppercase">
-                          {ast.category}
-                        </span>
-                        {ast.sizeMB && !ast.isPptx && (
-                          <span className="text-[10px] font-bold text-[#726F6D]">
-                            {ast.sizeMB} MB
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="font-heading font-extrabold text-sm text-[#111111] mb-1 truncate" title={ast.title}>
-                        {ast.title}
-                      </h4>
-                      <p className="text-[10px] font-mono text-[#726F6D] bg-black/5 px-2 py-1 rounded truncate mb-3" title={ast.url}>
-                        {ast.url}
-                      </p>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(ast.url);
-                          setCopiedUrlKey(ast.key);
-                          setTimeout(() => setCopiedUrlKey(null), 2000);
-                        }}
-                        className="hex-pill w-full bg-[#FFF9E8] hover:bg-primary text-[#111111] font-black text-xs py-2 flex items-center justify-center gap-1.5 transition-all border border-[#111111]/10"
-                      >
-                        {copiedUrlKey === ast.key ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                        {copiedUrlKey === ast.key ? "Copied CDN URL!" : "Copy CDN Link"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 5: GLOBAL SITE COPY & PRICING CONFIGURATION */}
-        {activeTab === "config" && (
+        {/* SITE CUSTOMIZATION STUDIO (8 PAGES) */}
+        {activeTab === "customization" && (
           <div className="space-y-8">
             {configSavedSuccess && (
               <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-pulse">
@@ -2242,10 +2144,10 @@ export default function Admin() {
               </div>
             )}
 
-            {/* Page Customizer Sub-Navigation Pills */}
+            {/* Site Customization Sub-Navigation Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
               {[
-                { id: "home", label: "Homepage Header", icon: Home },
+                { id: "home", label: "Homepage Header & Features", icon: Home },
                 { id: "marquee", label: "Hero Marquee", icon: Layers },
                 { id: "testimonials", label: "Client Testimonials", icon: MessageSquare },
                 { id: "services", label: "Services & Before/After", icon: Settings },
@@ -2253,9 +2155,6 @@ export default function Admin() {
                 { id: "about", label: "About & Story", icon: Building2 },
                 { id: "contact", label: "Contact & Channels", icon: Phone },
                 { id: "footer", label: "Footer Links", icon: Compass },
-                { id: "pricing", label: "Pricing Rates", icon: DollarSign },
-                { id: "payments", label: "Razorpay Gateway", icon: CreditCard },
-                { id: "emails", label: "Zoho Mail Senders", icon: Mail },
               ].map((subTab) => {
                 const IconComponent = subTab.icon;
                 return (
@@ -2416,77 +2315,152 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* FEATURED TEMPLATES PICKER ON HOMEPAGE */}
+                {/* FEATURED TEMPLATES PICKER ON HOMEPAGE (R2 STOREFRONT CARDS) */}
                 <div className="pt-6 border-t border-[#111111]/8 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                        Featured Templates on Homepage
-                      </h4>
-                      <p className="text-xs text-[#726F6D]">
-                        Choose which presentation templates appear in the curated storefront showcase on the landing page.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveConfig("featured_templates", siteConfigs["featured_templates"] || { ids: templates.slice(0, 8).map(t => t.id) })}
-                      disabled={configSaving}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
-                    >
-                      Save Featured Picks
-                    </button>
-                  </div>
+                  {(() => {
+                    const getFeaturedIds = (): string[] => {
+                      const raw = siteConfigs["featured_templates"];
+                      if (!raw) return templates.slice(0, 8).map(t => String(t.id));
+                      if (Array.isArray(raw)) return raw.map(String);
+                      if (Array.isArray(raw.ids)) return raw.ids.map(String);
+                      if (typeof raw === "string") {
+                        try {
+                          const parsed = JSON.parse(raw);
+                          if (Array.isArray(parsed)) return parsed.map(String);
+                          if (Array.isArray(parsed?.ids)) return parsed.ids.map(String);
+                        } catch (e) {}
+                      }
+                      return templates.slice(0, 8).map(t => String(t.id));
+                    };
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto p-2 bg-[#FFF9E8] rounded-xl border border-[#111111]/10">
-                    {templates.map((tmpl) => {
-                      const selectedIds: string[] = siteConfigs["featured_templates"]?.ids || templates.slice(0, 8).map(t => t.id);
-                      const isSelected = selectedIds.includes(tmpl.id);
+                    const selectedIds = getFeaturedIds();
 
-                      return (
-                        <div
-                          key={tmpl.id}
-                          onClick={() => {
-                            let updated: string[];
-                            if (isSelected) {
-                              updated = selectedIds.filter(id => id !== tmpl.id);
-                            } else {
-                              updated = [...selectedIds, tmpl.id];
-                            }
-                            setSiteConfigs({
-                              ...siteConfigs,
-                              featured_templates: { ids: updated }
-                            });
-                          }}
-                          className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
-                            isSelected 
-                              ? "bg-white border-primary shadow-sm" 
-                              : "bg-white/60 border-transparent opacity-60 hover:opacity-100"
-                          }`}
-                        >
-                          <img 
-                            src={tmpl.image_url || tmpl.thumbnail_url || tmpl.image || "/portfolio/case_study_a_1.png"} 
-                            alt={tmpl.title} 
-                            className="w-12 h-9 object-cover rounded-md border border-[#111111]/10 flex-shrink-0" 
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-black uppercase text-primary-amber tracking-wider truncate">
-                                {tmpl.category}
-                              </span>
-                              <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${
-                                isSelected ? "bg-primary text-[#111111]" : "bg-gray-200 text-gray-500"
-                              }`}>
-                                {isSelected ? <Check size={8} strokeWidth={3} /> : <Plus size={8} strokeWidth={3} />}
+                    return (
+                      <>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9E8] p-4 rounded-2xl border border-primary/30">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-sm font-heading font-extrabold text-[#111111]">
+                                Featured Templates on Homepage
+                              </h4>
+                              <span className="hex-pill-sm bg-primary text-[#111111] font-black text-[10px] px-2.5 py-0.5">
+                                {selectedIds.length} Selected
                               </span>
                             </div>
-                            <h5 className="text-xs font-bold text-[#111111] truncate">
-                              {tmpl.title}
-                            </h5>
+                            <p className="text-xs text-[#726F6D]">
+                              Curate which Cloudflare R2 presentation decks appear in the storefront showcase on the landing page. Clicking a card toggles its feature status.
+                            </p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveConfig("featured_templates", { ids: selectedIds })}
+                            disabled={configSaving}
+                            className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs shadow flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          >
+                            <Save size={13} /> {configSaving ? "Saving..." : "Save Featured Picks"}
+                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[540px] overflow-y-auto p-3 bg-white rounded-2xl border border-[#111111]/10">
+                          {templates.map((tmpl) => {
+                            const isSelected = selectedIds.some(id => 
+                              id === String(tmpl.id) || 
+                              (tmpl.slug && id === String(tmpl.slug)) || 
+                              (tmpl.code && id === String(tmpl.code))
+                            );
+
+                            const toggleFeature = () => {
+                              let updated: string[];
+                              if (isSelected) {
+                                updated = selectedIds.filter(id => 
+                                  id !== String(tmpl.id) && 
+                                  id !== String(tmpl.slug) && 
+                                  id !== String(tmpl.code)
+                                );
+                              } else {
+                                updated = [...selectedIds, String(tmpl.id)];
+                              }
+                              setSiteConfigs({
+                                ...siteConfigs,
+                                featured_templates: { ids: updated }
+                              });
+                            };
+
+                            const previewImg = normalizeR2Url(
+                              tmpl.image_url || tmpl.thumbnail_url || tmpl.image || "/portfolio/case_study_a_1.png"
+                            );
+
+                            return (
+                              <div
+                                key={tmpl.id}
+                                onClick={toggleFeature}
+                                className={`hex-card rounded-2xl overflow-hidden border-2 transition-all cursor-pointer flex flex-col justify-between group ${
+                                  isSelected
+                                    ? "bg-[#FFF9E8]/90 border-primary shadow-md ring-2 ring-primary/40"
+                                    : "bg-white border-[#111111]/10 opacity-70 hover:opacity-100 hover:border-primary/50"
+                                }`}
+                              >
+                                <div>
+                                  {/* R2 Preview Thumbnail */}
+                                  <div className="relative aspect-[16/10] overflow-hidden bg-black/5 border-b border-[#111111]/10">
+                                    <img
+                                      src={previewImg}
+                                      alt={tmpl.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                                      <span className="hex-pill-sm bg-[#111111]/90 backdrop-blur-md text-white border border-white/10 text-[9px] font-extrabold px-2.5 py-0.5">
+                                        {tmpl.category}
+                                      </span>
+                                    </div>
+                                    <div className="absolute top-2 right-2">
+                                      <span className={`hex-pill-sm text-[9px] font-black px-2.5 py-0.5 shadow flex items-center gap-1 ${
+                                        isSelected 
+                                          ? "bg-primary text-[#111111] border border-[#111111]/20" 
+                                          : "bg-[#111111]/80 text-white border border-white/10"
+                                      }`}>
+                                        {isSelected ? <Check size={10} strokeWidth={3} /> : <Plus size={10} strokeWidth={3} />}
+                                        {isSelected ? "Featured" : "Click to Feature"}
+                                      </span>
+                                    </div>
+                                    <div className="absolute bottom-2 left-2">
+                                      <span className="hex-pill-sm bg-[#111111]/90 backdrop-blur-md text-primary text-[9px] font-black px-2 py-0.5 border border-primary/30">
+                                        {tmpl.code || `SLD-${String(tmpl.id).slice(0, 4).toUpperCase()}`}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Card Body */}
+                                  <div className="p-3">
+                                    <h5 className="font-heading font-extrabold text-xs text-[#111111] line-clamp-1 mb-1 group-hover:text-primary-amber transition-colors">
+                                      {tmpl.title}
+                                    </h5>
+                                    <div className="flex items-center justify-between text-[10px] text-[#726F6D] font-medium">
+                                      <span>{tmpl.slides_count || tmpl.slide_count || 25} Master Slides</span>
+                                      <span className="font-heading font-black text-[#111111]">
+                                        ₹{tmpl.price_inr || 499}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="px-3 pb-3 pt-1">
+                                  <div className={`w-full py-1.5 rounded-lg text-center text-[10px] font-black transition-all ${
+                                    isSelected 
+                                      ? "bg-primary text-[#111111]" 
+                                      : "bg-[#111111]/5 text-[#726F6D] group-hover:bg-primary/20 group-hover:text-[#111111]"
+                                  }`}>
+                                    {isSelected ? "Selected for Homepage" : "Select to Feature"}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* BEFORE & AFTER SLIDER CUSTOMIZER */}
@@ -4289,9 +4263,50 @@ export default function Admin() {
                 </div>
               </div>
             )}
+          </div>
+        )}
 
-            {/* SUB-TAB 7: PRICING CMS */}
-            {activeCmsSubTab === "pricing" && (
+        {/* PRICING & BILLING GATEWAY */}
+        {activeTab === "billing" && (
+          <div className="space-y-8">
+            {configSavedSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-pulse">
+                <CheckCircle2 size={16} /> Changes saved successfully to live website database!
+              </div>
+            )}
+            {configValidationError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-shake">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0" /> {configValidationError}
+              </div>
+            )}
+
+            {/* Sub-nav for Pricing & Billing */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
+              {[
+                { id: "rates", label: "Pricing Rates & Retainers", icon: DollarSign },
+                { id: "payments", label: "Razorpay Gateway", icon: CreditCard },
+                { id: "emails", label: "Zoho Mail Senders", icon: Mail },
+              ].map((subTab) => {
+                const IconComponent = subTab.icon;
+                return (
+                  <button
+                    key={subTab.id}
+                    onClick={() => setActivePricingSubTab(subTab.id as any)}
+                    className={`hex-pill px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activePricingSubTab === subTab.id
+                        ? "bg-primary text-[#111111] shadow-md scale-105"
+                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <IconComponent size={13} />
+                    {subTab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* SUB-TAB: PRICING CMS */}
+            {activePricingSubTab === "rates" && (
               <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm">
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8 mb-6">
                   <div>
@@ -4534,8 +4549,8 @@ export default function Admin() {
               </div>
             )}
 
-            {/* SUB-TAB 10: RAZORPAY PAYMENT GATEWAY SETTINGS */}
-            {activeCmsSubTab === "payments" && (
+            {/* SUB-TAB: RAZORPAY PAYMENT GATEWAY SETTINGS */}
+            {activePricingSubTab === "payments" && (
               <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
@@ -4662,8 +4677,8 @@ export default function Admin() {
               </div>
             )}
 
-            {/* SUB-TAB 11: ZOHO MAIL SENDER ROUTING */}
-            {activeCmsSubTab === "emails" && (
+            {/* SUB-TAB: ZOHO MAIL SENDER ROUTING */}
+            {activePricingSubTab === "emails" && (
               <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
@@ -6958,101 +6973,7 @@ export default function Admin() {
         )}
       </AnimatePresence>
 
-      {/* MODAL: ADD ASSET */}
-      <AnimatePresence>
-        {isAddAssetOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl"
-            >
-              <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-4">
-                Add / Update Dynamic Asset
-              </h3>
 
-              <form onSubmit={handleSaveAsset} className="space-y-3.5">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Asset Unique Key *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. hero_slide_banner_1"
-                    value={assetKey}
-                    onChange={(e) => setAssetKey(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Executive Keynote Sample"
-                      value={assetTitle}
-                      onChange={(e) => setAssetTitle(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Category
-                    </label>
-                    <select
-                      value={assetCategory}
-                      onChange={(e) => setAssetCategory(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                    >
-                      <option value="portfolio">portfolio</option>
-                      <option value="marquee">marquee</option>
-                      <option value="comparison">comparison</option>
-                      <option value="logo">logo</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Asset Image URL * (Cloudflare R2 / Local path / URL)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="/portfolio/case_study_a_1.png or https://..."
-                    value={assetUrl}
-                    onChange={(e) => setAssetUrl(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddAssetOpen(false)}
-                    className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSavingAsset}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs"
-                  >
-                    {isSavingAsset ? "Saving..." : "Save Asset"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* MODAL: ORDER DETAILS & MILESTONE STEPPER */}
       <AnimatePresence>
