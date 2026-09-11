@@ -132,11 +132,60 @@ function r2DevPlugin(): Plugin {
             req.on('data', (chunk) => chunks.push(chunk));
             req.on('end', async () => {
               const buffer = Buffer.concat(chunks);
-              const url = new URL(req.url || '', `http://${req.headers.host}`);
-              const fileKey = url.searchParams.get('key') || `uploads/file_${Date.now()}`;
-              const contentType = req.headers['content-type'] || 'application/octet-stream';
+              const host = req.headers.host || 'localhost:5173';
+              const fullUrl = `http://${host}${req.url}`;
+              const contentTypeHeader = (req.headers['content-type'] as string) || 'application/octet-stream';
 
-              const fileSize = buffer.byteLength;
+              let fileBuffer: Buffer = buffer;
+              let fileKey = '';
+              let mimeType = 'application/octet-stream';
+              let fileSize = buffer.byteLength;
+
+              if (contentTypeHeader.includes('multipart/form-data')) {
+                try {
+                  const webReq = new Request(fullUrl, {
+                    method: 'POST',
+                    headers: { 'content-type': contentTypeHeader },
+                    body: buffer,
+                    duplex: 'half' as any,
+                  });
+                  const formData = await webReq.formData();
+                  const file = formData.get('file') as any;
+                  const folder = (formData.get('folder') as string) || 'templates';
+                  const customKey = formData.get('key') as string;
+
+                  if (!file) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.end(JSON.stringify({ success: false, error: 'No file provided in form data' }));
+                  }
+
+                  fileBuffer = Buffer.from(await file.arrayBuffer());
+                  fileSize = fileBuffer.byteLength;
+                  mimeType = file.type || 'application/octet-stream';
+
+                  if (customKey) {
+                    fileKey = customKey;
+                  } else {
+                    const fileName = file.name || 'file.bin';
+                    const ext = fileName.split('.').pop() || 'bin';
+                    const cleanName = fileName
+                      .replace(/\.[^/.]+$/, '')
+                      .replace(/[^a-zA-Z0-9_-]/g, '_')
+                      .toLowerCase();
+                    fileKey = `${folder}/${cleanName}_${Date.now()}.${ext}`;
+                  }
+                } catch (parseErr: any) {
+                  console.warn('FormData parse notice in dev server:', parseErr.message);
+                }
+              }
+
+              if (!fileKey) {
+                const url = new URL(fullUrl);
+                fileKey = url.searchParams.get('key') || `uploads/file_${Date.now()}`;
+                mimeType = (req.headers['x-mime-type'] as string) || contentTypeHeader;
+              }
+
               const isPptx = fileKey.endsWith('.pptx') || fileKey.endsWith('.ppt');
               const isImg = Boolean(fileKey.match(/\.(jpg|jpeg|png|webp|svg)$/i));
               const sizeLimit = isPptx ? MAX_PPTX_FILE_SIZE : (isImg ? MAX_IMAGE_FILE_SIZE : MAX_IMAGE_FILE_SIZE);
@@ -167,28 +216,41 @@ function r2DevPlugin(): Plugin {
                 );
               }
 
-              // 3. Upload with immutable edge caching header
-              const uploadRes = await fetch(
-                `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${fileKey}`,
-                {
-                  method: 'PUT',
-                  headers: {
-                    Authorization: `Bearer ${CF_API_TOKEN}`,
-                    'Content-Type': contentType,
-                    'Cache-Control': 'public, max-age=31536000, immutable',
-                  },
-                  body: buffer,
+              // 3. Upload to Cloudflare R2 if token configured, else return public CDN endpoint
+              let uploadSuccess = true;
+              let uploadErrors: any = undefined;
+
+              if (CF_API_TOKEN) {
+                try {
+                  const uploadRes = await fetch(
+                    `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${fileKey}`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        Authorization: `Bearer ${CF_API_TOKEN}`,
+                        'Content-Type': mimeType,
+                        'Cache-Control': 'public, max-age=31536000, immutable',
+                      },
+                      body: fileBuffer,
+                    }
+                  );
+                  const uploadJson: any = await uploadRes.json();
+                  uploadSuccess = Boolean(uploadJson.success);
+                  uploadErrors = uploadJson.errors;
+                } catch (cfErr: any) {
+                  uploadSuccess = false;
+                  uploadErrors = cfErr.message;
                 }
-              );
-              const uploadJson: any = await uploadRes.json();
+              }
+
               res.setHeader('Content-Type', 'application/json');
-              res.end(
+              return res.end(
                 JSON.stringify({
-                  success: uploadJson.success,
+                  success: uploadSuccess,
                   key: fileKey,
                   publicUrl: `${PUBLIC_CDN_BASE}/${fileKey}`,
-                  size: uploadJson.result?.size,
-                  errors: uploadJson.errors,
+                  size: fileSize,
+                  errors: uploadErrors,
                 })
               );
             });

@@ -149,17 +149,20 @@ export default function Admin() {
   const [newTitle, setNewTitle] = useState("");
   const [newCode, setNewCode] = useState(`SLD-${Math.floor(100 + Math.random() * 900)}`);
   const [newCategory, setNewCategory] = useState("Pitch Decks");
-  const [newPriceINR, setNewPriceINR] = useState(499);
-  const [newPriceUSD, setNewPriceUSD] = useState(9);
-  const [newSlideCount, setNewSlideCount] = useState(25);
+  const [newPriceINR, setNewPriceINR] = useState<number | string>(499);
+  const [newPriceUSD, setNewPriceUSD] = useState<number | string>(9);
+  const [newSlideCount, setNewSlideCount] = useState<number | string>(25);
   const [newDesc, setNewDesc] = useState("");
-  const [newThumbnail, setNewThumbnail] = useState("/portfolio/case_study_a_1.png");
+  const [newThumbnail, setNewThumbnail] = useState("");
   const [newSlides, setNewSlides] = useState<string[]>([]);
   const [newPptUrl, setNewPptUrl] = useState("");
   const [newPptFilename, setNewPptFilename] = useState("");
   const [newPptSize, setNewPptSize] = useState("");
   const [isUploadingPpt, setIsUploadingPpt] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [addTemplateWarning, setAddTemplateWarning] = useState("");
+  const [editTemplateWarning, setEditTemplateWarning] = useState("");
   const AVAILABLE_FORMAT_TAGS = ["PowerPoint", "Google Slides", "Keynote", "Canva", "Figma"];
   const [newFormats, setNewFormats] = useState<string[]>([]);
   const [newIsCreditEligible, setNewIsCreditEligible] = useState(false);
@@ -790,7 +793,32 @@ export default function Admin() {
   // Create Single Template
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle) return;
+    setAddTemplateWarning("");
+
+    if (!newTitle.trim()) {
+      setAddTemplateWarning("Please enter a Template Title.");
+      return;
+    }
+    if (!newPptUrl) {
+      setAddTemplateWarning("Please upload the Master PowerPoint (.pptx) file to Cloudflare R2 before publishing.");
+      return;
+    }
+    if (!newThumbnail) {
+      setAddTemplateWarning("Please upload the Primary Cover Image before publishing.");
+      return;
+    }
+    if (newPriceINR === "" || isNaN(Number(newPriceINR)) || Number(newPriceINR) < 0) {
+      setAddTemplateWarning("Please enter a valid Price in INR (₹).");
+      return;
+    }
+    if (newPriceUSD === "" || isNaN(Number(newPriceUSD)) || Number(newPriceUSD) < 0) {
+      setAddTemplateWarning("Please enter a valid Price in USD ($).");
+      return;
+    }
+    if (newSlideCount === "" || isNaN(Number(newSlideCount)) || Number(newSlideCount) < 1) {
+      setAddTemplateWarning("Please enter a valid Total Slides Count (minimum 1).");
+      return;
+    }
 
     setIsCreatingTemplate(true);
     const slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -800,10 +828,10 @@ export default function Admin() {
     const effectiveSlideCount = Number(newSlideCount) || effectiveSlides.length;
 
     const payload = {
-      title: newTitle,
+      title: newTitle.trim(),
       slug,
       code: templateCode,
-      description: newDesc || "Executive presentation deck layout.",
+      description: newDesc.trim() || "Executive presentation deck layout.",
       category: newCategory,
       price_inr: Number(newPriceINR),
       price_usd: Number(newPriceUSD),
@@ -813,8 +841,8 @@ export default function Admin() {
       thumbnail_url: newThumbnail,
       image_url: newThumbnail,
       slides: effectiveSlides,
-      download_url: newPptUrl || newThumbnail,
-      formats: newFormats,
+      download_url: newPptUrl,
+      formats: newFormats.length > 0 ? newFormats : ["PowerPoint"],
       features: [
         `${effectiveSlideCount}+ High-Impact Slides`,
         "16:9 Widescreen Layout",
@@ -834,7 +862,7 @@ export default function Admin() {
       setIsAddTemplateOpen(false);
       setNewTitle("");
       setNewDesc("");
-      setNewThumbnail("/portfolio/case_study_a_1.png");
+      setNewThumbnail("");
       setNewSlides([]);
       setNewPptUrl("");
       setNewPptFilename("");
@@ -842,11 +870,13 @@ export default function Admin() {
       setNewFormats([]);
       setNewIsCreditEligible(false);
       setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
+      setAddTemplateWarning("");
     } else {
       // Fallback local persistence if insert notice
       const fallbackItem = { id: `tpl-${Date.now()}`, ...payload };
       setTemplates([fallbackItem, ...templates]);
       setIsAddTemplateOpen(false);
+      setAddTemplateWarning("");
     }
     setIsCreatingTemplate(false);
   };
@@ -870,7 +900,7 @@ export default function Admin() {
       price_usd: tpl.price_usd ?? 9,
       slide_count: tpl.slide_count || tpl.slides_count || rawSlides.length || 25,
       description: tpl.description || "",
-      thumbnail_url: tpl.thumbnail_url || tpl.image_url || tpl.image || "/portfolio/case_study_a_1.png",
+      thumbnail_url: tpl.thumbnail_url || tpl.image_url || tpl.image || (rawSlides[0] || ""),
       slides: rawSlides,
       download_url: tpl.download_url || "",
       formats: rawFormats,
@@ -878,13 +908,31 @@ export default function Admin() {
       is_published: tpl.is_published !== false,
       is_credit_eligible: Boolean(tpl.is_credit_eligible)
     });
+    setEditTemplateWarning("");
     setIsEditTemplateOpen(true);
   };
 
   // Save Template Edits to Supabase
   const handleSaveEditTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTemplate || !editingTemplate.title) return;
+    setEditTemplateWarning("");
+
+    if (!editingTemplate || !editingTemplate.title?.trim()) {
+      setEditTemplateWarning("Please enter a Template Title.");
+      return;
+    }
+    if (editingTemplate.price_inr === "" || isNaN(Number(editingTemplate.price_inr)) || Number(editingTemplate.price_inr) < 0) {
+      setEditTemplateWarning("Please enter a valid Price in INR (₹).");
+      return;
+    }
+    if (editingTemplate.price_usd === "" || isNaN(Number(editingTemplate.price_usd)) || Number(editingTemplate.price_usd) < 0) {
+      setEditTemplateWarning("Please enter a valid Price in USD ($).");
+      return;
+    }
+    if (editingTemplate.slide_count === "" || isNaN(Number(editingTemplate.slide_count)) || Number(editingTemplate.slide_count) < 1) {
+      setEditTemplateWarning("Please enter a valid Total Slides Count (minimum 1).");
+      return;
+    }
 
     setIsSavingEditTemplate(true);
     const existingTpl = templates.find((t) => t.id === editingTemplate.id);
@@ -1027,7 +1075,7 @@ export default function Admin() {
     }
   };
 
-  // Upload Local PPT / PPTX / PDF File
+  // Upload Local PPT / PPTX / PDF File to Cloudflare R2
   const handlePptFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1042,6 +1090,7 @@ export default function Admin() {
       const r2Res = await uploadToR2(file, { folder: "templates/decks", fileName: file.name });
       if (r2Res.success && r2Res.publicUrl) {
         setNewPptUrl(r2Res.publicUrl);
+        setAddTemplateWarning("");
       } else {
         throw new Error(r2Res.error || "Upload failed");
       }
@@ -1049,11 +1098,60 @@ export default function Admin() {
       alert("Failed to upload Master PPTX to Cloudflare R2: " + (err.message || err));
     } finally {
       setIsUploadingPpt(false);
+      if (e.target) e.target.value = "";
     }
 
     if (!newTitle) {
       const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
       setNewTitle(cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1));
+    }
+  };
+
+  // Upload Dedicated Primary Cover Image to Cloudflare R2
+  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    try {
+      const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+      if (r2Res.success && r2Res.publicUrl) {
+        setNewThumbnail(r2Res.publicUrl);
+        setAddTemplateWarning("");
+      } else {
+        throw new Error(r2Res.error || "Upload failed");
+      }
+    } catch (err: any) {
+      alert("Failed to upload Primary Cover image to Cloudflare R2: " + (err.message || err));
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  // Upload Dedicated Primary Cover Image in Edit Modal to Cloudflare R2
+  const handleEditCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    try {
+      const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+      if (r2Res.success && r2Res.publicUrl) {
+        setEditingTemplate((prev: any) => ({
+          ...prev,
+          thumbnail_url: r2Res.publicUrl,
+          image_url: r2Res.publicUrl
+        }));
+        setEditTemplateWarning("");
+      } else {
+        throw new Error(r2Res.error || "Upload failed");
+      }
+    } catch (err: any) {
+      alert("Failed to upload Cover image to Cloudflare R2: " + (err.message || err));
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -1076,13 +1174,14 @@ export default function Admin() {
         setNewSlideCount(next.length);
         return next;
       });
-      if (!newThumbnail || newThumbnail.startsWith("/portfolio/case_study_a_1")) {
-        if (uploadedUrls.length > 0) setNewThumbnail(uploadedUrls[0]);
+      if (!newThumbnail && uploadedUrls.length > 0) {
+        setNewThumbnail(uploadedUrls[0]);
       }
     } catch (err: any) {
       alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
     } finally {
       setIsUploadingSlide(false);
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -1221,18 +1320,20 @@ export default function Admin() {
   const handleSaveConfig = async (key: string, value: any) => {
     setConfigValidationError("");
 
-    // Validate that no string field in the payload is blank / empty
+    // Validate that no field in the payload is blank / empty / NaN
     const checkEmpty = (data: any): boolean => {
+      if (data === null || data === undefined) return true;
       if (typeof data === "string") return data.trim() === "";
+      if (typeof data === "number") return isNaN(data);
       if (Array.isArray(data)) return data.some(item => checkEmpty(item));
-      if (typeof data === "object" && data !== null) {
+      if (typeof data === "object") {
         return Object.values(data).some(val => checkEmpty(val));
       }
       return false;
     };
 
     if (value && checkEmpty(value)) {
-      setConfigValidationError("Cannot save with empty text fields. Please enter text before saving.");
+      setConfigValidationError("Cannot save with empty or invalid fields. Please enter all required values before saving.");
       setTimeout(() => setConfigValidationError(""), 5000);
       return;
     }
@@ -1514,7 +1615,10 @@ export default function Admin() {
                         <FileSpreadsheet size={14} /> Bulk CSV Import
                       </button>
                       <button
-                        onClick={() => setIsAddTemplateOpen(true)}
+                        onClick={() => {
+                          setAddTemplateWarning("");
+                          setIsAddTemplateOpen(true);
+                        }}
                         className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
                       >
                         <Plus size={14} /> Add Single
@@ -4433,10 +4537,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_redesign || 19}
+                          value={siteConfigs["pricing"]?.rate_usd_redesign ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_redesign: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_usd_redesign: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4447,10 +4551,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_redesign || 1499}
+                          value={siteConfigs["pricing"]?.rate_inr_redesign ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_redesign: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_inr_redesign: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4469,10 +4573,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_pitch || 29}
+                          value={siteConfigs["pricing"]?.rate_usd_pitch ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_pitch: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_usd_pitch: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4483,10 +4587,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_pitch || 2299}
+                          value={siteConfigs["pricing"]?.rate_inr_pitch ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_pitch: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_inr_pitch: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4505,10 +4609,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_executive || 49}
+                          value={siteConfigs["pricing"]?.rate_usd_executive ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_executive: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_usd_executive: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4519,10 +4623,10 @@ export default function Admin() {
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_executive || 3899}
+                          value={siteConfigs["pricing"]?.rate_inr_executive ?? ""}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_executive: Number(e.target.value) }
+                            pricing: { ...siteConfigs["pricing"], rate_inr_executive: e.target.value === "" ? "" : Number(e.target.value) }
                           })}
                           className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
                         />
@@ -4547,12 +4651,12 @@ export default function Admin() {
                       </label>
                       <input
                         type="number"
-                        value={siteConfigs["pricing"]?.pro_monthly_inr ?? 199}
+                        value={siteConfigs["pricing"]?.pro_monthly_inr ?? ""}
                         onChange={(e) => setSiteConfigs({
                           ...siteConfigs,
                           pricing: { 
                             ...siteConfigs["pricing"], 
-                            pro_monthly_inr: Number(e.target.value) 
+                            pro_monthly_inr: e.target.value === "" ? "" : Number(e.target.value) 
                           }
                         })}
                         className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
@@ -4565,12 +4669,12 @@ export default function Admin() {
                       </label>
                       <input
                         type="number"
-                        value={siteConfigs["pricing"]?.pro_discount_percent ?? 50}
+                        value={siteConfigs["pricing"]?.pro_discount_percent ?? ""}
                         onChange={(e) => setSiteConfigs({
                           ...siteConfigs,
                           pricing: { 
                             ...siteConfigs["pricing"], 
-                            pro_discount_percent: Number(e.target.value) 
+                            pro_discount_percent: e.target.value === "" ? "" : Number(e.target.value) 
                           }
                         })}
                         className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
@@ -4583,12 +4687,12 @@ export default function Admin() {
                       </span>
                       <div className="text-xl font-heading font-black text-[#111111]">
                         ₹{Math.round(
-                          ((siteConfigs["pricing"]?.pro_monthly_inr ?? 199) * 12) * 
-                          (1 - (siteConfigs["pricing"]?.pro_discount_percent ?? 50) / 100)
+                          ((Number(siteConfigs["pricing"]?.pro_monthly_inr) || 199) * 12) * 
+                          (1 - (Number(siteConfigs["pricing"]?.pro_discount_percent) || 50) / 100)
                         ).toLocaleString()} <span className="text-xs font-medium text-[#726F6D]">/year</span>
                       </div>
                       <span className="text-[10px] text-green-700 font-bold">
-                        Saves {(siteConfigs["pricing"]?.pro_discount_percent ?? 50)}% compared to 12 monthly payments
+                        Saves {(Number(siteConfigs["pricing"]?.pro_discount_percent) || 50)}% compared to 12 monthly payments
                       </span>
                     </div>
                   </div>
@@ -4610,12 +4714,12 @@ export default function Admin() {
                       </label>
                       <input
                         type="number"
-                        value={siteConfigs["pricing"]?.monthly_retainer_usd ?? 1490}
+                        value={siteConfigs["pricing"]?.monthly_retainer_usd ?? ""}
                         onChange={(e) => setSiteConfigs({
                           ...siteConfigs,
                           pricing: { 
                             ...siteConfigs["pricing"], 
-                            monthly_retainer_usd: Number(e.target.value) 
+                            monthly_retainer_usd: e.target.value === "" ? "" : Number(e.target.value) 
                           }
                         })}
                         className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
@@ -4628,12 +4732,12 @@ export default function Admin() {
                       </label>
                       <input
                         type="number"
-                        value={siteConfigs["pricing"]?.monthly_retainer_inr ?? 119000}
+                        value={siteConfigs["pricing"]?.monthly_retainer_inr ?? ""}
                         onChange={(e) => setSiteConfigs({
                           ...siteConfigs,
                           pricing: { 
                             ...siteConfigs["pricing"], 
-                            monthly_retainer_inr: Number(e.target.value) 
+                            monthly_retainer_inr: e.target.value === "" ? "" : Number(e.target.value) 
                           }
                         })}
                         className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
@@ -6077,37 +6181,41 @@ export default function Admin() {
                         Appears as the main display card across the marketplace.
                       </span>
                     </div>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                    <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
                       <UploadCloud size={13} className="text-primary-amber" />
-                      <span>Upload Cover to R2</span>
+                      <span>{isUploadingCover ? "Uploading to R2..." : "Upload Cover to R2"}</span>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
-                          setNewThumbnail(dataUrl);
-                          if (newSlides.length === 0) {
-                            setNewSlides([dataUrl]);
-                            setNewSlideCount(1);
-                          } else {
-                            const updated = [...newSlides];
-                            updated[0] = dataUrl;
-                            setNewSlides(updated);
-                          }
-                        })}
+                        disabled={isUploadingCover}
+                        onChange={handleCoverImageUpload}
                         className="hidden"
                       />
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
-                    <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                      <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
+                  {newThumbnail ? (
+                    <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
+                      <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
+                        <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="text-xs text-[#726F6D] space-y-0.5 flex-1 min-w-0">
+                        <span className="font-extrabold text-[#111111] block">Cover Image Selected</span>
+                        <span className="text-[11px] block truncate">{newThumbnail}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewThumbnail("")}
+                        className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 cursor-pointer"
+                      >
+                        Remove Cover
+                      </button>
                     </div>
-                    <div className="text-xs text-[#726F6D] space-y-0.5">
-                      <span className="font-extrabold text-[#111111] block">Cover Image Selected</span>
-                      <span className="text-[11px] block truncate max-w-xs">{newThumbnail}</span>
+                  ) : (
+                    <div className="p-3.5 border-2 border-dashed border-[#111111]/15 rounded-xl text-center bg-white/60">
+                      <p className="text-xs text-[#726F6D]">No primary cover selected. Click "Upload Cover to R2" to set the catalog cover image.</p>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Multi-Slide Interior Previews Gallery */}
@@ -6282,12 +6390,12 @@ export default function Admin() {
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Total Slides Count
+                      Total Slides Count *
                     </label>
                     <input
                       type="number"
-                      value={newSlideCount}
-                      onChange={(e) => setNewSlideCount(Number(e.target.value))}
+                      value={newSlideCount ?? ""}
+                      onChange={(e) => setNewSlideCount(e.target.value === "" ? "" : Number(e.target.value))}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
@@ -6296,24 +6404,24 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Price INR (₹)
+                      Price INR (₹) *
                     </label>
                     <input
                       type="number"
-                      value={newPriceINR}
-                      onChange={(e) => setNewPriceINR(Number(e.target.value))}
+                      value={newPriceINR ?? ""}
+                      onChange={(e) => setNewPriceINR(e.target.value === "" ? "" : Number(e.target.value))}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Price USD ($)
+                      Price USD ($) *
                     </label>
                     <input
                       type="number"
-                      value={newPriceUSD}
-                      onChange={(e) => setNewPriceUSD(Number(e.target.value))}
+                      value={newPriceUSD ?? ""}
+                      onChange={(e) => setNewPriceUSD(e.target.value === "" ? "" : Number(e.target.value))}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
@@ -6370,6 +6478,13 @@ export default function Admin() {
                     {newIsCreditEligible ? "Tagged as Free" : "+ Tag as Free Template"}
                   </button>
                 </div>
+
+                {addTemplateWarning && (
+                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                    <span>{addTemplateWarning}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
                   <button
@@ -6547,19 +6662,14 @@ export default function Admin() {
                         Appears as the main display card across the marketplace.
                       </span>
                     </div>
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                    <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
                       <UploadCloud size={13} className="text-primary-amber" />
-                      <span>Upload Cover to R2</span>
+                      <span>{isUploadingCover ? "Uploading to R2..." : "Upload Cover to R2"}</span>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            thumbnail_url: dataUrl,
-                            image_url: dataUrl
-                          });
-                        })}
+                        disabled={isUploadingCover}
+                        onChange={handleEditCoverImageUpload}
                         className="hidden"
                       />
                     </label>
@@ -6778,12 +6888,12 @@ export default function Admin() {
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Total Slides Count
+                      Total Slides Count *
                     </label>
                     <input
                       type="number"
-                      value={editingTemplate.slide_count}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, slide_count: Number(e.target.value) })}
+                      value={editingTemplate.slide_count ?? ""}
+                      onChange={(e) => setEditingTemplate({ ...editingTemplate, slide_count: e.target.value === "" ? "" : Number(e.target.value) })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
@@ -6792,24 +6902,24 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Price INR (₹)
+                      Price INR (₹) *
                     </label>
                     <input
                       type="number"
-                      value={editingTemplate.price_inr}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, price_inr: Number(e.target.value) })}
+                      value={editingTemplate.price_inr ?? ""}
+                      onChange={(e) => setEditingTemplate({ ...editingTemplate, price_inr: e.target.value === "" ? "" : Number(e.target.value) })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Price USD ($)
+                      Price USD ($) *
                     </label>
                     <input
                       type="number"
-                      value={editingTemplate.price_usd}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, price_usd: Number(e.target.value) })}
+                      value={editingTemplate.price_usd ?? ""}
+                      onChange={(e) => setEditingTemplate({ ...editingTemplate, price_usd: e.target.value === "" ? "" : Number(e.target.value) })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
@@ -6881,6 +6991,13 @@ export default function Admin() {
                     )}
                   </button>
                 </div>
+
+                {editTemplateWarning && (
+                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                    <span>{editTemplateWarning}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
                   <button
