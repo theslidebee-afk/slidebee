@@ -107,7 +107,7 @@ export async function openRazorpayCheckout({
       currency,
       name: "SlideBee Studio",
       description: `${title} — ${description}`,
-      image: "https://theslidebee.com/slidebee_logo_dark.svg",
+      image: "https://theslidebee.com/logos/Slidebee_BlackBG.svg",
       prefill: {
         name: prefill?.name || "SlideBee Client",
         email: prefill?.email || "hello@theslidebee.com",
