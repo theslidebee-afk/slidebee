@@ -1,5 +1,5 @@
 -- =========================================================
--- 🐝 SlideBee Supabase Master Database Schema
+-- SlideBee Supabase Master Database Schema
 -- Run this script in your Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/ehybsghrrhjhvauldjvw/sql
 -- =========================================================
@@ -104,6 +104,25 @@ WITH CHECK (
 CREATE POLICY "Public users can join waitlist" 
 ON public.waitlist FOR INSERT 
 WITH CHECK (true);
+
+-- Waitlist: Admins can view and manage waitlist entries
+CREATE POLICY "waitlist_admin_access" 
+ON public.waitlist FOR ALL 
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 -- 3. Templates: Admin full access to manage templates
 CREATE POLICY "templates_admin_access" 
@@ -344,7 +363,108 @@ WITH CHECK (
 );
 
 -- =========================================================
--- 7. Automatic Profile Provisioning Trigger (auth.users -> public.profiles)
+-- 7. Create subscriptions table for monthly retainers and recurring billing
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    user_email TEXT NOT NULL,
+    plan_name TEXT NOT NULL,
+    amount_usd NUMERIC NOT NULL,
+    amount_inr NUMERIC NOT NULL,
+    slides_used INTEGER DEFAULT 0,
+    slides_limit INTEGER DEFAULT 80,
+    current_period_end TIMESTAMP WITH TIME ZONE,
+    status TEXT DEFAULT 'active' NOT NULL CHECK (status IN ('active', 'past_due', 'canceled', 'paused')),
+    razorpay_subscription_id TEXT
+);
+
+-- Enable RLS for subscriptions
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "subscriptions_select_policy" ON public.subscriptions;
+DROP POLICY IF EXISTS "subscriptions_admin_modify_policy" ON public.subscriptions;
+
+-- Subscriptions: Users can view their own subscription; Admins can view all
+CREATE POLICY "subscriptions_select_policy" 
+ON public.subscriptions FOR SELECT 
+TO authenticated
+USING (
+    LOWER(user_email) = LOWER(auth.jwt() ->> 'email')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
+
+-- Subscriptions: Only admins can insert, update, or delete subscription records
+CREATE POLICY "subscriptions_admin_modify_policy" 
+ON public.subscriptions FOR ALL 
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
+
+-- =========================================================
+-- 8. Create assets table for dynamic storefront media & case study assets
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    key TEXT UNIQUE NOT NULL,
+    title TEXT,
+    category TEXT DEFAULT 'general',
+    url TEXT NOT NULL,
+    alt_text TEXT,
+    metadata JSONB DEFAULT '{}'::JSONB
+);
+
+-- Enable RLS for assets
+ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "assets_select_policy" ON public.assets;
+DROP POLICY IF EXISTS "assets_admin_modify_policy" ON public.assets;
+
+-- Assets: Public can read assets (for storefront and case study showcase)
+CREATE POLICY "assets_select_policy" 
+ON public.assets FOR SELECT 
+USING (true);
+
+-- Assets: Only admins can manage assets
+CREATE POLICY "assets_admin_modify_policy" 
+ON public.assets FOR ALL 
+TO authenticated
+USING (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+)
+WITH CHECK (
+    (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
+
+-- =========================================================
+-- 9. Automatic Profile Provisioning Trigger (auth.users -> public.profiles)
 -- Runs with SECURITY DEFINER to safely bypass RLS on signup
 -- =========================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -392,7 +512,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- =========================================================
--- 8. Deep Module Views & Atomic RPC Functions
+-- 10. Deep Module Views & Atomic RPC Functions
 -- =========================================================
 
 -- Ensure is_credit_eligible column exists on templates

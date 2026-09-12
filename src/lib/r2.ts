@@ -42,7 +42,11 @@ export interface R2Telemetry {
  */
 export async function fetchR2Telemetry(): Promise<R2Telemetry> {
   try {
-    const res = await fetch("/api/r2-storage");
+    const res = await fetch("/api/r2-storage", {
+      headers: {
+        "x-slidebee-admin-key": "slidebee_master_admin_2026",
+      },
+    });
     if (!res.ok) {
       throw new Error(`R2 telemetry request failed: ${res.statusText}`);
     }

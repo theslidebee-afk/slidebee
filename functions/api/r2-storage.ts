@@ -89,7 +89,19 @@ async function getBucketTelemetry(accountId: string, bucket: string, token: stri
 // GET: Fetch live R2 telemetry and object inventory
 export async function onRequestGet(context: any) {
   try {
-    const { env } = context;
+    const { request, env } = context;
+
+    // Security Check: Require admin authorization to query R2 storage telemetry and inventory
+    if (!isAuthorizedAdmin(request, env)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unauthorized: Admin authorization required to access R2 bucket telemetry and inventory.",
+        }),
+        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
+    }
+
     const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
     const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
     const token = env?.CLOUDFLARE_API_TOKEN || "";

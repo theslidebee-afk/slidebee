@@ -5,7 +5,7 @@ import path from 'path'
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "9821e608622e999a9c0f06f52a168d97";
 const CF_BUCKET = process.env.CLOUDFLARE_R2_BUCKET || "slidebee";
-const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.VITE_CLOUDFLARE_API_TOKEN || "";
+const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || "";
 const PUBLIC_CDN_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
 
 const HARD_STORAGE_CAP_BYTES = 9.90 * 1024 * 1024 * 1024; // 9.90 GB
