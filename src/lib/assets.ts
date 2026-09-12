@@ -10,20 +10,20 @@ export interface MediaAsset {
   metadata?: Record<string, any>;
 }
 
-// In-memory fallback / cache
+// In-memory fallback / cache (optimized WebP)
 const defaultAssets: Record<string, string> = {
-  case_study_1: "/portfolio/case_study_a_1.png",
-  case_study_2: "/portfolio/case_study_a_2.png",
-  case_study_8: "/portfolio/case_study_a_8.png",
-  case_study_14: "/portfolio/case_study_a_14.png",
-  nike_cvs_1: "/portfolio/nike_hsbc_cvs_1.png",
-  nike_cvs_2: "/portfolio/nike_hsbc_cvs_2.png",
-  nike_cvs_8: "/portfolio/nike_hsbc_cvs_8.png",
-  nike_cvs_10: "/portfolio/nike_hsbc_cvs_10.png",
-  global_brands_1: "/portfolio/global_brands_1.png",
-  levis_1: "/portfolio/levis_yuengling_1.png",
-  levis_6: "/portfolio/levis_yuengling_6.png",
-  levis_7: "/portfolio/levis_yuengling_7.png"
+  case_study_1: "/portfolio/case_study_a_1.webp",
+  case_study_2: "/portfolio/case_study_a_2.webp",
+  case_study_8: "/portfolio/case_study_a_8.webp",
+  case_study_14: "/portfolio/case_study_a_14.webp",
+  nike_cvs_1: "/portfolio/nike_hsbc_cvs_1.webp",
+  nike_cvs_2: "/portfolio/nike_hsbc_cvs_2.webp",
+  nike_cvs_8: "/portfolio/nike_hsbc_cvs_8.webp",
+  nike_cvs_10: "/portfolio/nike_hsbc_cvs_10.webp",
+  global_brands_1: "/portfolio/global_brands_1.webp",
+  levis_1: "/portfolio/levis_yuengling_1.webp",
+  levis_6: "/portfolio/levis_yuengling_6.webp",
+  levis_7: "/portfolio/levis_yuengling_7.webp"
 };
 
 let cachedAssets: Record<string, string> = { ...defaultAssets };
@@ -43,5 +43,5 @@ export async function loadAssetsFromDatabase(): Promise<Record<string, string>> 
 }
 
 export function getAssetUrl(key: string): string {
-  return cachedAssets[key] || defaultAssets[key] || "/portfolio/case_study_a_1.png";
+  return cachedAssets[key] || defaultAssets[key] || "/portfolio/case_study_a_1.webp";
 }

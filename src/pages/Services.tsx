@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   X
 } from "lucide-react";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 const STORAGE_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides";
 
@@ -31,27 +32,30 @@ const defaultTopMarqueeSlides = [
 ];
 
 const defaultBottomMarqueeSlides = [
-  `${STORAGE_BASE}/cvs_health_slide-1.jpg`,
-  `${STORAGE_BASE}/british_american_slide-1.jpg`,
-  `${STORAGE_BASE}/levis_slide-1.jpg`,
-  `${STORAGE_BASE}/accenture_slide-2.jpg`,
-  `${STORAGE_BASE}/nike_slide-2.jpg`,
-  `${STORAGE_BASE}/volvo_slide-2.jpg`,
+  `${STORAGE_BASE}/hsbc_slide-1.jpg`,
+  `${STORAGE_BASE}/intel_slide-1.jpg`,
+  `${STORAGE_BASE}/volvo_slide-1.jpg`,
+  `${STORAGE_BASE}/nike_slide-1.jpg`,
+  `${STORAGE_BASE}/tag_slide-1.jpg`,
+  `${STORAGE_BASE}/accenture_slide-1.jpg`,
 ];
 
 const defaultWorkedCompanies = [
-  { name: "Accenture", category: "Consulting & Strategy" },
-  { name: "Nike", category: "Retail & Innovation" },
-  { name: "Volvo", category: "Automotive & Mobility" },
-  { name: "Intel", category: "Silicon & Cloud Compute" },
-  { name: "HSBC", category: "Global Banking & Compliance" },
-  { name: "CVS Health", category: "Healthcare & Omnichannel" },
-  { name: "British American", category: "Global Enterprise Strategy" },
+  { name: "Nike", category: "Global Strategy" },
+  { name: "Accenture", category: "Enterprise Transformation" },
+  { name: "HSBC", category: "Capital Markets & Banking" },
+  { name: "Intel", category: "Semiconductors & DeepTech" },
+  { name: "Volvo Group", category: "Automotive & Industrial" },
   { name: "Levi's", category: "Consumer Brands" },
   { name: "Williams Lea Tag", category: "Creative Production & RFP" }
 ];
 
 export default function Services() {
+  usePageSEO({
+    title: "Executive Presentation Design Services | SlideBee",
+    description: "Full-service presentation design studio: pitch deck design, keynote polish, board decks, financial data visualization, and master template design in 24h–48h.",
+  });
+
   const [sliderPosition, setSliderPosition] = useState(50);
   const [selectedService, setSelectedService] = useState<string>("redesign");
   const [customServices, setCustomServices] = useState<Record<string, any>>({});

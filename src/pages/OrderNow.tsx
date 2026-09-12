@@ -13,8 +13,10 @@ import {
   Layers,
   ChevronDown,
   Check,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
+import { usePageSEO } from '../hooks/usePageSEO';
 
 interface SlideBeeSelectProps {
   label: string;
@@ -154,6 +156,12 @@ export default function OrderNow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  usePageSEO({
+    title: "Order Custom Presentation Design | SlideBee",
+    description: "Submit your presentation design brief. 24h–48h turnaround, senior art director assignment, signed NDA, 100% editable PPTX.",
+  });
 
   const services = [
     'Presentation Redesign',
@@ -237,6 +245,19 @@ export default function OrderNow() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setFormError("Please provide your full name and email address so our creative lead can confirm your scope.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setFormError("Please provide a valid business email address.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const generatedId = `SB-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -351,13 +372,22 @@ export default function OrderNow() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/"
-                className="bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-8 py-3.5 rounded-full text-xs sm:text-sm shadow-lg hover:scale-105 transition-all inline-flex items-center justify-center gap-1.5"
+                to={`/thank-you?type=order&ref=${orderId}`}
+                className="bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-6 py-3.5 rounded-full text-xs sm:text-sm shadow-md hover:scale-105 transition-all inline-flex items-center justify-center gap-1.5"
               >
-                Return to Homepage <ArrowRight size={14} />
+                Track SLA & Next Steps <ArrowRight size={14} />
+              </Link>
+              <Link
+                to="/"
+                className="bg-white hover:bg-gray-50 text-[#111111] font-extrabold px-6 py-3.5 rounded-full text-xs sm:text-sm border border-[#111111]/15 transition-all inline-flex items-center justify-center gap-1.5"
+              >
+                Return to Homepage
               </Link>
               <button
-                onClick={() => setIsSuccess(false)}
+                onClick={() => {
+                  setIsSuccess(false);
+                  setFormError(null);
+                }}
                 className="bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] font-bold px-6 py-3.5 rounded-full text-xs border border-[#111111]/10 transition-all"
               >
                 Submit Another Project
@@ -366,6 +396,12 @@ export default function OrderNow() {
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-8">
+            {formError && (
+              <div className="p-4 bg-red-50 border-2 border-red-500/40 rounded-2xl text-red-700 text-sm font-semibold flex items-center gap-3 animate-in fade-in shadow-sm">
+                <AlertCircle size={20} className="text-red-600 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
             
             {/* Step 1: Project Scope */}
             <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm">

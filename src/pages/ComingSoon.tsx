@@ -4,8 +4,14 @@ import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { sendWaitlistConfirmationEmail } from "../lib/email";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function ComingSoon() {
+  usePageSEO({
+    title: "SlideBee | The Executive Presentation Studio (Opening Soon)",
+    description: "SlideBee is launching soon. Join the exclusive waitlist for early access to executive PowerPoint templates and bespoke slide design.",
+  });
+
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

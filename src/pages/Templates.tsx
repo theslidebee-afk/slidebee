@@ -4,10 +4,16 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Search, Download, Eye, ArrowRight, Star, FileText, Sparkles } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore, type StoreTemplate } from "../modules/StudioStoreClient";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export type { StoreTemplate as TemplateItem };
 
 export default function Templates() {
+  usePageSEO({
+    title: "Premium PowerPoint Templates & Slide Decks | SlideBee",
+    description: "Browse 100% editable corporate PowerPoint templates, pitch decks, keynote presentations, and master systems crafted by senior presentation designers.",
+  });
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "All";

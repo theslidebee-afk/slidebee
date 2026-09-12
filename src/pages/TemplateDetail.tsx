@@ -20,6 +20,7 @@ import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
 import { normalizeR2Url } from "../lib/r2";
 import { useTemplateCheckout, type StoreTemplate } from "../modules/StudioStoreClient";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function TemplateDetail() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,11 @@ export default function TemplateDetail() {
   const { formatPrice, currency } = useCurrency();
 
   const [template, setTemplate] = useState<StoreTemplate | null>(null);
+
+  usePageSEO({
+    title: template ? `${template.title} | SlideBee PowerPoint Template` : "Presentation Template | SlideBee",
+    description: template?.description || "100% editable corporate PowerPoint deck with vector layouts, master slides, and custom typography.",
+  });
   const [activeSlideIdx, setActiveSlideIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);

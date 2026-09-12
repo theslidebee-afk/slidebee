@@ -8,8 +8,14 @@ import {
   ArrowRight, 
   Award
 } from "lucide-react";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function About() {
+  usePageSEO({
+    title: "About SlideBee | Executive Presentation Studio",
+    description: "Learn about SlideBee: our mission, strategic narrative design philosophy, senior art directors, and commitment to transforming business presentations.",
+  });
+
   const [aboutConfig, setAboutConfig] = useState<any>({
     headline: "We Turn Complex Business Ideas into Unforgettable Visuals.",
     subheadline: "SlideBee is a dedicated presentation design studio engineered for high-growth startups, C-suite executives, and forward-thinking enterprises.",

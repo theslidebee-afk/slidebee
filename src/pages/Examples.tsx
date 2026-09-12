@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { X, ArrowRight, Search, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 interface PortfolioItem {
   id: number;
@@ -138,6 +139,11 @@ function PortfolioCard({
 }
 
 export default function Examples() {
+  usePageSEO({
+    title: "Presentation Design Portfolio & Case Studies | SlideBee",
+    description: "Explore presentation redesign case studies, venture pitch decks, and corporate keynotes delivered for Fortune 500 brands and high-growth startups.",
+  });
+
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
   const [searchTerm, setSearchTerm] = useState<string>(initialSearch);

@@ -28,6 +28,7 @@ import { supabase } from "../lib/supabase";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ORDER_MILESTONES, getMilestoneIndex } from "./Admin";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -57,6 +58,11 @@ export default function Login() {
     signUp,
     logout
   } = useClientLedger();
+
+  usePageSEO({
+    title: currentUser ? "Client Portal & Ledger | SlideBee" : "Client & Admin Login | SlideBee",
+    description: "Access your purchased PowerPoint decks, track custom presentation milestones, manage slide download credits, or sign in as administrator.",
+  });
 
   const [userSubscription, setUserSubscription] = useState<any>(null);
 

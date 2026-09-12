@@ -6,10 +6,12 @@ import {
   Send, 
   CheckCircle2, 
   ShieldCheck,
-  Phone
+  Phone,
+  MapPin
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { sendContactNotificationEmail } from "../lib/email";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Contact() {
   const [name, setName] = useState("");
@@ -24,11 +26,16 @@ export default function Contact() {
     subheadline: "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.",
     generalEmail: "hello@theslidebee.com",
     supportEmail: "support@theslidebee.com",
-    phone: "+1 (555) 123-4567",
-    whatsapp: "+1 (555) 123-4567",
+    phone: "+91 98765 43210",
+    whatsapp: "+91 98765 43210",
     responseGuarantee: "2-Hour Response Time",
     availabilityNotice: "Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.",
-    address: "123 Design Avenue, Suite 400, New York, NY 10001"
+    address: "SlideBee Design Studio, Bengaluru, Karnataka 560001, India (Hubs: Singapore & San Francisco)"
+  });
+
+  usePageSEO({
+    title: "Contact SlideBee | 2-Hour Response Time | Presentation Studio",
+    description: "Connect with SlideBee executive presentation design studio. Submit pitch deck briefs, get bespoke quotes, or message our directors directly.",
   });
 
   useEffect(() => {
@@ -164,6 +171,23 @@ export default function Contact() {
                     </div>
                   </a>
                 )}
+
+                <div className="flex items-start gap-3.5 p-3.5 hex-card bg-[#FFF9E8] border border-primary/30">
+                  <div className="hex-pure w-10 h-10 bg-primary/20 text-primary-amber flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin size={18} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold text-[#111111]">
+                      Studio Locations
+                    </div>
+                    <div className="text-xs text-[#726F6D] font-medium leading-relaxed">
+                      {contactConfig.address || "SlideBee Design Studio, Bengaluru, Karnataka 560001, India"}
+                    </div>
+                    <div className="text-[11px] text-[#FCBF14] font-bold mt-0.5">
+                      Global Delivery Hubs: Singapore & San Francisco
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Blog() {
+  usePageSEO({
+    title: "Presentation Design Insights & Guides | SlideBee Blog",
+    description: "Expert advice on venture pitch decks, executive keynote delivery, slide storytelling, and corporate master template architecture.",
+  });
+
   const [blogs] = useState<any[]>([
     {
       id: "1",

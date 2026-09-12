@@ -14,7 +14,13 @@ import Blog from "./pages/Blog";
 import Videos from "./pages/Videos";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
+import NotFound from "./pages/NotFound";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import ThankYou from "./pages/ThankYou";
 import Footer from "./components/Footer";
+import StickyMobileCTA from "./components/StickyMobileCTA";
+import CookieBanner from "./components/CookieBanner";
 import { CurrencyProvider } from "./context/CurrencyContext";
 
 function App() {
@@ -53,10 +59,16 @@ function App() {
                       <Route path="/videos" element={<Videos />} />
                       <Route path="/media/blog" element={<Blog />} />
                       <Route path="/media/videos" element={<Videos />} />
+                      <Route path="/privacy" element={<Privacy />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/thank-you" element={<ThankYou />} />
                       <Route path="/admin/*" element={<Admin />} />
+                      <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>
                   <Footer />
+                  <StickyMobileCTA />
+                  <CookieBanner />
                 </>
               }
             />

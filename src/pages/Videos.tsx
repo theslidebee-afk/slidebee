@@ -1,8 +1,14 @@
 import { motion } from "framer-motion";
 import { Play, Clock, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Videos() {
+  usePageSEO({
+    title: "Executive Presentation Video Masterclasses | SlideBee",
+    description: "Watch slide teardowns, masterclass walkthroughs, and PowerPoint layout tutorials by senior presentation designers.",
+  });
+
   const videoPlaylists = [
     {
       id: "1",

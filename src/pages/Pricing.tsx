@@ -8,8 +8,14 @@ import {
   Sparkles
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Pricing() {
+  usePageSEO({
+    title: "Transparent Presentation Design Pricing | SlideBee",
+    description: "Clear, predictable presentation design pricing: from $19 per slide for redesign to bespoke venture pitch decks and unlimited monthly design retainers.",
+  });
+
   const [currency, setCurrency] = useState<"USD" | "INR">("USD");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   

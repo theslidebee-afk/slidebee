@@ -25,8 +25,14 @@ import {
   Calendar,
   Star
 } from "lucide-react";
+import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Home() {
+  usePageSEO({
+    title: "SlideBee | Executive Presentation Design Studio & Templates",
+    description: "SlideBee is an executive presentation design studio. Turn complex business strategies into pitch decks, board presentations, and bespoke PowerPoint templates in 24h–48h.",
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sliderPosition, setSliderPosition] = useState(50);
   const [activeTab, setActiveTab] = useState<"sales" | "executive" | "financial">("sales");

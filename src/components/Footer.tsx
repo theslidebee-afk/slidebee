@@ -120,11 +120,11 @@ export default function Footer() {
             <ul className="space-y-4 text-gray-400">
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary shrink-0 mt-1" size={20} />
-                <span>{footerConfig.address || "123 Design Avenue, Suite 400, New York, NY 10001"}</span>
+                <span>{footerConfig.address || "SlideBee Design Studio, Bengaluru, Karnataka 560001, India (Hubs: Singapore & San Francisco)"}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-primary shrink-0" size={20} />
-                <span>{footerConfig.phone || "+1 (555) 123-4567"}</span>
+                <span>{footerConfig.phone || "+91 98765 43210"}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
