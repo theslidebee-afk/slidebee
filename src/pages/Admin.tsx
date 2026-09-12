@@ -1248,13 +1248,15 @@ export default function Admin() {
           ...currentStudies[idx],
           imageUrl: coverUrl
         };
-        return {
+        const updatedConfig = {
           ...prevConfigs,
           portfolio_cms: {
             ...prevConfigs["portfolio_cms"],
             caseStudies: currentStudies
           }
         };
+        handleSaveConfig("portfolio_cms", updatedConfig.portfolio_cms);
+        return updatedConfig;
       });
     } catch (err: any) {
       alert("Failed to upload cover image to Cloudflare R2: " + (err.message || err));
@@ -1291,13 +1293,15 @@ export default function Admin() {
             slides: nextSlides,
             imageUrl: currentStudies[idx].imageUrl || nextSlides[0]
           };
-          return {
+          const updatedConfig = {
             ...prevConfigs,
             portfolio_cms: {
               ...prevConfigs["portfolio_cms"],
               caseStudies: currentStudies
             }
           };
+          handleSaveConfig("portfolio_cms", updatedConfig.portfolio_cms);
+          return updatedConfig;
         });
       }
     } catch (err: any) {
@@ -3899,19 +3903,31 @@ export default function Admin() {
                         <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
                           Case Study #{idx + 1}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = siteConfigs["portfolio_cms"].caseStudies.filter((_: any, i: number) => i !== idx);
-                            setSiteConfigs({
-                              ...siteConfigs,
-                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                            });
-                          }}
-                          className="text-red-600 hover:text-red-800 text-xs font-bold"
-                        >
-                          Remove
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveConfig("portfolio_cms", siteConfigs["portfolio_cms"])}
+                            disabled={configSaving}
+                            className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] text-[11px] font-black px-3 py-1 shadow-sm flex items-center gap-1"
+                          >
+                            <Save size={11} /> Save Changes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = siteConfigs["portfolio_cms"].caseStudies.filter((_: any, i: number) => i !== idx);
+                              const nextCfg = { ...siteConfigs["portfolio_cms"], caseStudies: updated };
+                              setSiteConfigs({
+                                ...siteConfigs,
+                                portfolio_cms: nextCfg
+                              });
+                              handleSaveConfig("portfolio_cms", nextCfg);
+                            }}
+                            className="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -4244,26 +4260,28 @@ export default function Admin() {
                       const current = siteConfigs["portfolio_cms"]?.caseStudies || [];
                       const newCS = {
                         id: Date.now(),
-                        title: "Enterprise Strategy & Digital Keynote",
-                        client: "New Enterprise Brand",
+                        title: "New Presentation Case Study",
+                        client: "Client / Enterprise Name",
                         category: "Strategy & Operations",
-                        slides: [
-                          "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
-                          "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-2.jpg"
-                        ],
-                        imageUrl: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
-                        impact: "Executive Alignment",
-                        description: "High-impact presentation deck crafted for leadership and strategic alignment.",
-                        deliverables: ["PowerPoint Master Deck", "Executive Keynote", "Custom Vector Icons"]
+                        slides: [],
+                        imageUrl: "",
+                        impact: "e.g. $10M Raised / Board Approved",
+                        description: "Executive presentation deck tailored for high-stakes business meetings.",
+                        deliverables: ["Master PowerPoint (.pptx)", "High-Res PDF"]
+                      };
+                      const nextPortfolio = {
+                        ...(siteConfigs["portfolio_cms"] || {}),
+                        caseStudies: [...current, newCS]
                       };
                       setSiteConfigs({
                         ...siteConfigs,
-                        portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: [...current, newCS] }
+                        portfolio_cms: nextPortfolio
                       });
+                      handleSaveConfig("portfolio_cms", nextPortfolio);
                     }}
-                    className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
+                    className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] py-3 text-xs font-black flex items-center justify-center gap-2 shadow"
                   >
-                    + Add New Case Study (Maps to Examples & Services Marquee)
+                    + Add New Case Study (Instant Save to Portfolio & Examples)
                   </button>
                 </div>
               </div>

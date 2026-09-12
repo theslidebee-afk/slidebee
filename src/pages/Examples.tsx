@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { X, ArrowRight, Search, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 interface PortfolioItem {
@@ -16,20 +17,11 @@ interface PortfolioItem {
   highlights: string[];
 }
 
-const STORAGE_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides";
+const STORAGE_BASE = `${R2_PUBLIC_BASE_URL}/templates/slides`;
 
 export function normalizeSlideUrl(url: string): string {
   if (!url) return `${STORAGE_BASE}/accenture_slide-1.jpg`;
-  if (url.includes("whwyfqtvuubkfypmgosi.supabase.co")) {
-    const filename = url.split("/").pop();
-    if (filename) return `${STORAGE_BASE}/${filename}`;
-  }
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const filename = url.split("/").pop();
-  if (filename && (filename.endsWith(".jpg") || filename.endsWith(".png") || filename.endsWith(".jpeg"))) {
-    return `${STORAGE_BASE}/${filename}`;
-  }
-  return url;
+  return normalizeR2Url(url, "slides");
 }
 
 function getSlideSet(item: PortfolioItem): string[] {

@@ -240,13 +240,23 @@ export async function deleteFromR2(key: string): Promise<boolean> {
  * Normalizes any asset URL (legacy Supabase storage, flat R2 root, or relative)
  * to its exact structured Cloudflare R2 folder CDN URL.
  */
-export function normalizeR2Url(url: string | undefined | null, type: "slides" | "decks" = "slides"): string {
+export function normalizeR2Url(url: string | undefined | null, _type: "slides" | "decks" = "slides"): string {
   if (!url || typeof url !== "string") {
-    return `${R2_PUBLIC_BASE_URL}/templates/${type}/accenture_slide-1.jpg`;
+    return "";
   }
 
   // If already proper structured R2 URL, return as-is
-  if (url.includes("/templates/slides/") || url.includes("/templates/decks/") || url.includes("/marquee/") || url.includes("/bulk-ingest/")) {
+  if (
+    url.includes("/templates/slides/") ||
+    url.includes("/templates/decks/") ||
+    url.includes("/marquee/") ||
+    url.includes("/bulk-ingest/") ||
+    url.includes("/portfolio/covers/") ||
+    url.includes("/portfolio/slides/") ||
+    url.includes("/portfolio/") ||
+    url.includes("/use_cases/") ||
+    url.includes("/logos/")
+  ) {
     return url;
   }
 
@@ -274,6 +284,17 @@ export function normalizeR2Url(url: string | undefined | null, type: "slides" | 
       }
       return `${R2_PUBLIC_BASE_URL}/templates/slides/${pathPart}`;
     }
+  }
+
+  // If raw key with folder prefix like "portfolio/covers/img.webp" or "logos/img.svg"
+  if (
+    url.startsWith("portfolio/") ||
+    url.startsWith("use_cases/") ||
+    url.startsWith("logos/") ||
+    url.startsWith("marquee/") ||
+    url.startsWith("templates/")
+  ) {
+    return `${R2_PUBLIC_BASE_URL}/${url}`;
   }
 
   // If raw filename without protocol (e.g. "volvo_slide-1.jpg")
