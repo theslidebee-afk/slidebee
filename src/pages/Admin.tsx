@@ -57,6 +57,7 @@ export const ORDER_MILESTONES = [
     label: "Draft 1", 
     fullLabel: "Draft 1 (Blueprint & Intake)", 
     desc: "Initial slide architecture, story flow, and structural layout.",
+    clientDesc: "Our presentation designers are reviewing your brief and building the structural blueprint and slide storyline.",
     color: "amber"
   },
   { 
@@ -65,6 +66,7 @@ export const ORDER_MILESTONES = [
     label: "Client Review", 
     fullLabel: "Client Review & Feedback", 
     desc: "First draft shared with client for revisions and copy adjustments.",
+    clientDesc: "First draft deck ready for your review. Check your email or shared drive for previews and provide your feedback.",
     color: "blue"
   },
   { 
@@ -73,6 +75,7 @@ export const ORDER_MILESTONES = [
     label: "Final Polish", 
     fullLabel: "Final Polish & Styling", 
     desc: "High-end bespoke typography, charts, visual consistency, and micro-finishes.",
+    clientDesc: "Applying high-end bespoke typography, custom chart styling, brand tokens, and micro-animations.",
     color: "purple"
   },
   { 
@@ -81,6 +84,7 @@ export const ORDER_MILESTONES = [
     label: "Delivered", 
     fullLabel: "Delivered & Completed", 
     desc: "Final PowerPoint (.pptx), Keynote, and PDF assets delivered to client.",
+    clientDesc: "All final PowerPoint (.pptx), Keynote, and PDF presentation master files are ready for download.",
     color: "emerald"
   },
 ];

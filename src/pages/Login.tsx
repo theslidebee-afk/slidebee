@@ -21,11 +21,13 @@ import {
   Check,
   FileText,
   ShieldCheck,
-  Zap
+  Zap,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
+import { ORDER_MILESTONES, getMilestoneIndex } from "./Admin";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -649,52 +651,165 @@ export default function Login() {
                         </Link>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {customBriefs.map((ord: any) => (
-                          <div
-                            key={ord.id}
-                            className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary transition-all shadow-sm"
-                          >
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-extrabold text-sm text-[#111111]">
-                                  {ord.service_type}
-                                </span>
-                                {ord.timeline && (
-                                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5 inline-flex items-center gap-1">
-                                    <Zap size={9} /> {ord.timeline}
+                      <div className="space-y-5">
+                        {customBriefs.map((ord: any) => {
+                          const currentIdx = getMilestoneIndex(ord.status);
+                          const activeMilestone = ORDER_MILESTONES[currentIdx] || ORDER_MILESTONES[0];
+                          const isCompleted = currentIdx === 3;
+
+                          return (
+                            <div
+                              key={ord.id}
+                              className="bg-[#FFF9E8] p-5 sm:p-6 rounded-2xl border-2 border-primary/40 hover:border-primary transition-all shadow-sm space-y-4"
+                            >
+                              {/* Project Header Bar */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary/20">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <span className="hex-pill-sm bg-[#111111] text-primary text-[10px] font-black px-2.5 py-0.5 shadow-sm">
+                                      Ref: {ord.order_reference || ord.id?.slice(0, 8)}
+                                    </span>
+                                    <h4 className="font-heading font-extrabold text-base text-[#111111]">
+                                      {ord.service_type || "Presentation Project"}
+                                    </h4>
+                                    {ord.timeline && (
+                                      <span className="hex-pill-sm bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5 inline-flex items-center gap-1 border border-red-200">
+                                        <Zap size={9} /> {ord.timeline}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[#726F6D] font-medium">
+                                    {ord.slide_count} slides • Submitted on {new Date(ord.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {ord.drive_url && (
+                                    <a
+                                      href={ord.drive_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="hex-pill bg-white text-[#111111] border border-primary/40 px-3 py-1.5 text-xs font-bold hover:bg-black/5 flex items-center gap-1.5 shadow-xs"
+                                    >
+                                      Shared Cloud Assets <ExternalLink size={12} />
+                                    </a>
+                                  )}
+                                  <span className={`hex-pill-sm text-[10px] font-black px-3 py-1 uppercase shadow-xs ${
+                                    isCompleted
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-primary text-[#111111]"
+                                  }`}>
+                                    Stage {currentIdx + 1} of 4: {activeMilestone.label}
                                   </span>
-                                )}
+                                </div>
                               </div>
-                              <p className="text-xs text-[#726F6D] font-medium">
-                                {ord.slide_count} slides • Ref: {ord.order_reference} • Submitted on {new Date(ord.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
 
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className={`hex-pill-sm text-[10px] font-black px-3 py-1 uppercase ${
-                                ord.status === 'completed' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : ord.status === 'in_progress'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}>
-                                {ord.status || 'In Review'}
-                              </span>
+                              {/* Current Stage Status Box */}
+                              <div className="bg-white/90 border border-primary/25 rounded-xl p-3.5 flex items-start gap-3 shadow-xs">
+                                <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary-amber flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                                  <Sparkles size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-0.5">
+                                    <span className="text-xs font-heading font-black text-[#111111]">
+                                      Current Phase: {activeMilestone.fullLabel}
+                                    </span>
+                                    {isCompleted && (
+                                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                        <Check size={10} strokeWidth={3} /> Final Delivery Ready
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[#726F6D] leading-relaxed font-medium">
+                                    {activeMilestone.clientDesc || activeMilestone.desc}
+                                  </p>
+                                </div>
+                              </div>
 
-                              {ord.drive_url && (
-                                <a
-                                  href={ord.drive_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="hex-pill bg-white text-[#111111] border border-primary/30 px-3 py-1 text-xs font-bold hover:bg-black/5 flex items-center gap-1"
-                                >
-                                  Drive Assets <ExternalLink size={12} />
-                                </a>
+                              {/* Responsive 4-Step Milestone Stepper */}
+                              <div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {ORDER_MILESTONES.map((m, idx) => {
+                                    const isPassed = idx < currentIdx;
+                                    const isCurrent = idx === currentIdx;
+
+                                    return (
+                                      <div
+                                        key={m.key}
+                                        className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between ${
+                                          isCurrent
+                                            ? "bg-[#111111] text-white border-[#111111] shadow-md ring-2 ring-primary/40"
+                                            : isPassed
+                                            ? "bg-amber-100/90 text-amber-950 border-amber-300"
+                                            : "bg-white/90 text-gray-400 border-gray-200"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                                            isCurrent
+                                              ? "bg-primary text-[#111111]"
+                                              : isPassed
+                                              ? "bg-amber-600 text-white"
+                                              : "bg-gray-100 text-gray-500"
+                                          }`}>
+                                            {isPassed ? "Completed" : isCurrent ? "In Progress" : `Step ${m.step}`}
+                                          </span>
+                                          <div className="flex items-center justify-center">
+                                            {isPassed ? (
+                                              <div className="w-4 h-4 rounded-full bg-amber-600 text-white flex items-center justify-center text-[9px] font-black">
+                                                <Check size={10} strokeWidth={3} />
+                                              </div>
+                                            ) : isCurrent ? (
+                                              <div className="w-4 h-4 rounded-full bg-primary text-[#111111] flex items-center justify-center text-[9px] font-black animate-pulse">
+                                                {m.step}
+                                              </div>
+                                            ) : (
+                                              <div className="w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[9px] font-bold border border-gray-300">
+                                                {m.step}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className={`font-heading font-extrabold text-xs mb-0.5 ${
+                                            isCurrent ? "text-primary" : isPassed ? "text-[#111111]" : "text-gray-500"
+                                          }`}>
+                                            {m.label}
+                                          </div>
+                                          <p className={`text-[10px] leading-tight line-clamp-2 ${
+                                            isCurrent ? "text-white/70" : isPassed ? "text-[#726F6D]" : "text-gray-400"
+                                          }`}>
+                                            {m.desc}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Delivery Download CTA if Delivered */}
+                              {isCompleted && ord.drive_url && (
+                                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                    <span className="text-xs font-extrabold text-emerald-900">
+                                      Your presentation master deck has been finalized and delivered.
+                                    </span>
+                                  </div>
+                                  <a
+                                    href={ord.drive_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm shrink-0 justify-center"
+                                  >
+                                    <Download size={13} /> Access Final Deliverables (.pptx)
+                                  </a>
+                                </div>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
