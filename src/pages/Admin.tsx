@@ -1002,15 +1002,50 @@ export default function Admin() {
     }
 
     try {
-      await supabase.from("templates").delete().eq("id", tplId);
-    } catch (err) {
-      console.warn("Delete template notice:", err);
-    }
+      let isDeleted = false;
+      const adminSecret = "slidebee_master_admin_2026";
 
-    setTemplates((prev) => prev.filter((t) => t.id !== tplId));
-    if (editingTemplate && editingTemplate.id === tplId) {
-      setIsEditTemplateOpen(false);
-      setEditingTemplate(null);
+      // 1. Try serverless backend endpoint with master admin authorization
+      try {
+        const res = await fetch(`/api/admin-template?id=${encodeURIComponent(String(tplId))}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "x-slidebee-admin-key": adminSecret,
+            Authorization: `Bearer ${adminSecret}`,
+          },
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success) {
+            isDeleted = true;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("Backend admin-template API call notice, attempting direct database fallback:", apiErr);
+      }
+
+      // 2. Direct Supabase client fallback
+      if (!isDeleted) {
+        const { error } = await supabase
+          .from("templates")
+          .delete()
+          .eq("id", tplId);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+      }
+
+      // Update React state
+      setTemplates((prev) => prev.filter((t) => t.id !== tplId));
+      if (editingTemplate && editingTemplate.id === tplId) {
+        setIsEditTemplateOpen(false);
+        setEditingTemplate(null);
+      }
+    } catch (err: any) {
+      console.error("Delete template error:", err);
+      alert(`Could not delete template from database: ${err?.message || "Unknown error"}`);
     }
   };
 
@@ -5636,180 +5671,188 @@ export default function Admin() {
         )}
 
         {/* TAB 7: SUBSCRIPTIONS & CLIENT PROFILES */}
-        {activeTab === "subscriptions" && (
-          <div className="space-y-8">
-            
-            {/* Top Metric Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                  Total Client Accounts
-                </span>
-                <div className="text-3xl font-heading font-black text-[#111111]">
-                  {profiles.length}
+        {activeTab === "subscriptions" && (() => {
+          const clientProfiles = profiles.filter(
+            (p) => (p.role === "client" || !p.role) && !p.email.toLowerCase().startsWith("admin@")
+          );
+          const totalStarterCredits = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_total) || 5), 0);
+          const activeCreditsBalance = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_balance) || 0), 0);
+
+          return (
+            <div className="space-y-8">
+              
+              {/* Top Metric Strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Total Client Accounts
+                  </span>
+                  <div className="text-3xl font-heading font-black text-[#111111]">
+                    {clientProfiles.length}
+                  </div>
+                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                    Registered founders & brand executives
+                  </span>
                 </div>
-                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                  Registered founders & brand executives
-                </span>
+
+                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Total Starter Credits Issued
+                  </span>
+                  <div className="text-3xl font-heading font-black text-primary-amber">
+                    {totalStarterCredits}
+                  </div>
+                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                    5 free credits allocated per client
+                  </span>
+                </div>
+
+                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Active Credits Balance
+                  </span>
+                  <div className="text-3xl font-heading font-black text-[#111111]">
+                    {activeCreditsBalance} Credits
+                  </div>
+                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                    Available design purchasing power
+                  </span>
+                </div>
               </div>
 
-              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                  Total Starter Credits Issued
-                </span>
-                <div className="text-3xl font-heading font-black text-primary-amber">
-                  {profiles.reduce((acc, p) => acc + (Number(p.credits_total) || 5), 0)}
+              {/* 1. Subscriptions Table */}
+              <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+                <div className="p-6 border-b border-[#111111]/8 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      Active Monthly Retainer Subscriptions
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Real-time monitoring of client slide quotas, billing tiers, and renewals
+                    </p>
+                  </div>
                 </div>
-                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                  5 free credits allocated per client
-                </span>
+
+                {subscriptions.length === 0 ? (
+                  <div className="p-10 text-center text-[#726F6D]">
+                    <CreditCard size={32} className="mx-auto text-gray-300 mb-2" />
+                    <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
+                    <p className="text-xs font-medium mt-1">Client retainers will be tracked here.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
+                          <th className="p-4">Subscriber</th>
+                          <th className="p-4">Plan Name</th>
+                          <th className="p-4">Rate / Month</th>
+                          <th className="p-4">Monthly Slide Quota</th>
+                          <th className="p-4">Renewal Cycle</th>
+                          <th className="p-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
+                        {subscriptions.map((sub) => (
+                          <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
+                            <td className="p-4">
+                              <div className="font-extrabold text-[#111111]">{sub.user_email}</div>
+                            </td>
+                            <td className="p-4 font-bold text-[#111111]">
+                              {sub.plan_name}
+                            </td>
+                            <td className="p-4 font-black text-primary-amber">
+                              ${sub.amount_usd} / ₹{sub.amount_inr?.toLocaleString()}
+                            </td>
+                            <td className="p-4">
+                              <div className="font-bold mb-1">
+                                {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
+                              </div>
+                              <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
+                                <div 
+                                  className="bg-primary-amber h-full rounded-full" 
+                                  style={{ width: `${((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100}%` }} 
+                                />
+                              </div>
+                            </td>
+                            <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                              {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "Every 30 Days"}
+                            </td>
+                            <td className="p-4 whitespace-nowrap">
+                              <span className="hex-pill-sm bg-green-100 text-green-800 text-[10px] font-black px-2.5 py-0.5">
+                                ● {sub.status || 'Active'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
-              <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                  Active Credits Balance
-                </span>
-                <div className="text-3xl font-heading font-black text-[#111111]">
-                  {profiles.reduce((acc, p) => acc + (Number(p.credits_balance) || 0), 0)} Credits
-                </div>
-                <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                  Available design purchasing power
-                </span>
-              </div>
-            </div>
-
-            {/* 1. Subscriptions Table */}
-            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
-              <div className="p-6 border-b border-[#111111]/8 flex items-center justify-between">
-                <div>
+              {/* 2. Registered Client Accounts Table */}
+              <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
+                <div className="p-6 border-b border-[#111111]/8">
                   <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                    Active Monthly Retainer Subscriptions
+                    Registered Client Profiles ({clientProfiles.length})
                   </h3>
                   <p className="text-xs text-[#726F6D]">
-                    Real-time monitoring of client slide quotas, billing tiers, and renewals
+                    All clients who registered an account or submitted a presentation brief
                   </p>
                 </div>
-              </div>
 
-              {subscriptions.length === 0 ? (
-                <div className="p-10 text-center text-[#726F6D]">
-                  <CreditCard size={32} className="mx-auto text-gray-300 mb-2" />
-                  <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
-                  <p className="text-xs font-medium mt-1">Client retainers will be tracked here.</p>
-                </div>
-              ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
-                        <th className="p-4">Subscriber</th>
-                        <th className="p-4">Plan Name</th>
-                        <th className="p-4">Rate / Month</th>
-                        <th className="p-4">Monthly Slide Quota</th>
-                        <th className="p-4">Renewal Cycle</th>
-                        <th className="p-4">Status</th>
+                        <th className="p-4">Full Name</th>
+                        <th className="p-4">Work Email</th>
+                        <th className="p-4">Company / Organization</th>
+                        <th className="p-4">Account Role</th>
+                        <th className="p-4">Joined Date</th>
+                        <th className="p-4">Last Active / Sign In</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
-                      {subscriptions.map((sub) => (
-                        <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
-                          <td className="p-4">
-                            <div className="font-extrabold text-[#111111]">{sub.user_email}</div>
+                      {clientProfiles.map((p) => (
+                        <tr key={p.id} className="hover:bg-primary/5 transition-colors">
+                          <td className="p-4 font-extrabold text-[#111111]">
+                            {p.full_name || "N/A"}
                           </td>
                           <td className="p-4 font-bold text-[#111111]">
-                            {sub.plan_name}
+                            {p.email}
                           </td>
-                          <td className="p-4 font-black text-primary-amber">
-                            ${sub.amount_usd} / ₹{sub.amount_inr?.toLocaleString()}
-                          </td>
-                          <td className="p-4">
-                            <div className="font-bold mb-1">
-                              {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
-                            </div>
-                            <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
-                              <div 
-                                className="bg-primary-amber h-full rounded-full" 
-                                style={{ width: `${((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100}%` }} 
-                              />
-                            </div>
-                          </td>
-                          <td className="p-4 whitespace-nowrap text-[#726F6D]">
-                            {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "Every 30 Days"}
+                          <td className="p-4 text-[#726F6D]">
+                            {p.company || "Enterprise Client"}
                           </td>
                           <td className="p-4 whitespace-nowrap">
-                            <span className="hex-pill-sm bg-green-100 text-green-800 text-[10px] font-black px-2.5 py-0.5">
-                              ● {sub.status || 'Active'}
+                            <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2.5 py-0.5">
+                              {p.role || "Client"}
                             </span>
+                          </td>
+                          <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                            {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            {p.last_sign_in_at ? (
+                              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                {new Date(p.last_sign_in_at).toLocaleDateString()} {new Date(p.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : (
+                              <span className="text-[#726F6D] text-[11px]">Recent</span>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
-
-            {/* 2. Registered Client Accounts Table */}
-            <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
-              <div className="p-6 border-b border-[#111111]/8">
-                <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                  Registered Client Profiles ({profiles.length})
-                </h3>
-                <p className="text-xs text-[#726F6D]">
-                  All clients who registered an account or submitted a presentation brief
-                </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
-                      <th className="p-4">Full Name</th>
-                      <th className="p-4">Work Email</th>
-                      <th className="p-4">Company / Organization</th>
-                      <th className="p-4">Account Role</th>
-                      <th className="p-4">Joined Date</th>
-                      <th className="p-4">Last Active / Sign In</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
-                    {profiles.map((p) => (
-                      <tr key={p.id} className="hover:bg-primary/5 transition-colors">
-                        <td className="p-4 font-extrabold text-[#111111]">
-                          {p.full_name || "N/A"}
-                        </td>
-                        <td className="p-4 font-bold text-[#111111]">
-                          {p.email}
-                        </td>
-                        <td className="p-4 text-[#726F6D]">
-                          {p.company || "Enterprise Client"}
-                        </td>
-                        <td className="p-4 whitespace-nowrap">
-                          <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2.5 py-0.5">
-                            {p.role || "Client"}
-                          </span>
-                        </td>
-                        <td className="p-4 whitespace-nowrap text-[#726F6D]">
-                          {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
-                        </td>
-                        <td className="p-4 whitespace-nowrap">
-                          {p.last_sign_in_at ? (
-                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                              {new Date(p.last_sign_in_at).toLocaleDateString()} {new Date(p.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          ) : (
-                            <span className="text-[#726F6D] text-[11px]">Recent</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
-
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 

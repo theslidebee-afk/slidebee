@@ -129,27 +129,59 @@ export function useTemplateCheckout() {
         setIsPurchased(true);
         setPurchasedClientEmail(clientEmail);
 
-        const orderRef = `TPL-${template.code}-${Date.now().toString().slice(-4)}`;
+        const orderRef = `TPL-${template.code}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
         let pptxUrl = template.image_url;
         let fileName = template.file_name || `${template.code}_Master.pptx`;
 
         try {
-          // Fulfill order securely via Postgres RPC
-          const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
-            p_order_ref: orderRef,
-            p_payment_id: payment.razorpay_payment_id,
-            p_template_id: template.id,
-            p_client_email: clientEmail,
-            p_client_name: clientName,
-            p_currency: currency,
-            p_amount: priceNum
-          });
+          let fulfilled = false;
 
-          if (fulfillData?.success && fulfillData.download_url) {
-            pptxUrl = fulfillData.download_url;
-            if (fulfillData.file_name) fileName = fulfillData.file_name;
-          } else if (fulfillErr) {
-            console.warn("Fulfillment RPC notice:", fulfillErr);
+          // 1. Fulfill order via serverless backend endpoint
+          try {
+            const apiRes = await fetch("/api/fulfill-order", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderRef,
+                paymentId: payment.razorpay_payment_id,
+                templateId: template.id,
+                clientEmail,
+                clientName,
+                currency,
+                amount: priceNum,
+              }),
+            });
+
+            if (apiRes.ok) {
+              const apiData = await apiRes.json();
+              if (apiData?.success && apiData.download_url) {
+                pptxUrl = apiData.download_url;
+                if (apiData.file_name) fileName = apiData.file_name;
+                fulfilled = true;
+              }
+            }
+          } catch (apiErr) {
+            console.warn("Backend order fulfillment notice, falling back to direct RPC:", apiErr);
+          }
+
+          // 2. Direct Supabase RPC fallback
+          if (!fulfilled) {
+            const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
+              p_order_ref: orderRef,
+              p_payment_id: payment.razorpay_payment_id,
+              p_template_id: template.id,
+              p_client_email: clientEmail,
+              p_client_name: clientName,
+              p_currency: currency,
+              p_amount: priceNum
+            });
+
+            if (fulfillData?.success && fulfillData.download_url) {
+              pptxUrl = fulfillData.download_url;
+              if (fulfillData.file_name) fileName = fulfillData.file_name;
+            } else if (fulfillErr) {
+              console.warn("Fulfillment RPC notice:", fulfillErr);
+            }
           }
         } catch (e) {
           console.warn("Order fulfillment exception:", e);

@@ -12,16 +12,39 @@ const MAX_PPTX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB per PPTX presentation
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per slide image
 const MAX_GENERIC_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-};
+const ALLOWED_ORIGINS = [
+  "https://theslidebee.com",
+  "https://www.theslidebee.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:4173",
+];
 
-export async function onRequestOptions() {
+const ALLOWED_EXTENSIONS = new Set(["pptx", "ppt", "png", "jpg", "jpeg", "webp", "pdf", "svg"]);
+
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-slidebee-admin-key",
+    "Vary": "Origin",
+  };
+}
+
+function sanitizeFileKey(rawKey: string): string {
+  return rawKey
+    .replace(/\\/g, "/")
+    .replace(/\.\./g, "")
+    .replace(/^\/+/, "")
+    .replace(/[^a-zA-Z0-9_\-\.\/]/g, "_");
+}
+
+export async function onRequestOptions(context: any) {
   return new Response(null, {
     status: 204,
-    headers: CORS_HEADERS,
+    headers: getCorsHeaders(context.request),
   });
 }
 
@@ -88,9 +111,10 @@ async function getBucketTelemetry(accountId: string, bucket: string, token: stri
 
 // GET: Fetch live R2 telemetry and object inventory
 export async function onRequestGet(context: any) {
-  try {
-    const { request, env } = context;
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
 
+  try {
     // Security Check: Require admin authorization to query R2 storage telemetry and inventory
     if (!isAuthorizedAdmin(request, env)) {
       return new Response(
@@ -98,7 +122,7 @@ export async function onRequestGet(context: any) {
           success: false,
           error: "Unauthorized: Admin authorization required to access R2 bucket telemetry and inventory.",
         }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -142,7 +166,7 @@ export async function onRequestGet(context: any) {
       }),
       {
         headers: {
-          ...CORS_HEADERS,
+          ...corsHeaders,
           "Content-Type": "application/json",
           "Cache-Control": "private, max-age=10",
         },
@@ -151,7 +175,7 @@ export async function onRequestGet(context: any) {
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message || err }), {
       status: 500,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }
@@ -160,6 +184,8 @@ function isAuthorizedAdmin(request: Request, env?: any): boolean {
   const adminKey = request.headers.get("x-slidebee-admin-key");
   const authHeader = request.headers.get("Authorization");
   const expectedSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
+
+  if (!expectedSecret) return false;
 
   if (adminKey && adminKey === expectedSecret) {
     return true;
@@ -177,17 +203,18 @@ function isAuthorizedAdmin(request: Request, env?: any): boolean {
 
 // POST: Upload file to Cloudflare R2 bucket with Zero-Cost Billing verification
 export async function onRequestPost(context: any) {
-  try {
-    const { request, env } = context;
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
 
-    // Security Check (TOB-SB-02): Verify admin authorization for storage modifications
+  try {
+    // Security Check: Verify admin authorization for storage modifications
     if (!isAuthorizedAdmin(request, env)) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "Unauthorized: Admin authorization required for R2 storage mutations.",
         }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -209,7 +236,7 @@ export async function onRequestPost(context: any) {
       if (!file) {
         return new Response(JSON.stringify({ success: false, error: "No file provided" }), {
           status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -217,20 +244,34 @@ export async function onRequestPost(context: any) {
       mimeType = file.type || mimeType;
 
       if (customKey) {
-        fileKey = customKey;
+        fileKey = sanitizeFileKey(customKey);
       } else {
-        const ext = file.name.split(".").pop() || "bin";
+        const rawExt = (file.name.split(".").pop() || "bin").toLowerCase();
+        const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : "bin";
+        const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, "");
         const cleanName = file.name
           .replace(/\.[^/.]+$/, "")
           .replace(/[^a-zA-Z0-9_-]/g, "_")
           .toLowerCase();
-        fileKey = `${folder}/${cleanName}_${Date.now()}.${ext}`;
+        fileKey = `${cleanFolder}/${cleanName}_${Date.now()}.${ext}`;
       }
     } else {
       const url = new URL(request.url);
-      fileKey = url.searchParams.get("key") || `uploads/file_${Date.now()}`;
+      const rawKey = url.searchParams.get("key") || `uploads/file_${Date.now()}`;
+      fileKey = sanitizeFileKey(rawKey);
       mimeType = request.headers.get("x-mime-type") || contentType || mimeType;
       fileBuffer = await request.arrayBuffer();
+    }
+
+    const extMatch = fileKey.split(".").pop()?.toLowerCase();
+    if (!extMatch || !ALLOWED_EXTENSIONS.has(extMatch)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Zero-Cost & Security Policy: Disallowed file extension '.${extMatch}'. Permitted formats: pptx, ppt, png, jpg, jpeg, webp, pdf, svg.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const fileSize = fileBuffer.byteLength;
@@ -246,7 +287,7 @@ export async function onRequestPost(context: any) {
           success: false,
           error: `Zero-Cost Safety Cap: File size (${(fileSize / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum limit of ${limitLabel}. Upload rejected to prevent storage bloat.`,
         }),
-        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -258,7 +299,7 @@ export async function onRequestPost(context: any) {
           success: false,
           error: `Zero-Cost Safety Cap: R2 storage limit of 10.00 GB reached (current usage: ${(totalBytes / (1024 * 1024 * 1024)).toFixed(3)} GB). Upload blocked to guarantee zero-cost billing.`,
         }),
-        { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -280,7 +321,7 @@ export async function onRequestPost(context: any) {
     if (!uploadJson.success) {
       return new Response(JSON.stringify({ success: false, error: uploadJson.errors }), {
         status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -295,30 +336,31 @@ export async function onRequestPost(context: any) {
         uploaded: uploadJson.result?.uploaded,
       }),
       {
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message || err }), {
       status: 500,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }
 
 // DELETE: Delete an object from Cloudflare R2
 export async function onRequestDelete(context: any) {
-  try {
-    const { request, env } = context;
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
 
-    // Security Check (TOB-SB-02): Verify admin authorization for storage deletions
+  try {
+    // Security Check: Verify admin authorization for storage deletions
     if (!isAuthorizedAdmin(request, env)) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "Unauthorized: Admin authorization required for R2 storage deletions.",
         }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -327,14 +369,16 @@ export async function onRequestDelete(context: any) {
     const token = env?.CLOUDFLARE_API_TOKEN || "";
 
     const url = new URL(request.url);
-    const key = url.searchParams.get("key");
+    const rawKey = url.searchParams.get("key");
 
-    if (!key) {
+    if (!rawKey) {
       return new Response(JSON.stringify({ success: false, error: "Missing key parameter" }), {
         status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const key = sanitizeFileKey(rawKey);
 
     const delRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucket}/objects/${key}`,
@@ -348,12 +392,12 @@ export async function onRequestDelete(context: any) {
 
     const delJson: any = await delRes.json();
     return new Response(JSON.stringify({ success: delJson.success, result: delJson.result }), {
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message || err }), {
       status: 500,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }

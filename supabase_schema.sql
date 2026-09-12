@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     email TEXT NOT NULL,
     company TEXT,
     phone TEXT,
+    payment_id TEXT UNIQUE,
     status TEXT DEFAULT 'pending' NOT NULL CHECK (status IN ('pending', 'in_review', 'in_progress', 'completed', 'cancelled'))
 );
 
@@ -311,6 +312,31 @@ WITH CHECK (
     OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
 );
 
+-- Trigger to protect sensitive profile columns from unauthorized client tampering
+CREATE OR REPLACE FUNCTION public.fn_protect_profile_columns()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF current_user <> 'service_role' AND COALESCE(auth.jwt() ->> 'email', '') NOT IN ('admin@theslidebee.com', 'admin@slidebee.com') THEN
+        IF NEW.credits_balance <> OLD.credits_balance OR
+           NEW.credits_total <> OLD.credits_total OR
+           NEW.role <> OLD.role OR
+           NEW.purchased_items IS DISTINCT FROM OLD.purchased_items THEN
+            RAISE EXCEPTION 'Unauthorized: Client accounts cannot modify credits, role, or purchased items directly.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_protect_profile_columns ON public.profiles;
+CREATE TRIGGER trg_protect_profile_columns
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_protect_profile_columns();
+
 -- Drop any existing conflicting policies on auth_logs
 DROP POLICY IF EXISTS "Allow insert on auth_logs" ON public.auth_logs;
 DROP POLICY IF EXISTS "Allow read auth_logs for admin" ON public.auth_logs;
@@ -339,10 +365,17 @@ DROP POLICY IF EXISTS "Allow read site_config" ON public.site_config;
 DROP POLICY IF EXISTS "Allow full access site_config for authenticated" ON public.site_config;
 DROP POLICY IF EXISTS "site_config_admin_write" ON public.site_config;
 
--- RLS Policies for Site Config: Public can read settings, only admin can write
+-- RLS Policies for Site Config: Public can read non-secret settings, only admin can read all / write
 CREATE POLICY "Allow read site_config" 
 ON public.site_config FOR SELECT 
-USING (true);
+USING (
+    key NOT IN ('razorpay_settings', 'admin_secrets', 'email_settings', 'secrets')
+    OR (auth.jwt() ->> 'email') IN ('admin@theslidebee.com', 'admin@slidebee.com')
+    OR EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
+    )
+);
 
 CREATE POLICY "site_config_admin_write" 
 ON public.site_config FOR ALL 
@@ -881,7 +914,8 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.fn_grant_starter_credits(TEXT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.fn_redeem_template_credit(TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.fn_fulfill_template_order(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, NUMERIC) TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.fn_fulfill_template_order(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, NUMERIC) FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_fulfill_template_order(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, NUMERIC) TO service_role;
 
 
 

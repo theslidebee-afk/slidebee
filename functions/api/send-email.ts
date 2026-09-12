@@ -6,22 +6,35 @@ const DAILY_EMAIL_SAFETY_LIMIT = 80;
 let dailyEmailCount = 0;
 let currentDay = new Date().toISOString().slice(0, 10);
 
-export async function onRequestOptions() {
+const ALLOWED_ORIGINS = [
+  "https://theslidebee.com",
+  "https://www.theslidebee.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:4173",
+];
+
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-slidebee-app-token, x-slidebee-admin-key",
+    "Vary": "Origin",
+  };
+}
+
+export async function onRequestOptions(context: any) {
   return new Response(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
+    headers: getCorsHeaders(context.request),
   });
 }
 
 export async function onRequestPost(context: any) {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Content-Type": "application/json",
-  };
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
 
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -37,13 +50,11 @@ export async function onRequestPost(context: any) {
           success: false,
           error: `Zero-Cost Safety Cap: Daily email limit of ${DAILY_EMAIL_SAFETY_LIMIT} reached for ${today}. Request blocked to guarantee $0.00 zero billing.`,
         }),
-        { status: 429, headers: corsHeaders }
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { request, env } = context;
-
-    // Security Check (TOB-SB-07): Protect against unauthenticated open relay abuse
+    // Security Check: Protect against unauthenticated open relay abuse
     const appToken = request.headers.get("x-slidebee-app-token") || request.headers.get("x-slidebee-admin-key");
     const authHeader = request.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
@@ -59,7 +70,7 @@ export async function onRequestPost(context: any) {
     if (!isAuthorized) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized: Invalid application authentication token." }),
-        { status: 401, headers: corsHeaders }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -69,15 +80,33 @@ export async function onRequestPost(context: any) {
     if (!to || !subject || (!html && !text)) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing required fields: to, subject, html" }),
-        { status: 400, headers: corsHeaders }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Anti-Spam: Prevent mass-mailing abuse by capping recipients
+    const recipients = Array.isArray(to) ? to : [to];
+    if (recipients.length > 2) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Recipient limit exceeded: maximum 2 recipients per dispatch." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    for (const email of recipients) {
+      if (typeof email !== "string" || !email.includes("@") || email.length > 254) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Invalid recipient email format: ${email}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const apiKey = env?.RESEND_API_KEY || "";
     if (!apiKey) {
       return new Response(
         JSON.stringify({ success: false, error: "RESEND_API_KEY environment variable not configured" }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -95,7 +124,7 @@ export async function onRequestPost(context: any) {
     if (!ALLOWED_SENDERS.includes(configuredEmail.toLowerCase())) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid sender: Only official SlideBee domains permitted." }),
-        { status: 403, headers: corsHeaders }
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -111,7 +140,7 @@ export async function onRequestPost(context: any) {
       },
       body: JSON.stringify({
         from: primarySender,
-        to: Array.isArray(to) ? to : [to],
+        to: recipients,
         reply_to: replyTo || configuredEmail,
         subject,
         html: html || `<p>${text || ""}</p>`,
@@ -130,7 +159,7 @@ export async function onRequestPost(context: any) {
         },
         body: JSON.stringify({
           from: fallbackSender,
-          to: Array.isArray(to) ? to : [to],
+          to: recipients,
           reply_to: replyTo || "hello@theslidebee.com",
           subject,
           html: html || `<p>${text || ""}</p>`,
@@ -150,12 +179,12 @@ export async function onRequestPost(context: any) {
         dispatchesToday: dailyEmailCount,
         dailyCap: DAILY_EMAIL_SAFETY_LIMIT,
       }),
-      { status: resendRes.ok ? 200 : 400, headers: corsHeaders }
+      { status: resendRes.ok ? 200 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
     return new Response(
       JSON.stringify({ success: false, error: error.message || "Failed to dispatch email" }),
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 }

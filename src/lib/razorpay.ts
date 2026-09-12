@@ -142,22 +142,14 @@ export async function openRazorpayCheckout({
     return;
   }
 
-  // Graceful Test Simulation when waiting for Razorpay API Test Key
-  const confirmSimulation = window.confirm(
-    `[Razorpay Test Mode Ready]\n\n` +
-    `Item: ${title}\n` +
-    `Amount: ${currency === "USD" ? "$" : "₹"}${amount}\n\n` +
-    `Waiting for Razorpay API Test Key (rzp_test_...).\n` +
-    `You can configure your Razorpay Key in Admin Dashboard -> Config tab at any time.\n\n` +
-    `Would you like to simulate a SUCCESSFUL test payment now to verify instant delivery and email dispatch?`
-  );
+  // If Razorpay could not be loaded or key is missing, report error cleanly
+  const errMsg = !isLoaded
+    ? "Payment gateway script failed to load. Please check your internet connection or ad-blocker."
+    : "Payment gateway configuration is missing. Please contact support.";
 
-  if (confirmSimulation) {
-    onSuccess({
-      razorpay_payment_id: `pay_sim_${Date.now()}`,
-      isTestSimulation: true,
-    });
+  if (onFailure) {
+    onFailure(new Error(errMsg));
   } else {
-    if (onDismiss) onDismiss();
+    alert(errMsg);
   }
 }
