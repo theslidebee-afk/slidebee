@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabase";
-import { Mail, CheckCircle2, Sparkles } from "lucide-react";
+import { Mail, CheckCircle2, Clock } from "lucide-react";
 
 // Launch date: 30 days from October 1, 2026
 const LAUNCH_DATE = new Date("2026-10-01T00:00:00Z").getTime();
@@ -108,7 +108,7 @@ export default function CountdownSection() {
           viewport={{ once: true }}
           className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-8"
         >
-          <Sparkles size={14} />
+          <Clock size={14} />
           Template Library — Coming Soon
         </motion.div>
 

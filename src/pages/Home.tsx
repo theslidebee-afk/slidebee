@@ -357,26 +357,33 @@ export default function Home() {
                 to={`/template/${item.id}`}
                 className="hex-card group bg-white border-2 border-primary/35 hover:border-primary overflow-hidden hover:shadow-2xl transition-all duration-300 shadow-sm flex flex-col justify-between"
               >
-                {/* Preview Image */}
-                <div className="relative aspect-video overflow-hidden bg-black/5 border-b border-primary/20">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-3 py-0.5">
-                    {item.category}
+                {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
+                <div className="p-3 bg-[#FFF9E8]/75 border-b border-primary/20">
+                  <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
+                      loading="lazy"
+                    />
                   </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-4 flex flex-col justify-between flex-grow">
+                <div className="p-4 pt-3 flex flex-col justify-between flex-grow">
                   <div>
+                    {/* Category (Off the slide canvas) */}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                        {item.category}
+                      </span>
+                    </div>
+
                     <div className="flex items-start justify-between mb-1">
                       <h3 className="font-heading font-extrabold text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
                         {item.title}
                       </h3>
-                      <span className="text-xs sm:text-sm font-heading font-black text-[#111111] ml-2">
+                      <span className="text-xs sm:text-sm font-heading font-black text-[#111111] ml-2 shrink-0">
                         ₹{item.price}
                       </span>
                     </div>

@@ -8,7 +8,8 @@ import {
   ChevronRight,
   ShieldCheck, 
   Star, 
-  Sparkles, 
+  Coins,
+  Layers, 
   CheckCircle2, 
   Check, 
   FileText,
@@ -322,7 +323,7 @@ export default function TemplateDetail() {
 
               {template.is_credit_eligible && (
                 <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-[#111111]/20">
-                  <Sparkles size={11} /> 5 Free Credits Tag
+                  <Coins size={11} /> 5 Free Credits Tag
                 </div>
               )}
             </div>
@@ -452,7 +453,7 @@ export default function TemplateDetail() {
                     {template.is_credit_eligible ? (
                       <div className="p-4 bg-[#FFFDF5] border-2 border-primary rounded-2xl space-y-2.5 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                          <Sparkles size={15} className="text-primary-amber" />
+                          <Coins size={15} className="text-primary-amber" />
                           <span>Design Credits Eligible Template</span>
                         </div>
                         <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
@@ -464,7 +465,7 @@ export default function TemplateDetail() {
                           onClick={handleRedeemWithCredits}
                           className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
                         >
-                          <Sparkles size={15} />
+                          <Coins size={15} />
                           {isProcessing ? "Redeeming Credits..." : "Claim with 5 Free Starter Credits"}
                         </button>
                       </div>
@@ -510,7 +511,7 @@ export default function TemplateDetail() {
                   to={`/ordernow?ref=${encodeURIComponent(template.title)}&code=${encodeURIComponent(templateCode)}`}
                   className="hex-pill w-full bg-white border border-primary/40 hover:bg-primary/10 text-[#111111] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-xs text-center"
                 >
-                  <Sparkles size={14} className="text-primary-amber" /> Have Studio Customize This Deck <ArrowRight size={13} />
+                  <Layers size={14} className="text-primary-amber" /> Have Studio Customize This Deck <ArrowRight size={13} />
                 </Link>
               </div>
 
@@ -598,31 +599,41 @@ export default function TemplateDetail() {
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   className="hex-card group bg-white border-2 border-primary/30 hover:border-primary overflow-hidden hover:shadow-xl transition-all flex flex-col justify-between text-left"
                 >
-                  <div className="relative aspect-video overflow-hidden bg-black/5 border-b border-primary/20">
-                    <img
-                      src={sim.image_url}
-                      alt={sim.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5">
-                      {sim.category}
+                  {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
+                  <div className="p-3 bg-[#FFF9E8]/75 border-b border-primary/20">
+                    <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
+                      <img
+                        src={sim.image_url}
+                        alt={sim.title}
+                        className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
+                        loading="lazy"
+                      />
                     </div>
-                    {sim.is_credit_eligible && (
-                      <div className="hex-pill-sm absolute top-2.5 right-2.5 bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5 shadow">
-                        Free Tag
-                      </div>
-                    )}
                   </div>
 
                   <div className="p-3.5 flex flex-col justify-between flex-grow">
-                    <div className="flex items-start justify-between mb-1.5">
-                      <h3 className="font-heading font-extrabold text-xs text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
-                        {sim.title}
-                      </h3>
-                      <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
-                        {formatPrice(currency === "USD" ? sim.price_usd : sim.price_inr)}
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                          {sim.category}
+                        </span>
+                        {sim.is_credit_eligible && (
+                          <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Coins size={9} /> Free Tag
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-start justify-between mb-1.5">
+                        <h3 className="font-heading font-extrabold text-xs text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
+                          {sim.title}
+                        </h3>
+                        <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
+                          {formatPrice(currency === "USD" ? sim.price_usd : sim.price_inr)}
+                        </span>
+                      </div>
                     </div>
+
                     <div className="flex items-center gap-1.5 pt-2 border-t border-primary/15 text-[10px] font-bold text-[#726F6D]">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
                       <span>{sim.slides_count} Master Slides (.pptx)</span>

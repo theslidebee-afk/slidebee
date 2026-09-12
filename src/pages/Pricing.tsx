@@ -5,7 +5,7 @@ import {
   Check,
   ArrowRight,
   ChevronDown,
-  Sparkles,
+  Flame,
   LayoutGrid,
   Paintbrush
 } from "lucide-react";
@@ -324,7 +324,7 @@ export default function Pricing() {
           {/* Pro */}
           <div className="hex-card-lg bg-white border-2 border-primary ring-4 ring-primary/20 p-8 flex flex-col justify-between shadow-xl relative">
             <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
-              <Sparkles size={11} /> Most Popular
+              <Flame size={12} className="text-[#FCBF14]" /> Most Popular
             </div>
 
             <div>
@@ -448,7 +448,7 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
-                  <Sparkles size={11} className="text-[#FCBF14]" /> {plan.badge}
+                  <Flame size={12} className="text-[#FCBF14]" /> {plan.badge}
                 </div>
               )}
 

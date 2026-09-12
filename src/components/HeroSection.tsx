@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Zap } from "lucide-react";
 import { RecreatedHoneycombCluster } from "./RecreatedHoneycombCluster";
 
 export default function HeroSection() {
@@ -98,7 +98,7 @@ export default function HeroSection() {
                 <svg className="w-9 h-3 text-primary inline-block stroke-current fill-none stroke-[1.5]" viewBox="0 0 40 12">
                   <path d="M 2 8 C 10 0, 18 12, 26 6 C 30 3, 34 8, 38 4" strokeDasharray="3 2" />
                 </svg>
-                <Sparkles size={14} className="text-primary" />
+                <Zap size={14} className="text-primary" />
               </span>
             </motion.div>
 

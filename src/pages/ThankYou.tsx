@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, Home, Sparkles, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Home, Layers, ShieldCheck } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function ThankYou() {
@@ -100,7 +100,7 @@ export default function ThankYou() {
               to="/templates"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-[#111111] font-bold hex-card border-2 border-[#111111]/20 hover:border-[#111111] transition-colors shadow-sm"
             >
-              <Sparkles size={18} className="text-[#FCBF14]" />
+              <Layers size={18} className="text-[#FCBF14]" />
               Explore Template Catalog
             </Link>
           </div>

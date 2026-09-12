@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, ArrowLeft, ArrowRight, Share2, Check, Sparkles } from "lucide-react";
+import { Calendar, ArrowLeft, ArrowRight, Share2, Check, Layers } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -285,7 +285,7 @@ export default function BlogDetail() {
         <div className="hex-card-dark p-8 sm:p-10 border-2 border-primary text-center relative overflow-hidden shadow-2xl">
           <div className="max-w-xl mx-auto space-y-4 relative z-10">
             <span className="hex-pill inline-flex items-center gap-1.5 bg-primary text-[#111111] px-4 py-1 text-xs font-black uppercase tracking-wider">
-              <Sparkles size={12} /> Transform Your Decks
+              <Layers size={12} /> Transform Your Decks
             </span>
             <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-white">
               Need Investor-Grade Slides Built for Your Next Meeting?

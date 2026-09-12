@@ -22,7 +22,8 @@ import {
   CreditCard,
   ArrowRight,
   X,
-  Sparkles,
+  Coins,
+  Award,
   Check,
   FileText,
   Trash2,
@@ -2286,7 +2287,7 @@ export default function Admin() {
                         : "bg-primary/20 text-[#111111] hover:bg-primary/30"
                     }`}
                   >
-                    <Sparkles size={12} />
+                    <Coins size={12} />
                     <span>5 Free Credits ({templates.filter(t => t.is_credit_eligible).length})</span>
                   </button>
                 </div>
@@ -3343,7 +3344,7 @@ export default function Admin() {
                       <div className="pt-6 border-t border-[#111111]/10 space-y-4">
                         <div>
                           <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-                            <Sparkles size={14} className="text-primary-amber" />
+                            <Layers size={14} className="text-primary-amber" />
                             Select Directly from Example Decks (Mapped to Portfolio)
                           </h4>
                           <p className="text-[11px] text-[#726F6D]">
@@ -3912,7 +3913,7 @@ export default function Admin() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10">
                     <div>
                       <h4 className="text-sm font-heading font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-                        <Sparkles size={15} className="text-primary-amber" />
+                        <Award size={15} className="text-primary-amber" />
                         Previous Worked Companies Brand Marquee (/services)
                       </h4>
                       <p className="text-xs text-[#726F6D]">
@@ -6419,7 +6420,7 @@ export default function Admin() {
                   <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-primary-amber" /> Ingest & Mirror External Image URLs to Cloudflare R2 CDN
+                        <RefreshCw size={14} className="text-primary-amber" /> Ingest & Mirror External Image URLs to Cloudflare R2 CDN
                       </span>
                       <p className="text-[10px] text-[#726F6D] mt-0.5">
                         Automatically downloads images from external URLs in your spreadsheet and uploads them to our high-speed Cloudflare R2 CDN bucket so you own the assets and slide previews never break.
@@ -7052,7 +7053,7 @@ export default function Admin() {
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-[#111111] text-primary flex items-center justify-center font-bold">
-                      <Sparkles size={16} />
+                      <Coins size={16} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -7587,7 +7588,7 @@ export default function Admin() {
                   >
                     {editingTemplate.is_credit_eligible ? (
                       <>
-                        <Sparkles size={12} className="text-[#111111]" />
+                        <Coins size={12} className="text-[#111111]" />
                         <span>Tagged (Eligible)</span>
                       </>
                     ) : (
@@ -7681,7 +7682,7 @@ export default function Admin() {
               <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-5 mb-6 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-primary-amber" /> Live Milestone Progress
+                    <CheckCircle2 size={14} className="text-primary-amber" /> Live Milestone Progress
                   </h4>
                   <span className="text-xs font-extrabold text-primary-amber">
                     Stage {getMilestoneIndex(selectedOrderForModal.status) + 1} of 4: {ORDER_MILESTONES[getMilestoneIndex(selectedOrderForModal.status)].label}

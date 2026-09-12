@@ -1,5 +1,5 @@
 import React from "react";
-import { Layout, UploadCloud, Sparkles, Trophy, ChevronRight } from "lucide-react";
+import { Layout, UploadCloud, Palette, Trophy, ChevronRight } from "lucide-react";
 
 const steps = [
   { 
@@ -21,7 +21,7 @@ const steps = [
     badge: "STEP 03", 
     title: "Expert Design", 
     desc: "Our senior designers craft high-impact slides with bespoke typography and charts.", 
-    icon: <Sparkles className="w-5 h-5 text-[#111111]" />,
+    icon: <Palette className="w-5 h-5 text-[#111111]" />,
     isHighlighted: true
   },
   { 

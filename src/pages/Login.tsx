@@ -22,7 +22,6 @@ import {
   FileText,
   ShieldCheck,
   Zap,
-  Sparkles,
   X
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -410,7 +409,7 @@ export default function Login() {
                     to="/pricing#marketplace"
                     className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
                   >
-                    <Sparkles size={13} className="inline mr-1.5 text-primary-amber" />
+                    <Zap size={13} className="inline mr-1.5 text-primary-amber" />
                     Go Pro — Unlock 80 Downloads / Month <ArrowRight size={13} className="inline ml-1" />
                   </Link>
                 )}
@@ -812,7 +811,7 @@ export default function Login() {
                               {/* Current Stage Status Box */}
                               <div className="bg-white/90 border border-primary/25 rounded-xl p-3.5 flex items-start gap-3 shadow-xs">
                                 <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary-amber flex items-center justify-center shrink-0 mt-0.5 font-bold">
-                                  <Sparkles size={16} />
+                                  <Zap size={16} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex flex-wrap items-center justify-between gap-2 mb-0.5">

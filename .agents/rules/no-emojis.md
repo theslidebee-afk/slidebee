@@ -31,7 +31,7 @@ Instead of emojis, always use:
 | Lightning emoji | Lucide React `<Zap />` | `<Zap size={11} className="text-amber-600" />` |
 | Checkmark emoji | Lucide React `<Check />` or clean text badge | `<Check size={12} className="text-emerald-600" />` |
 | Star emoji | Lucide React `<Star />` | `<Star size={12} className="text-amber-500 fill-amber-500" />` |
-| Sparkle / celebration | Lucide React `<Sparkles />` or clean copy | `<Sparkles size={13} className="text-primary" />` |
+| Sparkle / celebration | Lucide React `<Zap />`, `<Flame />`, or clean copy | `<Zap size={13} className="text-primary" />` |
 | Arrow symbol | Lucide React `<ArrowRight />` | `<ArrowRight size={13} />` |
 | Cross / close | Lucide React `<X />` | `<X size={14} className="text-red-500" />` |
 | Bee emoji | Official `SlideBeeLogo` SVG component | `<SlideBeeLogo variant="light" size="sm" />` |

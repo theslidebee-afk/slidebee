@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Home, FileQuestion, Sparkles } from "lucide-react";
+import { Home, FileQuestion, Layers } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function NotFound() {
@@ -44,7 +44,7 @@ export default function NotFound() {
             to="/templates"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-[#111111] font-bold hex-card border-2 border-[#111111]/20 hover:border-[#111111] transition-colors shadow-sm"
           >
-            <Sparkles size={18} className="text-[#FCBF14]" />
+            <Layers size={18} className="text-[#FCBF14]" />
             Browse Templates
           </Link>
         </div>

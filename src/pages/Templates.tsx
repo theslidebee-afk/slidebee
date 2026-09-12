@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Search, Download, Eye, ArrowRight, Star, FileText, Sparkles } from "lucide-react";
+import { Search, Download, Eye, ArrowRight, Star, FileText, Coins } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore, type StoreTemplate } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -24,57 +24,57 @@ export default function Templates() {
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [onlyCreditEligible, setOnlyCreditEligible] = useState<boolean>(initialOnlyFree);
 
+  // Read dynamically from deep storefront hook
+  const { templates: allTemplates, loading, showStars, showDownloads } = useStudioStore();
   const { formatPrice } = useCurrency();
 
-  // Deep Module: StudioStoreClient
-  const { templates: filteredTemplates, allTemplates, freeTemplates, showStars, showDownloads, loading } = useStudioStore({
-    category: selectedCategory,
-    searchQuery,
-    onlyCreditEligible
+  // Distinct category list
+  const categories = ["All", ...Array.from(new Set(allTemplates.map(t => t.category)))];
+
+  const filteredTemplates = allTemplates.filter((item) => {
+    const matchesCategory =
+      selectedCategory === "All" ||
+      item.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch =
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCredit = !onlyCreditEligible || item.is_credit_eligible;
+    return matchesCategory && matchesSearch && matchesCredit;
   });
 
-  const categories = [
-    "All",
-    "Business",
-    "Pitch Decks",
-    "Infographics",
-    "Marketing",
-    "Strategy",
-    "Education",
-    "Finance",
-    "Timelines"
-  ];
+  const freeTemplates = allTemplates.filter(t => t.is_credit_eligible);
 
   return (
-    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-20 large-hex-grid">
-      <div className="container mx-auto px-4 md:px-8">
+    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
+      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header Title */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block mb-2">
-            SlideBee Presentation Studio
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] mb-3 leading-tight">
-            Executive Presentation Templates
+        {/* Page Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <div className="hex-pill inline-flex items-center gap-2 bg-[#111111] text-[#FCBF14] text-xs font-black px-4 py-1.5 uppercase tracking-wider mb-4 shadow-sm border border-primary/40">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            SlideBee Storefront
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] mb-4 tracking-tight">
+            Curated Executive Slide Decks
           </h1>
-          <p className="text-[#726F6D] text-sm sm:text-base font-medium">
-            Handcrafted, board-ready PowerPoint (.pptx) master decks engineered for senior leaders and founders.
+          <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-2xl mx-auto">
+            100% editable corporate pitch decks, quarterly business reviews, board reports, and visual frameworks engineered in native Microsoft PowerPoint.
           </p>
         </div>
 
-        {/* Search & Deliverable Guarantee Bar */}
-        <div className="hex-card bg-white border border-[#111111]/8 p-4 md:p-6 mb-10 shadow-sm">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
+        {/* Search & Filter Bar */}
+        <div className="bg-white/85 backdrop-blur-md rounded-2xl border-2 border-primary/30 p-4 sm:p-5 mb-8 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
             
             {/* Search Input */}
             <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
               <input
                 type="text"
-                placeholder="Search templates, pitch decks, SKU..."
+                placeholder="Search templates, pitch decks, infographics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="hex-card w-full bg-[#FFF9E8] border border-[#111111]/10 pl-11 pr-4 py-2.5 text-xs sm:text-sm text-[#111111] placeholder-gray-400 focus:outline-none focus:border-primary font-medium"
+                className="w-full bg-[#FFF9E8]/70 border border-primary/40 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/60 focus:outline-none focus:border-primary transition-all font-medium"
               />
               {searchQuery && (
                 <button
@@ -86,9 +86,10 @@ export default function Templates() {
               )}
             </div>
 
-            {/* Quick Actions: Free Starter Credits Library Toggle & Deliverable Badge */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Quick Filters */}
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
               <button
+                type="button"
                 onClick={() => {
                   const nextVal = !onlyCreditEligible;
                   setOnlyCreditEligible(nextVal);
@@ -105,7 +106,7 @@ export default function Templates() {
                     : "bg-[#FFF9E8] text-[#111111] border-primary/50 hover:bg-primary/20"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-primary-amber" />
+                <Coins className="w-3.5 h-3.5 text-primary-amber" />
                 <span>5 Free Credits Library ({freeTemplates.length})</span>
               </button>
 
@@ -142,7 +143,7 @@ export default function Templates() {
           <div className="hex-card bg-[#FFFDF5] border-2 border-primary/50 p-4 sm:p-5 mb-8 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-[#111111]" />
+                <Coins className="w-5 h-5 text-[#111111]" />
               </div>
               <div>
                 <h4 className="text-sm font-heading font-extrabold text-[#111111]">
@@ -202,48 +203,45 @@ export default function Templates() {
                 className="hex-card group bg-white border-2 border-primary/35 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm cursor-pointer"
                 onClick={() => navigate(`/template/${item.id}`)}
               >
-                {/* Half-Hexagon Preview Cut */}
-                <div className="half-hex-preview relative aspect-[16/11] overflow-hidden bg-black/5 border-b border-primary/20">
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  
-                  {/* Category Badge */}
-                  <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-0.5 z-10 border border-primary/30">
-                    {item.category}
-                  </div>
+                {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
+                <div className="p-3 sm:p-3.5 bg-[#FFF9E8]/75 border-b border-primary/20">
+                  <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
+                      loading="lazy"
+                    />
 
-                  {/* Credit Eligible Tag */}
-                  {item.is_credit_eligible && (
-                    <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] text-[10px] font-black px-2.5 py-0.5 z-10 shadow border border-[#111111]/20 flex items-center gap-1">
-                      <Sparkles size={10} /> 5 Free Credits Tag
+                    {/* Quick Preview Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
+                      <span className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-xl">
+                        <Eye size={13} /> View Full Deck
+                      </span>
                     </div>
-                  )}
-
-                  {/* Optional Star Rating (Controlled by Admin Toggle) */}
-                  {showStars && item.rating && !item.is_credit_eligible ? (
-                    <div className="hex-pill-sm absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#111111] text-[10px] font-extrabold px-2.5 py-0.5 shadow z-10 border border-primary/30 inline-flex items-center gap-1">
-                      <Star size={10} className="text-amber-500 fill-amber-500" /> {item.rating}
-                    </div>
-                  ) : null}
-
-                  {/* Quick Preview Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
-                    <Link
-                      to={`/template/${item.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-5 py-2.5 flex items-center gap-1.5 shadow-xl hover:scale-105 transition-transform"
-                    >
-                      <Eye size={13} /> View Full Deck
-                    </Link>
                   </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-5 pt-3 flex flex-col flex-grow justify-between">
+                <div className="p-5 pt-3.5 flex flex-col flex-grow justify-between">
                   <div>
+                    {/* Category & Tags Row (Off the slide canvas) */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                        {item.category}
+                      </span>
+                      {item.is_credit_eligible && (
+                        <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Coins size={10} className="text-[#111111]" /> 5 Credits Tag
+                        </span>
+                      )}
+                      {showStars && item.rating && !item.is_credit_eligible ? (
+                        <span className="text-[#111111] text-[10px] font-extrabold flex items-center gap-1">
+                          <Star size={10} className="text-amber-500 fill-amber-500" /> {item.rating}
+                        </span>
+                      ) : null}
+                    </div>
+
                     <h3 className="font-heading font-extrabold text-base text-[#111111] group-hover:text-primary-amber transition-colors mb-1.5 line-clamp-1">
                       {item.title}
                     </h3>
@@ -275,7 +273,7 @@ export default function Templates() {
                     {/* Credit Eligibility Subtext */}
                     {item.is_credit_eligible ? (
                       <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
-                        <Sparkles size={11} /> Eligible for 5 Free Starter Credits
+                        <Coins size={11} /> Eligible for 5 Free Starter Credits
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#726F6D] font-medium mb-2.5">
