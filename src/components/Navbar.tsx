@@ -6,7 +6,7 @@ import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
 import { supabase } from "../lib/supabase";
-import { performAdminLogout, subscribeToAuthSync } from "../lib/authSync";
+import { performAdminLogout, performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,49 +21,46 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const checkAuth = async () => {
-    const adminSession = localStorage.getItem("slidebee_admin_session") === "true";
-    if (adminSession) {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    // Check localStorage admin flag but only trust it if a live Supabase session exists
+    const adminFlag = localStorage.getItem("slidebee_admin_session") === "true";
+    if (adminFlag && session?.user) {
       setIsAdmin(true);
       setClientUser(null);
       return;
     }
 
+    // If flag is set but no live session, it is stale — clean it up
+    if (adminFlag && !session?.user) {
+      localStorage.removeItem("slidebee_admin_session");
+      localStorage.removeItem("slidebee_admin_email");
+    }
+
     setIsAdmin(false);
 
     let activeEmail = "";
-    const localClient = localStorage.getItem("slidebee_client_user");
-    if (localClient) {
-      try {
-        const parsed = JSON.parse(localClient);
-        setClientUser(parsed);
-        if (parsed.credits_balance !== undefined) {
-          setCredits(Number(parsed.credits_balance));
-        }
-        activeEmail = parsed.email || "";
-      } catch (e) {
+
+    if (session?.user) {
+      const isSessionAdmin =
+        session.user.email === "admin@theslidebee.com" ||
+        session.user.email === "admin@slidebee.com" ||
+        session.user.email?.startsWith("admin@") ||
+        session.user.user_metadata?.role === "admin";
+
+      if (isSessionAdmin) {
+        setIsAdmin(true);
         setClientUser(null);
+        localStorage.setItem("slidebee_admin_session", "true");
+        return;
       }
+
+      setClientUser(session.user);
+      activeEmail = session.user.email || "";
     } else {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const isSessionAdmin =
-          session.user.email === "admin@theslidebee.com" ||
-          session.user.email === "admin@slidebee.com" ||
-          session.user.email?.startsWith("admin@") ||
-          session.user.user_metadata?.role === "admin";
-
-        if (isSessionAdmin) {
-          setIsAdmin(true);
-          setClientUser(null);
-          localStorage.setItem("slidebee_admin_session", "true");
-          return;
-        }
-
-        setClientUser(session.user);
-        activeEmail = session.user.email || "";
-      } else {
-        setClientUser(null);
-      }
+      // No live session — also clear any stale client user
+      localStorage.removeItem("slidebee_client_user");
+      setClientUser(null);
     }
 
     if (activeEmail) {
@@ -121,7 +118,7 @@ export default function Navbar() {
   }, [location.pathname]);
 
   const handleLogoutAdmin = async () => {
-    performAdminLogout();
+    await performGlobalLogout();
     setIsAdmin(false);
     navigate("/login");
   };

@@ -431,6 +431,7 @@ export default function Admin() {
   const handleLogout = async () => {
     await performGlobalLogout();
     setSession(null);
+    navigate("/login");
   };
 
   // Handle Status Update on Order
