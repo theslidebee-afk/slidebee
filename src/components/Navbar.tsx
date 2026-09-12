@@ -131,6 +131,8 @@ export default function Navbar() {
     { name: "Services", path: "/services" },
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/examples" },
+    { name: "Blog", path: "/blog" },
+    { name: "Videos", path: "/videos" },
     { name: "About", path: "/about" },
   ];
 
@@ -150,7 +152,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links (Increased Font Size & Crisp Weight) */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-5 lg:gap-7">
           {navLinks.map((link) => {
             const isActive = location.pathname === link.path;
             return (

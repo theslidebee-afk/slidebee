@@ -1,6 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Clock, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Videos() {
@@ -9,14 +12,15 @@ export default function Videos() {
     description: "Watch slide teardowns, masterclass walkthroughs, and PowerPoint layout tutorials by senior presentation designers.",
   });
 
-  const videoPlaylists = [
+  const [videoPlaylists, setVideoPlaylists] = useState<any[]>([
     {
       id: "1",
       title: "Executive Presentation Teardown: Turning 40 Slides into 10",
       duration: "14:20",
       category: "Masterclass",
       thumbnail: "/portfolio/case_study_a_14.png",
-      desc: "Watch our senior art director restructure a bloated corporate roadmap deck into a high-stakes board presentation."
+      desc: "Watch our senior art director restructure a bloated corporate roadmap deck into a high-stakes board presentation.",
+      videoUrl: ""
     },
     {
       id: "2",
@@ -24,7 +28,8 @@ export default function Videos() {
       duration: "18:45",
       category: "Fundraising",
       thumbnail: "/portfolio/global_brands_1.png",
-      desc: "How to visualize complex SaaS metrics, CAC/LTV, and market sizing diagrams so VCs immediately get the value."
+      desc: "How to visualize complex SaaS metrics, CAC/LTV, and market sizing diagrams so VCs immediately get the value.",
+      videoUrl: ""
     },
     {
       id: "3",
@@ -32,9 +37,28 @@ export default function Videos() {
       duration: "12:10",
       category: "Template Design",
       thumbnail: "/portfolio/levis_yuengling_6.png",
-      desc: "A deep dive into PowerPoint slide masters, theme colors, typography hierarchies, and modular vector asset libraries."
+      desc: "A deep dive into PowerPoint slide masters, theme colors, typography hierarchies, and modular vector asset libraries.",
+      videoUrl: ""
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    async function loadVideosCms() {
+      try {
+        const { data } = await supabase
+          .from("site_config")
+          .select("value")
+          .eq("key", "videos_cms")
+          .maybeSingle();
+        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
+          setVideoPlaylists(data.value);
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic videos CMS:", err);
+      }
+    }
+    loadVideosCms();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-32 pb-24 large-hex-grid">
@@ -66,11 +90,11 @@ export default function Videos() {
               {/* Thumbnail Container */}
               <div className="relative aspect-[16/10] overflow-hidden bg-[#111111]">
                 <img
-                  src={video.thumbnail}
+                  src={normalizeR2Url(video.thumbnail)}
                   alt={video.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                 />
-                
+
                 {/* Play Button Overlay */}
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition-all">
                   <div className="hex-pure w-14 h-14 bg-primary text-[#111111] flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
@@ -99,9 +123,20 @@ export default function Videos() {
                   </p>
                 </div>
 
-                <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 pt-2 border-t border-primary/20">
-                  Watch Masterclass <ArrowRight size={14} />
-                </div>
+                {video.videoUrl ? (
+                  <a
+                    href={video.videoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 pt-2 border-t border-primary/20 hover:underline"
+                  >
+                    Watch Masterclass <ArrowRight size={14} />
+                  </a>
+                ) : (
+                  <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 pt-2 border-t border-primary/20">
+                    Coming Soon <ArrowRight size={14} />
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

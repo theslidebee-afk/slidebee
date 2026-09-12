@@ -6,6 +6,7 @@ import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { MagneticButton } from "../components/MagneticButton";
 import { supabase } from "../lib/supabase";
 import { normalizeR2Url } from "../lib/r2";
+import { openRazorpayCheckout } from "../lib/razorpay";
 import { 
   Search, 
   ArrowRight, 
@@ -115,6 +116,52 @@ export default function Home() {
     } else {
       navigate('/templates');
     }
+  };
+
+  const handleGoPro = async () => {
+    const monthlyPrice = pricingConfig?.pro_monthly_inr ?? 199;
+    const discount = pricingConfig?.pro_discount_percent ?? 50;
+    const yearlyPrice = Math.round((monthlyPrice * 12) * (1 - discount / 100));
+    const amount = billingPeriod === "yearly" ? yearlyPrice : monthlyPrice;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate(`/login?redirect=pro&billing=${billingPeriod}`);
+      return;
+    }
+
+    await openRazorpayCheckout({
+      amount,
+      currency: "INR",
+      title: "SlideBee Pro Membership",
+      description: `80 template downloads / month (${billingPeriod === "yearly" ? "Annual" : "Monthly"} billing)`,
+      prefill: {
+        email: session.user.email || "",
+        name: session.user.user_metadata?.full_name || "SlideBee Pro Member",
+      },
+      onSuccess: async (rzpRes) => {
+        try {
+          await fetch("/api/subscribe-pro", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paymentId: rzpRes.razorpay_payment_id || "rzp_direct",
+              userId: session.user.id,
+              userEmail: session.user.email,
+              planName: billingPeriod === "yearly" ? "Pro Yearly" : "Pro Monthly",
+              amount,
+              billingPeriod
+            })
+          });
+        } catch (subErr) {
+          console.warn("Subscription provisioning error:", subErr);
+        }
+        navigate("/login");
+      },
+      onFailure: (err) => {
+        console.error("Pro checkout failed:", err);
+      }
+    });
   };
 
   const categories = [
@@ -672,11 +719,11 @@ export default function Home() {
                   );
                 })()}
                 <p className="text-[#726F6D] text-xs font-medium mb-4">
-                  Unlimited access to premium templates.
+                  80 premium template downloads per month with full commercial licensing.
                 </p>
                 <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
                   <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Unlimited SlideBee Credits
+                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 80 Template Downloads / Month
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-primary-amber" /> Priority Customer Support
@@ -684,12 +731,15 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-primary-amber" /> Commercial License Included
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 100% Editable Master PowerPoint (.pptx)
+                  </div>
                 </div>
               </div>
 
               <MagneticButton className="w-full mt-6">
                 <button
-                  onClick={() => alert("Redirecting to Pro checkout...")}
+                  onClick={handleGoPro}
                   className="hex-cut-btn w-full block text-center text-[#111111] font-black py-3 text-xs"
                 >
                   Go Pro Now

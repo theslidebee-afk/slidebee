@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Blog() {
@@ -9,7 +11,7 @@ export default function Blog() {
     description: "Expert advice on venture pitch decks, executive keynote delivery, slide storytelling, and corporate master template architecture.",
   });
 
-  const [blogs] = useState<any[]>([
+  const [blogs, setBlogs] = useState<any[]>([
     {
       id: "1",
       title: "The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade",
@@ -35,6 +37,24 @@ export default function Blog() {
       category: "Branding"
     }
   ]);
+
+  useEffect(() => {
+    async function loadBlogCms() {
+      try {
+        const { data } = await supabase
+          .from("site_config")
+          .select("value")
+          .eq("key", "blog_cms")
+          .maybeSingle();
+        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
+          setBlogs(data.value);
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic blog CMS:", err);
+      }
+    }
+    loadBlogCms();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-32 pb-24 large-hex-grid">
@@ -62,7 +82,7 @@ export default function Blog() {
             >
               <div className="relative aspect-[16/10] overflow-hidden bg-[#111111]">
                 <img 
-                  src={blog.imageUrl} 
+                  src={normalizeR2Url(blog.imageUrl)} 
                   alt={blog.title} 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />

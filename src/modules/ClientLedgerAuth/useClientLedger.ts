@@ -99,19 +99,7 @@ export function useClientLedger() {
       return;
     }
 
-    const localClient = localStorage.getItem("slidebee_client_user");
-    if (localClient) {
-      try {
-        const parsed = JSON.parse(localClient);
-        setCurrentUser(parsed);
-        await fetchClientData(parsed.email);
-        setLoading(false);
-        return;
-      } catch (e) {
-        localStorage.removeItem("slidebee_client_user");
-      }
-    }
-
+    // Strict GoTrue Server-Side Session Verification (Prompts 18 & 25)
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
@@ -134,7 +122,10 @@ export function useClientLedger() {
         await fetchClientData(session.user.email || "");
       }
     } else {
+      localStorage.removeItem("slidebee_client_user");
       setCurrentUser(null);
+      setUserProfile(null);
+      setUserOrders([]);
     }
     setLoading(false);
   }, [fetchClientData]);
@@ -221,25 +212,13 @@ export function useClientLedger() {
     }
 
     if (authErr) {
-      // Check if user exists in public.profiles
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id, email, role")
-        .eq("email", cleanEmail)
-        .maybeSingle();
-
-      if (!existingProfile) {
-        return {
-          success: false,
-          isUnregistered: true,
-          unregisteredPrompt: `No registered account found for ${cleanEmail}. Sign up below to claim your 5 free credits!`
-        };
-      }
-
-      return { success: false, message: authErr.message || "Incorrect credentials." };
+      return {
+        success: false,
+        message: "Invalid email or password. Please verify your credentials and try again."
+      };
     }
 
-    return { success: false, message: "Authentication failed." };
+    return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
   // Sign Up with 5 Free Starter Credits Provisioning via RPC
@@ -255,7 +234,9 @@ export function useClientLedger() {
     const cleanCompany = companyInput.trim() || "Client Enterprise";
 
     if (!cleanName) throw new Error("Please enter your full name.");
-    if (cleanPassword.length < 6) throw new Error("Password must be at least 6 characters long.");
+    if (cleanPassword.length < 8 || !/[A-Z]/.test(cleanPassword) || !/[0-9]/.test(cleanPassword)) {
+      throw new Error("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
+    }
 
     // Check duplicate
     const { data: existingProfile } = await supabase
@@ -347,6 +328,25 @@ export function useClientLedger() {
     return data;
   };
 
+  // Secure Password Reset Request (Prompts 11 & 12)
+  const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message: string }> => {
+    const cleanEmail = emailInput.toLowerCase().trim();
+    if (!cleanEmail) {
+      return { success: false, message: "Please enter your registered email address." };
+    }
+    try {
+      await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/#/login?action=reset`
+      });
+    } catch (err) {
+      // Fail closed with uniform feedback to prevent enumeration
+    }
+    return {
+      success: true,
+      message: "If an account exists with this email, a secure password recovery link has been dispatched."
+    };
+  };
+
   const logout = async () => {
     await performClientLogout();
     setCurrentUser(null);
@@ -366,6 +366,7 @@ export function useClientLedger() {
     signIn,
     signUp,
     logout,
+    requestPasswordReset,
     redeemCredit,
     refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined)
   };

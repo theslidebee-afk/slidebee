@@ -22,7 +22,8 @@ import {
   FileText,
   ShieldCheck,
   Zap,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
@@ -56,8 +57,43 @@ export default function Login() {
     usageHistory,
     signIn,
     signUp,
-    logout
+    logout,
+    requestPasswordReset
   } = useClientLedger();
+
+  // Brute-force throttling state (Prompt 08)
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    const saved = sessionStorage.getItem("slidebee_auth_failed_attempts");
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(() => {
+    const lockUntil = sessionStorage.getItem("slidebee_auth_lock_until");
+    if (lockUntil) {
+      const remaining = Math.max(0, Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 1000));
+      return remaining;
+    }
+    return 0;
+  });
+
+  // Forgot password modal state (Prompt 11 & 12)
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState("");
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1) {
+          sessionStorage.removeItem("slidebee_auth_lock_until");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
 
   usePageSEO({
     title: currentUser ? "Client Portal & Ledger | SlideBee" : "Client & Admin Login | SlideBee",
@@ -82,6 +118,11 @@ export default function Login() {
   // Handle Sign In / Sign Up via Deep Module
   const handleSubmitAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSignUp && cooldownRemaining > 0) {
+      setFormError(`Rate limit reached. Please wait ${cooldownRemaining} seconds before trying again.`);
+      return;
+    }
+
     setFormLoading(true);
     setFormError("");
     setSignUpSuccessMessage("");
@@ -94,18 +135,44 @@ export default function Login() {
         }
       } else {
         const res = await signIn(email, password);
-        if (res.isUnregistered) {
-          setIsSignUp(true);
-          setPassword("");
-          setSignUpSuccessMessage(res.unregisteredPrompt || "");
-        } else if (!res.success && res.message) {
-          setFormError(res.message);
+        if (!res.success) {
+          const nextFailed = failedAttempts + 1;
+          setFailedAttempts(nextFailed);
+          sessionStorage.setItem("slidebee_auth_failed_attempts", String(nextFailed));
+
+          if (nextFailed >= 5) {
+            const lockTime = Date.now() + 30000;
+            sessionStorage.setItem("slidebee_auth_lock_until", String(lockTime));
+            setCooldownRemaining(30);
+            setFormError("Too many failed attempts. Security cooldown activated. Please wait 30 seconds.");
+          } else {
+            setFormError(res.message || "Invalid email or password. Please verify your credentials.");
+          }
+        } else {
+          setFailedAttempts(0);
+          sessionStorage.removeItem("slidebee_auth_failed_attempts");
+          sessionStorage.removeItem("slidebee_auth_lock_until");
         }
       }
     } catch (err: any) {
       setFormError(err.message || "Authentication failed. Please check details.");
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setResetLoading(true);
+    setResetFeedback("");
+    try {
+      const res = await requestPasswordReset(resetEmail.trim());
+      setResetFeedback(res.message);
+    } catch (err: any) {
+      setResetFeedback("If an account exists with this email, a recovery link has been dispatched.");
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -932,9 +999,24 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-              Password *
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block">
+                Password *
+              </label>
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail(email);
+                    setResetFeedback("");
+                    setShowForgotModal(true);
+                  }}
+                  className="text-[11px] font-bold text-primary-amber hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -953,6 +1035,11 @@ export default function Login() {
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+            {isSignUp && (
+              <p className="text-[10px] text-[#726F6D] font-medium mt-1 pl-2">
+                Minimum 8 characters with at least 1 uppercase letter and 1 digit.
+              </p>
+            )}
           </div>
 
           {signUpSuccessMessage && (
@@ -971,13 +1058,79 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={formLoading}
+            disabled={formLoading || (!isSignUp && cooldownRemaining > 0)}
             className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 disabled:opacity-50 mt-2"
           >
             <ArrowRight size={15} />
-            {formLoading ? "Processing..." : isSignUp ? "Create Client Account" : "Sign In to Portal"}
+            {formLoading
+              ? "Processing..."
+              : !isSignUp && cooldownRemaining > 0
+              ? `Cooldown Active (${cooldownRemaining}s)`
+              : isSignUp
+              ? "Create Client Account"
+              : "Sign In to Portal"}
           </button>
         </form>
+
+        {/* Forgot Password Modal (Prompts 11 & 12) */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 bg-[#111111]/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border-2 border-primary/40 p-6 sm:p-8 rounded-2xl max-w-sm w-full shadow-2xl relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setResetFeedback("");
+                }}
+                className="absolute top-4 right-4 text-gray-400 hover:text-[#111111] p-1"
+              >
+                <X size={18} />
+              </button>
+
+              <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-1">
+                Password Recovery
+              </h3>
+              <p className="text-xs text-[#726F6D] mb-4">
+                Enter your registered work email. If an account exists, a secure password reset link will be sent to your inbox.
+              </p>
+
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      placeholder="sarah@hypergrowth.vc"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  </div>
+                </div>
+
+                {resetFeedback && (
+                  <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3 rounded-xl text-xs font-medium flex items-start gap-2">
+                    <CheckCircle2 size={15} className="shrink-0 text-emerald-600 mt-0.5" />
+                    <div className="leading-relaxed">{resetFeedback}</div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
+                >
+                  <ArrowRight size={14} />
+                  {resetLoading ? "Sending Recovery Link..." : "Send Reset Instructions"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 pt-4 border-t border-primary/20 text-center space-y-2">
           <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">

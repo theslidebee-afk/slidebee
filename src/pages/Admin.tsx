@@ -43,7 +43,8 @@ import {
   RefreshCw,
   LayoutTemplate,
   ShieldCheck,
-  Cloud
+  Cloud,
+  Play
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -241,7 +242,7 @@ export default function Admin() {
   const [razorpayMode, setRazorpayMode] = useState<"test" | "live">((localStorage.getItem("slidebee_razorpay_mode") as any) || "test");
 
   // Site Customization & Pricing Config States
-  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "about" | "contact" | "footer">("home");
+  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "blog" | "videos" | "about" | "contact" | "footer">("home");
   const [activePricingSubTab, setActivePricingSubTab] = useState<"rates" | "payments" | "emails">("rates");
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
@@ -2440,6 +2441,8 @@ export default function Admin() {
                 { id: "testimonials", label: "Client Testimonials", icon: MessageSquare },
                 { id: "services", label: "Services & Before/After", icon: Settings },
                 { id: "portfolio", label: "Portfolio & Case Studies", icon: ImageIcon },
+                { id: "blog", label: "Blog & Insights", icon: FileText },
+                { id: "videos", label: "Video Masterclasses", icon: Play },
                 { id: "about", label: "About & Story", icon: Building2 },
                 { id: "contact", label: "Contact & Channels", icon: Phone },
                 { id: "footer", label: "Footer Links", icon: Compass },
@@ -4264,6 +4267,407 @@ export default function Admin() {
                 </div>
               </div>
             )}
+
+            {/* SUB-TAB: BLOG & INSIGHTS CMS */}
+            {activeCmsSubTab === "blog" && (() => {
+              const defaultBlogsList = [
+                {
+                  id: "1",
+                  title: "The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade",
+                  content: "When presenting to senior executive stakeholders, dense walls of bullet points force the audience to read instead of listen. Here is how Ex-McKinsey consultants structure high-impact focal points.",
+                  imageUrl: "/portfolio/case_study_a_14.png",
+                  date: "September 2026",
+                  category: "Strategy"
+                },
+                {
+                  id: "2",
+                  title: "How to Design a Series A Pitch Deck That Secures Partner Meetings",
+                  content: "Venture capitalists look at hundreds of decks per week. Learn the 12 essential slides, TAM/SAM/SOM market sizing visualization, and unit economics framing that get rounds closed.",
+                  imageUrl: "/portfolio/global_brands_1.png",
+                  date: "August 2026",
+                  category: "Fundraising"
+                },
+                {
+                  id: "3",
+                  title: "Building an Enterprise Master Template System That Teams Actually Use",
+                  content: "Why do corporate slide templates break within weeks? Discover the layout locking techniques and modular drag-and-drop systems that keep 500+ employee organizations visually aligned.",
+                  imageUrl: "/portfolio/levis_yuengling_6.png",
+                  date: "August 2026",
+                  category: "Branding"
+                }
+              ];
+              const blogs = Array.isArray(siteConfigs["blog_cms"]) ? siteConfigs["blog_cms"] : defaultBlogsList;
+
+              return (
+                <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                    <div>
+                      <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                        Blog & Presentation Playbook CMS (/blog)
+                      </h3>
+                      <p className="text-xs text-[#726F6D]">
+                        Publish, edit, or manage insights, strategy articles, and executive guides
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleSaveConfig("blog_cms", blogs)}
+                      disabled={configSaving}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                    >
+                      <Save size={14} /> {configSaving ? "Saving..." : "Save Blog Posts"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {blogs.map((b: any, idx: number) => (
+                      <div key={b.id || idx} className="bg-[#FFF9E8] p-5 rounded-xl border border-[#111111]/10 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
+                            Article #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = blogs.filter((_: any, i: number) => i !== idx);
+                              setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                            }}
+                            className="text-red-600 hover:text-red-800 text-xs font-bold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Article Title</label>
+                            <input
+                              type="text"
+                              value={b.title || ""}
+                              onChange={(e) => {
+                                const updated = [...blogs];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Category (e.g. Strategy, Fundraising)</label>
+                            <input
+                              type="text"
+                              value={b.category || ""}
+                              onChange={(e) => {
+                                const updated = [...blogs];
+                                updated[idx] = { ...updated[idx], category: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Publication Date</label>
+                            <input
+                              type="text"
+                              value={b.date || ""}
+                              placeholder="September 2026"
+                              onChange={(e) => {
+                                const updated = [...blogs];
+                                updated[idx] = { ...updated[idx], date: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Cover Image (R2 / WebP)</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={b.imageUrl || ""}
+                                placeholder="https://... or /portfolio/..."
+                                onChange={(e) => {
+                                  const updated = [...blogs];
+                                  updated[idx] = { ...updated[idx], imageUrl: e.target.value };
+                                  setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                                }}
+                                className="flex-1 bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                              />
+                              <label className="cursor-pointer hex-pill bg-white border border-primary/40 px-3 py-1.5 text-[11px] font-bold text-[#111111] hover:bg-black/5 flex items-center gap-1 shrink-0">
+                                <UploadCloud size={13} className="text-primary-amber" />
+                                <span>Upload R2</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const res = await uploadToR2(file, { folder: "blog" });
+                                      if (res.success && res.publicUrl) {
+                                        const updated = [...blogs];
+                                        updated[idx] = { ...updated[idx], imageUrl: res.publicUrl };
+                                        setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                                      }
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Article Excerpt / Content</label>
+                          <textarea
+                            rows={3}
+                            value={b.content || ""}
+                            onChange={(e) => {
+                              const updated = [...blogs];
+                              updated[idx] = { ...updated[idx], content: e.target.value };
+                              setSiteConfigs({ ...siteConfigs, blog_cms: updated });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs leading-relaxed"
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newArticle = {
+                          id: String(Date.now()),
+                          title: "New Executive Presentation Guide",
+                          content: "Enter the summary or key takeaways of the article here for executive readers.",
+                          imageUrl: "/portfolio/case_study_a_1.png",
+                          date: "September 2026",
+                          category: "Strategy"
+                        };
+                        setSiteConfigs({ ...siteConfigs, blog_cms: [...blogs, newArticle] });
+                      }}
+                      className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
+                    >
+                      <Plus size={14} /> Add New Article (/blog)
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* SUB-TAB: VIDEOS & MASTERCLASSES CMS */}
+            {activeCmsSubTab === "videos" && (() => {
+              const defaultVideosList = [
+                {
+                  id: "1",
+                  title: "Executive Presentation Teardown: Turning 40 Slides into 10",
+                  duration: "14:20",
+                  category: "Masterclass",
+                  thumbnail: "/portfolio/case_study_a_14.png",
+                  desc: "Watch our senior art director restructure a bloated corporate roadmap deck into a high-stakes board presentation.",
+                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                },
+                {
+                  id: "2",
+                  title: "Investor Pitch Deck Visuals: Unit Economics & Cap Table Framing",
+                  duration: "18:45",
+                  category: "Fundraising",
+                  thumbnail: "/portfolio/global_brands_1.png",
+                  desc: "How to visualize complex SaaS metrics, CAC/LTV, and market sizing diagrams so VCs immediately get the value.",
+                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                },
+                {
+                  id: "3",
+                  title: "Building Scalable PowerPoint Master Templates in 2026",
+                  duration: "12:10",
+                  category: "Template Design",
+                  thumbnail: "/portfolio/levis_yuengling_6.png",
+                  desc: "A deep dive into PowerPoint slide masters, theme colors, typography hierarchies, and modular vector asset libraries.",
+                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                }
+              ];
+              const videos = Array.isArray(siteConfigs["videos_cms"]) ? siteConfigs["videos_cms"] : defaultVideosList;
+
+              return (
+                <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                    <div>
+                      <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                        Video Masterclasses CMS (/videos)
+                      </h3>
+                      <p className="text-xs text-[#726F6D]">
+                        Publish, edit, or manage video masterclasses, pitch deck walkthroughs, and teardowns
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleSaveConfig("videos_cms", videos)}
+                      disabled={configSaving}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                    >
+                      <Save size={14} /> {configSaving ? "Saving..." : "Save Videos"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {videos.map((v: any, idx: number) => (
+                      <div key={v.id || idx} className="bg-[#FFF9E8] p-5 rounded-xl border border-[#111111]/10 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
+                            Masterclass #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = videos.filter((_: any, i: number) => i !== idx);
+                              setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                            }}
+                            className="text-red-600 hover:text-red-800 text-xs font-bold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Video Title</label>
+                            <input
+                              type="text"
+                              value={v.title || ""}
+                              onChange={(e) => {
+                                const updated = [...videos];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Category</label>
+                            <input
+                              type="text"
+                              value={v.category || ""}
+                              onChange={(e) => {
+                                const updated = [...videos];
+                                updated[idx] = { ...updated[idx], category: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Duration (e.g. 15:30)</label>
+                            <input
+                              type="text"
+                              value={v.duration || ""}
+                              placeholder="14:20"
+                              onChange={(e) => {
+                                const updated = [...videos];
+                                updated[idx] = { ...updated[idx], duration: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Video Link / URL</label>
+                            <input
+                              type="text"
+                              value={v.videoUrl || ""}
+                              placeholder="https://www.youtube.com/watch?v=..."
+                              onChange={(e) => {
+                                const updated = [...videos];
+                                updated[idx] = { ...updated[idx], videoUrl: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                              }}
+                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Cover Thumbnail (R2 / WebP)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={v.thumbnail || ""}
+                              placeholder="https://... or /portfolio/..."
+                              onChange={(e) => {
+                                const updated = [...videos];
+                                updated[idx] = { ...updated[idx], thumbnail: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                              }}
+                              className="flex-1 bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
+                            />
+                            <label className="cursor-pointer hex-pill bg-white border border-primary/40 px-3 py-1.5 text-[11px] font-bold text-[#111111] hover:bg-black/5 flex items-center gap-1 shrink-0">
+                              <UploadCloud size={13} className="text-primary-amber" />
+                              <span>Upload R2</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const res = await uploadToR2(file, { folder: "videos" });
+                                    if (res.success && res.publicUrl) {
+                                      const updated = [...videos];
+                                      updated[idx] = { ...updated[idx], thumbnail: res.publicUrl };
+                                      setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Description</label>
+                          <textarea
+                            rows={2}
+                            value={v.desc || ""}
+                            onChange={(e) => {
+                              const updated = [...videos];
+                              updated[idx] = { ...updated[idx], desc: e.target.value };
+                              setSiteConfigs({ ...siteConfigs, videos_cms: updated });
+                            }}
+                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs leading-relaxed"
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newVideo = {
+                          id: String(Date.now()),
+                          title: "New Presentation Masterclass",
+                          duration: "10:00",
+                          category: "Masterclass",
+                          thumbnail: "/portfolio/case_study_a_14.png",
+                          desc: "Walkthrough and teardown of presentation design principles.",
+                          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        };
+                        setSiteConfigs({ ...siteConfigs, videos_cms: [...videos, newVideo] });
+                      }}
+                      className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
+                    >
+                      <Plus size={14} /> Add New Video Masterclass (/videos)
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* SUB-TAB 4: ABOUT PAGE CMS */}
             {activeCmsSubTab === "about" && (
