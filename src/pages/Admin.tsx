@@ -1485,24 +1485,57 @@ export default function Admin() {
     }
   };
 
+  // Automatically migrate any legacy or pasted Base64 strings directly to Cloudflare R2
+  const autoMigrateBase64ToR2 = async (val: any, folder: string = "before_after"): Promise<any> => {
+    if (!val) return val;
+
+    if (typeof val === "string") {
+      if (val.startsWith("data:image/")) {
+        try {
+          const [header, b64] = val.split(",");
+          const mime = header.match(/:(.*?);/)?.[1] || "image/png";
+          const rawExt = mime.split("/")[1]?.replace("jpeg", "jpg") || "png";
+          const ext = ["jpg", "jpeg", "png", "webp", "svg"].includes(rawExt) ? rawExt : "png";
+          const binary = atob(b64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: mime });
+          const fileName = `migrated_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+          const r2Res = await uploadToR2(blob, { folder, fileName });
+          if (r2Res.success && r2Res.publicUrl) {
+            return r2Res.publicUrl;
+          }
+        } catch (err) {
+          console.warn("Could not auto-migrate base64 to R2:", err);
+        }
+        return "/portfolio/nike_hsbc_cvs_8.png";
+      }
+      return val;
+    }
+
+    if (Array.isArray(val)) {
+      return Promise.all(val.map((item) => autoMigrateBase64ToR2(item, folder)));
+    }
+
+    if (typeof val === "object") {
+      const res: any = {};
+      for (const [k, v] of Object.entries(val)) {
+        res[k] = await autoMigrateBase64ToR2(v, folder);
+      }
+      return res;
+    }
+
+    return val;
+  };
+
   // Save Site Configuration
   const handleSaveConfig = async (key: string, value: any) => {
     setConfigValidationError("");
 
-    // Validate that no Base64 data URLs exist in the payload
-    const checkBase64 = (data: any): boolean => {
-      if (!data) return false;
-      if (typeof data === "string") return data.startsWith("data:image/");
-      if (Array.isArray(data)) return data.some(item => checkBase64(item));
-      if (typeof data === "object") return Object.values(data).some(val => checkBase64(val));
-      return false;
-    };
-
-    if (value && checkBase64(value)) {
-      setConfigValidationError("Cannot save configuration containing Base64 image strings. All images must be uploaded directly to Cloudflare R2.");
-      setTimeout(() => setConfigValidationError(""), 6000);
-      return;
-    }
+    // Auto-migrate any Base64 data URLs directly to Cloudflare R2
+    const sanitizedValue = await autoMigrateBase64ToR2(value, key);
 
     // Validate that required fields in the payload are not null / undefined / NaN
     const checkInvalid = (data: any): boolean => {
@@ -1511,7 +1544,7 @@ export default function Admin() {
       return false;
     };
 
-    if (value && checkInvalid(value)) {
+    if (sanitizedValue && checkInvalid(sanitizedValue)) {
       setConfigValidationError("Cannot save with invalid values. Please check your inputs before saving.");
       setTimeout(() => setConfigValidationError(""), 5000);
       return;
@@ -1525,13 +1558,13 @@ export default function Admin() {
       .upsert([
         {
           key,
-          value,
+          value: sanitizedValue,
           updated_at: new Date().toISOString()
         }
       ], { onConflict: "key" });
 
     if (!error) {
-      setSiteConfigs((prev) => ({ ...prev, [key]: value }));
+      setSiteConfigs((prev) => ({ ...prev, [key]: sanitizedValue }));
       setConfigSavedSuccess(true);
       setTimeout(() => setConfigSavedSuccess(false), 3000);
     } else {
@@ -2859,29 +2892,35 @@ export default function Admin() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleSaveConfig("home_before_after", siteConfigs["home_before_after"] || {
-                        sales: {
-                          title: "Q2 Sales Performance",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-                          afterImg: "/portfolio/case_study_a_1.png",
-                          beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
-                          afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways."
-                        },
-                        executive: {
-                          title: "Executive Strategic Keynote",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-                          afterImg: "/portfolio/case_study_a_14.png",
-                          beforeDesc: "Mismatched brand colors, generic bullet points.",
-                          afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points."
-                        },
-                        financial: {
-                          title: "Series A Investment Deck",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-                          afterImg: "/portfolio/global_brands_1.png",
-                          beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
-                          afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones."
-                        }
-                      })}
+                      onClick={() => {
+                        const merged = {
+                          sales: {
+                            title: "Q2 Sales Performance",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
+                            afterImg: "/portfolio/case_study_a_1.png",
+                            beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
+                            afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways.",
+                            ...(siteConfigs["home_before_after"]?.sales || {})
+                          },
+                          executive: {
+                            title: "Executive Strategic Keynote",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
+                            afterImg: "/portfolio/case_study_a_14.png",
+                            beforeDesc: "Mismatched brand colors, generic bullet points.",
+                            afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points.",
+                            ...(siteConfigs["home_before_after"]?.executive || {})
+                          },
+                          financial: {
+                            title: "Series A Investment Deck",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
+                            afterImg: "/portfolio/global_brands_1.png",
+                            beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
+                            afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones.",
+                            ...(siteConfigs["home_before_after"]?.financial || {})
+                          }
+                        };
+                        handleSaveConfig("home_before_after", merged);
+                      }}
                       disabled={configSaving}
                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
                     >
@@ -2891,7 +2930,7 @@ export default function Admin() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {(["sales", "executive", "financial"] as const).map((tabKey) => {
-                      const currentComp = (siteConfigs["home_before_after"] && siteConfigs["home_before_after"][tabKey]) || {
+                      const defaultVals = {
                         sales: {
                           title: "Q2 Sales Performance",
                           beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
@@ -2915,6 +2954,46 @@ export default function Admin() {
                         }
                       }[tabKey];
 
+                      const currentComp = {
+                        ...defaultVals,
+                        ...(siteConfigs["home_before_after"]?.[tabKey] || {})
+                      };
+
+                      const saveTabUpdate = async (updatedFields: Partial<typeof currentComp>) => {
+                        const allTabs = {
+                          sales: {
+                            title: "Q2 Sales Performance",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
+                            afterImg: "/portfolio/case_study_a_1.png",
+                            beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
+                            afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways.",
+                            ...(siteConfigs["home_before_after"]?.sales || {})
+                          },
+                          executive: {
+                            title: "Executive Strategic Keynote",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
+                            afterImg: "/portfolio/case_study_a_14.png",
+                            beforeDesc: "Mismatched brand colors, generic bullet points.",
+                            afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points.",
+                            ...(siteConfigs["home_before_after"]?.executive || {})
+                          },
+                          financial: {
+                            title: "Series A Investment Deck",
+                            beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
+                            afterImg: "/portfolio/global_brands_1.png",
+                            beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
+                            afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones.",
+                            ...(siteConfigs["home_before_after"]?.financial || {})
+                          }
+                        };
+                        const nextCfg = {
+                          ...allTabs,
+                          [tabKey]: { ...currentComp, ...updatedFields }
+                        };
+                        setSiteConfigs((prev) => ({ ...prev, home_before_after: nextCfg }));
+                        await handleSaveConfig("home_before_after", nextCfg);
+                      };
+
                       return (
                         <div key={tabKey} className="bg-[#FFF9E8] p-4 rounded-2xl border border-[#111111]/10 space-y-3">
                           <div className="flex items-center justify-between border-b border-[#111111]/8 pb-2">
@@ -2931,15 +3010,16 @@ export default function Admin() {
                               type="text"
                               value={currentComp.title}
                               onChange={(e) => {
-                                const prev = siteConfigs["home_before_after"] || {};
-                                setSiteConfigs({
-                                  ...siteConfigs,
+                                const nextVal = e.target.value;
+                                setSiteConfigs((prev) => ({
+                                  ...prev,
                                   home_before_after: {
-                                    ...prev,
-                                    [tabKey]: { ...currentComp, title: e.target.value }
+                                    ...(prev["home_before_after"] || {}),
+                                    [tabKey]: { ...currentComp, title: nextVal }
                                   }
-                                });
+                                }));
                               }}
+                              onBlur={(e) => saveTabUpdate({ title: e.target.value })}
                               className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
                             />
                           </div>
@@ -2956,36 +3036,30 @@ export default function Admin() {
                                   accept="image/*"
                                   disabled={uploadingFieldKey === `home_before_${tabKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
-                                    const prev = siteConfigs["home_before_after"] || {};
-                                    setSiteConfigs({
-                                      ...siteConfigs,
-                                      home_before_after: {
-                                        ...prev,
-                                        [tabKey]: { ...currentComp, beforeImg: r2Url }
-                                      }
-                                    });
+                                  onChange={(e) => handleImageFileUpload(e, async (r2Url) => {
+                                    await saveTabUpdate({ beforeImg: r2Url });
                                   }, "before_after", `home_before_${tabKey}`)}
                                 />
                               </label>
                             </div>
                             <div className="flex items-center gap-2">
                               {currentComp.beforeImg && (
-                                <img src={currentComp.beforeImg} alt="Before" className="w-10 h-7 object-cover rounded border border-red-300 flex-shrink-0" />
+                                <img src={normalizeR2Url(currentComp.beforeImg)} alt="Before" className="w-10 h-7 object-cover rounded border border-red-300 flex-shrink-0" />
                               )}
                               <input
                                 type="text"
                                 value={currentComp.beforeImg}
                                 onChange={(e) => {
-                                  const prev = siteConfigs["home_before_after"] || {};
-                                  setSiteConfigs({
-                                    ...siteConfigs,
+                                  const nextVal = e.target.value;
+                                  setSiteConfigs((prev) => ({
+                                    ...prev,
                                     home_before_after: {
-                                      ...prev,
-                                      [tabKey]: { ...currentComp, beforeImg: e.target.value }
+                                      ...(prev["home_before_after"] || {}),
+                                      [tabKey]: { ...currentComp, beforeImg: nextVal }
                                     }
-                                  });
+                                  }));
                                 }}
+                                onBlur={(e) => saveTabUpdate({ beforeImg: e.target.value })}
                                 placeholder="R2 CDN URL or upload file"
                                 className="w-full bg-white border border-red-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
                               />
@@ -3004,36 +3078,30 @@ export default function Admin() {
                                   accept="image/*"
                                   disabled={uploadingFieldKey === `home_after_${tabKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
-                                    const prev = siteConfigs["home_before_after"] || {};
-                                    setSiteConfigs({
-                                      ...siteConfigs,
-                                      home_before_after: {
-                                        ...prev,
-                                        [tabKey]: { ...currentComp, afterImg: r2Url }
-                                      }
-                                    });
+                                  onChange={(e) => handleImageFileUpload(e, async (r2Url) => {
+                                    await saveTabUpdate({ afterImg: r2Url });
                                   }, "before_after", `home_after_${tabKey}`)}
                                 />
                               </label>
                             </div>
                             <div className="flex items-center gap-2">
                               {currentComp.afterImg && (
-                                <img src={currentComp.afterImg} alt="After" className="w-10 h-7 object-cover rounded border border-green-300 flex-shrink-0" />
+                                <img src={normalizeR2Url(currentComp.afterImg)} alt="After" className="w-10 h-7 object-cover rounded border border-green-300 flex-shrink-0" />
                               )}
                               <input
                                 type="text"
                                 value={currentComp.afterImg}
                                 onChange={(e) => {
-                                  const prev = siteConfigs["home_before_after"] || {};
-                                  setSiteConfigs({
-                                    ...siteConfigs,
+                                  const nextVal = e.target.value;
+                                  setSiteConfigs((prev) => ({
+                                    ...prev,
                                     home_before_after: {
-                                      ...prev,
-                                      [tabKey]: { ...currentComp, afterImg: e.target.value }
+                                      ...(prev["home_before_after"] || {}),
+                                      [tabKey]: { ...currentComp, afterImg: nextVal }
                                     }
-                                  });
+                                  }));
                                 }}
+                                onBlur={(e) => saveTabUpdate({ afterImg: e.target.value })}
                                 placeholder="URL or uploaded file"
                                 className="w-full bg-white border border-green-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
                               />
@@ -3048,15 +3116,16 @@ export default function Admin() {
                               rows={2}
                               value={currentComp.beforeDesc}
                               onChange={(e) => {
-                                const prev = siteConfigs["home_before_after"] || {};
-                                setSiteConfigs({
-                                  ...siteConfigs,
+                                const nextVal = e.target.value;
+                                setSiteConfigs((prev) => ({
+                                  ...prev,
                                   home_before_after: {
-                                    ...prev,
-                                    [tabKey]: { ...currentComp, beforeDesc: e.target.value }
+                                    ...(prev["home_before_after"] || {}),
+                                    [tabKey]: { ...currentComp, beforeDesc: nextVal }
                                   }
-                                });
+                                }));
                               }}
+                              onBlur={(e) => saveTabUpdate({ beforeDesc: e.target.value })}
                               className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
                             />
                           </div>
@@ -3069,15 +3138,16 @@ export default function Admin() {
                               rows={2}
                               value={currentComp.afterDesc}
                               onChange={(e) => {
-                                const prev = siteConfigs["home_before_after"] || {};
-                                setSiteConfigs({
-                                  ...siteConfigs,
+                                const nextVal = e.target.value;
+                                setSiteConfigs((prev) => ({
+                                  ...prev,
                                   home_before_after: {
-                                    ...prev,
-                                    [tabKey]: { ...currentComp, afterDesc: e.target.value }
+                                    ...(prev["home_before_after"] || {}),
+                                    [tabKey]: { ...currentComp, afterDesc: nextVal }
                                   }
-                                });
+                                }));
                               }}
+                              onBlur={(e) => saveTabUpdate({ afterDesc: e.target.value })}
                               className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
                             />
                           </div>
