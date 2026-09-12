@@ -6,7 +6,6 @@ import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { MagneticButton } from "../components/MagneticButton";
 import { supabase } from "../lib/supabase";
 import { normalizeR2Url } from "../lib/r2";
-import { openRazorpayCheckout } from "../lib/razorpay";
 import { 
   Search, 
   ArrowRight, 
@@ -15,7 +14,6 @@ import {
   TrendingUp, 
   BarChart3, 
   LayoutGrid,
-  Check,
   Briefcase,
   Layers,
   PieChart,
@@ -37,10 +35,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sliderPosition, setSliderPosition] = useState(50);
   const [activeTab, setActiveTab] = useState<"sales" | "executive" | "financial">("sales");
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
   const [featuredTemplateIds, setFeaturedTemplateIds] = useState<string[]>([]);
   const [customComparisons, setCustomComparisons] = useState<any>(null);
-  const [pricingConfig, setPricingConfig] = useState<any>(null);
   const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
   const [heroConfig, setHeroConfig] = useState<any>({
     badgeText: "SlideBee Design Studio",
@@ -76,7 +72,6 @@ export default function Home() {
               if (ids.length > 0) setFeaturedTemplateIds(ids);
             }
             if (item.key === "home_before_after" && item.value) setCustomComparisons(item.value);
-            if (item.key === "pricing" && item.value) setPricingConfig(item.value);
             if (item.key === "testimonials" && Array.isArray(item.value)) setCustomTestimonials(item.value);
           });
         }
@@ -118,51 +113,7 @@ export default function Home() {
     }
   };
 
-  const handleGoPro = async () => {
-    const monthlyPrice = pricingConfig?.pro_monthly_inr ?? 199;
-    const discount = pricingConfig?.pro_discount_percent ?? 50;
-    const yearlyPrice = Math.round((monthlyPrice * 12) * (1 - discount / 100));
-    const amount = billingPeriod === "yearly" ? yearlyPrice : monthlyPrice;
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      navigate(`/login?redirect=pro&billing=${billingPeriod}`);
-      return;
-    }
-
-    await openRazorpayCheckout({
-      amount,
-      currency: "INR",
-      title: "SlideBee Pro Membership",
-      description: `80 template downloads / month (${billingPeriod === "yearly" ? "Annual" : "Monthly"} billing)`,
-      prefill: {
-        email: session.user.email || "",
-        name: session.user.user_metadata?.full_name || "SlideBee Pro Member",
-      },
-      onSuccess: async (rzpRes) => {
-        try {
-          await fetch("/api/subscribe-pro", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              paymentId: rzpRes.razorpay_payment_id || "rzp_direct",
-              userId: session.user.id,
-              userEmail: session.user.email,
-              planName: billingPeriod === "yearly" ? "Pro Yearly" : "Pro Monthly",
-              amount,
-              billingPeriod
-            })
-          });
-        } catch (subErr) {
-          console.warn("Subscription provisioning error:", subErr);
-        }
-        navigate("/login");
-      },
-      onFailure: (err) => {
-        console.error("Pro checkout failed:", err);
-      }
-    });
-  };
 
   const categories = [
     { label: "Business", icon: <Briefcase className="w-5 h-5 text-primary-amber" /> },
@@ -616,174 +567,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 7. PRICING */}
-      <section className="pt-8 pb-14">
+      {/* 7. CLIENT TESTIMONIALS */}
+      <section className="pt-12 pb-16">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          
-          {/* Pricing Header */}
-          <div className="text-center max-w-2xl mx-auto mb-8">
-            <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] mb-2">
-              Simple, Transparent Pricing
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
+              Client Reviews
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111]">
+              Trusted by Founders & Executives
             </h2>
-            <p className="text-[#726F6D] text-xs sm:text-sm font-medium mb-4">
-              Choose the plan that fits your presentation needs.
-            </p>
-
-            {/* Monthly / Yearly Toggle */}
-            <div className="hex-pill inline-flex items-center gap-1.5 bg-white p-1 border-2 border-primary/40 shadow-sm">
-              <button
-                onClick={() => setBillingPeriod("monthly")}
-                className={`hex-pill px-4 py-1.5 text-xs font-bold transition-all ${
-                  billingPeriod === "monthly"
-                    ? "bg-primary text-[#111111] shadow"
-                    : "text-[#726F6D] hover:text-[#111111]"
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillingPeriod("yearly")}
-                className={`hex-pill px-4 py-1.5 text-xs font-bold transition-all flex items-center gap-1 ${
-                  billingPeriod === "yearly"
-                    ? "bg-primary text-[#111111] shadow"
-                    : "text-[#726F6D] hover:text-[#111111]"
-                }`}
-              >
-                <span>Yearly</span>
-                <span className="bg-green-500/20 text-green-700 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
-                  {pricingConfig?.pro_discount_percent ?? 50}% OFF
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3 Pricing Cards (Hexagonal Chamfered) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1580px] w-full mx-auto mb-16">
-            
-            {/* Starter (Free) */}
-            <div className="hex-card bg-white/60 backdrop-blur-xl border-2 border-primary/30 p-6 flex flex-col justify-between shadow-sm">
-              <div>
-                <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider block mb-1">
-                  Starter
-                </span>
-                <div className="text-3xl font-heading font-black text-[#111111] mb-1">
-                  Free
-                </div>
-                <p className="text-[#726F6D] text-xs font-medium mb-4">
-                  Perfect for trying out templates.
-                </p>
-                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 5 Free Credits (On Sign-up)
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Standard Downloads
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Basic Support
-                  </div>
-                </div>
-              </div>
-
-              <MagneticButton className="w-full mt-6">
-                <Link
-                  to="/templates"
-                  className="hex-cut-btn light-btn w-full block text-center text-[#111111] font-extrabold py-3 text-xs"
-                >
-                  Get Started
-                </Link>
-              </MagneticButton>
-            </div>
-
-            {/* Pro (Most Popular) */}
-            <div className="hex-card bg-white/70 backdrop-blur-xl border-2 border-primary p-6 flex flex-col justify-between relative shadow-xl">
-              <div className="hex-pill-sm absolute top-3 right-4 bg-primary text-[#111111] font-black text-[9px] uppercase tracking-widest px-3 py-0.5 shadow">
-                Most Popular
-              </div>
-
-              <div>
-                <span className="text-[10px] text-primary-amber font-bold uppercase tracking-wider block mb-1">
-                  Pro Access
-                </span>
-                {(() => {
-                  const monthlyPrice = pricingConfig?.pro_monthly_inr ?? 199;
-                  const discount = pricingConfig?.pro_discount_percent ?? 50;
-                  const yearlyPrice = Math.round((monthlyPrice * 12) * (1 - discount / 100));
-                  return (
-                    <div className="text-3xl font-heading font-black text-[#111111] mb-1">
-                      ₹{billingPeriod === "yearly" ? yearlyPrice.toLocaleString() : monthlyPrice.toLocaleString()}
-                      <span className="text-xs font-normal text-[#726F6D]">
-                        /{billingPeriod === "yearly" ? "year" : "month"}
-                      </span>
-                    </div>
-                  );
-                })()}
-                <p className="text-[#726F6D] text-xs font-medium mb-4">
-                  80 premium template downloads per month with full commercial licensing.
-                </p>
-                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 80 Template Downloads / Month
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Priority Customer Support
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Commercial License Included
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 100% Editable Master PowerPoint (.pptx)
-                  </div>
-                </div>
-              </div>
-
-              <MagneticButton className="w-full mt-6">
-                <button
-                  onClick={handleGoPro}
-                  className="hex-cut-btn w-full block text-center text-[#111111] font-black py-3 text-xs"
-                >
-                  Go Pro Now
-                </button>
-              </MagneticButton>
-            </div>
-
-            {/* Studio (Custom) */}
-            <div className="hex-card bg-white/60 backdrop-blur-xl border-2 border-primary/30 p-6 flex flex-col justify-between shadow-sm">
-              <div>
-                <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider block mb-1">
-                  Studio
-                </span>
-                <div className="text-3xl font-heading font-black text-[#111111] mb-1">
-                  Custom
-                </div>
-                <p className="text-[#726F6D] text-xs font-medium mb-4">
-                  Custom design services for your business.
-                </p>
-                <div className="space-y-2 border-t border-primary/20 pt-4 text-xs text-[#111111] font-medium">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> 1-on-1 Senior Art Director
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Unlimited Iterations & Revisions
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Rapid 24h Fast Turnaround
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-primary-amber" /> Dedicated Account Manager
-                  </div>
-                </div>
-              </div>
-
-              <MagneticButton className="w-full mt-6">
-                <Link
-                  to="/ordernow"
-                  className="hex-cut-btn light-btn w-full block text-center text-[#111111] font-extrabold py-3 text-xs"
-                >
-                  Get a Quote
-                </Link>
-              </MagneticButton>
-            </div>
           </div>
 
           {/* Testimonials (Hexagonal Chamfered) */}

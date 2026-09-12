@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -73,40 +74,44 @@ export default function Blog() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {blogs.map((blog, index) => (
-            <motion.article 
+            <motion.div 
               key={blog.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group"
             >
-              <div className="relative aspect-[16/10] overflow-hidden bg-[#111111]">
-                <img 
-                  src={normalizeR2Url(blog.imageUrl)} 
-                  alt={blog.title} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 text-primary border border-primary/30 text-[10px] font-extrabold px-3 py-1 backdrop-blur-sm">
-                  {blog.category}
+              <Link
+                to={`/blog/${blog.id}`}
+                className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group h-full cursor-pointer"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-[#111111]">
+                  <img 
+                    src={normalizeR2Url(blog.imageUrl)} 
+                    alt={blog.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/85 text-primary border border-primary/30 text-[10px] font-extrabold px-3 py-1 backdrop-blur-sm">
+                    {blog.category}
+                  </div>
                 </div>
-              </div>
 
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex items-center text-[11px] text-[#726F6D] font-bold mb-2 gap-1.5">
-                  <Calendar size={13} className="text-primary-amber" />
-                  <span>{blog.date}</span>
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="flex items-center text-[11px] text-[#726F6D] font-bold mb-2 gap-1.5">
+                    <Calendar size={13} className="text-primary-amber" />
+                    <span>{blog.date}</span>
+                  </div>
+                  <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-2 leading-snug group-hover:text-primary-amber transition-colors">
+                    {blog.title}
+                  </h3>
+                  <p className="text-xs text-[#726F6D] font-medium line-clamp-3 mb-6 flex-grow leading-relaxed">
+                    {blog.content}
+                  </p>
+                  <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 mt-auto group-hover:translate-x-1 transition-transform">
+                    Read Article <ArrowRight size={14} />
+                  </div>
                 </div>
-                <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-2 leading-snug group-hover:text-primary-amber transition-colors">
-                  {blog.title}
-                </h3>
-                <p className="text-xs text-[#726F6D] font-medium line-clamp-3 mb-6 flex-grow leading-relaxed">
-                  {blog.content}
-                </p>
-                <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 mt-auto">
-                  Read Article <ArrowRight size={14} />
-                </div>
-              </div>
-            </motion.article>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </div>

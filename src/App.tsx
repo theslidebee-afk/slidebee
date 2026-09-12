@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Templates from "./pages/Templates";
@@ -11,7 +11,7 @@ import Pricing from "./pages/Pricing";
 import Contact from "./pages/Contact";
 import ComingSoon from "./pages/ComingSoon";
 import Blog from "./pages/Blog";
-import Videos from "./pages/Videos";
+import BlogDetail from "./pages/BlogDetail";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -59,9 +59,11 @@ function App() {
                       <Route path="/login" element={<Login />} />
                       <Route path="/account" element={<Login />} />
                       <Route path="/blog" element={<Blog />} />
-                      <Route path="/videos" element={<Videos />} />
+                      <Route path="/blog/:id" element={<BlogDetail />} />
                       <Route path="/media/blog" element={<Blog />} />
-                      <Route path="/media/videos" element={<Videos />} />
+                      <Route path="/media/blog/:id" element={<BlogDetail />} />
+                      <Route path="/videos" element={<Navigate to="/blog" replace />} />
+                      <Route path="/media/videos" element={<Navigate to="/blog" replace />} />
                       <Route path="/privacy" element={<Privacy />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/thank-you" element={<ThankYou />} />

@@ -23,55 +23,52 @@ export default function Navbar() {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
 
-    // Check localStorage admin flag but only trust it if a live Supabase session exists
-    const adminFlag = localStorage.getItem("slidebee_admin_session") === "true";
-    if (adminFlag && session?.user) {
-      setIsAdmin(true);
+    if (!session?.user) {
+      setIsAdmin(false);
       setClientUser(null);
+      localStorage.removeItem("slidebee_admin_session");
+      localStorage.removeItem("slidebee_admin_email");
+      localStorage.removeItem("slidebee_client_user");
       return;
     }
 
-    // If flag is set but no live session, it is stale — clean it up
-    if (adminFlag && !session?.user) {
-      localStorage.removeItem("slidebee_admin_session");
-      localStorage.removeItem("slidebee_admin_email");
-    }
+    const email = session.user.email?.toLowerCase().trim() || "";
+    const isSessionAdmin =
+      email === "admin@theslidebee.com" ||
+      email === "admin@slidebee.com" ||
+      session.user.user_metadata?.role === "admin" ||
+      session.user.user_metadata?.role === "super_admin";
 
-    setIsAdmin(false);
-
-    let activeEmail = "";
-
-    if (session?.user) {
-      const isSessionAdmin =
-        session.user.email === "admin@theslidebee.com" ||
-        session.user.email === "admin@slidebee.com" ||
-        session.user.email?.startsWith("admin@") ||
-        session.user.user_metadata?.role === "admin";
-
-      if (isSessionAdmin) {
-        setIsAdmin(true);
-        setClientUser(null);
-        localStorage.setItem("slidebee_admin_session", "true");
-        return;
-      }
-
-      setClientUser(session.user);
-      activeEmail = session.user.email || "";
-    } else {
-      // No live session — also clear any stale client user
-      localStorage.removeItem("slidebee_client_user");
+    if (isSessionAdmin) {
+      setIsAdmin(true);
       setClientUser(null);
+      localStorage.setItem("slidebee_admin_session", "true");
+      return;
     }
 
-    if (activeEmail) {
+    // Client user
+    setIsAdmin(false);
+    localStorage.removeItem("slidebee_admin_session");
+    localStorage.removeItem("slidebee_admin_email");
+    setClientUser(session.user);
+
+    if (email) {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("credits_balance")
-          .eq("email", activeEmail)
+          .select("credits_balance, role")
+          .eq("email", email)
           .single();
-        if (profile && profile.credits_balance !== undefined) {
-          setCredits(Number(profile.credits_balance));
+        if (profile) {
+          if (profile.role === "admin" || profile.role === "super_admin") {
+            setIsAdmin(true);
+            setClientUser(null);
+            localStorage.setItem("slidebee_admin_session", "true");
+            return;
+          }
+          if (profile.credits_balance !== undefined) {
+            setCredits(Number(profile.credits_balance));
+          }
         }
       } catch (err) {
         // preserve current state
@@ -81,6 +78,19 @@ export default function Navbar() {
 
   useEffect(() => {
     checkAuth();
+
+    // Listen to live Supabase auth state transitions
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        setIsAdmin(false);
+        setClientUser(null);
+        localStorage.removeItem("slidebee_admin_session");
+        localStorage.removeItem("slidebee_admin_email");
+        localStorage.removeItem("slidebee_client_user");
+      } else {
+        checkAuth();
+      }
+    });
 
     const unsubscribe = subscribeToAuthSync(
       (role) => {
@@ -93,6 +103,7 @@ export default function Navbar() {
         if (!role || role === "client") {
           setClientUser(null);
         }
+        checkAuth();
       },
       (role) => {
         if (role === "client" && location.pathname.startsWith("/admin")) {
@@ -102,7 +113,10 @@ export default function Navbar() {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      authListener?.subscription.unsubscribe();
+      unsubscribe();
+    };
   }, [location.pathname]);
 
   useEffect(() => {
@@ -120,6 +134,7 @@ export default function Navbar() {
   const handleLogoutAdmin = async () => {
     await performGlobalLogout();
     setIsAdmin(false);
+    setClientUser(null);
     navigate("/login");
   };
 
@@ -129,7 +144,6 @@ export default function Navbar() {
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/examples" },
     { name: "Blog", path: "/blog" },
-    { name: "Videos", path: "/videos" },
     { name: "About", path: "/about" },
   ];
 

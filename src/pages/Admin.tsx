@@ -43,13 +43,13 @@ import {
   RefreshCw,
   LayoutTemplate,
   ShieldCheck,
-  Cloud,
-  Play
+  Cloud
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import SlideBeeLogo from "../components/SlideBeeLogo";
+import { DEFAULT_PORTFOLIO_CASE_STUDIES } from "./Examples";
 
 export const ORDER_MILESTONES = [
   { 
@@ -242,7 +242,7 @@ export default function Admin() {
   const [razorpayMode, setRazorpayMode] = useState<"test" | "live">((localStorage.getItem("slidebee_razorpay_mode") as any) || "test");
 
   // Site Customization & Pricing Config States
-  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "blog" | "videos" | "about" | "contact" | "footer">("home");
+  const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "blog" | "about" | "contact" | "footer">("home");
   const [activePricingSubTab, setActivePricingSubTab] = useState<"rates" | "payments" | "emails">("rates");
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
@@ -1228,36 +1228,43 @@ export default function Admin() {
     }
   };
 
-  // Upload Dedicated Primary Cover Image for Portfolio Case Study directly to Cloudflare R2 (portfolio/covers/)
-  const handleCaseStudyCoverUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Dedicated Primary Cover Image for Portfolio / Use Cases directly to Cloudflare R2
+  const handleCaseStudyCoverUpload = async (
+    idx: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetFolder = "portfolio/covers"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingCoverIdx(idx);
 
     try {
-      const r2Res = await uploadToR2(file, { folder: "portfolio/covers", fileName: file.name });
+      const r2Res = await uploadToR2(file, { folder: targetFolder, fileName: file.name });
       if (!r2Res.success || !r2Res.publicUrl) {
         throw new Error(r2Res.error || "Upload failed");
       }
       const coverUrl = r2Res.publicUrl;
 
-      setSiteConfigs((prevConfigs) => {
-        const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
-        if (!currentStudies[idx]) return prevConfigs;
-        currentStudies[idx] = {
-          ...currentStudies[idx],
-          imageUrl: coverUrl
+      const currentList = siteConfigs["portfolio_cms"]?.caseStudies && siteConfigs["portfolio_cms"].caseStudies.length > 0
+        ? [...siteConfigs["portfolio_cms"].caseStudies]
+        : [...DEFAULT_PORTFOLIO_CASE_STUDIES];
+
+      if (currentList[idx]) {
+        const existingSlides = Array.isArray(currentList[idx].slides) && currentList[idx].slides.length > 0
+          ? currentList[idx].slides
+          : [coverUrl];
+        currentList[idx] = {
+          ...currentList[idx],
+          imageUrl: coverUrl,
+          slides: existingSlides
         };
         const updatedConfig = {
-          ...prevConfigs,
-          portfolio_cms: {
-            ...prevConfigs["portfolio_cms"],
-            caseStudies: currentStudies
-          }
+          ...(siteConfigs["portfolio_cms"] || {}),
+          caseStudies: currentList
         };
-        handleSaveConfig("portfolio_cms", updatedConfig.portfolio_cms);
-        return updatedConfig;
-      });
+        setSiteConfigs((prev) => ({ ...prev, portfolio_cms: updatedConfig }));
+        await handleSaveConfig("portfolio_cms", updatedConfig);
+      }
     } catch (err: any) {
       alert("Failed to upload cover image to Cloudflare R2: " + (err.message || err));
     } finally {
@@ -1266,8 +1273,12 @@ export default function Admin() {
     }
   };
 
-  // Upload Multiple Slide Images for Portfolio Case Study directly to Cloudflare R2 (portfolio/slides/)
-  const handleCaseStudySlidesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Multiple Slide Images for Portfolio / Use Cases directly to Cloudflare R2
+  const handleCaseStudySlidesUpload = async (
+    idx: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetFolder = "portfolio/slides"
+  ) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setUploadingSlidesIdx(idx);
@@ -1275,34 +1286,33 @@ export default function Admin() {
     try {
       const uploadedUrls: string[] = [];
       for (const file of files) {
-        const r2Res = await uploadToR2(file, { folder: "portfolio/slides", fileName: file.name });
+        const r2Res = await uploadToR2(file, { folder: targetFolder, fileName: file.name });
         if (!r2Res.success || !r2Res.publicUrl) continue;
         uploadedUrls.push(r2Res.publicUrl);
       }
 
       if (uploadedUrls.length > 0) {
-        setSiteConfigs((prevConfigs) => {
-          const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
-          if (!currentStudies[idx]) return prevConfigs;
-          const existingSlides: string[] = Array.isArray(currentStudies[idx].slides) && currentStudies[idx].slides.length > 0
-            ? [...currentStudies[idx].slides]
-            : (currentStudies[idx].imageUrl ? [currentStudies[idx].imageUrl] : []);
+        const currentList = siteConfigs["portfolio_cms"]?.caseStudies && siteConfigs["portfolio_cms"].caseStudies.length > 0
+          ? [...siteConfigs["portfolio_cms"].caseStudies]
+          : [...DEFAULT_PORTFOLIO_CASE_STUDIES];
+
+        if (currentList[idx]) {
+          const existingSlides = Array.isArray(currentList[idx].slides) && currentList[idx].slides.length > 0
+            ? [...currentList[idx].slides]
+            : (currentList[idx].imageUrl ? [currentList[idx].imageUrl] : []);
           const nextSlides = [...existingSlides, ...uploadedUrls];
-          currentStudies[idx] = {
-            ...currentStudies[idx],
+          currentList[idx] = {
+            ...currentList[idx],
             slides: nextSlides,
-            imageUrl: currentStudies[idx].imageUrl || nextSlides[0]
+            imageUrl: currentList[idx].imageUrl || nextSlides[0]
           };
           const updatedConfig = {
-            ...prevConfigs,
-            portfolio_cms: {
-              ...prevConfigs["portfolio_cms"],
-              caseStudies: currentStudies
-            }
+            ...(siteConfigs["portfolio_cms"] || {}),
+            caseStudies: currentList
           };
-          handleSaveConfig("portfolio_cms", updatedConfig.portfolio_cms);
-          return updatedConfig;
-        });
+          setSiteConfigs((prev) => ({ ...prev, portfolio_cms: updatedConfig }));
+          await handleSaveConfig("portfolio_cms", updatedConfig);
+        }
       }
     } catch (err: any) {
       alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
@@ -1447,9 +1457,13 @@ export default function Admin() {
       ], { onConflict: "key" });
 
     if (!error) {
-      setSiteConfigs({ ...siteConfigs, [key]: value });
+      setSiteConfigs((prev) => ({ ...prev, [key]: value }));
       setConfigSavedSuccess(true);
       setTimeout(() => setConfigSavedSuccess(false), 3000);
+    } else {
+      console.error("Failed to save site_config key:", key, error);
+      setConfigValidationError(`Database save error: ${error.message || "Failed to persist configuration"}`);
+      setTimeout(() => setConfigValidationError(""), 6000);
     }
     setConfigSaving(false);
   };
@@ -2447,7 +2461,6 @@ export default function Admin() {
                 { id: "services", label: "Services & Before/After", icon: Settings },
                 { id: "portfolio", label: "Portfolio & Case Studies", icon: ImageIcon },
                 { id: "blog", label: "Blog & Insights", icon: FileText },
-                { id: "videos", label: "Video Masterclasses", icon: Play },
                 { id: "about", label: "About & Story", icon: Building2 },
                 { id: "contact", label: "Contact & Channels", icon: Phone },
                 { id: "footer", label: "Footer Links", icon: Compass },
@@ -3876,416 +3889,478 @@ export default function Admin() {
             )}
 
             {/* SUB-TAB 3: PORTFOLIO & CASE STUDIES CMS */}
-            {activeCmsSubTab === "portfolio" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Portfolio & Case Studies Customizer (/examples)
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Add, edit, or remove client presentation showcase items and impact statistics
-                    </p>
+            {activeCmsSubTab === "portfolio" && (() => {
+              const currentStudies: any[] =
+                siteConfigs["portfolio_cms"]?.caseStudies && siteConfigs["portfolio_cms"].caseStudies.length > 0
+                  ? siteConfigs["portfolio_cms"].caseStudies
+                  : DEFAULT_PORTFOLIO_CASE_STUDIES;
+
+              const updateCaseStudies = (nextStudies: any[]) => {
+                const nextCfg = {
+                  ...(siteConfigs["portfolio_cms"] || {}),
+                  caseStudies: nextStudies
+                };
+                setSiteConfigs((prev) => ({ ...prev, portfolio_cms: nextCfg }));
+                return nextCfg;
+              };
+
+              const updateAndSave = (nextStudies: any[]) => {
+                const nextCfg = updateCaseStudies(nextStudies);
+                handleSaveConfig("portfolio_cms", nextCfg);
+              };
+
+              return (
+                <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                    <div>
+                      <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                        Portfolio & Case Studies Customizer (/examples)
+                      </h3>
+                      <p className="text-xs text-[#726F6D]">
+                        Add, edit, or remove client presentation showcase items, slides, and R2 assets.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCS = {
+                            id: Date.now(),
+                            title: "New Presentation Case Study",
+                            client: "Client / Enterprise Name",
+                            category: "Strategy & Operations",
+                            storageFolder: "portfolio",
+                            slides: [],
+                            imageUrl: "",
+                            impact: "e.g. $10M Raised / Board Approved",
+                            description: "Executive presentation deck tailored for high-stakes business meetings.",
+                            deliverables: ["Master PowerPoint (.pptx)", "High-Res PDF"]
+                          };
+                          updateAndSave([newCS, ...currentStudies]);
+                        }}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                      >
+                        + Add Case Study
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveConfig("portfolio_cms", { ...(siteConfigs["portfolio_cms"] || {}), caseStudies: currentStudies })}
+                        disabled={configSaving}
+                        className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] font-black px-5 py-2.5 text-xs flex items-center gap-1.5 shadow"
+                      >
+                        <Save size={14} /> {configSaving ? "Saving..." : "Save Portfolio"}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleSaveConfig("portfolio_cms", siteConfigs["portfolio_cms"])}
-                    disabled={configSaving}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
-                  >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save Portfolio"}
-                  </button>
-                </div>
 
-                <div className="space-y-4">
-                  {(siteConfigs["portfolio_cms"]?.caseStudies || []).map((cs: any, idx: number) => (
-                    <div key={idx} className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
-                          Case Study #{idx + 1}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSaveConfig("portfolio_cms", siteConfigs["portfolio_cms"])}
-                            disabled={configSaving}
-                            className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] text-[11px] font-black px-3 py-1 shadow-sm flex items-center gap-1"
-                          >
-                            <Save size={11} /> Save Changes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = siteConfigs["portfolio_cms"].caseStudies.filter((_: any, i: number) => i !== idx);
-                              const nextCfg = { ...siteConfigs["portfolio_cms"], caseStudies: updated };
-                              setSiteConfigs({
-                                ...siteConfigs,
-                                portfolio_cms: nextCfg
-                              });
-                              handleSaveConfig("portfolio_cms", nextCfg);
-                            }}
-                            className="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
+                  <div className="space-y-4">
+                    {currentStudies.map((cs: any, idx: number) => {
+                      const activeFolder = cs.storageFolder === "use_cases" ? "use_cases" : "portfolio";
+                      const coverFolder = activeFolder === "use_cases" ? "use_cases/covers" : "portfolio/covers";
+                      const slidesFolder = activeFolder === "use_cases" ? "use_cases/slides" : "portfolio/slides";
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Project Title</label>
-                          <input
-                            type="text"
-                            value={cs.title || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].title = e.target.value;
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-bold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Client Name</label>
-                          <input
-                            type="text"
-                            value={cs.client || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].client = e.target.value;
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Category Filter</label>
-                          <input
-                            type="text"
-                            value={cs.category || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].category = e.target.value;
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Impact Stat (e.g. $14M Raised)</label>
-                          <input
-                            type="text"
-                            value={cs.impact || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].impact = e.target.value;
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-extrabold text-primary-amber"
-                          />
-                        </div>
-                      </div>
-
-                      {/* OPTION A: PRIMARY COVER THUMBNAIL (portfolio/covers/) */}
-                      <div className="bg-white p-4 rounded-xl border border-primary/30 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <ImageIcon size={14} className="text-primary-amber" />
-                            <span className="text-xs font-heading font-extrabold text-[#111111]">
-                              Option A: Primary Cover Thumbnail (Cloudflare R2: portfolio/covers/)
-                            </span>
-                          </div>
-                          <span className="hex-pill-sm bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
-                            Case Study Cover
-                          </span>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                          {/* Thumbnail Display */}
-                          <div className="relative aspect-[16/10] w-36 bg-[#FFF9E8] rounded-lg overflow-hidden border border-primary/40 flex-shrink-0 shadow-inner">
-                            {cs.imageUrl ? (
-                              <img
-                                src={normalizeR2Url(cs.imageUrl)}
-                                alt="Case Study Cover"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-[#726F6D] font-bold p-2 text-center">
-                                <ImageIcon size={16} className="text-primary-amber mb-1 opacity-70" />
-                                No Cover Set
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 space-y-2 w-full">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                                <UploadCloud size={12} />
-                                <span>{uploadingCoverIdx === idx ? "Uploading to R2..." : (cs.imageUrl ? "Replace Cover (R2)" : "Upload Cover to R2")}</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingCoverIdx === idx}
-                                  onChange={(e) => handleCaseStudyCoverUpload(idx, e)}
-                                  className="hidden"
-                                />
-                              </label>
-
-                              {cs.imageUrl && (
+                      return (
+                        <div key={cs.id || idx} className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
+                                Case Study #{idx + 1}
+                              </span>
+                              {/* R2 Folder Badge & Selector */}
+                              <div className="inline-flex rounded-lg border border-primary/40 bg-white p-0.5 items-center">
+                                <span className="text-[9px] font-bold text-[#726F6D] px-1.5">R2 Folder:</span>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                    updated[idx] = { ...updated[idx], imageUrl: "" };
-                                    setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                                    const updated = [...currentStudies];
+                                    updated[idx] = { ...updated[idx], storageFolder: "portfolio" };
+                                    updateAndSave(updated);
                                   }}
-                                  className="text-red-500 hover:text-red-700 text-[10px] font-bold px-2 py-1 rounded hover:bg-red-50"
+                                  className={`px-2 py-0.5 rounded text-[9px] font-extrabold transition-all ${
+                                    activeFolder === "portfolio"
+                                      ? "bg-primary text-[#111111] shadow-xs"
+                                      : "text-[#726F6D] hover:text-[#111111]"
+                                  }`}
                                 >
-                                  Remove Cover
+                                  portfolio/
                                 </button>
-                              )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...currentStudies];
+                                    updated[idx] = { ...updated[idx], storageFolder: "use_cases" };
+                                    updateAndSave(updated);
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[9px] font-extrabold transition-all ${
+                                    activeFolder === "use_cases"
+                                      ? "bg-primary text-[#111111] shadow-xs"
+                                      : "text-[#726F6D] hover:text-[#111111]"
+                                  }`}
+                                >
+                                  use_cases/
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveConfig("portfolio_cms", { ...(siteConfigs["portfolio_cms"] || {}), caseStudies: currentStudies })}
+                                disabled={configSaving}
+                                className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] text-[11px] font-black px-3 py-1 shadow-sm flex items-center gap-1"
+                              >
+                                <Save size={11} /> Save Changes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = currentStudies.filter((_: any, i: number) => i !== idx);
+                                  updateAndSave(updated);
+                                }}
+                                className="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div>
+                              <label className="text-[10px] font-bold text-[#111111] block mb-1">Project Title</label>
+                              <input
+                                type="text"
+                                value={cs.title || ""}
+                                onChange={(e) => {
+                                  const updated = [...currentStudies];
+                                  updated[idx] = { ...updated[idx], title: e.target.value };
+                                  updateCaseStudies(updated);
+                                }}
+                                className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-bold"
+                              />
                             </div>
 
-                            <input
-                              type="text"
-                              value={cs.imageUrl || ""}
-                              onChange={(e) => {
-                                const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                updated[idx] = { ...updated[idx], imageUrl: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                              }}
-                              placeholder="Direct Cloudflare R2 CDN URL (https://...)"
-                              className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
-                            />
+                            <div>
+                              <label className="text-[10px] font-bold text-[#111111] block mb-1">Client Name</label>
+                              <input
+                                type="text"
+                                value={cs.client || ""}
+                                onChange={(e) => {
+                                  const updated = [...currentStudies];
+                                  updated[idx] = { ...updated[idx], client: e.target.value };
+                                  updateCaseStudies(updated);
+                                }}
+                                className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-[#111111] block mb-1">Category Filter</label>
+                              <input
+                                type="text"
+                                value={cs.category || ""}
+                                onChange={(e) => {
+                                  const updated = [...currentStudies];
+                                  updated[idx] = { ...updated[idx], category: e.target.value };
+                                  updateCaseStudies(updated);
+                                }}
+                                className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-[#111111] block mb-1">Impact Stat (e.g. $14M Raised)</label>
+                              <input
+                                type="text"
+                                value={cs.impact || ""}
+                                onChange={(e) => {
+                                  const updated = [...currentStudies];
+                                  updated[idx] = { ...updated[idx], impact: e.target.value };
+                                  updateCaseStudies(updated);
+                                }}
+                                className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-extrabold text-primary-amber"
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Brief Description</label>
-                          <input
-                            type="text"
-                            value={cs.description || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx] = { ...updated[idx], description: e.target.value };
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
-                            placeholder="Executive presentation deck crafted for leadership and strategic alignment..."
-                          />
-                        </div>
-                      </div>
-
-                      {/* OPTION B: MULTI-SLIDE INTERIOR SHOWCASE GALLERY (portfolio/slides/) */}
-                      {(() => {
-                        const currentSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
-                          ? cs.slides
-                          : (cs.imageUrl ? [cs.imageUrl] : []);
-
-                        return (
+                          {/* OPTION A: PRIMARY COVER THUMBNAIL */}
                           <div className="bg-white p-4 rounded-xl border border-primary/30 space-y-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-2.5">
                               <div className="flex items-center gap-2">
-                                <Layers size={14} className="text-primary-amber" />
+                                <ImageIcon size={14} className="text-primary-amber" />
                                 <span className="text-xs font-heading font-extrabold text-[#111111]">
-                                  Option B: Multi-Slide Interior Showcase Gallery (Cloudflare R2: portfolio/slides/)
+                                  Option A: Primary Cover Thumbnail (R2: {coverFolder}/)
                                 </span>
                               </div>
-                              <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[9px] font-black px-2.5 py-0.5">
-                                {currentSlides.length} Master Slides
+                              <span className="hex-pill-sm bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
+                                Case Study Cover
                               </span>
                             </div>
 
-                            <p className="text-[11px] text-[#726F6D]">
-                              Directly upload multi-slide presentations to Cloudflare R2. Visitors flip through these slides on /examples.
-                            </p>
-
-                            {/* Thumbnails strip */}
-                            {currentSlides.length > 0 ? (
-                              <div className="flex items-center gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
-                                {currentSlides.map((slideImg: string, sIdx: number) => (
-                                  <div
-                                    key={sIdx}
-                                    className={`relative group shrink-0 w-28 rounded-lg overflow-hidden border p-1 bg-[#FFF9E8] transition-all ${
-                                      cs.imageUrl && normalizeR2Url(cs.imageUrl) === normalizeR2Url(slideImg)
-                                        ? "border-primary ring-2 ring-primary/50 shadow-sm"
-                                        : "border-[#111111]/15"
-                                    }`}
-                                  >
-                                    <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                                      <img
-                                        src={normalizeR2Url(slideImg)}
-                                        alt={`Slide ${sIdx + 1}`}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div className="flex items-center justify-between text-[9px] px-0.5">
-                                      <span className="font-extrabold text-[#111111]">
-                                        Slide #{sIdx + 1}
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          title="Set as Primary Cover"
-                                          onClick={() => {
-                                            const nextSlides = [...currentSlides];
-                                            const [moved] = nextSlides.splice(sIdx, 1);
-                                            nextSlides.unshift(moved);
-                                            const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                            updated[idx] = {
-                                              ...updated[idx],
-                                              slides: nextSlides,
-                                              imageUrl: nextSlides[0]
-                                            };
-                                            setSiteConfigs({
-                                              ...siteConfigs,
-                                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                                            });
-                                          }}
-                                          className="text-[9px] text-primary-amber hover:underline font-extrabold"
-                                        >
-                                          Cover
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Remove slide"
-                                          onClick={() => {
-                                            const nextSlides = currentSlides.filter((_, i) => i !== sIdx);
-                                            const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                            updated[idx] = {
-                                              ...updated[idx],
-                                              slides: nextSlides,
-                                              imageUrl: updated[idx].imageUrl === slideImg ? (nextSlides[0] || "") : updated[idx].imageUrl
-                                            };
-                                            setSiteConfigs({
-                                              ...siteConfigs,
-                                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                                            });
-                                          }}
-                                          className="text-red-500 hover:text-red-700"
-                                        >
-                                          <Trash2 size={11} />
-                                        </button>
-                                      </div>
-                                    </div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                              {/* Thumbnail Display */}
+                              <div className="relative aspect-[16/10] w-36 bg-[#FFF9E8] rounded-lg overflow-hidden border border-primary/40 flex-shrink-0 shadow-inner">
+                                {cs.imageUrl ? (
+                                  <img
+                                    src={normalizeR2Url(cs.imageUrl)}
+                                    alt="Case Study Cover"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-[#726F6D] font-bold p-2 text-center">
+                                    <ImageIcon size={16} className="text-primary-amber mb-1 opacity-70" />
+                                    No Cover Set
                                   </div>
-                                ))}
+                                )}
                               </div>
-                            ) : (
-                              <div className="p-4 text-center border border-dashed border-primary/40 rounded-xl bg-[#FFF9E8]/50">
-                                <p className="text-xs text-[#726F6D] font-medium">No slides in this showcase yet. Select multiple slide images below to upload to Cloudflare R2.</p>
-                              </div>
-                            )}
 
-                            {/* Batch Upload & Manual Append Bar */}
-                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#111111]/8">
-                              <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${uploadingSlidesIdx === idx ? "opacity-60 cursor-not-allowed" : ""}`}>
-                                <UploadCloud size={12} className="text-primary-amber" />
-                                <span>{uploadingSlidesIdx === idx ? "Batch Uploading to R2..." : "Batch Upload Slides to R2 (portfolio/slides/)"}</span>
-                                <input
-                                  type="file"
-                                  multiple
-                                  accept="image/*"
-                                  disabled={uploadingSlidesIdx === idx}
-                                  onChange={(e) => handleCaseStudySlidesUpload(idx, e)}
-                                  className="hidden"
-                                />
-                              </label>
+                              <div className="flex-1 space-y-2 w-full">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                                    <UploadCloud size={12} />
+                                    <span>{uploadingCoverIdx === idx ? "Uploading to R2..." : (cs.imageUrl ? `Replace Cover (${activeFolder}/)` : `Upload Cover to R2 (${activeFolder}/)`)}</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={uploadingCoverIdx === idx}
+                                      onChange={(e) => handleCaseStudyCoverUpload(idx, e, coverFolder)}
+                                      className="hidden"
+                                    />
+                                  </label>
 
-                              <div className="flex-1 min-w-[200px] flex items-center gap-1.5">
+                                  {cs.imageUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...currentStudies];
+                                        updated[idx] = { ...updated[idx], imageUrl: "" };
+                                        updateAndSave(updated);
+                                      }}
+                                      className="text-red-500 hover:text-red-700 text-[10px] font-bold px-2 py-1 rounded hover:bg-red-50"
+                                    >
+                                      Remove Cover
+                                    </button>
+                                  )}
+                                </div>
+
                                 <input
                                   type="text"
-                                  placeholder="Or paste slide image URL and press Enter..."
-                                  id={`cs-slide-input-${idx}`}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const input = e.currentTarget;
-                                      const val = input.value.trim();
-                                      if (val) {
-                                        const nextSlides = [...currentSlides, val];
-                                        const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                        updated[idx] = {
-                                          ...updated[idx],
-                                          slides: nextSlides,
-                                          imageUrl: updated[idx].imageUrl || nextSlides[0]
-                                        };
-                                        setSiteConfigs({
-                                          ...siteConfigs,
-                                          portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                                        });
-                                        input.value = "";
-                                      }
-                                    }
+                                  value={cs.imageUrl || ""}
+                                  onChange={(e) => {
+                                    const updated = [...currentStudies];
+                                    updated[idx] = { ...updated[idx], imageUrl: e.target.value };
+                                    updateCaseStudies(updated);
                                   }}
-                                  className="flex-1 bg-white border border-[#111111]/12 rounded px-2 py-1 text-xs font-mono"
+                                  placeholder={`Direct Cloudflare R2 CDN URL (https://.../${activeFolder}/...)`}
+                                  className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const input = document.getElementById(`cs-slide-input-${idx}`) as HTMLInputElement;
-                                    if (input && input.value.trim()) {
-                                      const val = input.value.trim();
-                                      const nextSlides = [...currentSlides, val];
-                                      const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                      updated[idx] = {
-                                        ...updated[idx],
-                                        slides: nextSlides,
-                                        imageUrl: updated[idx].imageUrl || nextSlides[0]
-                                      };
-                                      setSiteConfigs({
-                                        ...siteConfigs,
-                                        portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                                      });
-                                      input.value = "";
-                                    }
-                                  }}
-                                  className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-bold px-2.5 py-1 text-[11px]"
-                                >
-                                  + Add Slide
-                                </button>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ))}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const current = siteConfigs["portfolio_cms"]?.caseStudies || [];
-                      const newCS = {
-                        id: Date.now(),
-                        title: "New Presentation Case Study",
-                        client: "Client / Enterprise Name",
-                        category: "Strategy & Operations",
-                        slides: [],
-                        imageUrl: "",
-                        impact: "e.g. $10M Raised / Board Approved",
-                        description: "Executive presentation deck tailored for high-stakes business meetings.",
-                        deliverables: ["Master PowerPoint (.pptx)", "High-Res PDF"]
-                      };
-                      const nextPortfolio = {
-                        ...(siteConfigs["portfolio_cms"] || {}),
-                        caseStudies: [...current, newCS]
-                      };
-                      setSiteConfigs({
-                        ...siteConfigs,
-                        portfolio_cms: nextPortfolio
-                      });
-                      handleSaveConfig("portfolio_cms", nextPortfolio);
-                    }}
-                    className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] py-3 text-xs font-black flex items-center justify-center gap-2 shadow"
-                  >
-                    + Add New Case Study (Instant Save to Portfolio & Examples)
-                  </button>
+                            <div>
+                              <label className="text-[10px] font-bold text-[#111111] block mb-1">Brief Description</label>
+                              <input
+                                type="text"
+                                value={cs.description || ""}
+                                onChange={(e) => {
+                                  const updated = [...currentStudies];
+                                  updated[idx] = { ...updated[idx], description: e.target.value };
+                                  updateCaseStudies(updated);
+                                }}
+                                className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                                placeholder="Executive presentation deck crafted for leadership and strategic alignment..."
+                              />
+                            </div>
+                          </div>
+
+                          {/* OPTION B: MULTI-SLIDE INTERIOR SHOWCASE GALLERY */}
+                          {(() => {
+                            const currentSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
+                              ? cs.slides
+                              : (cs.imageUrl ? [cs.imageUrl] : []);
+
+                            return (
+                              <div className="bg-white p-4 rounded-xl border border-primary/30 space-y-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <Layers size={14} className="text-primary-amber" />
+                                    <span className="text-xs font-heading font-extrabold text-[#111111]">
+                                      Option B: Multi-Slide Interior Showcase Gallery (R2: {slidesFolder}/)
+                                    </span>
+                                  </div>
+                                  <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[9px] font-black px-2.5 py-0.5">
+                                    {currentSlides.length} Master Slides
+                                  </span>
+                                </div>
+
+                                <p className="text-[11px] text-[#726F6D]">
+                                  Directly upload multi-slide presentations to Cloudflare R2 ({activeFolder}/). Visitors flip through these slides on /examples.
+                                </p>
+
+                                {/* Thumbnails strip */}
+                                {currentSlides.length > 0 ? (
+                                  <div className="flex items-center gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
+                                    {currentSlides.map((slideImg: string, sIdx: number) => (
+                                      <div
+                                        key={sIdx}
+                                        className={`relative group shrink-0 w-28 rounded-lg overflow-hidden border p-1 bg-[#FFF9E8] transition-all ${
+                                          cs.imageUrl && normalizeR2Url(cs.imageUrl) === normalizeR2Url(slideImg)
+                                            ? "border-primary ring-2 ring-primary/50 shadow-sm"
+                                            : "border-[#111111]/15"
+                                        }`}
+                                      >
+                                        <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                                          <img
+                                            src={normalizeR2Url(slideImg)}
+                                            alt={`Slide ${sIdx + 1}`}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                        <div className="flex items-center justify-between text-[9px] px-0.5">
+                                          <span className="font-extrabold text-[#111111]">
+                                            Slide #{sIdx + 1}
+                                          </span>
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              type="button"
+                                              title="Set as Primary Cover"
+                                              onClick={() => {
+                                                const nextSlides = [...currentSlides];
+                                                const [moved] = nextSlides.splice(sIdx, 1);
+                                                nextSlides.unshift(moved);
+                                                const updated = [...currentStudies];
+                                                updated[idx] = {
+                                                  ...updated[idx],
+                                                  slides: nextSlides,
+                                                  imageUrl: nextSlides[0]
+                                                };
+                                                updateAndSave(updated);
+                                              }}
+                                              className="text-[9px] text-primary-amber hover:underline font-extrabold"
+                                            >
+                                              Cover
+                                            </button>
+                                            <button
+                                              type="button"
+                                              title="Remove slide"
+                                              onClick={() => {
+                                                const nextSlides = currentSlides.filter((_, i) => i !== sIdx);
+                                                const updated = [...currentStudies];
+                                                updated[idx] = {
+                                                  ...updated[idx],
+                                                  slides: nextSlides,
+                                                  imageUrl: updated[idx].imageUrl === slideImg ? (nextSlides[0] || "") : updated[idx].imageUrl
+                                                };
+                                                updateAndSave(updated);
+                                              }}
+                                              className="text-red-500 hover:text-red-700"
+                                            >
+                                              <Trash2 size={11} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="p-4 text-center border border-dashed border-primary/40 rounded-xl bg-[#FFF9E8]/50">
+                                    <p className="text-xs text-[#726F6D] font-medium">No slides in this showcase yet. Select multiple slide images below to upload to Cloudflare R2 ({activeFolder}/).</p>
+                                  </div>
+                                )}
+
+                                {/* Batch Upload & Manual Append Bar */}
+                                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#111111]/8">
+                                  <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${uploadingSlidesIdx === idx ? "opacity-60 cursor-not-allowed" : ""}`}>
+                                    <UploadCloud size={12} className="text-primary-amber" />
+                                    <span>{uploadingSlidesIdx === idx ? "Batch Uploading to R2..." : `Batch Upload Slides to R2 (${slidesFolder}/)`}</span>
+                                    <input
+                                      type="file"
+                                      multiple
+                                      accept="image/*"
+                                      disabled={uploadingSlidesIdx === idx}
+                                      onChange={(e) => handleCaseStudySlidesUpload(idx, e, slidesFolder)}
+                                      className="hidden"
+                                    />
+                                  </label>
+
+                                  <div className="flex-1 min-w-[200px] flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="Or paste slide image URL and press Enter..."
+                                      id={`cs-slide-input-${idx}`}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const input = e.currentTarget;
+                                          const val = input.value.trim();
+                                          if (val) {
+                                            const nextSlides = [...currentSlides, val];
+                                            const updated = [...currentStudies];
+                                            updated[idx] = {
+                                              ...updated[idx],
+                                              slides: nextSlides,
+                                              imageUrl: updated[idx].imageUrl || nextSlides[0]
+                                            };
+                                            updateAndSave(updated);
+                                            input.value = "";
+                                          }
+                                        }
+                                      }}
+                                      className="flex-1 bg-white border border-[#111111]/12 rounded px-2 py-1 text-xs font-mono"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const input = document.getElementById(`cs-slide-input-${idx}`) as HTMLInputElement;
+                                        if (input && input.value.trim()) {
+                                          const val = input.value.trim();
+                                          const nextSlides = [...currentSlides, val];
+                                          const updated = [...currentStudies];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            slides: nextSlides,
+                                            imageUrl: updated[idx].imageUrl || nextSlides[0]
+                                          };
+                                          updateAndSave(updated);
+                                          input.value = "";
+                                        }
+                                      }}
+                                      className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-bold px-2.5 py-1 text-[11px]"
+                                    >
+                                      + Add Slide
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newCS = {
+                          id: Date.now(),
+                          title: "New Presentation Case Study",
+                          client: "Client / Enterprise Name",
+                          category: "Strategy & Operations",
+                          storageFolder: "portfolio",
+                          slides: [],
+                          imageUrl: "",
+                          impact: "e.g. $10M Raised / Board Approved",
+                          description: "Executive presentation deck tailored for high-stakes business meetings.",
+                          deliverables: ["Master PowerPoint (.pptx)", "High-Res PDF"]
+                        };
+                        updateAndSave([newCS, ...currentStudies]);
+                      }}
+                      className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] py-3 text-xs font-black flex items-center justify-center gap-2 shadow"
+                    >
+                      + Add New Case Study (Instant Save to Portfolio & Examples)
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* SUB-TAB: BLOG & INSIGHTS CMS */}
             {activeCmsSubTab === "blog" && (() => {
@@ -4472,216 +4547,6 @@ export default function Admin() {
                       className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
                     >
                       <Plus size={14} /> Add New Article (/blog)
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* SUB-TAB: VIDEOS & MASTERCLASSES CMS */}
-            {activeCmsSubTab === "videos" && (() => {
-              const defaultVideosList = [
-                {
-                  id: "1",
-                  title: "Executive Presentation Teardown: Turning 40 Slides into 10",
-                  duration: "14:20",
-                  category: "Masterclass",
-                  thumbnail: "/portfolio/case_study_a_14.png",
-                  desc: "Watch our senior art director restructure a bloated corporate roadmap deck into a high-stakes board presentation.",
-                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                },
-                {
-                  id: "2",
-                  title: "Investor Pitch Deck Visuals: Unit Economics & Cap Table Framing",
-                  duration: "18:45",
-                  category: "Fundraising",
-                  thumbnail: "/portfolio/global_brands_1.png",
-                  desc: "How to visualize complex SaaS metrics, CAC/LTV, and market sizing diagrams so VCs immediately get the value.",
-                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                },
-                {
-                  id: "3",
-                  title: "Building Scalable PowerPoint Master Templates in 2026",
-                  duration: "12:10",
-                  category: "Template Design",
-                  thumbnail: "/portfolio/levis_yuengling_6.png",
-                  desc: "A deep dive into PowerPoint slide masters, theme colors, typography hierarchies, and modular vector asset libraries.",
-                  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                }
-              ];
-              const videos = Array.isArray(siteConfigs["videos_cms"]) ? siteConfigs["videos_cms"] : defaultVideosList;
-
-              return (
-                <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
-                    <div>
-                      <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                        Video Masterclasses CMS (/videos)
-                      </h3>
-                      <p className="text-xs text-[#726F6D]">
-                        Publish, edit, or manage video masterclasses, pitch deck walkthroughs, and teardowns
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleSaveConfig("videos_cms", videos)}
-                      disabled={configSaving}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
-                    >
-                      <Save size={14} /> {configSaving ? "Saving..." : "Save Videos"}
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {videos.map((v: any, idx: number) => (
-                      <div key={v.id || idx} className="bg-[#FFF9E8] p-5 rounded-xl border border-[#111111]/10 space-y-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-extrabold text-primary-amber uppercase tracking-wider">
-                            Masterclass #{idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = videos.filter((_: any, i: number) => i !== idx);
-                              setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                            }}
-                            className="text-red-600 hover:text-red-800 text-xs font-bold"
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="sm:col-span-2">
-                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Video Title</label>
-                            <input
-                              type="text"
-                              value={v.title || ""}
-                              onChange={(e) => {
-                                const updated = [...videos];
-                                updated[idx] = { ...updated[idx], title: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                              }}
-                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs font-bold"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Category</label>
-                            <input
-                              type="text"
-                              value={v.category || ""}
-                              onChange={(e) => {
-                                const updated = [...videos];
-                                updated[idx] = { ...updated[idx], category: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                              }}
-                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Duration (e.g. 15:30)</label>
-                            <input
-                              type="text"
-                              value={v.duration || ""}
-                              placeholder="14:20"
-                              onChange={(e) => {
-                                const updated = [...videos];
-                                updated[idx] = { ...updated[idx], duration: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                              }}
-                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
-                            />
-                          </div>
-
-                          <div className="sm:col-span-2">
-                            <label className="text-[10px] font-bold text-[#111111] block mb-1">Video Link / URL</label>
-                            <input
-                              type="text"
-                              value={v.videoUrl || ""}
-                              placeholder="https://www.youtube.com/watch?v=..."
-                              onChange={(e) => {
-                                const updated = [...videos];
-                                updated[idx] = { ...updated[idx], videoUrl: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                              }}
-                              className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Cover Thumbnail (R2 / WebP)</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={v.thumbnail || ""}
-                              placeholder="https://... or /portfolio/..."
-                              onChange={(e) => {
-                                const updated = [...videos];
-                                updated[idx] = { ...updated[idx], thumbnail: e.target.value };
-                                setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                              }}
-                              className="flex-1 bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs"
-                            />
-                            <label className="cursor-pointer hex-pill bg-white border border-primary/40 px-3 py-1.5 text-[11px] font-bold text-[#111111] hover:bg-black/5 flex items-center gap-1 shrink-0">
-                              <UploadCloud size={13} className="text-primary-amber" />
-                              <span>Upload R2</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const res = await uploadToR2(file, { folder: "videos" });
-                                    if (res.success && res.publicUrl) {
-                                      const updated = [...videos];
-                                      updated[idx] = { ...updated[idx], thumbnail: res.publicUrl };
-                                      setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                                    }
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-[#111111] block mb-1">Description</label>
-                          <textarea
-                            rows={2}
-                            value={v.desc || ""}
-                            onChange={(e) => {
-                              const updated = [...videos];
-                              updated[idx] = { ...updated[idx], desc: e.target.value };
-                              setSiteConfigs({ ...siteConfigs, videos_cms: updated });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1.5 text-xs leading-relaxed"
-                          />
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newVideo = {
-                          id: String(Date.now()),
-                          title: "New Presentation Masterclass",
-                          duration: "10:00",
-                          category: "Masterclass",
-                          thumbnail: "/portfolio/case_study_a_14.png",
-                          desc: "Walkthrough and teardown of presentation design principles.",
-                          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                        };
-                        setSiteConfigs({ ...siteConfigs, videos_cms: [...videos, newVideo] });
-                      }}
-                      className="hex-pill w-full bg-[#FFF9E8] hover:bg-black/5 text-[#111111] border border-[#111111]/15 py-3 text-xs font-extrabold flex items-center justify-center gap-2"
-                    >
-                      <Plus size={14} /> Add New Video Masterclass (/videos)
                     </button>
                   </div>
                 </div>

@@ -215,12 +215,12 @@ export default function Pricing() {
       {/* Quick Jump Navigation Pill */}
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-10 flex justify-center">
         <div className="hex-pill inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border-2 border-primary/40 p-1.5 shadow-sm">
-          <a
-            href="#marketplace"
+          <Link
+            to="/templates"
             className="hex-pill px-4 py-1.5 text-xs font-black text-[#111111] hover:bg-primary/30 transition-all flex items-center gap-1.5"
           >
-            <LayoutGrid size={13} className="text-primary-amber" /> Template Marketplace
-          </a>
+            <LayoutGrid size={13} className="text-primary-amber" /> Template Marketplace <ArrowRight size={12} />
+          </Link>
           <span className="text-[#726F6D] text-xs">|</span>
           <a
             href="#services"
@@ -364,12 +364,20 @@ export default function Pricing() {
               </div>
             </div>
 
-            <button
-              onClick={handleGoPro}
-              className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
-            >
-              Go Pro Now <ArrowRight size={14} />
-            </button>
+            <div className="mt-8 space-y-2.5">
+              <button
+                onClick={handleGoPro}
+                className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
+              >
+                Go Pro Now <ArrowRight size={14} />
+              </button>
+              <Link
+                to="/templates"
+                className="hex-pill w-full block text-center bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <LayoutGrid size={13} className="text-[#FCBF14]" /> Go to Templates Marketplace <ArrowRight size={13} />
+              </Link>
+            </div>
           </div>
 
         </div>
