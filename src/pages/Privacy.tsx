@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { Shield, Lock, Eye, Database, Globe, Mail, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Privacy() {
@@ -7,6 +9,28 @@ export default function Privacy() {
     title: "Privacy Policy & Client Data Protection | SlideBee",
     description: "SlideBee client privacy policy, strict NDA confidentiality guarantees, secure Cloudflare infrastructure, and data protection practices.",
   });
+
+  const [contactConfig, setContactConfig] = useState<any>({
+    address: "SlideBee Design Studio, Bengaluru, Karnataka 560001, India",
+    generalEmail: "privacy@theslidebee.com",
+    supportEmail: "support@theslidebee.com"
+  });
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "contact_cms")
+      .single()
+      .then(({ data }) => {
+        if (data?.value) {
+          setContactConfig((prev: any) => ({
+            ...prev,
+            ...data.value
+          }));
+        }
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
@@ -131,12 +155,14 @@ export default function Privacy() {
             </p>
             <div className="p-4 bg-[#FFF9E8] border border-[#FCBF14]/30 rounded space-y-2 text-sm">
               <div className="font-bold text-[#111111]">SlideBee Design Studio</div>
-              <div className="text-[#726F6D]">Registered Studio: Bengaluru, Karnataka 560001, India</div>
+              <div className="text-[#726F6D]">
+                Registered Studio: {contactConfig.address || "SlideBee Design Studio, Bengaluru, Karnataka 560001, India"}
+              </div>
               <div className="text-[#726F6D]">Global Delivery Hubs: Singapore & San Francisco</div>
               <div className="text-[#726F6D] flex items-center gap-2 pt-1">
                 <Mail size={14} className="text-[#FCBF14]" />
-                <a href="mailto:privacy@theslidebee.com" className="text-[#111111] font-semibold underline hover:text-[#FCBF14]">
-                  privacy@theslidebee.com
+                <a href={`mailto:${contactConfig.generalEmail || "privacy@theslidebee.com"}`} className="text-[#111111] font-semibold underline hover:text-[#FCBF14]">
+                  {contactConfig.generalEmail || "privacy@theslidebee.com"}
                 </a>
               </div>
             </div>

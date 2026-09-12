@@ -44,7 +44,8 @@ import {
   RefreshCw,
   LayoutTemplate,
   ShieldCheck,
-  Cloud
+  Cloud,
+  Loader2
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -209,6 +210,15 @@ export default function Admin() {
   const [testEmailSenderType, setTestEmailSenderType] = useState<"design" | "hello" | "billing">("design");
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
+
+  // Operations Hub In-App Client Email Composer State
+  const [isClientEmailComposerOpen, setIsClientEmailComposerOpen] = useState(false);
+  const [clientEmailSender, setClientEmailSender] = useState<string>("design@theslidebee.com");
+  const [clientEmailSubject, setClientEmailSubject] = useState("");
+  const [clientEmailBody, setClientEmailBody] = useState("");
+  const [isSendingClientEmail, setIsSendingClientEmail] = useState(false);
+  const [clientEmailStatus, setClientEmailStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [copiedClientEmailSuccess, setCopiedClientEmailSuccess] = useState(false);
 
   // Bulk Spreadsheet Template Import State
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -1117,6 +1127,151 @@ export default function Admin() {
       setTestEmailStatus(`Dispatcher notice: ${e.message}`);
     } finally {
       setIsSendingTestEmail(false);
+    }
+  };
+
+  // Open & initialize the In-App Client Email Composer for an Order
+  const handleOpenClientEmailComposer = (order: any, templateType: "milestone" | "assets" | "ready" = "milestone") => {
+    if (!order) return;
+    setIsClientEmailComposerOpen(true);
+    setClientEmailStatus(null);
+    setClientEmailSender(zohoDeliverableEmail || "design@theslidebee.com");
+    handleApplyClientEmailTemplate(order, templateType);
+  };
+
+  const handleApplyClientEmailTemplate = (order: any, templateType: "milestone" | "assets" | "ready") => {
+    if (!order) return;
+    const clientName = order.client_name?.trim() || "there";
+    const orderRef = order.id ? `#${order.id.slice(0, 8)}` : "your order";
+    const serviceName = order.service_type || "Presentation Design";
+
+    if (templateType === "assets") {
+      setClientEmailSubject(`Additional Assets Needed: ${serviceName} (${orderRef})`);
+      setClientEmailBody(
+`Hi ${clientName},
+
+Thank you for trusting SlideBee with your presentation design.
+
+To make sure your slides match executive standards, could you please share:
+• High-resolution logos or vector files (.SVG or .PNG with transparent background)
+• Brand guidelines, color palette, or approved typography (if available)
+• Any raw data spreadsheets, charts, or speaking outlines
+
+You can reply directly to this email or share an updated Google Drive folder link.
+
+Warm regards,
+SlideBee Design Studio`
+      );
+    } else if (templateType === "ready") {
+      setClientEmailSubject(`Your Presentation Draft is Ready for Review! (${orderRef})`);
+      setClientEmailBody(
+`Hi ${clientName},
+
+Exciting news! Your presentation draft for ${serviceName} is now ready for your review.
+
+Please review the deliverable at your earliest convenience and let us know your thoughts. As a reminder, you have 2 full rounds of executive revisions included with your project.
+
+Looking forward to your feedback!
+
+Best regards,
+SlideBee Design Studio`
+      );
+    } else {
+      // Default: Milestone update
+      const currentMilestone = ORDER_MILESTONES[getMilestoneIndex(order.status)]?.fullLabel || order.status;
+      setClientEmailSubject(`SlideBee Milestone Update: ${serviceName} (${orderRef})`);
+      setClientEmailBody(
+`Hi ${clientName},
+
+We wanted to provide a quick milestone update on your presentation design project.
+
+Current Stage: ${currentMilestone}
+
+Our creative team is actively progressing through your requirements according to your brief. We will notify you as soon as the review deliverables are assembled.
+
+Best regards,
+SlideBee Design Studio`
+      );
+    }
+  };
+
+  const handleSendClientEmail = async (order: any) => {
+    if (!order || !order.client_email) {
+      setClientEmailStatus({ type: "error", message: "Client email address is missing." });
+      return;
+    }
+    if (!clientEmailSubject.trim() || !clientEmailBody.trim()) {
+      setClientEmailStatus({ type: "error", message: "Please provide both a subject and a message body." });
+      return;
+    }
+
+    setIsSendingClientEmail(true);
+    setClientEmailStatus(null);
+
+    const senderDisplayName = clientEmailSender.includes("support")
+      ? "SlideBee Support"
+      : clientEmailSender.includes("hello")
+      ? "SlideBee Studio"
+      : "SlideBee Design Studio";
+
+    const escapedBody = clientEmailBody
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const formattedHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">SlideBee Studio</h1>
+          <p style="color: #726F6D; font-size: 13px; margin-top: 4px; font-weight: 500;">Executive Presentation Design on Demand</p>
+        </div>
+        <div style="background-color: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <div style="font-size: 14px; color: #111111; line-height: 1.7; white-space: pre-wrap;">${escapedBody}</div>
+        </div>
+        <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #726F6D; line-height: 1.5;">
+          <p style="margin: 0;"><strong>SlideBee Design Studio</strong></p>
+          <p style="margin: 4px 0 0 0;">Official Communications &middot; Bangalore, Karnataka, India</p>
+        </div>
+      </div>
+    `;
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-slidebee-app-token": "slidebee_internal_app_2026",
+        },
+        body: JSON.stringify({
+          to: order.client_email.trim(),
+          fromEmail: clientEmailSender,
+          fromName: senderDisplayName,
+          replyTo: clientEmailSender,
+          subject: clientEmailSubject.trim(),
+          html: formattedHtml,
+          text: clientEmailBody.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setClientEmailStatus({
+          type: "success",
+          message: `Email successfully dispatched from ${clientEmailSender} to ${order.client_email}!`,
+        });
+      } else {
+        setClientEmailStatus({
+          type: "error",
+          message: data.error || "Failed to dispatch email. Please verify router configuration.",
+        });
+      }
+    } catch (err: any) {
+      setClientEmailStatus({
+        type: "error",
+        message: err.message || "Network error while connecting to email router.",
+      });
+    } finally {
+      setIsSendingClientEmail(false);
     }
   };
 
@@ -7654,7 +7809,11 @@ export default function Admin() {
             >
               <button
                 type="button"
-                onClick={() => setSelectedOrderForModal(null)}
+                onClick={() => {
+                  setSelectedOrderForModal(null);
+                  setIsClientEmailComposerOpen(false);
+                  setClientEmailStatus(null);
+                }}
                 className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#111111] transition-colors hex-pill bg-black/5 hover:bg-black/10"
               >
                 <X size={18} />
@@ -7798,20 +7957,242 @@ export default function Admin() {
                 )}
               </div>
 
+              {/* IN-APP STUDIO EMAIL COMPOSER (Direction 1) */}
+              <AnimatePresence>
+                {isClientEmailComposerOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mb-6"
+                  >
+                    <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-2xl p-5 shadow-inner">
+                      <div className="flex items-center justify-between pb-3 mb-4 border-b border-primary/20">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-primary/30 flex items-center justify-center text-[#111111]">
+                            <Mail size={16} />
+                          </div>
+                          <div>
+                            <h4 className="font-heading font-extrabold text-sm text-[#111111]">
+                              Studio Email Dispatcher
+                            </h4>
+                            <p className="text-[11px] text-[#726F6D] font-medium">
+                              Direct Resend/Zoho mail router with 0 browser redirects
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsClientEmailComposerOpen(false);
+                            setClientEmailStatus(null);
+                          }}
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-[#111111] hover:bg-black/5 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* 1-Click Templates */}
+                      <div className="mb-4">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                          1-Click Studio Templates:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "milestone")}
+                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                          >
+                            Milestone Update
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "assets")}
+                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                          >
+                            Request Assets
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "ready")}
+                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                          >
+                            Draft Ready
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sender & Recipient */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
+                            From (Studio Sender):
+                          </label>
+                          <select
+                            value={clientEmailSender}
+                            onChange={(e) => setClientEmailSender(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/20 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
+                          >
+                            <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                            <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
+                            <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
+                            To (Client Recipient):
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="email"
+                              value={selectedOrderForModal.client_email}
+                              readOnly
+                              className="w-full bg-black/5 border border-[#111111]/15 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] cursor-not-allowed pr-14"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedOrderForModal.client_email);
+                                setCopiedClientEmailSuccess(true);
+                                setTimeout(() => setCopiedClientEmailSuccess(false), 2000);
+                              }}
+                              className="absolute right-1.5 top-1.5 hex-pill px-2 py-0.5 text-[10px] font-black bg-white border border-gray-200 hover:border-[#111111] text-[#111111]"
+                            >
+                              {copiedClientEmailSuccess ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Subject Line */}
+                      <div className="mb-3">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
+                          Email Subject:
+                        </label>
+                        <input
+                          type="text"
+                          value={clientEmailSubject}
+                          onChange={(e) => setClientEmailSubject(e.target.value)}
+                          placeholder="e.g. SlideBee Milestone Update: Executive Pitch Deck"
+                          className="w-full bg-white border border-[#111111]/20 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      {/* Email Body */}
+                      <div className="mb-4">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
+                          Message Body:
+                        </label>
+                        <textarea
+                          rows={6}
+                          value={clientEmailBody}
+                          onChange={(e) => setClientEmailBody(e.target.value)}
+                          placeholder="Type your message to the client..."
+                          className="w-full bg-white border border-[#111111]/20 rounded-xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-primary leading-relaxed resize-y"
+                        />
+                        <p className="text-[10px] text-[#726F6D] mt-1 font-medium">
+                          Auto-formatted into SlideBee's branded HTML email template with logo and signature.
+                        </p>
+                      </div>
+
+                      {/* Feedback status banner */}
+                      {clientEmailStatus && (
+                        <div
+                          className={`p-3 rounded-xl mb-4 text-xs font-bold flex items-center gap-2 ${
+                            clientEmailStatus.type === "success"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-red-50 text-red-800 border border-red-200"
+                          }`}
+                        >
+                          {clientEmailStatus.type === "success" ? (
+                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertCircle size={16} className="text-red-600 shrink-0" />
+                          )}
+                          <span>{clientEmailStatus.message}</span>
+                        </div>
+                      )}
+
+                      {/* Dispatch Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-primary/20">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsClientEmailComposerOpen(false);
+                            setClientEmailStatus(null);
+                          }}
+                          className="hex-pill text-xs font-bold px-4 py-2 border border-[#111111]/20 hover:border-[#111111] text-[#111111]"
+                        >
+                          Close Composer
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isSendingClientEmail || !clientEmailSubject.trim() || !clientEmailBody.trim()}
+                          onClick={() => handleSendClientEmail(selectedOrderForModal)}
+                          className="hex-pill bg-[#111111] hover:bg-primary text-white hover:text-[#111111] font-black text-xs px-5 py-2.5 flex items-center gap-2 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSendingClientEmail ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" /> Dispatched via Router...
+                            </>
+                          ) : (
+                            <>
+                              <Send size={13} /> Send Official Dispatch
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Modal Footer Controls */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`mailto:${selectedOrderForModal.client_email}?subject=SlideBee Order Update: ${encodeURIComponent(selectedOrderForModal.service_type || 'Your Presentation')}`}
-                    className="hex-pill border border-[#111111]/20 hover:border-primary text-[#111111] font-extrabold text-xs px-4 py-2 flex items-center gap-1.5"
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenClientEmailComposer(selectedOrderForModal, "milestone")}
+                    className={`hex-pill font-black text-xs px-4 py-2 flex items-center gap-1.5 transition-all ${
+                      isClientEmailComposerOpen
+                        ? "bg-primary text-[#111111] shadow-sm"
+                        : "border border-[#111111]/20 hover:border-primary text-[#111111] hover:bg-primary/10"
+                    }`}
                   >
-                    <Mail size={13} /> Email Client
-                  </a>
+                    <Mail size={13} /> {isClientEmailComposerOpen ? "Editing Email" : "Compose Studio Email"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedOrderForModal.client_email);
+                      setCopiedClientEmailSuccess(true);
+                      setTimeout(() => setCopiedClientEmailSuccess(false), 2000);
+                    }}
+                    className="hex-pill border border-[#111111]/20 hover:border-[#111111] text-[#111111] font-extrabold text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all"
+                  >
+                    {copiedClientEmailSuccess ? (
+                      <>
+                        <Check size={13} className="text-emerald-600" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} /> Copy Email
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setSelectedOrderForModal(null)}
+                  onClick={() => {
+                    setSelectedOrderForModal(null);
+                    setIsClientEmailComposerOpen(false);
+                    setClientEmailStatus(null);
+                  }}
                   className="hex-pill bg-[#111111] text-white hover:text-primary font-black text-xs px-6 py-2.5 shadow-md"
                 >
                   Done
