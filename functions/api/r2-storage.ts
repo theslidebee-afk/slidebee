@@ -1,11 +1,11 @@
 // Cloudflare Pages Function: /api/r2-storage
 // Manages Cloudflare R2 Object Storage for presentations (.pptx) and slide images
+// Supports native Cloudflare Pages R2 bucket bindings or secure CLOUDFLARE_API_TOKEN
 // Enforces strict Zero-Cost Billing Guardrails: 10 GB hard storage ceiling, file size limits, immutable edge caching
 
 const DEFAULT_ACCOUNT_ID = "9821e608622e999a9c0f06f52a168d97";
 const DEFAULT_BUCKET = "slidebee";
 const PUBLIC_CDN_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
-const DEFAULT_API_TOKEN = typeof atob !== "undefined" ? atob("Y2Z1dF9PaHBneFBCYmxwaVdvcnIycU5ERlYzZnBNZnpjTzBSbHRJb0l3NVVLMmIwMGE1Yzg=") : "";
 
 // Zero-Cost Hard Billing Caps
 const HARD_STORAGE_CAP_BYTES = 9.90 * 1024 * 1024 * 1024; // 9.90 GB (100 MB buffer before 10.00 GB)
@@ -42,6 +42,30 @@ function sanitizeFileKey(rawKey: string): string {
     .replace(/[^a-zA-Z0-9_\-\.\/]/g, "_");
 }
 
+/**
+ * Discovers any Cloudflare R2 bucket binding attached to this Pages project
+ * Handles standard naming: R2_BUCKET, "R2 bucket", BUCKET, slidebee, etc.
+ */
+function getR2BucketBinding(env: any): any {
+  if (!env || typeof env !== "object") return null;
+  if (env.R2_BUCKET && typeof env.R2_BUCKET.put === "function") return env.R2_BUCKET;
+  if (env["R2 bucket"] && typeof env["R2 bucket"].put === "function") return env["R2 bucket"];
+  if (env["R2_bucket"] && typeof env["R2_bucket"].put === "function") return env["R2_bucket"];
+  if (env.BUCKET && typeof env.BUCKET.put === "function") return env.BUCKET;
+  if (env.R2 && typeof env.R2.put === "function") return env.R2;
+  if (env.slidebee && typeof env.slidebee.put === "function") return env.slidebee;
+  if (env.SLIDEBEE_BUCKET && typeof env.SLIDEBEE_BUCKET.put === "function") return env.SLIDEBEE_BUCKET;
+
+  // Search dynamically for any bound object implementing the Cloudflare R2Bucket interface
+  for (const key of Object.keys(env)) {
+    const val = env[key];
+    if (val && typeof val === "object" && typeof val.put === "function" && typeof val.delete === "function") {
+      return val;
+    }
+  }
+  return null;
+}
+
 export async function onRequestOptions(context: any) {
   return new Response(null, {
     status: 204,
@@ -49,7 +73,63 @@ export async function onRequestOptions(context: any) {
   });
 }
 
-// Helper to fetch all bucket objects with pagination and calculate live metrics
+/**
+ * Query bucket telemetry using native Cloudflare Pages R2 bucket binding (fastest, zero tokens)
+ */
+async function getBucketTelemetryFromBinding(r2Bucket: any) {
+  let allObjects: any[] = [];
+  let cursor: string | undefined = undefined;
+  let truncated = true;
+
+  while (truncated && allObjects.length < 5000) {
+    const listResult: any = await r2Bucket.list({
+      limit: 1000,
+      cursor,
+    });
+    allObjects = allObjects.concat(listResult.objects || []);
+    truncated = Boolean(listResult.truncated);
+    cursor = listResult.cursor;
+    if (!truncated) break;
+  }
+
+  let totalBytes = 0;
+  let pptxBytes = 0;
+  let pptxCount = 0;
+  let imagesBytes = 0;
+  let imagesCount = 0;
+
+  const objects = allObjects.map((obj: any) => {
+    const size = Number(obj.size) || 0;
+    totalBytes += size;
+
+    const isPptx = obj.key.endsWith(".pptx") || obj.key.endsWith(".ppt");
+    const isImg = obj.key.match(/\.(jpg|jpeg|png|webp|svg)$/i);
+
+    if (isPptx) {
+      pptxBytes += size;
+      pptxCount++;
+    } else if (isImg) {
+      imagesBytes += size;
+      imagesCount++;
+    }
+
+    return {
+      key: obj.key,
+      size,
+      sizeMB: (size / (1024 * 1024)).toFixed(2),
+      uploaded: obj.uploaded ? new Date(obj.uploaded).toISOString() : new Date().toISOString(),
+      publicUrl: `${PUBLIC_CDN_BASE}/${obj.key}`,
+      isPptx,
+      isImage: Boolean(isImg),
+    };
+  });
+
+  return { totalBytes, pptxBytes, pptxCount, imagesBytes, imagesCount, objects };
+}
+
+/**
+ * Query bucket telemetry via Cloudflare REST API fallback when API token is provided
+ */
 async function getBucketTelemetry(accountId: string, bucket: string, token: string) {
   let allObjects: any[] = [];
   let cursor: string | undefined = undefined;
@@ -68,7 +148,7 @@ async function getBucketTelemetry(accountId: string, bucket: string, token: stri
 
     const cfJson: any = await cfRes.json();
     if (!cfJson.success) {
-      throw new Error(cfJson.errors ? JSON.stringify(cfJson.errors) : "Failed to query R2 objects");
+      throw new Error(cfJson.errors ? JSON.stringify(cfJson.errors) : "Failed to query R2 objects via API");
     }
 
     allObjects = allObjects.concat(cfJson.result || []);
@@ -110,6 +190,27 @@ async function getBucketTelemetry(accountId: string, bucket: string, token: stri
   return { totalBytes, pptxBytes, pptxCount, imagesBytes, imagesCount, objects };
 }
 
+/**
+ * Unified telemetry provider: prefers native R2 binding, falls back to API token
+ */
+async function getStorageTelemetry(env: any) {
+  const r2Bucket = getR2BucketBinding(env);
+  if (r2Bucket) {
+    return await getBucketTelemetryFromBinding(r2Bucket);
+  }
+
+  const token = env?.CLOUDFLARE_API_TOKEN;
+  if (token) {
+    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
+    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
+    return await getBucketTelemetry(accountId, bucket, token);
+  }
+
+  throw new Error(
+    "Cloudflare R2 storage is not configured. Please bind your R2 bucket in Cloudflare Pages settings (Settings > Functions > R2 bucket bindings) or provide CLOUDFLARE_API_TOKEN in environment variables."
+  );
+}
+
 // GET: Fetch live R2 telemetry and object inventory
 export async function onRequestGet(context: any) {
   const { request, env } = context;
@@ -127,12 +228,8 @@ export async function onRequestGet(context: any) {
       );
     }
 
-    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
-    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
-    const token = env?.CLOUDFLARE_API_TOKEN || DEFAULT_API_TOKEN;
-
     const { totalBytes, pptxBytes, pptxCount, imagesBytes, imagesCount, objects } =
-      await getBucketTelemetry(accountId, bucket, token);
+      await getStorageTelemetry(env);
 
     const totalUsedMB = Number((totalBytes / (1024 * 1024)).toFixed(2));
     const pptxMB = Number((pptxBytes / (1024 * 1024)).toFixed(2));
@@ -144,7 +241,7 @@ export async function onRequestGet(context: any) {
       JSON.stringify({
         success: true,
         provider: "Cloudflare R2 Object Storage",
-        bucket,
+        bucket: env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET,
         publicCdnBase: PUBLIC_CDN_BASE,
         totalBytes,
         totalUsedMB,
@@ -219,9 +316,18 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
-    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
-    const token = env?.CLOUDFLARE_API_TOKEN || DEFAULT_API_TOKEN;
+    const r2Bucket = getR2BucketBinding(env);
+    const apiToken = env?.CLOUDFLARE_API_TOKEN;
+
+    if (!r2Bucket && !apiToken) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Cloudflare R2 storage is not configured. Please bind your R2 bucket in Cloudflare Pages settings (Settings > Functions > R2 bucket bindings) or provide CLOUDFLARE_API_TOKEN in environment variables.",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const contentType = request.headers.get("Content-Type") || "";
     let fileBuffer: ArrayBuffer;
@@ -293,7 +399,7 @@ export async function onRequestPost(context: any) {
     }
 
     // 2. Enforce 10.00 GB hard bucket ceiling
-    const { totalBytes } = await getBucketTelemetry(accountId, bucket, token);
+    const { totalBytes } = await getStorageTelemetry(env);
     if (totalBytes + fileSize > HARD_STORAGE_CAP_BYTES) {
       return new Response(
         JSON.stringify({
@@ -304,13 +410,39 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    // 3. Upload with immutable edge caching header (eliminates Class B read costs via Cloudflare CDN)
+    // 3. Perform upload
+    // Preference A: Native Cloudflare R2 bucket binding (zero tokens, fastest)
+    if (r2Bucket) {
+      const putResult = await r2Bucket.put(fileKey, fileBuffer, {
+        httpMetadata: {
+          contentType: mimeType,
+          cacheControl: "public, max-age=31536000, immutable",
+        },
+      });
+
+      const publicUrl = `${PUBLIC_CDN_BASE}/${fileKey}`;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          key: fileKey,
+          publicUrl,
+          size: putResult?.size || fileSize,
+          uploaded: putResult?.uploaded ? new Date(putResult.uploaded).toISOString() : new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Preference B: REST API with user's CLOUDFLARE_API_TOKEN environment variable
+    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
+    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
+
     const uploadRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucket}/objects/${fileKey}`,
       {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${apiToken}`,
           "Content-Type": mimeType,
           "Cache-Control": "public, max-age=31536000, immutable",
         },
@@ -327,21 +459,18 @@ export async function onRequestPost(context: any) {
     }
 
     const publicUrl = `${PUBLIC_CDN_BASE}/${fileKey}`;
-
     return new Response(
       JSON.stringify({
         success: true,
         key: fileKey,
         publicUrl,
-        size: uploadJson.result?.size,
+        size: uploadJson.result?.size || fileSize,
         uploaded: uploadJson.result?.uploaded,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err.message || err }), {
+    return new Response(JSON.stringify({ success: false, error: err.message || String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -365,9 +494,18 @@ export async function onRequestDelete(context: any) {
       );
     }
 
-    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
-    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
-    const token = env?.CLOUDFLARE_API_TOKEN || DEFAULT_API_TOKEN;
+    const r2Bucket = getR2BucketBinding(env);
+    const apiToken = env?.CLOUDFLARE_API_TOKEN;
+
+    if (!r2Bucket && !apiToken) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Cloudflare R2 storage is not configured. Please bind your R2 bucket in Cloudflare Pages settings (Settings > Functions > R2 bucket bindings) or provide CLOUDFLARE_API_TOKEN in environment variables.",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const url = new URL(request.url);
     const rawKey = url.searchParams.get("key");
@@ -381,12 +519,23 @@ export async function onRequestDelete(context: any) {
 
     const key = sanitizeFileKey(rawKey);
 
+    // If native binding is available:
+    if (r2Bucket) {
+      await r2Bucket.delete(key);
+      return new Response(JSON.stringify({ success: true, result: { deleted: key } }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Else use REST API fallback:
+    const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
+    const bucket = env?.CLOUDFLARE_R2_BUCKET || DEFAULT_BUCKET;
     const delRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucket}/objects/${key}`,
       {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${apiToken}`,
         },
       }
     );
