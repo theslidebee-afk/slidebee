@@ -33,7 +33,10 @@ function App() {
             <Route path="/" element={<ComingSoon />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
 
-            {/* 2. Full Platform Pages (with Navbar & Footer) */}
+            {/* 2. Admin Studio (no public Navbar or Footer) */}
+            <Route path="/admin/*" element={<Admin />} />
+
+            {/* 3. Full Platform Pages (with Navbar & Footer) */}
             <Route
               path="/*"
               element={
@@ -62,7 +65,6 @@ function App() {
                       <Route path="/privacy" element={<Privacy />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/thank-you" element={<ThankYou />} />
-                      <Route path="/admin/*" element={<Admin />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>
