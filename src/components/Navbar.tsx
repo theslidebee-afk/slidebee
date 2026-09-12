@@ -6,7 +6,7 @@ import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
 import { supabase } from "../lib/supabase";
-import { performAdminLogout, performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
+import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
