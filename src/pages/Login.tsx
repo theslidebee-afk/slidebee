@@ -400,12 +400,44 @@ export default function Login() {
                   </div>
                 </div>
 
-                <Link
-                  to="/pricing"
-                  className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
-                >
-                  Add More Credits / Upgrade <ArrowRight size={13} className="inline ml-1" />
-                </Link>
+                {/* Template Marketplace Upgrade CTA */}
+                {userSubscription?.plan_name?.toLowerCase().includes("pro") ? (
+                  <div className="hex-pill w-full text-center text-[#111111] font-black py-2.5 text-xs bg-primary/20 border border-primary/40 flex items-center justify-center gap-1.5">
+                    <Check size={13} className="text-primary-amber" /> Pro Plan Active — 80 Downloads / Month
+                  </div>
+                ) : (
+                  <Link
+                    to="/pricing#marketplace"
+                    className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
+                  >
+                    <Sparkles size={13} className="inline mr-1.5 text-primary-amber" />
+                    Go Pro — Unlock 80 Downloads / Month <ArrowRight size={13} className="inline ml-1" />
+                  </Link>
+                )}
+              </div>
+
+              {/* Custom Design Services CTA */}
+              <div className="hex-card bg-[#111111] border-2 border-primary p-5 shadow-md">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-1.5 flex items-center gap-1.5">
+                  <FileText size={13} /> Custom Design Service
+                </h4>
+                <p className="text-xs text-gray-300 font-medium leading-relaxed mb-4">
+                  Need a bespoke pitch deck, board presentation, or executive keynote designed from scratch? Our senior art directors deliver in 24h–48h.
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    to="/ordernow"
+                    className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5"
+                  >
+                    Get a Quote <ArrowRight size={13} />
+                  </Link>
+                  <Link
+                    to="/pricing#services"
+                    className="hex-pill w-full block text-center bg-white/10 hover:bg-white/20 text-white font-bold py-2 text-xs transition-all flex items-center justify-center gap-1.5 border border-white/20"
+                  >
+                    View Service Pricing
+                  </Link>
+                </div>
               </div>
 
               {/* Direct Studio Channel */}
