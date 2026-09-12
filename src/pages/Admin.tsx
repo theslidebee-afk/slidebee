@@ -160,6 +160,7 @@ export default function Admin() {
   const [newPptSize, setNewPptSize] = useState("");
   const [isUploadingPpt, setIsUploadingPpt] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingSlide, setIsUploadingSlide] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [addTemplateWarning, setAddTemplateWarning] = useState("");
   const [editTemplateWarning, setEditTemplateWarning] = useState("");
@@ -243,7 +244,9 @@ export default function Admin() {
   const [configValidationError, setConfigValidationError] = useState("");
   const [activeMarqueeTarget, setActiveMarqueeTarget] = useState<"services_top" | "services_bottom" | "hero">("services_top");
   const [isUploadingMarquee, setIsUploadingMarquee] = useState(false);
-  const [isUploadingSlide, setIsUploadingSlide] = useState(false);
+  const [uploadingCoverIdx, setUploadingCoverIdx] = useState<number | null>(null);
+  const [uploadingSlidesIdx, setUploadingSlidesIdx] = useState<number | null>(null);
+  const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
   const [newWorkedCompanyName, setNewWorkedCompanyName] = useState("");
   const [newWorkedCompanyCategory, setNewWorkedCompanyCategory] = useState("");
@@ -1185,29 +1188,68 @@ export default function Admin() {
     }
   };
 
-  // Upload Multiple Slide Images for Portfolio Case Study directly to Cloudflare R2
+  // Upload Dedicated Primary Cover Image for Portfolio Case Study directly to Cloudflare R2 (portfolio/covers/)
+  const handleCaseStudyCoverUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCoverIdx(idx);
+
+    try {
+      const r2Res = await uploadToR2(file, { folder: "portfolio/covers", fileName: file.name });
+      if (!r2Res.success || !r2Res.publicUrl) {
+        throw new Error(r2Res.error || "Upload failed");
+      }
+      const coverUrl = r2Res.publicUrl;
+
+      setSiteConfigs((prevConfigs) => {
+        const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
+        if (!currentStudies[idx]) return prevConfigs;
+        currentStudies[idx] = {
+          ...currentStudies[idx],
+          imageUrl: coverUrl
+        };
+        return {
+          ...prevConfigs,
+          portfolio_cms: {
+            ...prevConfigs["portfolio_cms"],
+            caseStudies: currentStudies
+          }
+        };
+      });
+    } catch (err: any) {
+      alert("Failed to upload cover image to Cloudflare R2: " + (err.message || err));
+    } finally {
+      setUploadingCoverIdx(null);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  // Upload Multiple Slide Images for Portfolio Case Study directly to Cloudflare R2 (portfolio/slides/)
   const handleCaseStudySlidesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    setIsUploadingSlide(true);
+    setUploadingSlidesIdx(idx);
 
     try {
+      const uploadedUrls: string[] = [];
       for (const file of files) {
-        const r2Res = await uploadToR2(file, { folder: "portfolio", fileName: file.name });
+        const r2Res = await uploadToR2(file, { folder: "portfolio/slides", fileName: file.name });
         if (!r2Res.success || !r2Res.publicUrl) continue;
-        const imgUrl = r2Res.publicUrl;
+        uploadedUrls.push(r2Res.publicUrl);
+      }
 
+      if (uploadedUrls.length > 0) {
         setSiteConfigs((prevConfigs) => {
           const currentStudies = [...(prevConfigs["portfolio_cms"]?.caseStudies || [])];
           if (!currentStudies[idx]) return prevConfigs;
           const existingSlides: string[] = Array.isArray(currentStudies[idx].slides) && currentStudies[idx].slides.length > 0
             ? [...currentStudies[idx].slides]
             : (currentStudies[idx].imageUrl ? [currentStudies[idx].imageUrl] : []);
-          existingSlides.push(imgUrl);
+          const nextSlides = [...existingSlides, ...uploadedUrls];
           currentStudies[idx] = {
             ...currentStudies[idx],
-            slides: existingSlides,
-            imageUrl: currentStudies[idx].imageUrl || existingSlides[0]
+            slides: nextSlides,
+            imageUrl: currentStudies[idx].imageUrl || nextSlides[0]
           };
           return {
             ...prevConfigs,
@@ -1219,10 +1261,10 @@ export default function Admin() {
         });
       }
     } catch (err: any) {
-      alert("Failed to upload slide to Cloudflare R2: " + (err.message || err));
+      alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
     } finally {
-      setIsUploadingSlide(false);
-      e.target.value = "";
+      setUploadingSlidesIdx(null);
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -1288,52 +1330,61 @@ export default function Admin() {
 
 
 
-  // Upload Local Image File to Cloudflare R2 (or fallback to Data URL)
+  // Upload Local Image File to Cloudflare R2 (Strictly zero Data URL / Base64 fallback)
   const handleImageFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     callback: (url: string) => void,
-    folder: string = "templates/slides"
+    folder: string = "templates/slides",
+    fieldKey?: string
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (fieldKey) setUploadingFieldKey(fieldKey);
     try {
       const r2Res = await uploadToR2(file, { folder, fileName: file.name });
       if (r2Res.success && r2Res.publicUrl) {
         callback(r2Res.publicUrl);
         return;
       }
-    } catch (err) {
-      console.warn("R2 direct upload fallback to dataURL:", err);
+      throw new Error(r2Res.error || "Upload failed");
+    } catch (err: any) {
+      console.error("R2 direct upload error:", err);
+      alert("Failed to upload image to Cloudflare R2: " + (err.message || err));
+    } finally {
+      if (fieldKey) setUploadingFieldKey(null);
+      if (e.target) e.target.value = "";
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        callback(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Save Site Configuration
   const handleSaveConfig = async (key: string, value: any) => {
     setConfigValidationError("");
 
-    // Validate that no field in the payload is blank / empty / NaN
-    const checkEmpty = (data: any): boolean => {
-      if (data === null || data === undefined) return true;
-      if (typeof data === "string") return data.trim() === "";
-      if (typeof data === "number") return isNaN(data);
-      if (Array.isArray(data)) return data.some(item => checkEmpty(item));
-      if (typeof data === "object") {
-        return Object.values(data).some(val => checkEmpty(val));
-      }
+    // Validate that no Base64 data URLs exist in the payload
+    const checkBase64 = (data: any): boolean => {
+      if (!data) return false;
+      if (typeof data === "string") return data.startsWith("data:image/");
+      if (Array.isArray(data)) return data.some(item => checkBase64(item));
+      if (typeof data === "object") return Object.values(data).some(val => checkBase64(val));
       return false;
     };
 
-    if (value && checkEmpty(value)) {
-      setConfigValidationError("Cannot save with empty or invalid fields. Please enter all required values before saving.");
+    if (value && checkBase64(value)) {
+      setConfigValidationError("Cannot save configuration containing Base64 image strings. All images must be uploaded directly to Cloudflare R2.");
+      setTimeout(() => setConfigValidationError(""), 6000);
+      return;
+    }
+
+    // Validate that required fields in the payload are not null / undefined / NaN
+    const checkInvalid = (data: any): boolean => {
+      if (data === null || data === undefined) return true;
+      if (typeof data === "number") return isNaN(data);
+      return false;
+    };
+
+    if (value && checkInvalid(value)) {
+      setConfigValidationError("Cannot save with invalid values. Please check your inputs before saving.");
       setTimeout(() => setConfigValidationError(""), 5000);
       return;
     }
@@ -2766,21 +2817,22 @@ export default function Admin() {
                                 Before Image (Raw Draft)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> Choose File
+                                <UploadCloud size={11} /> {uploadingFieldKey === `home_before_${tabKey}` ? "Uploading to R2..." : "Upload to R2"}
                                 <input
                                   type="file"
                                   accept="image/*"
+                                  disabled={uploadingFieldKey === `home_before_${tabKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
                                     const prev = siteConfigs["home_before_after"] || {};
                                     setSiteConfigs({
                                       ...siteConfigs,
                                       home_before_after: {
                                         ...prev,
-                                        [tabKey]: { ...currentComp, beforeImg: dataUrl }
+                                        [tabKey]: { ...currentComp, beforeImg: r2Url }
                                       }
                                     });
-                                  })}
+                                  }, "before_after", `home_before_${tabKey}`)}
                                 />
                               </label>
                             </div>
@@ -2801,7 +2853,7 @@ export default function Admin() {
                                     }
                                   });
                                 }}
-                                placeholder="URL or uploaded file"
+                                placeholder="R2 CDN URL or upload file"
                                 className="w-full bg-white border border-red-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
                               />
                             </div>
@@ -2813,21 +2865,22 @@ export default function Admin() {
                                 After Image (SlideBee Polish)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> Choose File
+                                <UploadCloud size={11} /> {uploadingFieldKey === `home_after_${tabKey}` ? "Uploading to R2..." : "Upload to R2"}
                                 <input
                                   type="file"
                                   accept="image/*"
+                                  disabled={uploadingFieldKey === `home_after_${tabKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
                                     const prev = siteConfigs["home_before_after"] || {};
                                     setSiteConfigs({
                                       ...siteConfigs,
                                       home_before_after: {
                                         ...prev,
-                                        [tabKey]: { ...currentComp, afterImg: dataUrl }
+                                        [tabKey]: { ...currentComp, afterImg: r2Url }
                                       }
                                     });
-                                  })}
+                                  }, "before_after", `home_after_${tabKey}`)}
                                 />
                               </label>
                             </div>
@@ -3349,9 +3402,9 @@ export default function Admin() {
                             }}
                             className="w-full bg-white border border-[#111111]/12 hex-pill px-2.5 py-1 text-xs font-bold text-[#111111]"
                           >
-                            <option value={5}>⭐⭐⭐⭐⭐ (5 Stars)</option>
-                            <option value={4}>⭐⭐⭐⭐ (4 Stars)</option>
-                            <option value={3}>⭐⭐⭐ (3 Stars)</option>
+                            <option value={5}>5 Stars (Exceptional)</option>
+                            <option value={4}>4 Stars (Very Good)</option>
+                            <option value={3}>3 Stars (Good)</option>
                           </select>
                         </div>
                       </div>
@@ -3378,16 +3431,17 @@ export default function Admin() {
                             Avatar Photo
                           </label>
                           <label className="cursor-pointer text-[9px] font-bold text-primary-amber bg-white hover:bg-amber-50 border border-primary/30 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                            <UploadCloud size={11} /> Choose Photo
+                            <UploadCloud size={11} /> {uploadingFieldKey === `testimonial_avatar_${idx}` ? "Uploading to R2..." : "Upload to R2"}
                             <input
                               type="file"
                               accept="image/*"
+                              disabled={uploadingFieldKey === `testimonial_avatar_${idx}`}
                               className="hidden"
-                              onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                              onChange={(e) => handleImageFileUpload(e, (r2Url) => {
                                 const current = [...(siteConfigs["testimonials"] || DEFAULT_TESTIMONIALS)];
-                                current[idx] = { ...current[idx], avatar: dataUrl };
+                                current[idx] = { ...current[idx], avatar: r2Url };
                                 setSiteConfigs({ ...siteConfigs, testimonials: current });
-                              })}
+                              }, "avatars", `testimonial_avatar_${idx}`)}
                             />
                           </label>
                         </div>
@@ -3549,20 +3603,21 @@ export default function Admin() {
                                 Raw Draft (Before Image)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> Upload Image
+                                <UploadCloud size={11} /> {uploadingFieldKey === `svc_before_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
                                 <input
                                   type="file"
                                   accept="image/*"
+                                  disabled={uploadingFieldKey === `svc_before_${serviceKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
                                     setSiteConfigs({
                                       ...siteConfigs,
                                       services_cms: {
                                         ...siteConfigs["services_cms"],
-                                        [serviceKey]: { ...svc, beforeImg: dataUrl }
+                                        [serviceKey]: { ...svc, beforeImg: r2Url }
                                       }
                                     });
-                                  })}
+                                  }, "before_after", `svc_before_${serviceKey}`)}
                                 />
                               </label>
                             </div>
@@ -3584,7 +3639,7 @@ export default function Admin() {
                                     [serviceKey]: { ...svc, beforeImg: e.target.value }
                                   }
                                 })}
-                                placeholder="Image URL or upload"
+                                placeholder="R2 CDN URL or upload"
                                 className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
                               />
                             </div>
@@ -3599,20 +3654,21 @@ export default function Admin() {
                                 SlideBee Polish (After Image)
                               </label>
                               <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> Upload Image
+                                <UploadCloud size={11} /> {uploadingFieldKey === `svc_after_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
                                 <input
                                   type="file"
                                   accept="image/*"
+                                  disabled={uploadingFieldKey === `svc_after_${serviceKey}`}
                                   className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
+                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
                                     setSiteConfigs({
                                       ...siteConfigs,
                                       services_cms: {
                                         ...siteConfigs["services_cms"],
-                                        [serviceKey]: { ...svc, afterImg: dataUrl }
+                                        [serviceKey]: { ...svc, afterImg: r2Url }
                                       }
                                     });
-                                  })}
+                                  }, "before_after", `svc_after_${serviceKey}`)}
                                 />
                               </label>
                             </div>
@@ -3634,7 +3690,7 @@ export default function Admin() {
                                     [serviceKey]: { ...svc, afterImg: e.target.value }
                                   }
                                 })}
-                                placeholder="Image URL or upload"
+                                placeholder="R2 CDN URL or upload"
                                 className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
                               />
                             </div>
@@ -3874,52 +3930,80 @@ export default function Admin() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="text-[10px] font-bold text-[#111111]">Primary Cover / Thumbnail</label>
-                            <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-2 py-0.5 text-[9px] inline-flex items-center gap-1 cursor-pointer">
-                              <UploadCloud size={10} className="text-primary-amber" /> Upload Cover
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageFileUpload(e, (dataUrl) => {
-                                  const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                  const existingSlides = Array.isArray(updated[idx].slides) && updated[idx].slides.length > 0
-                                    ? [...updated[idx].slides]
-                                    : [dataUrl];
-                                  existingSlides[0] = dataUrl;
-                                  updated[idx] = {
-                                    ...updated[idx],
-                                    imageUrl: dataUrl,
-                                    slides: existingSlides
-                                  };
-                                  setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                                })}
-                                className="hidden"
-                              />
-                            </label>
+                      {/* OPTION A: PRIMARY COVER THUMBNAIL (portfolio/covers/) */}
+                      <div className="bg-white p-4 rounded-xl border border-primary/30 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <ImageIcon size={14} className="text-primary-amber" />
+                            <span className="text-xs font-heading font-extrabold text-[#111111]">
+                              Option A: Primary Cover Thumbnail (Cloudflare R2: portfolio/covers/)
+                            </span>
                           </div>
-                          <input
-                            type="text"
-                            value={cs.imageUrl || ""}
-                            onChange={(e) => {
-                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              const newCover = e.target.value;
-                              const existingSlides = Array.isArray(updated[idx].slides) && updated[idx].slides.length > 0
-                                ? [...updated[idx].slides]
-                                : [newCover];
-                              existingSlides[0] = newCover;
-                              updated[idx] = {
-                                ...updated[idx],
-                                imageUrl: newCover,
-                                slides: existingSlides
-                              };
-                              setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
-                            }}
-                            className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
-                          />
+                          <span className="hex-pill-sm bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
+                            Case Study Cover
+                          </span>
                         </div>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          {/* Thumbnail Display */}
+                          <div className="relative aspect-[16/10] w-36 bg-[#FFF9E8] rounded-lg overflow-hidden border border-primary/40 flex-shrink-0 shadow-inner">
+                            {cs.imageUrl ? (
+                              <img
+                                src={normalizeR2Url(cs.imageUrl)}
+                                alt="Case Study Cover"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-[#726F6D] font-bold p-2 text-center">
+                                <ImageIcon size={16} className="text-primary-amber mb-1 opacity-70" />
+                                No Cover Set
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 space-y-2 w-full">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                                <UploadCloud size={12} />
+                                <span>{uploadingCoverIdx === idx ? "Uploading to R2..." : (cs.imageUrl ? "Replace Cover (R2)" : "Upload Cover to R2")}</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={uploadingCoverIdx === idx}
+                                  onChange={(e) => handleCaseStudyCoverUpload(idx, e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              {cs.imageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                    updated[idx] = { ...updated[idx], imageUrl: "" };
+                                    setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                                  }}
+                                  className="text-red-500 hover:text-red-700 text-[10px] font-bold px-2 py-1 rounded hover:bg-red-50"
+                                >
+                                  Remove Cover
+                                </button>
+                              )}
+                            </div>
+
+                            <input
+                              type="text"
+                              value={cs.imageUrl || ""}
+                              onChange={(e) => {
+                                const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                updated[idx] = { ...updated[idx], imageUrl: e.target.value };
+                                setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
+                              }}
+                              placeholder="Direct Cloudflare R2 CDN URL (https://...)"
+                              className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+
                         <div>
                           <label className="text-[10px] font-bold text-[#111111] block mb-1">Brief Description</label>
                           <input
@@ -3927,76 +4011,85 @@ export default function Admin() {
                             value={cs.description || ""}
                             onChange={(e) => {
                               const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                              updated[idx].description = e.target.value;
+                              updated[idx] = { ...updated[idx], description: e.target.value };
                               setSiteConfigs({ ...siteConfigs, portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated } });
                             }}
                             className="w-full bg-white border border-[#111111]/12 rounded px-2.5 py-1 text-xs"
+                            placeholder="Executive presentation deck crafted for leadership and strategic alignment..."
                           />
                         </div>
                       </div>
 
-                      {/* Multi-Slide Series Showcase Gallery */}
+                      {/* OPTION B: MULTI-SLIDE INTERIOR SHOWCASE GALLERY (portfolio/slides/) */}
                       {(() => {
                         const currentSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
                           ? cs.slides
                           : (cs.imageUrl ? [cs.imageUrl] : []);
 
                         return (
-                          <div className="bg-white/90 rounded-xl p-3 border border-[#111111]/10 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <Layers size={13} className="text-primary-amber" />
-                                <span className="text-[11px] font-heading font-extrabold text-[#111111]">
-                                  Slide Showcase Series ({currentSlides.length} Slides)
+                          <div className="bg-white p-4 rounded-xl border border-primary/30 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <Layers size={14} className="text-primary-amber" />
+                                <span className="text-xs font-heading font-extrabold text-[#111111]">
+                                  Option B: Multi-Slide Interior Showcase Gallery (Cloudflare R2: portfolio/slides/)
                                 </span>
                               </div>
-                              <span className="text-[10px] text-[#726F6D] font-medium">
-                                Flip through with Prev/Next buttons & thumbnails on /examples
+                              <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[9px] font-black px-2.5 py-0.5">
+                                {currentSlides.length} Master Slides
                               </span>
                             </div>
 
+                            <p className="text-[11px] text-[#726F6D]">
+                              Directly upload multi-slide presentations to Cloudflare R2. Visitors flip through these slides on /examples.
+                            </p>
+
                             {/* Thumbnails strip */}
-                            {currentSlides.length > 0 && (
-                              <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                            {currentSlides.length > 0 ? (
+                              <div className="flex items-center gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
                                 {currentSlides.map((slideImg: string, sIdx: number) => (
                                   <div
                                     key={sIdx}
-                                    className={`relative group shrink-0 w-24 rounded-lg overflow-hidden border p-1 bg-[#FFF9E8] ${
-                                      sIdx === 0 ? "border-primary ring-2 ring-primary/40" : "border-[#111111]/15"
+                                    className={`relative group shrink-0 w-28 rounded-lg overflow-hidden border p-1 bg-[#FFF9E8] transition-all ${
+                                      cs.imageUrl && normalizeR2Url(cs.imageUrl) === normalizeR2Url(slideImg)
+                                        ? "border-primary ring-2 ring-primary/50 shadow-sm"
+                                        : "border-[#111111]/15"
                                     }`}
                                   >
                                     <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                                      <img src={slideImg} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover" />
+                                      <img
+                                        src={normalizeR2Url(slideImg)}
+                                        alt={`Slide ${sIdx + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
                                     </div>
-                                    <div className="flex items-center justify-between text-[9px]">
+                                    <div className="flex items-center justify-between text-[9px] px-0.5">
                                       <span className="font-extrabold text-[#111111]">
-                                        {sIdx === 0 ? "Cover" : `#${sIdx + 1}`}
+                                        Slide #{sIdx + 1}
                                       </span>
                                       <div className="flex items-center gap-1">
-                                        {sIdx > 0 && (
-                                          <button
-                                            type="button"
-                                            title="Make Cover"
-                                            onClick={() => {
-                                              const nextSlides = [...currentSlides];
-                                              const [moved] = nextSlides.splice(sIdx, 1);
-                                              nextSlides.unshift(moved);
-                                              const updated = [...siteConfigs["portfolio_cms"].caseStudies];
-                                              updated[idx] = {
-                                                ...updated[idx],
-                                                slides: nextSlides,
-                                                imageUrl: nextSlides[0]
-                                              };
-                                              setSiteConfigs({
-                                                ...siteConfigs,
-                                                portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
-                                              });
-                                            }}
-                                            className="text-[9px] text-primary-amber hover:underline font-extrabold"
-                                          >
-                                            Top
-                                          </button>
-                                        )}
+                                        <button
+                                          type="button"
+                                          title="Set as Primary Cover"
+                                          onClick={() => {
+                                            const nextSlides = [...currentSlides];
+                                            const [moved] = nextSlides.splice(sIdx, 1);
+                                            nextSlides.unshift(moved);
+                                            const updated = [...siteConfigs["portfolio_cms"].caseStudies];
+                                            updated[idx] = {
+                                              ...updated[idx],
+                                              slides: nextSlides,
+                                              imageUrl: nextSlides[0]
+                                            };
+                                            setSiteConfigs({
+                                              ...siteConfigs,
+                                              portfolio_cms: { ...siteConfigs["portfolio_cms"], caseStudies: updated }
+                                            });
+                                          }}
+                                          className="text-[9px] text-primary-amber hover:underline font-extrabold"
+                                        >
+                                          Cover
+                                        </button>
                                         <button
                                           type="button"
                                           title="Remove slide"
@@ -4006,7 +4099,7 @@ export default function Admin() {
                                             updated[idx] = {
                                               ...updated[idx],
                                               slides: nextSlides,
-                                              imageUrl: nextSlides[0] || ""
+                                              imageUrl: updated[idx].imageUrl === slideImg ? (nextSlides[0] || "") : updated[idx].imageUrl
                                             };
                                             setSiteConfigs({
                                               ...siteConfigs,
@@ -4022,18 +4115,22 @@ export default function Admin() {
                                   </div>
                                 ))}
                               </div>
+                            ) : (
+                              <div className="p-4 text-center border border-dashed border-primary/40 rounded-xl bg-[#FFF9E8]/50">
+                                <p className="text-xs text-[#726F6D] font-medium">No slides in this showcase yet. Select multiple slide images below to upload to Cloudflare R2.</p>
+                              </div>
                             )}
 
-                            {/* Add Slides Action Bar */}
+                            {/* Batch Upload & Manual Append Bar */}
                             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#111111]/8">
-                              <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
+                              <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-[11px] inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${uploadingSlidesIdx === idx ? "opacity-60 cursor-not-allowed" : ""}`}>
                                 <UploadCloud size={12} className="text-primary-amber" />
-                                <span>{isUploadingSlide ? "Uploading to Storage..." : "Upload Slides to Cloud Storage"}</span>
+                                <span>{uploadingSlidesIdx === idx ? "Batch Uploading to R2..." : "Batch Upload Slides to R2 (portfolio/slides/)"}</span>
                                 <input
                                   type="file"
                                   multiple
                                   accept="image/*"
-                                  disabled={isUploadingSlide}
+                                  disabled={uploadingSlidesIdx === idx}
                                   onChange={(e) => handleCaseStudySlidesUpload(idx, e)}
                                   className="hidden"
                                 />
