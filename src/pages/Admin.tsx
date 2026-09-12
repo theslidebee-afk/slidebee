@@ -251,6 +251,7 @@ export default function Admin() {
   const [isUploadingMarquee, setIsUploadingMarquee] = useState(false);
   const [uploadingCoverIdx, setUploadingCoverIdx] = useState<number | null>(null);
   const [uploadingSlidesIdx, setUploadingSlidesIdx] = useState<number | null>(null);
+  const [replacingSlideKey, setReplacingSlideKey] = useState<string | null>(null);
   const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
   const [newWorkedCompanyName, setNewWorkedCompanyName] = useState("");
@@ -1250,17 +1251,34 @@ export default function Admin() {
         : [...DEFAULT_PORTFOLIO_CASE_STUDIES];
 
       if (currentList[idx]) {
-        const existingSlides = Array.isArray(currentList[idx].slides) && currentList[idx].slides.length > 0
-          ? currentList[idx].slides
-          : [coverUrl];
+        const targetStudy = { ...currentList[idx] };
+        const oldCover = targetStudy.imageUrl;
+
+        let existingSlides = Array.isArray(targetStudy.slides) && targetStudy.slides.length > 0
+          ? [...targetStudy.slides]
+          : [];
+
+        if (existingSlides.length === 0) {
+          existingSlides = [coverUrl];
+        } else {
+          // If the old cover was in the slides array, replace that specific element
+          const matchIdx = existingSlides.findIndex((s) => s === oldCover);
+          if (matchIdx !== -1) {
+            existingSlides[matchIdx] = coverUrl;
+          } else {
+            // Otherwise update slide 0 so the primary preview matches the new cover
+            existingSlides[0] = coverUrl;
+          }
+        }
+
         currentList[idx] = {
-          ...currentList[idx],
+          ...targetStudy,
           imageUrl: coverUrl,
-          slides: existingSlides
+          slides: existingSlides,
         };
         const updatedConfig = {
           ...(siteConfigs["portfolio_cms"] || {}),
-          caseStudies: currentList
+          caseStudies: currentList,
         };
         setSiteConfigs((prev) => ({ ...prev, portfolio_cms: updatedConfig }));
         await handleSaveConfig("portfolio_cms", updatedConfig);
@@ -1269,6 +1287,62 @@ export default function Admin() {
       alert("Failed to upload cover image to Cloudflare R2: " + (err.message || err));
     } finally {
       setUploadingCoverIdx(null);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  // Replace a specific single slide image inside an existing Case Study
+  const handleCaseStudySlideReplace = async (
+    csIdx: number,
+    slideIdx: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetFolder = "portfolio/slides"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const opKey = `${csIdx}-${slideIdx}`;
+    setReplacingSlideKey(opKey);
+
+    try {
+      const r2Res = await uploadToR2(file, { folder: targetFolder, fileName: file.name });
+      if (!r2Res.success || !r2Res.publicUrl) {
+        throw new Error(r2Res.error || "Upload failed");
+      }
+      const newSlideUrl = r2Res.publicUrl;
+
+      const currentList = siteConfigs["portfolio_cms"]?.caseStudies && siteConfigs["portfolio_cms"].caseStudies.length > 0
+        ? [...siteConfigs["portfolio_cms"].caseStudies]
+        : [...DEFAULT_PORTFOLIO_CASE_STUDIES];
+
+      if (currentList[csIdx]) {
+        const targetStudy = { ...currentList[csIdx] };
+        const existingSlides = Array.isArray(targetStudy.slides) && targetStudy.slides.length > 0
+          ? [...targetStudy.slides]
+          : (targetStudy.imageUrl ? [targetStudy.imageUrl] : []);
+
+        const oldSlide = existingSlides[slideIdx];
+        existingSlides[slideIdx] = newSlideUrl;
+
+        // If this slide was also the cover (or slide 0), sync the cover too
+        const shouldSyncCover = slideIdx === 0 || targetStudy.imageUrl === oldSlide || !targetStudy.imageUrl;
+
+        currentList[csIdx] = {
+          ...targetStudy,
+          slides: existingSlides,
+          imageUrl: shouldSyncCover ? newSlideUrl : targetStudy.imageUrl,
+        };
+
+        const updatedConfig = {
+          ...(siteConfigs["portfolio_cms"] || {}),
+          caseStudies: currentList,
+        };
+        setSiteConfigs((prev) => ({ ...prev, portfolio_cms: updatedConfig }));
+        await handleSaveConfig("portfolio_cms", updatedConfig);
+      }
+    } catch (err: any) {
+      alert("Failed to replace slide image: " + (err.message || err));
+    } finally {
+      setReplacingSlideKey(null);
       if (e.target) e.target.value = "";
     }
   };
@@ -4146,8 +4220,23 @@ export default function Admin() {
                                   value={cs.imageUrl || ""}
                                   onChange={(e) => {
                                     const updated = [...currentStudies];
-                                    updated[idx] = { ...updated[idx], imageUrl: e.target.value };
+                                    const oldCover = updated[idx].imageUrl;
+                                    const newCover = e.target.value;
+                                    let nextSlides = Array.isArray(updated[idx].slides) && updated[idx].slides.length > 0
+                                      ? [...updated[idx].slides]
+                                      : [];
+                                    if (nextSlides.length === 0) {
+                                      nextSlides = [newCover];
+                                    } else {
+                                      const matchIdx = nextSlides.findIndex((s: string) => s === oldCover);
+                                      if (matchIdx !== -1) nextSlides[matchIdx] = newCover;
+                                      else nextSlides[0] = newCover;
+                                    }
+                                    updated[idx] = { ...updated[idx], imageUrl: newCover, slides: nextSlides };
                                     updateCaseStudies(updated);
+                                  }}
+                                  onBlur={() => {
+                                    updateAndSave(currentStudies);
                                   }}
                                   placeholder={`Direct Cloudflare R2 CDN URL (https://.../${activeFolder}/...)`}
                                   className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-xs font-mono"
@@ -4218,7 +4307,20 @@ export default function Admin() {
                                           <span className="font-extrabold text-[#111111]">
                                             Slide #{sIdx + 1}
                                           </span>
-                                          <div className="flex items-center gap-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <label
+                                              title="Replace this slide with new image"
+                                              className="text-[9px] text-primary-amber hover:underline font-extrabold cursor-pointer inline-flex items-center"
+                                            >
+                                              <span>{replacingSlideKey === `${idx}-${sIdx}` ? "Uploading..." : "Replace"}</span>
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                disabled={replacingSlideKey === `${idx}-${sIdx}`}
+                                                onChange={(e) => handleCaseStudySlideReplace(idx, sIdx, e, slidesFolder)}
+                                                className="hidden"
+                                              />
+                                            </label>
                                             <button
                                               type="button"
                                               title="Set as Primary Cover"
@@ -4234,7 +4336,7 @@ export default function Admin() {
                                                 };
                                                 updateAndSave(updated);
                                               }}
-                                              className="text-[9px] text-primary-amber hover:underline font-extrabold"
+                                              className="text-[9px] text-[#726F6D] hover:text-[#111111] hover:underline font-bold"
                                             >
                                               Cover
                                             </button>
