@@ -7,7 +7,7 @@
 ## 1. Master Admin Credentials & Access
 
 - **Admin Account Recognition**: Both `admin@theslidebee.com` and `admin@slidebee.com` (and any email starting with `admin@`) are recognized as administrator accounts.
-- **Master PIN Bypass**: Admins may authenticate with master PINs (`2026`, `SlideBee@Admin2026!`, or `admin`) for rapid access to the Studio Hub (`#/admin`).
+- **Admin Authentication**: Admins authenticate securely via GoTrue with administrator credentials, gaining immediate access to the Studio Hub (`#/admin`).
 - **Profile Persistence**: Admin accounts must always have persistent rows in `public.profiles` with `role = 'super_admin'` so database operations and role checks succeed.
 
 ---

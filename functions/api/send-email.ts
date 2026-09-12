@@ -45,11 +45,18 @@ export async function onRequestPost(context: any) {
 
     // Security Check (TOB-SB-07): Protect against unauthenticated open relay abuse
     const appToken = request.headers.get("x-slidebee-app-token") || request.headers.get("x-slidebee-admin-key");
+    const authHeader = request.headers.get("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
+    const clientToken = (appToken?.trim() || bearerToken) ?? null;
+
     const expectedAppToken = env?.SLIDEBEE_APP_TOKEN || "slidebee_internal_app_2026";
     const expectedAdminSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
-    const authHeader = request.headers.get("Authorization");
 
-    if (appToken !== expectedAppToken && appToken !== expectedAdminSecret && !authHeader) {
+    const isAuthorized =
+      Boolean(clientToken) &&
+      (clientToken === expectedAppToken || clientToken === expectedAdminSecret);
+
+    if (!isAuthorized) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized: Invalid application authentication token." }),
         { status: 401, headers: corsHeaders }

@@ -298,26 +298,16 @@ export default function Admin() {
     );
 
     const localPinAuth = localStorage.getItem("slidebee_admin_session");
-    if (localPinAuth === "true") {
-      const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
-      setSession({ user: { email, role: "super_admin" } });
-      setLoading(false);
-      // Ensure GoTrue session is active for full administrative RLS privileges
-      supabase.auth.getSession().then(({ data }) => {
-        if (!data?.session) {
-          supabase.auth.signInWithPassword({
-            email: "admin@theslidebee.com",
-            password: "SlideBee@Admin2026!"
-          }).then(() => {
-            fetchDashboardData();
-          });
-        }
-      });
-      return () => unsubscribeSync();
-    }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      if (session && (session.user.email?.startsWith("admin@") || session.user.user_metadata?.role === "admin" || localPinAuth === "true")) {
+        const email = session.user.email || localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+        setSession({ ...session, user: { ...session.user, email, role: "super_admin" } });
+      } else if (localPinAuth === "true") {
+        const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+        setSession({ user: { email, role: "super_admin" } });
+      } else {
+        setSession(null);
+      }
       setLoading(false);
     });
 

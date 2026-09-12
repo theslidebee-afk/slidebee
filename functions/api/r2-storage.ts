@@ -155,7 +155,7 @@ function isAuthorizedAdmin(request: Request, env?: any): boolean {
 
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7).trim();
-    if (token === expectedSecret || token.length > 20) {
+    if (token === expectedSecret) {
       return true;
     }
   }

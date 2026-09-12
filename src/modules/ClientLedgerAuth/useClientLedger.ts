@@ -190,31 +190,6 @@ export function useClientLedger() {
     const cleanEmail = emailInput.toLowerCase().trim();
     const cleanPassword = passwordInput.trim();
 
-    // Check admin pin bypass
-    const isAdminTarget = cleanEmail === "admin@theslidebee.com" || cleanEmail === "admin@slidebee.com" || cleanEmail.startsWith("admin@");
-    const isKnownAdminPin = ["SlideBee@Admin2026!", "2026", "admin", "admin2026", "SlideBee2026!"].includes(cleanPassword);
-
-    if (isAdminTarget && isKnownAdminPin) {
-      try {
-        await supabase.auth.signInWithPassword({
-          email: "admin@theslidebee.com",
-          password: "SlideBee@Admin2026!"
-        });
-      } catch (e) {
-        console.warn("Supabase admin auth session fallback:", e);
-      }
-      await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin", method: "admin_pin" });
-      localStorage.removeItem("slidebee_client_user");
-      localStorage.setItem("slidebee_admin_session", "true");
-      localStorage.setItem("slidebee_admin_email", cleanEmail);
-      setCurrentUser(null);
-      setUserProfile(null);
-      setUserOrders([]);
-      broadcastAuthEvent("LOGIN", "admin");
-      window.location.hash = "#/admin";
-      return { success: true };
-    }
-
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: cleanPassword
