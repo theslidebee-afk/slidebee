@@ -48,6 +48,7 @@ export const broadcastAuthEvent = (type: AuthEventType, role?: "admin" | "client
 export const performGlobalLogout = async () => {
   try {
     localStorage.removeItem("slidebee_admin_session");
+    localStorage.removeItem("slidebee_admin_email");
     localStorage.removeItem("slidebee_client_user");
     await supabase.auth.signOut().catch(() => {});
   } catch (err) {
@@ -58,11 +59,39 @@ export const performGlobalLogout = async () => {
 };
 
 /**
+ * Terminate Admin session specifically without affecting client tokens if any
+ */
+export const performAdminLogout = () => {
+  try {
+    localStorage.removeItem("slidebee_admin_session");
+    localStorage.removeItem("slidebee_admin_email");
+  } catch (err) {
+    console.warn("Admin logout notice:", err);
+  } finally {
+    broadcastAuthEvent("LOGOUT", "admin");
+  }
+};
+
+/**
+ * Terminate Client session specifically and sign out from Supabase Auth
+ */
+export const performClientLogout = async () => {
+  try {
+    localStorage.removeItem("slidebee_client_user");
+    await supabase.auth.signOut().catch(() => {});
+  } catch (err) {
+    console.warn("Client logout notice:", err);
+  } finally {
+    broadcastAuthEvent("LOGOUT", "client");
+  }
+};
+
+/**
  * Subscribe to cross-tab auth state changes.
  * Calls onLogout when another tab logs out, and onLogin when another tab logs in.
  */
 export const subscribeToAuthSync = (
-  onLogout: () => void,
+  onLogout: (role?: string) => void,
   onLogin?: (role?: string) => void
 ): (() => void) => {
   if (typeof window === "undefined") return () => {};
@@ -76,7 +105,7 @@ export const subscribeToAuthSync = (
       bc.onmessage = (event: MessageEvent<AuthSyncMessage>) => {
         if (!event.data) return;
         if (event.data.type === "LOGOUT") {
-          onLogout();
+          onLogout(event.data.role);
         } else if (event.data.type === "LOGIN" && onLogin) {
           onLogin(event.data.role);
         }
@@ -93,7 +122,7 @@ export const subscribeToAuthSync = (
       try {
         const data = JSON.parse(event.newValue) as AuthSyncMessage;
         if (data.type === "LOGOUT") {
-          onLogout();
+          onLogout(data.role);
           return;
         } else if (data.type === "LOGIN" && onLogin) {
           onLogin(data.role);

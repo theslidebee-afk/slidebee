@@ -6,7 +6,7 @@ import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
 import { supabase } from "../lib/supabase";
-import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
+import { performAdminLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -22,7 +22,13 @@ export default function Navbar() {
 
   const checkAuth = async () => {
     const adminSession = localStorage.getItem("slidebee_admin_session") === "true";
-    setIsAdmin(adminSession);
+    if (adminSession) {
+      setIsAdmin(true);
+      setClientUser(null);
+      return;
+    }
+
+    setIsAdmin(false);
 
     let activeEmail = "";
     const localClient = localStorage.getItem("slidebee_client_user");
@@ -40,6 +46,19 @@ export default function Navbar() {
     } else {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        const isSessionAdmin =
+          session.user.email === "admin@theslidebee.com" ||
+          session.user.email === "admin@slidebee.com" ||
+          session.user.email?.startsWith("admin@") ||
+          session.user.user_metadata?.role === "admin";
+
+        if (isSessionAdmin) {
+          setIsAdmin(true);
+          setClientUser(null);
+          localStorage.setItem("slidebee_admin_session", "true");
+          return;
+        }
+
         setClientUser(session.user);
         activeEmail = session.user.email || "";
       } else {
@@ -67,14 +86,21 @@ export default function Navbar() {
     checkAuth();
 
     const unsubscribe = subscribeToAuthSync(
-      () => {
-        setIsAdmin(false);
-        setClientUser(null);
-        if (location.pathname === "/admin") {
-          navigate("/login");
+      (role) => {
+        if (!role || role === "admin") {
+          setIsAdmin(false);
+          if (location.pathname.startsWith("/admin")) {
+            navigate("/login");
+          }
+        }
+        if (!role || role === "client") {
+          setClientUser(null);
         }
       },
-      () => {
+      (role) => {
+        if (role === "client" && location.pathname.startsWith("/admin")) {
+          navigate("/login");
+        }
         checkAuth();
       }
     );
@@ -95,7 +121,7 @@ export default function Navbar() {
   }, [location.pathname]);
 
   const handleLogoutAdmin = async () => {
-    await performGlobalLogout();
+    performAdminLogout();
     setIsAdmin(false);
     navigate("/login");
   };

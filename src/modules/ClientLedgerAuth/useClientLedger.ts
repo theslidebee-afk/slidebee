@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
-import { performGlobalLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
+import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
 import { sendWelcomeEmail } from "../../lib/email";
 
 export interface UserProfile {
@@ -91,6 +91,10 @@ export function useClientLedger() {
   const checkUserSession = useCallback(async () => {
     const localAdmin = localStorage.getItem("slidebee_admin_session");
     if (localAdmin === "true") {
+      // Admin session is active: client session cannot coexist under strict mutual exclusivity
+      setCurrentUser(null);
+      setUserProfile(null);
+      setUserOrders([]);
       setLoading(false);
       return;
     }
@@ -117,12 +121,20 @@ export function useClientLedger() {
         session.user.user_metadata?.role === "admin";
 
       if (isSessionAdmin) {
+        localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
         localStorage.setItem("slidebee_admin_email", session.user.email || "admin@theslidebee.com");
+        setCurrentUser(null);
+        setUserProfile(null);
+        setUserOrders([]);
       } else {
+        localStorage.removeItem("slidebee_admin_session");
+        localStorage.removeItem("slidebee_admin_email");
         setCurrentUser(session.user);
         await fetchClientData(session.user.email || "");
       }
+    } else {
+      setCurrentUser(null);
     }
     setLoading(false);
   }, [fetchClientData]);
@@ -131,13 +143,22 @@ export function useClientLedger() {
     checkUserSession();
 
     const unsubscribe = subscribeToAuthSync(
-      () => {
-        setCurrentUser(null);
-        setUserProfile(null);
-        setUserOrders([]);
+      (role) => {
+        if (!role || role === "client") {
+          setCurrentUser(null);
+          setUserProfile(null);
+          setUserOrders([]);
+        }
       },
-      () => {
-        checkUserSession();
+      (role) => {
+        if (role === "admin") {
+          // Admin signed in on another tab; terminate client view in this tab
+          setCurrentUser(null);
+          setUserProfile(null);
+          setUserOrders([]);
+        } else {
+          checkUserSession();
+        }
       }
     );
 
@@ -183,8 +204,12 @@ export function useClientLedger() {
         console.warn("Supabase admin auth session fallback:", e);
       }
       await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin", method: "admin_pin" });
+      localStorage.removeItem("slidebee_client_user");
       localStorage.setItem("slidebee_admin_session", "true");
       localStorage.setItem("slidebee_admin_email", cleanEmail);
+      setCurrentUser(null);
+      setUserProfile(null);
+      setUserOrders([]);
       broadcastAuthEvent("LOGIN", "admin");
       window.location.hash = "#/admin";
       return { success: true };
@@ -199,14 +224,20 @@ export function useClientLedger() {
       const isUserAdmin = authData.user.email?.startsWith("admin@") || authData.user.user_metadata?.role === "admin";
       if (isUserAdmin) {
         await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin" });
+        localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
         localStorage.setItem("slidebee_admin_email", authData.user.email || cleanEmail);
+        setCurrentUser(null);
+        setUserProfile(null);
+        setUserOrders([]);
         broadcastAuthEvent("LOGIN", "admin");
         window.location.hash = "#/admin";
         return { success: true };
       }
 
       await recordAuthEvent(cleanEmail, "LOGIN", { provider: "supabase_auth" });
+      localStorage.removeItem("slidebee_admin_session");
+      localStorage.removeItem("slidebee_admin_email");
       setCurrentUser(authData.user);
       localStorage.setItem("slidebee_client_user", JSON.stringify(authData.user));
       broadcastAuthEvent("LOGIN", "client");
@@ -300,6 +331,8 @@ export function useClientLedger() {
 
     if (authData?.session?.user || authData?.user) {
       const clientObj = authData.session?.user || authData.user;
+      localStorage.removeItem("slidebee_admin_session");
+      localStorage.removeItem("slidebee_admin_email");
       localStorage.setItem("slidebee_client_user", JSON.stringify(clientObj));
       broadcastAuthEvent("LOGIN", "client");
       setCurrentUser(clientObj);
@@ -340,7 +373,7 @@ export function useClientLedger() {
   };
 
   const logout = async () => {
-    await performGlobalLogout();
+    await performClientLogout();
     setCurrentUser(null);
     setUserProfile(null);
     setUserOrders([]);

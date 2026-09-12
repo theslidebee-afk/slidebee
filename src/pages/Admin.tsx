@@ -272,14 +272,23 @@ export default function Admin() {
   // 1. Check active session on mount
   useEffect(() => {
     const unsubscribeSync = subscribeToAuthSync(
-      () => {
-        setSession(null);
+      (role) => {
+        if (!role || role === "admin") {
+          setSession(null);
+        }
       },
-      () => {
+      (role) => {
+        if (role === "client") {
+          // Client signed in on another tab; terminate admin view in this tab immediately
+          setSession(null);
+          return;
+        }
         const localPinAuth = localStorage.getItem("slidebee_admin_session");
         if (localPinAuth === "true") {
           const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
           setSession({ user: { email, role: "super_admin" } });
+        } else {
+          setSession(null);
         }
       }
     );
@@ -6321,12 +6330,13 @@ export default function Admin() {
                     <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
                       <Layers size={14} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
                     </span>
-                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                    <label className={`hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
                       <UploadCloud size={13} />
-                      <span>Upload Slides to R2</span>
+                      <span>{isUploadingSlide ? "Uploading Slides to R2..." : "Upload Slides to R2"}</span>
                       <input
                         type="file"
                         multiple
+                        disabled={isUploadingSlide}
                         accept="image/*"
                         onChange={handleSlideImagesUpload}
                         className="hidden"

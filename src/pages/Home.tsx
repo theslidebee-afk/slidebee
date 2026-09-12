@@ -363,9 +363,6 @@ export default function Home() {
                   <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-3 py-0.5">
                     {item.category}
                   </div>
-                  <div className="hex-pill-sm absolute bottom-2.5 left-2.5 bg-[#111111]/90 backdrop-blur-md text-primary text-[10px] font-black px-2.5 py-0.5 shadow border border-primary/40">
-                    {item.code}
-                  </div>
                 </div>
 
                 {/* Card Body */}

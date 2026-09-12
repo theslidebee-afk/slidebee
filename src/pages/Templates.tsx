@@ -216,11 +216,6 @@ export default function Templates() {
                     </div>
                   )}
 
-                  {/* SKU Code Badge */}
-                  <div className="hex-pill-sm absolute bottom-3 left-3 bg-[#111111]/90 backdrop-blur-md text-primary text-[10px] font-black px-2.5 py-0.5 shadow z-10 border border-primary/40">
-                    {item.code}
-                  </div>
-
                   {/* Optional Star Rating (Controlled by Admin Toggle) */}
                   {showStars && item.rating && !item.is_credit_eligible ? (
                     <div className="hex-pill-sm absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#111111] text-[10px] font-extrabold px-2.5 py-0.5 shadow z-10 border border-primary/30 inline-flex items-center gap-1">

@@ -73,9 +73,6 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
             <span className="text-[11px] font-bold text-primary-amber uppercase tracking-wider">
               {template.category}
             </span>
-            <span className="text-[10px] font-mono font-medium text-[#726F6D] bg-[#111111]/5 px-2 py-0.5 rounded">
-              {template.code}
-            </span>
           </div>
 
           <h3 className="text-base font-heading font-extrabold text-[#111111] mb-2 line-clamp-1 group-hover:text-primary-amber transition-colors">

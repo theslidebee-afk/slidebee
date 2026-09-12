@@ -252,10 +252,6 @@ export default function TemplateDetail() {
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="hex-pill-sm bg-[#111111] text-primary border border-primary/50 text-[11px] font-black px-3.5 py-1 shadow-sm tracking-wider">
-              CODE: {templateCode}
-            </div>
-
             <button
               onClick={handleShare}
               className="hex-pill-sm bg-white border border-primary/40 text-[#111111] hover:border-primary text-xs font-bold px-3 py-1 shadow-sm cursor-pointer inline-flex items-center gap-1"
@@ -315,7 +311,7 @@ export default function TemplateDetail() {
 
               <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/90 text-primary border border-primary/40 text-[10px] font-black px-3 py-1 backdrop-blur-md shadow flex items-center gap-1.5 z-10">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Slide {activeSlideIdx + 1} of {slides.length} • {templateCode}
+                Slide {activeSlideIdx + 1} of {slides.length}
               </div>
 
               {template.is_credit_eligible && (
@@ -515,7 +511,7 @@ export default function TemplateDetail() {
               {/* What's Included Checklist */}
               <div className="pt-4 border-t border-[#111111]/8 space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-[#111111]">
-                  What Is Included in {templateCode}:
+                  What Is Included in This Deck:
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
                   {template.features.map((feat, i) => (
@@ -529,10 +525,6 @@ export default function TemplateDetail() {
 
               {/* Technical Specifications */}
               <div className="pt-4 border-t border-[#111111]/8 text-[11px] space-y-1.5 text-[#726F6D]">
-                <div className="flex justify-between">
-                  <span>Template Code / SKU:</span>
-                  <strong className="text-[#111111]">{templateCode}</strong>
-                </div>
                 <div className="flex justify-between">
                   <span>Deliverable Format:</span>
                   <strong className="text-[#111111]">Master PowerPoint Presentation (.pptx)</strong>
@@ -608,9 +600,6 @@ export default function TemplateDetail() {
                     />
                     <div className="hex-pill-sm absolute top-2.5 left-2.5 bg-[#111111]/85 backdrop-blur-md text-white border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5">
                       {sim.category}
-                    </div>
-                    <div className="hex-pill-sm absolute bottom-2.5 left-2.5 bg-[#111111]/90 backdrop-blur-md text-primary text-[10px] font-black px-2 py-0.5 shadow border border-primary/40">
-                      {sim.code}
                     </div>
                     {sim.is_credit_eligible && (
                       <div className="hex-pill-sm absolute top-2.5 right-2.5 bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5 shadow">
