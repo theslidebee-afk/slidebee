@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Lock,
   Crown,
-  Zap
+  Zap,
+  ShoppingBag
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
@@ -47,6 +48,48 @@ export default function TemplateDetail() {
   // Admin toggles for star rating & downloads visibility
   const [showStars, setShowStars] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
+
+  const [clientSub, setClientSub] = useState<any>(null);
+  const [clientPurchases, setClientPurchases] = useState<any[]>([]);
+
+  const getClientInfo = () => {
+    const local = localStorage.getItem("slidebee_client_user");
+    if (local) {
+      try {
+        const u = JSON.parse(local);
+        return { email: u.email, name: u.user_metadata?.full_name || u.email.split("@")[0] };
+      } catch (e) {}
+    }
+    return null;
+  };
+
+  const client = getClientInfo();
+
+  useEffect(() => {
+    if (client?.email) {
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_email", client.email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setClientSub(data);
+        });
+
+      supabase
+        .from("profiles")
+        .select("purchased_items")
+        .eq("email", client.email)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (Array.isArray(data?.purchased_items)) {
+            setClientPurchases(data.purchased_items);
+          }
+        });
+    }
+  }, []);
 
   // Deep Module: useTemplateCheckout
   const {
@@ -208,47 +251,6 @@ export default function TemplateDetail() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const [clientSub, setClientSub] = useState<any>(null);
-  const [clientPurchases, setClientPurchases] = useState<any[]>([]);
-
-  const getClientInfo = () => {
-    const local = localStorage.getItem("slidebee_client_user");
-    if (local) {
-      try {
-        const u = JSON.parse(local);
-        return { email: u.email, name: u.user_metadata?.full_name || u.email.split("@")[0] };
-      } catch (e) {}
-    }
-    return null;
-  };
-
-  const client = getClientInfo();
-
-  useEffect(() => {
-    if (client?.email) {
-      supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_email", client.email)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setClientSub(data);
-        });
-
-      supabase
-        .from("profiles")
-        .select("purchased_items")
-        .eq("email", client.email)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (Array.isArray(data?.purchased_items)) {
-            setClientPurchases(data.purchased_items);
-          }
-        });
-    }
-  }, []);
 
   const isPro = Boolean(
     clientSub &&
@@ -257,7 +259,7 @@ export default function TemplateDetail() {
   );
 
   const quotaRemaining = isPro
-    ? Math.max(0, Number(clientSub?.slides_limit || 80) - Number(clientSub?.slides_used || 0))
+    ? Math.max(0, Number(clientSub?.slides_limit || 15) - Number(clientSub?.slides_used || 0))
     : 0;
 
   const alreadyOwned = Boolean(
@@ -268,7 +270,7 @@ export default function TemplateDetail() {
     )
   );
 
-  // Pro Template Download (Uses 80 monthly template quota, completely free for all decks)
+  // Pro Template Download (Uses 15 monthly template quota, completely free for all decks)
   const handleProDownload = async () => {
     setCreditNotice(null);
     const client = getClientInfo();
@@ -491,7 +493,7 @@ export default function TemplateDetail() {
                   </div>
                   {isPro && (
                     <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
-                      Deducts 1 template from your 80 monthly quota ({quotaRemaining} downloads remaining)
+                      Deducts 1 template from your 15 monthly quota ({quotaRemaining} downloads remaining)
                     </span>
                   )}
                 </div>
@@ -546,7 +548,7 @@ export default function TemplateDetail() {
                     </a>
                   </div>
                 ) : isPro ? (
-                  /* Pro Member Instant Download (80/Month Template Quota - All Templates Unlocked) */
+                  /* Pro Member Instant Download (15/Month Template Quota - All Templates Unlocked) */
                   <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary rounded-2xl space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
@@ -554,7 +556,7 @@ export default function TemplateDetail() {
                         <span>Pro VIP Membership Access</span>
                       </div>
                       <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
-                        {quotaRemaining} of 80 Left
+                        {quotaRemaining} of {Number(clientSub?.slides_limit || 15)} Left
                       </span>
                     </div>
                     <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
@@ -570,12 +572,28 @@ export default function TemplateDetail() {
                       {isProcessing
                         ? "Unlocking Presentation..."
                         : quotaRemaining > 0
-                        ? `Download Master PPTX (Pro Quota • ${quotaRemaining} Left)`
-                        : "Monthly Template Quota Exhausted (80/80)"}
+                        ? `Use Pro Quota • Download Master PPTX (${quotaRemaining} Left)`
+                        : `Monthly Template Quota Exhausted (${Number(clientSub?.slides_limit || 15)}/${Number(clientSub?.slides_limit || 15)})`}
                     </button>
                     <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                       <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                      <span>Perpetual Commercial Rights • Direct PPTX Master File</span>
+                      <span>Perpetual Commercial Rights • Deducts 1 from 15-Deck Monthly Quota</span>
+                    </div>
+
+                    {/* Standalone Buy Option for Pro Users (if quota is exhausted or client wants direct purchase) */}
+                    <div className="pt-2 border-t border-amber-200/80">
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={handleInstantDownload}
+                        className="hex-pill-sm w-full bg-white hover:bg-amber-50 text-[#111111] font-extrabold py-2.5 text-xs transition-all flex items-center justify-center gap-2 border border-primary/40 shadow-xs cursor-pointer"
+                      >
+                        <ShoppingBag size={13} className="text-primary-amber" />
+                        <span>Or Buy Standalone Commercial License ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})</span>
+                      </button>
+                      <p className="text-[10px] text-center text-[#726F6D] mt-1">
+                        Keeps your 15 monthly quota downloads intact
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -583,12 +601,17 @@ export default function TemplateDetail() {
                     {/* Free Starter Credit Claim Button if Template is Credit Eligible */}
                     {template.is_credit_eligible ? (
                       <div className="p-4 bg-[#FFFDF5] border-2 border-primary rounded-2xl space-y-2.5 shadow-sm">
-                        <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                          <Coins size={15} className="text-primary-amber" />
-                          <span>Design Credits Eligible Template</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
+                            <Coins size={15} className="text-primary-amber" />
+                            <span>Design Credits Eligible Deck</span>
+                          </div>
+                          <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2 py-0.5 border border-primary/40">
+                            Cost: 5 Credits
+                          </span>
                         </div>
                         <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                          Registered clients can claim this master presentation for free using their 5 starter design credits.
+                          New clients receive 5 starter credits upon registration. You can use your entire 5 credits to claim this complete presentation master deck for free (1 free deck with 5 credits).
                         </p>
                         <button
                           type="button"
@@ -597,7 +620,7 @@ export default function TemplateDetail() {
                           className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
                         >
                           <Coins size={15} />
-                          {isProcessing ? "Redeeming Credits..." : "Claim with 5 Free Starter Credits"}
+                          {isProcessing ? "Redeeming Credits..." : "Claim Deck (Cost: 5 Starter Credits)"}
                         </button>
                       </div>
                     ) : (
@@ -633,7 +656,7 @@ export default function TemplateDetail() {
 
                     {/* Upgrade to Pro Prompt */}
                     <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 flex items-center justify-between gap-2">
-                      <span>Unlock 80 presentation template downloads every month</span>
+                      <span>Unlock 15 presentation template downloads every month</span>
                       <Link to="/pricing#marketplace" className="text-amber-900 font-extrabold underline shrink-0 flex items-center gap-0.5">
                         <Zap size={11} className="text-amber-600" /> Go Pro →
                       </Link>
@@ -646,12 +669,31 @@ export default function TemplateDetail() {
                   </>
                 )}
 
-                <Link
-                  to={`/ordernow?ref=${encodeURIComponent(template.title)}&code=${encodeURIComponent(templateCode)}`}
-                  className="hex-pill w-full bg-white border border-primary/40 hover:bg-primary/10 text-[#111111] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-xs text-center"
-                >
-                  <Layers size={14} className="text-primary-amber" /> Have Studio Customize This Deck <ArrowRight size={13} />
-                </Link>
+                {/* Agency Custom Polish Bridge */}
+                <div className="p-4 bg-[#FFF9E8] border border-primary/50 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                      Custom Studio Service
+                    </span>
+                    {isPro && (
+                      <span className="text-[10px] bg-primary/20 text-[#111111] font-black px-2 py-0.5 rounded-full">
+                        15% Pro Member Discount
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-black text-[#111111] leading-snug">
+                    Need this exact deck customized with your startup's content?
+                  </h4>
+                  <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                    Have our executive designers customize this layout to your exact brand, copy, and financials in 24-48h.
+                  </p>
+                  <Link
+                    to={`/ordernow?ref=${encodeURIComponent(template.title)}&code=${encodeURIComponent(templateCode)}`}
+                    className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-2.5 text-xs transition-all flex items-center justify-center gap-2 shadow-xs text-center"
+                  >
+                    <Layers size={13} className="text-[#FCBF14]" /> Order Custom Polish <ArrowRight size={13} />
+                  </Link>
+                </div>
               </div>
 
               {/* What's Included Checklist */}
@@ -688,7 +730,7 @@ export default function TemplateDetail() {
                 <div className="flex justify-between">
                   <span>Free Credits Library:</span>
                   <strong className={template.is_credit_eligible ? "text-emerald-600 font-bold" : "text-[#111111]"}>
-                    {template.is_credit_eligible ? "Yes (5 Starter Credits)" : "No (Premium Collection)"}
+                    {template.is_credit_eligible ? "Eligible (Costs 5 Credits / Deck)" : "No (Premium Collection)"}
                   </strong>
                 </div>
                 <div className="flex justify-between">

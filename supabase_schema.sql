@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     amount_usd NUMERIC NOT NULL,
     amount_inr NUMERIC NOT NULL,
     slides_used INTEGER DEFAULT 0,
-    slides_limit INTEGER DEFAULT 80,
+    slides_limit INTEGER DEFAULT 15,
     current_period_end TIMESTAMP WITH TIME ZONE,
     status TEXT DEFAULT 'active' NOT NULL CHECK (status IN ('active', 'past_due', 'canceled', 'paused')),
     razorpay_subscription_id TEXT
@@ -705,11 +705,11 @@ BEGIN
         );
     END IF;
 
-    IF v_user.credits_balance < 1 THEN
+    IF v_user.credits_balance < 5 THEN
         RETURN jsonb_build_object(
             'success', false,
             'error_code', 'INSUFFICIENT_CREDITS',
-            'message', 'You do not have sufficient design credits remaining.'
+            'message', 'You do not have sufficient design credits remaining (5 credits required per presentation deck).'
         );
     END IF;
 
@@ -753,7 +753,7 @@ BEGIN
         );
     END IF;
 
-    v_credits_to_deduct := LEAST(v_user.credits_balance, 5);
+    v_credits_to_deduct := 5;
     v_deliverable := COALESCE(v_template.download_url, v_template.image_url, '/portfolio/case_study_a_1.png');
 
     v_item_record := jsonb_build_object(

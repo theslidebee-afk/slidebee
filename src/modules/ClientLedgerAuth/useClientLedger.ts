@@ -383,7 +383,7 @@ export function useClientLedger() {
     ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
-  const templateQuotaTotal = isPro ? Number(userSubscription?.slides_limit || 80) : (userProfile?.credits_total ?? 5);
+  const templateQuotaTotal = isPro ? Number(userSubscription?.slides_limit || 15) : (userProfile?.credits_total ?? 5);
   const templateQuotaUsed = isPro ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
   const templateQuotaRemaining = isPro
     ? Math.max(0, templateQuotaTotal - templateQuotaUsed)

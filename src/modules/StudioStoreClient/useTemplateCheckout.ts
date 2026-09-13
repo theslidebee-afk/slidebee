@@ -103,7 +103,7 @@ export function useTemplateCheckout() {
     }
   };
 
-  // 2. Pro Membership Template Download (80 Monthly Quota - Applies to ANY template)
+  // 2. Pro Membership Template Download (15 Monthly Quota - Applies to ANY template)
   const executeProTemplateDownload = async (
     template: StoreTemplate,
     clientEmail: string

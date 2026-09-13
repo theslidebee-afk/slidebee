@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: /api/redeem-pro-template
-// Server-side verification and fulfillment of Pro template downloads using the 80 template quota
+// Server-side verification and fulfillment of Pro template downloads using the 15 template quota
 
 const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
 const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
@@ -107,7 +107,7 @@ export async function onRequestPost(context: any) {
     }
 
     // 2. Check remaining quota
-    const quotaLimit = Number(sub.slides_limit || 80);
+    const quotaLimit = Number(sub.slides_limit || 15);
     const quotaUsed = Number(sub.slides_used || 0);
     const quotaRemaining = quotaLimit - quotaUsed;
 
@@ -247,7 +247,7 @@ export async function onRequestPost(context: any) {
         email: cleanEmail,
         full_name: profile?.full_name || cleanEmail.split("@")[0],
         service_tier: "Pro Template Quota",
-        project_brief: `Pro Membership 80-Quota Download: ${template.title} (${template.code || "SLD"})`,
+        project_brief: `Pro Membership Template Quota Download: ${template.title} (${template.code || "SLD"})`,
         amount: 0,
         currency: "INR",
         status: "delivered",

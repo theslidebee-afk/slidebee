@@ -47,7 +47,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
             <div className="flex items-center gap-2">
               {template.is_credit_eligible && (
                 <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Coins size={10} className="text-[#111111]" /> 5 Credits Tag
+                  <Coins size={10} className="text-[#111111]" /> Cost: 5 Credits
                 </span>
               )}
               {showStars && (
@@ -113,7 +113,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                 </div>
                 {template.is_credit_eligible ? (
                   <span className="text-[10px] font-bold text-emerald-700 block">
-                    Eligible for 5 Free Starter Credits
+                    Cost: 5 Credits (1 Free Deck with Signup)
                   </span>
                 ) : (
                   <span className="text-[10px] font-medium text-[#726F6D] block">

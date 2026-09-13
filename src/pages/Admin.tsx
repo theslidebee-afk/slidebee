@@ -197,7 +197,7 @@ export default function Admin() {
   const [clientFilter, setClientFilter] = useState<"all" | "pro" | "free">("all");
   const [isGrantProModalOpen, setIsGrantProModalOpen] = useState(false);
   const [grantProTargetEmail, setGrantProTargetEmail] = useState("");
-  const [grantProCredits, setGrantProCredits] = useState<number>(80);
+  const [grantProCredits, setGrantProCredits] = useState<number>(15);
   const [grantProDurationMonths, setGrantProDurationMonths] = useState<number>(1);
   const [grantProReason, setGrantProReason] = useState<string>("VIP Client Partnership");
   const [isProcessingProAction, setIsProcessingProAction] = useState(false);
@@ -208,7 +208,25 @@ export default function Admin() {
   const [grantProEmailSender, setGrantProEmailSender] = useState("design@theslidebee.com");
   const [grantProEmailSubject, setGrantProEmailSubject] = useState("VIP Pro Membership Activated — SlideBee Design Studio");
   const [grantProEmailMessage, setGrantProEmailMessage] = useState(
-    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has unrestricted access to download up to 80 master presentation decks per month from our marketplace catalog completely free of charge, along with our VIP WhatsApp Studio hotline."
+    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has unrestricted access to download up to 15 master presentation decks per month from our marketplace catalog completely free of charge, along with our VIP WhatsApp Studio hotline and 15% custom design discount."
+  );
+
+  // Revoke Pro Modal & In-Browser Mail State
+  const [isRevokeProModalOpen, setIsRevokeProModalOpen] = useState(false);
+  const [revokeProTarget, setRevokeProTarget] = useState<{
+    subId: string;
+    clientEmail: string;
+    clientName?: string;
+    expiryDate?: string;
+    slidesLimit?: number;
+    slidesUsed?: number;
+  } | null>(null);
+  const [revokeNoticeType, setRevokeNoticeType] = useState<"immediate" | "one_week_warning">("immediate");
+  const [revokeSendEmail, setRevokeSendEmail] = useState(true);
+  const [revokeEmailSender, setRevokeEmailSender] = useState("design@theslidebee.com");
+  const [revokeEmailSubject, setRevokeEmailSubject] = useState("Your SlideBee Pro Membership Has Concluded");
+  const [revokeEmailCustomMessage, setRevokeEmailCustomMessage] = useState(
+    "We are writing to inform you that your SlideBee Pro Studio Membership has concluded and your account has safely transitioned to our standard Free Tier. All templates you previously downloaded remain in your account forever with perpetual commercial rights."
   );
 
   // Option C Adjust Slide Credits Modal & Mail State
@@ -545,7 +563,7 @@ export default function Admin() {
   // User & Subscription Ledger Management Handlers
   const handleGrantFreePro = async (
     targetEmail: string, 
-    customCredits = 80, 
+    customCredits = 15, 
     durationMonths = 1, 
     reason = "VIP Client Partnership",
     emailOptions?: {
@@ -648,40 +666,98 @@ export default function Admin() {
     }
   };
 
-  const handleRevokePro = async (subId: string, clientEmail: string) => {
-    if (!window.confirm(`Are you sure you want to revoke Pro membership for ${clientEmail}? Their account will revert to the standard free tier.`)) {
-      return;
-    }
+  const handleOpenRevokeProModal = (sub: any) => {
+    const cleanEmail = (sub.user_email || "").trim().toLowerCase();
+    const matchedProfile = profiles.find((p) => p.email?.toLowerCase() === cleanEmail);
+    const clientName = matchedProfile?.full_name || cleanEmail.split("@")[0] || "Valued Client";
+
+    setRevokeProTarget({
+      subId: sub.id,
+      clientEmail: cleanEmail,
+      clientName,
+      expiryDate: sub.current_period_end,
+      slidesLimit: sub.slides_limit || 15,
+      slidesUsed: sub.slides_used || 0,
+    });
+    setRevokeNoticeType("immediate");
+    setRevokeSendEmail(true);
+    setRevokeEmailSender("design@theslidebee.com");
+    setRevokeEmailSubject("Your SlideBee Pro Membership Has Concluded");
+    setRevokeEmailCustomMessage(
+      "We are writing to inform you that your SlideBee Pro Studio Membership has concluded and your account has safely transitioned to our standard Free Tier. All master presentation templates you previously downloaded remain available in your account library with perpetual commercial rights."
+    );
+    setIsRevokeProModalOpen(true);
+  };
+
+  const handleExecuteRevokePro = async () => {
+    if (!revokeProTarget) return;
     setIsProcessingProAction(true);
     try {
-      const { error } = await supabase.from("subscriptions").update({
-        status: "canceled",
-        updated_at: new Date().toISOString(),
-      }).eq("id", subId);
+      if (revokeNoticeType === "immediate") {
+        const { error } = await supabase.from("subscriptions").update({
+          status: "canceled",
+          updated_at: new Date().toISOString(),
+        }).eq("id", revokeProTarget.subId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Dispatch subscription ended notice to user
-      try {
-        const clientProfile = profiles.find((p) => p.email?.toLowerCase() === clientEmail?.toLowerCase());
-        await sendProExpiredEmail({
-          clientEmail,
-          clientName: clientProfile?.full_name || clientEmail.split("@")[0],
-          expiryDate: new Date().toISOString(),
+        let emailDispatched = false;
+        if (revokeSendEmail) {
+          try {
+            const res = await sendProExpiredEmail({
+              clientEmail: revokeProTarget.clientEmail,
+              clientName: revokeProTarget.clientName,
+              expiryDate: new Date().toISOString(),
+              senderEmail: revokeEmailSender,
+              subject: revokeEmailSubject,
+              customMessage: revokeEmailCustomMessage,
+            });
+            if (res.success) emailDispatched = true;
+          } catch (mErr) {
+            console.warn("Revocation notice dispatch note:", mErr);
+          }
+        }
+
+        setProActionFeedback({
+          type: "success",
+          message: `Pro membership revoked for ${revokeProTarget.clientEmail}. Account reverted to Free Tier.${emailDispatched ? " Official notice dispatched." : ""}`,
         });
-      } catch (mailErr) {
-        console.warn("Failed to dispatch revocation notice email:", mailErr);
+      } else {
+        // 1-Week courtesy reminder
+        let emailDispatched = false;
+        if (revokeSendEmail) {
+          try {
+            const daysRemaining = 7;
+            const remainingQuota = Math.max(0, (revokeProTarget.slidesLimit || 15) - (revokeProTarget.slidesUsed || 0));
+            const res = await sendProExpiringSoonEmail({
+              clientEmail: revokeProTarget.clientEmail,
+              clientName: revokeProTarget.clientName,
+              daysRemaining,
+              expiryDate: revokeProTarget.expiryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              remainingQuota,
+              senderEmail: revokeEmailSender,
+              subject: revokeEmailSubject,
+              customMessage: revokeEmailCustomMessage,
+            });
+            if (res.success) emailDispatched = true;
+          } catch (mErr) {
+            console.warn("1-week reminder notice dispatch note:", mErr);
+          }
+        }
+
+        setProActionFeedback({
+          type: "success",
+          message: `1-Week Expiry Notice dispatched to ${revokeProTarget.clientEmail}.${emailDispatched ? " Email sent." : ""}`,
+        });
       }
 
-      setProActionFeedback({
-        type: "success",
-        message: `Pro membership revoked for ${clientEmail}. Account reverted to standard tier and notification dispatched.`,
-      });
+      setIsRevokeProModalOpen(false);
+      setRevokeProTarget(null);
       setTimeout(() => setProActionFeedback(null), 5000);
       await fetchDashboardData();
     } catch (err: any) {
-      console.error("Failed to revoke Pro:", err);
-      alert(`Failed to revoke Pro: ${err?.message || err}`);
+      console.error("Failed to process Pro revocation action:", err);
+      alert(`Failed to process Pro revocation: ${err?.message || err}`);
     } finally {
       setIsProcessingProAction(false);
     }
@@ -695,7 +771,7 @@ export default function Admin() {
     const daysRemaining = expiryDate
       ? Math.max(0, Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
       : 7;
-    const remainingQuota = Math.max(0, (sub.slides_limit || 80) - (sub.slides_used || 0));
+    const remainingQuota = Math.max(0, (sub.slides_limit || 15) - (sub.slides_used || 0));
 
     if (!window.confirm(`Send 1-Week Expiration Reminder email to ${cleanEmail} (${daysRemaining} days remaining, ${remainingQuota} templates left)?`)) {
       return;
@@ -2562,7 +2638,7 @@ SlideBee Design Studio`
                     <button
                       onClick={() => {
                         setGrantProTargetEmail("");
-                        setGrantProCredits(80);
+                        setGrantProCredits(15);
                         setGrantProDurationMonths(1);
                         setIsGrantProModalOpen(true);
                       }}
@@ -7046,7 +7122,7 @@ SlideBee Design Studio`
                   <button
                     onClick={() => {
                       setGrantProTargetEmail("");
-                      setGrantProCredits(80);
+                      setGrantProCredits(15);
                       setGrantProDurationMonths(1);
                       setIsGrantProModalOpen(true);
                     }}
@@ -7120,12 +7196,12 @@ SlideBee Design Studio`
                               </td>
                               <td className="p-4">
                                 <div className="font-bold mb-1">
-                                  {sub.slides_used || 0} / {sub.slides_limit || 80} Templates
+                                  {sub.slides_used || 0} / {sub.slides_limit || 15} Templates
                                 </div>
                                 <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
                                   <div 
                                     className="bg-primary-amber h-full rounded-full" 
-                                    style={{ width: `${Math.min(100, ((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100)}%` }} 
+                                    style={{ width: `${Math.min(100, ((sub.slides_used || 0) / (sub.slides_limit || 15)) * 100)}%` }} 
                                   />
                                 </div>
                               </td>
@@ -7180,9 +7256,9 @@ SlideBee Design Studio`
                                       <button
                                         type="button"
                                         disabled={isProcessingProAction}
-                                        onClick={() => handleRevokePro(sub.id, sub.user_email)}
+                                        onClick={() => handleOpenRevokeProModal(sub)}
                                         className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
-                                        title="Revoke Pro access for this account"
+                                        title="Revoke Pro access and compose notice email"
                                       >
                                         <UserX size={11} /> Revoke Pro
                                       </button>
@@ -7203,7 +7279,7 @@ SlideBee Design Studio`
                                         disabled={isProcessingProAction}
                                         onClick={() => {
                                           setGrantProTargetEmail(sub.user_email);
-                                          setGrantProCredits(sub.slides_limit || 80);
+                                          setGrantProCredits(sub.slides_limit || 15);
                                           setGrantProDurationMonths(1);
                                           setIsGrantProModalOpen(true);
                                         }}
@@ -7223,7 +7299,7 @@ SlideBee Design Studio`
                                         id: sub.user_id || "",
                                         email: sub.user_email,
                                         full_name: sub.user_email.split("@")[0],
-                                        credits_balance: sub.slides_limit || 80,
+                                        credits_balance: sub.slides_limit || 15,
                                       };
                                       handleOpenDeleteAccountModal(clientObj);
                                     }}
@@ -7408,9 +7484,9 @@ SlideBee Design Studio`
                                     <button
                                       type="button"
                                       disabled={isProcessingProAction}
-                                      onClick={() => handleRevokePro(clientSub!.id, p.email)}
+                                      onClick={() => handleOpenRevokeProModal(clientSub!)}
                                       className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                                      title="Revoke Pro access"
+                                      title="Revoke Pro access and compose notice email"
                                     >
                                       <UserX size={11} /> Revoke Pro
                                     </button>
@@ -7421,7 +7497,7 @@ SlideBee Design Studio`
                                       onClick={() => {
                                         setGrantProTargetEmail(p.email);
                                         setGrantProDurationMonths(1);
-                                        setGrantProCredits(80);
+                                        setGrantProCredits(15);
                                         setIsGrantProModalOpen(true);
                                       }}
                                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
@@ -7466,7 +7542,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl max-h-[85vh] overflow-y-auto"
             >
               <div className="flex flex-wrap items-center justify-between pb-4 border-b border-[#111111]/10 mb-4 gap-3">
                 <div>
@@ -7823,7 +7899,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto space-y-5"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
                 <div>
@@ -8282,7 +8358,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto space-y-5"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
                 <div>
@@ -8815,7 +8891,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-5"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl relative max-h-[85vh] overflow-y-auto space-y-5"
             >
               <button
                 type="button"
@@ -9221,7 +9297,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
                 <div className="flex items-center gap-2.5">
@@ -9301,10 +9377,10 @@ SlideBee Design Studio`
                         onChange={(e) => setGrantProCredits(Number(e.target.value))}
                         className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
                       >
-                        <option value={50}>50 Templates / Mo</option>
-                        <option value={80}>80 Templates / Mo (Std)</option>
-                        <option value={120}>120 Templates / Mo (VIP)</option>
-                        <option value={200}>200 Templates / Mo (Max)</option>
+                        <option value={10}>10 Master Decks / Mo (Starter Pro)</option>
+                        <option value={15}>15 Master Decks / Mo (Standard Pro)</option>
+                        <option value={25}>25 Master Decks / Mo (VIP Growth)</option>
+                        <option value={40}>40 Master Decks / Mo (Agency Pass)</option>
                       </select>
                     </div>
 
@@ -9515,7 +9591,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
                 <div className="flex items-center gap-2.5">
@@ -9735,7 +9811,7 @@ SlideBee Design Studio`
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-red-200 rounded-xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+              className="bg-white border-2 border-red-200 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-red-100 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -9968,6 +10044,261 @@ support@theslidebee.com`
                   ) : (
                     <>
                       <Trash2 size={14} /> Permanently Delete Account & Send Notice
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: REVOKE PRO MEMBERSHIP & IN-BROWSER NOTICE COMPOSER */}
+      <AnimatePresence>
+        {isRevokeProModalOpen && revokeProTarget && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border-2 border-amber-300 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#111111]/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-center text-amber-800">
+                    <UserX size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-black text-base text-[#111111]">
+                      Revoke Pro Membership & Notice
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Transition client account to standard Free Tier with customized email dispatch
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRevokeProModalOpen(false);
+                    setRevokeProTarget(null);
+                  }}
+                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* 2-Column Square Body */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Column 1: Target Account Info & Action Mode */}
+                <div className="space-y-4">
+                  {/* Client Info Banner */}
+                  <div className="bg-[#FFF9E8] border border-amber-300/80 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-[#111111]">
+                        {revokeProTarget.clientName}
+                      </span>
+                      <span className="hex-pill-sm bg-amber-200/80 text-amber-950 font-black text-[10px] px-2 py-0.5">
+                        Pro Active
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#726F6D] flex items-center justify-between">
+                      <span>{revokeProTarget.clientEmail}</span>
+                      <span className="font-bold text-[#111111]">
+                        {Math.max(0, (revokeProTarget.slidesLimit || 80) - (revokeProTarget.slidesUsed || 0))} Quota Left
+                      </span>
+                    </div>
+                    {revokeProTarget.expiryDate && (
+                      <div className="text-[10px] text-amber-900 font-medium pt-1 border-t border-amber-200">
+                        Cycle Ends: {new Date(revokeProTarget.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Mode Radio */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                      Revocation Timing & Mode
+                    </label>
+                    <div className="space-y-2">
+                      <label
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                          revokeNoticeType === "immediate"
+                            ? "bg-amber-50/80 border-amber-400 shadow-xs"
+                            : "bg-white border-[#111111]/12 hover:border-[#111111]/25"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="revokeMode"
+                          checked={revokeNoticeType === "immediate"}
+                          onChange={() => {
+                            setRevokeNoticeType("immediate");
+                            setRevokeEmailSubject("Your SlideBee Pro Membership Has Concluded");
+                            setRevokeEmailCustomMessage(
+                              "We are writing to inform you that your SlideBee Pro Studio Membership has concluded and your account has safely transitioned to our standard Free Tier. All master presentation templates you previously downloaded remain available in your account library with perpetual commercial rights."
+                            );
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <span className="font-black text-xs text-[#111111] block">
+                            Revoke Immediately
+                          </span>
+                          <span className="text-[11px] text-[#726F6D]">
+                            Cancels Pro access right now and sends the "Subscription Ended" notice.
+                          </span>
+                        </div>
+                      </label>
+
+                      <label
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                          revokeNoticeType === "one_week_warning"
+                            ? "bg-amber-50/80 border-amber-400 shadow-xs"
+                            : "bg-white border-[#111111]/12 hover:border-[#111111]/25"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="revokeMode"
+                          checked={revokeNoticeType === "one_week_warning"}
+                          onChange={() => {
+                            setRevokeNoticeType("one_week_warning");
+                            setRevokeEmailSubject("Reminder: Your SlideBee Pro Membership Expires in 7 Days");
+                            setRevokeEmailCustomMessage(
+                              "This is a courtesy notification that your SlideBee Pro Studio Membership is concluding in 7 days. Be sure to download any remaining templates from your 80 monthly quota before your cycle ends."
+                            );
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <span className="font-black text-xs text-[#111111] block">
+                            Send 1-Week Warning Notice First
+                          </span>
+                          <span className="text-[11px] text-[#726F6D]">
+                            Keeps Pro active and sends a 7-day expiration reminder notice to allow final downloads.
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Toggle Dispatch Email */}
+                  <div className="pt-2 border-t border-[#111111]/10">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={revokeSendEmail}
+                        onChange={(e) => setRevokeSendEmail(e.target.checked)}
+                        className="w-4 h-4 text-primary rounded"
+                      />
+                      <span className="text-xs font-bold text-[#111111]">
+                        Send In-Browser Email Notice to Client
+                      </span>
+                    </label>
+                    <p className="text-[10px] text-[#726F6D] mt-1 pl-6">
+                      Dispatches official notification directly to {revokeProTarget.clientEmail} via Resend.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Column 2: In-Browser Email Notice Customization */}
+                <div className="space-y-3.5 bg-gray-50/80 p-4 rounded-xl border border-[#111111]/10 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#111111]/8 pb-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
+                        <Mail size={13} className="text-primary-amber" /> In-Browser Mail Composer
+                      </span>
+                      <span className="text-[10px] font-extrabold text-[#726F6D]">
+                        {revokeNoticeType === "immediate" ? "Subscription Ended" : "1-Week Reminder"}
+                      </span>
+                    </div>
+
+                    {/* Sender Select */}
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        From (Sender)
+                      </label>
+                      <select
+                        value={revokeEmailSender}
+                        onChange={(e) => setRevokeEmailSender(e.target.value)}
+                        disabled={!revokeSendEmail}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold outline-none disabled:opacity-50"
+                      >
+                        <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                        <option value="support@theslidebee.com">support@theslidebee.com (Studio Support)</option>
+                        <option value="billing@theslidebee.com">billing@theslidebee.com (Accounts & Billing)</option>
+                      </select>
+                    </div>
+
+                    {/* Subject */}
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        Email Subject
+                      </label>
+                      <input
+                        type="text"
+                        value={revokeEmailSubject}
+                        onChange={(e) => setRevokeEmailSubject(e.target.value)}
+                        disabled={!revokeSendEmail}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs text-[#111111] font-medium outline-none disabled:opacity-50"
+                      />
+                    </div>
+
+                    {/* Custom Note */}
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        Personal Note / Explanation (Appears in Email)
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={revokeEmailCustomMessage}
+                        onChange={(e) => setRevokeEmailCustomMessage(e.target.value)}
+                        disabled={!revokeSendEmail}
+                        placeholder="Add an optional personal message from the studio desk..."
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium outline-none resize-none disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-[#726F6D] bg-white p-2 rounded border border-[#111111]/8">
+                    Wrapped inside SlideBee's luxury cream HTML email layout with official studio branding and direct renewal link.
+                  </div>
+                </div>
+              </div>
+
+              {/* Sticky Actions Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
+                <button
+                  type="button"
+                  disabled={isProcessingProAction}
+                  onClick={() => {
+                    setIsRevokeProModalOpen(false);
+                    setRevokeProTarget(null);
+                  }}
+                  className="hex-pill px-4 py-2.5 text-xs font-bold text-[#726F6D] hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingProAction}
+                  onClick={handleExecuteRevokePro}
+                  className="hex-pill bg-amber-500 hover:bg-amber-600 text-black font-black px-5 py-2.5 text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessingProAction ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Processing Action...
+                    </>
+                  ) : revokeNoticeType === "immediate" ? (
+                    <>
+                      <UserX size={14} /> Revoke Pro & Dispatch Notice
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} /> Dispatch 1-Week Notice
                     </>
                   )}
                 </button>

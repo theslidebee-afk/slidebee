@@ -16,7 +16,7 @@ import { usePageSEO } from "../hooks/usePageSEO";
 export default function Pricing() {
   usePageSEO({
     title: "Pricing — Template Marketplace & Custom Presentation Design | SlideBee",
-    description: "SlideBee pricing: download presentation templates free with starter credits or go Pro for 80 downloads/month. Also view transparent per-slide pricing for custom pitch decks and executive keynotes.",
+    description: "SlideBee pricing: download presentation templates free with starter credits or go Pro for 15 master decks/month plus 15% agency discount. Also view transparent per-slide pricing for custom pitch decks and executive keynotes.",
   });
 
   const location = useLocation();
@@ -81,7 +81,7 @@ export default function Pricing() {
       amount,
       currency: "INR",
       title: "SlideBee Pro Membership",
-      description: `80 template downloads / month (${billingPeriod === "yearly" ? "Annual" : "Monthly"} billing)`,
+      description: `15 template downloads / month (${billingPeriod === "yearly" ? "Annual" : "Monthly"} billing)`,
       prefill: {
         email: session.user.email || "",
         name: session.user.user_metadata?.full_name || "SlideBee Pro Member",
@@ -185,7 +185,7 @@ export default function Pricing() {
   const defaultFaqs: FaqItem[] = [
     {
       q: "How does the template credits system work?",
-      a: "Every new registered account receives 5 free teaser credits to explore and download starter templates. When you need more downloads, you can upgrade directly to SlideBee Pro for 80 monthly template downloads."
+      a: "Every new registered account receives 5 free teaser credits to explore and download starter templates. When you need more downloads, you can upgrade directly to SlideBee Pro for 15 monthly master template downloads and a 15% discount on custom agency services."
     },
     {
       q: "How does the per-slide custom design pricing work?",
@@ -246,7 +246,7 @@ export default function Pricing() {
             <span className="text-primary-amber">Start Free. Go Pro.</span>
           </h1>
           <p className="text-[#726F6D] text-sm font-medium max-w-lg mx-auto">
-            Every account gets 5 free credits on sign-up as a teaser to explore our library. Once finished, upgrade to Pro for 80 downloads per month.
+            Every account gets 5 free credits on sign-up as a teaser to explore our library. Once finished, upgrade to Pro for 15 master downloads per month.
           </p>
         </div>
 
@@ -343,11 +343,12 @@ export default function Pricing() {
                 </p>
               )}
               <p className="text-xs text-[#726F6D] font-medium mb-6">
-                Unlimited marketplace flexibility with 80 monthly slide deck downloads.
+                Unlimited marketplace flexibility with 15 monthly master deck downloads plus 15% agency discount.
               </p>
               <div className="space-y-3 border-t border-primary/20 pt-5">
                 {[
-                  "80 Template Downloads Every Month",
+                  "15 Master Template Downloads Every Month",
+                  "15% Discount on Custom Agency Services & Redesigns",
                   "All premium & executive master templates",
                   "100% Editable Master PowerPoint (.pptx)",
                   "Commercial license on all deliverables",

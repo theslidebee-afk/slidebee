@@ -27,30 +27,38 @@ export default function Templates() {
   const [isProUser, setIsProUser] = useState<boolean>(false);
 
   useEffect(() => {
-    const local = localStorage.getItem("slidebee_client_user");
-    if (local) {
-      try {
-        const u = JSON.parse(local);
-        if (u?.email) {
-          supabase
-            .from("subscriptions")
-            .select("status, current_period_end")
-            .eq("user_email", u.email)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle()
-            .then(({ data }) => {
-              if (
-                data &&
-                data.status === "active" &&
-                (!data.current_period_end || new Date(data.current_period_end) > new Date())
-              ) {
-                setIsProUser(true);
-              }
-            });
+    const checkProStatus = async () => {
+      let email = "";
+      const local = localStorage.getItem("slidebee_client_user");
+      if (local) {
+        try {
+          const u = JSON.parse(local);
+          if (u?.email) email = u.email;
+        } catch (e) {}
+      }
+      if (!email) {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.email) email = data.user.email;
+      }
+      if (email) {
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("status, current_period_end")
+          .eq("user_email", email.toLowerCase().trim())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (
+          sub &&
+          sub.status === "active" &&
+          (!sub.current_period_end || new Date(sub.current_period_end) > new Date())
+        ) {
+          setIsProUser(true);
         }
-      } catch (e) {}
-    }
+      }
+    };
+    checkProStatus();
   }, []);
 
   // Read dynamically from deep storefront hook
@@ -136,7 +144,7 @@ export default function Templates() {
                 }`}
               >
                 <Coins className="w-3.5 h-3.5 text-primary-amber" />
-                <span>5 Free Credits Library ({freeTemplates.length})</span>
+                <span>5 Credits Library ({freeTemplates.length})</span>
               </button>
 
               <div className="flex items-center gap-2 text-xs font-extrabold text-[#111111] bg-[#FFF9E8] border border-primary/40 px-3.5 py-2 rounded-xl">
@@ -261,7 +269,7 @@ export default function Templates() {
                       </span>
                       {item.is_credit_eligible && (
                         <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Coins size={10} className="text-[#111111]" /> 5 Credits Tag
+                          <Coins size={10} className="text-[#111111]" /> Cost: 5 Credits
                         </span>
                       )}
                       {showStars && item.rating && !item.is_credit_eligible ? (
@@ -293,7 +301,7 @@ export default function Templates() {
                               </span>
                             </div>
                             <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
-                              <Crown size={10} /> Pro 80-Deck Quota
+                              <Crown size={10} /> Pro 15-Deck Quota
                             </span>
                           </>
                         ) : (
@@ -324,7 +332,7 @@ export default function Templates() {
                       </div>
                     ) : item.is_credit_eligible ? (
                       <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
-                        <Coins size={11} /> Eligible for 5 Free Starter Credits
+                        <Coins size={11} /> Cost: 5 Credits (1 Free Deck with Signup)
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#726F6D] font-medium mb-2.5">
@@ -345,7 +353,7 @@ export default function Templates() {
                         onClick={(e) => e.stopPropagation()}
                         className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
                       >
-                        <Download size={14} /> Download with Pro <ArrowRight size={12} />
+                        <Crown size={14} className="text-[#111111]" /> Use Pro Quota <ArrowRight size={12} />
                       </Link>
                     ) : (
                       <Link

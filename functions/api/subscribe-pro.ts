@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: /api/subscribe-pro
-// Server-side verification and provisioning of Pro memberships (80 downloads/mo quota)
+// Server-side verification and provisioning of Pro memberships (15 downloads/mo quota)
 
 const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
 const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
@@ -98,7 +98,7 @@ export async function onRequestPost(context: any) {
             plan_name: planName,
             amount_inr: Number(amount),
             amount_usd: billingPeriod === "yearly" ? 290 : 29,
-            slides_limit: 80,
+            slides_limit: 15,
             slides_used: 0,
             status: "active",
             current_period_end: periodEnd,
@@ -125,7 +125,7 @@ export async function onRequestPost(context: any) {
             plan_name: planName,
             amount_inr: Number(amount),
             amount_usd: billingPeriod === "yearly" ? 290 : 29,
-            slides_limit: 80,
+            slides_limit: 15,
             slides_used: 0,
             status: "active",
             current_period_end: periodEnd,
@@ -154,8 +154,8 @@ export async function onRequestPost(context: any) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          credits_balance: 80,
-          credits_total: 80
+          credits_balance: 15,
+          credits_total: 15
         })
       }
     );
@@ -163,8 +163,8 @@ export async function onRequestPost(context: any) {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Pro subscription successfully activated. 80 downloads credited to your ledger.",
-        slides_limit: 80
+        message: "Pro subscription successfully activated. 15 downloads credited to your ledger.",
+        slides_limit: 15
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -334,7 +334,7 @@ export async function sendTemplatePurchaseReceiptEmail({
 export async function sendProGrantedEmail({
   clientEmail,
   clientName,
-  slideQuota = 80,
+  slideQuota = 15,
   durationMonths = 12,
   partnershipReason = "VIP Strategic Client",
   customMessage,
@@ -585,9 +585,10 @@ export async function sendProExpiringSoonEmail({
   clientName,
   daysRemaining = 7,
   expiryDate,
-  remainingQuota = 80,
+  remainingQuota = 15,
   senderEmail = "design@theslidebee.com",
   subject,
+  customMessage,
 }: {
   clientEmail: string;
   clientName?: string;
@@ -596,6 +597,7 @@ export async function sendProExpiringSoonEmail({
   remainingQuota?: number;
   senderEmail?: string;
   subject?: string;
+  customMessage?: string;
 }) {
   const defaultSubject = `Reminder: Your SlideBee Pro Membership Expires in ${daysRemaining} Days`;
   const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "in 7 days";
@@ -617,10 +619,17 @@ export async function sendProExpiringSoonEmail({
           This is a friendly reminder that your SlideBee Pro Studio Membership is scheduled to conclude on <strong>${formattedExpiry}</strong>.
         </p>
 
+        ${customMessage ? `
+        <div style="background-color: #FFF9E8; border-left: 4px solid #FCBF14; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #111111; line-height: 1.6;">
+          <strong>Personal Note from Studio Desk:</strong><br/>
+          ${customMessage.replace(/\n/g, '<br/>')}
+        </div>
+        ` : ''}
+
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 10px;">Cycle Summary</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
-            <li><strong>Remaining Template Downloads:</strong> ${remainingQuota} of 80 full presentation decks</li>
+            <li><strong>Remaining Template Downloads:</strong> ${remainingQuota} master presentation decks</li>
             <li><strong>Expiration Date:</strong> ${formattedExpiry}</li>
             <li><strong>Perks At Stake:</strong> Unrestricted marketplace template downloads and direct WhatsApp Studio hotline</li>
           </ul>
@@ -662,12 +671,14 @@ export async function sendProExpiredEmail({
   expiryDate,
   senderEmail = "design@theslidebee.com",
   subject,
+  customMessage,
 }: {
   clientEmail: string;
   clientName?: string;
   expiryDate?: string;
   senderEmail?: string;
   subject?: string;
+  customMessage?: string;
 }) {
   const defaultSubject = `Your SlideBee Pro Membership Has Concluded`;
   const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "recently";
@@ -689,11 +700,18 @@ export async function sendProExpiredEmail({
           Your SlideBee Pro Studio Membership ended on <strong>${formattedExpiry}</strong>. Your account has safely transitioned to our standard Free Tier.
         </p>
 
+        ${customMessage ? `
+        <div style="background-color: #FFF9E8; border-left: 4px solid #FCBF14; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #111111; line-height: 1.6;">
+          <strong>Personal Note from Studio Desk:</strong><br/>
+          ${customMessage.replace(/\n/g, '<br/>')}
+        </div>
+        ` : ''}
+
         <div style="background-color: #F9FAFB; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #E5E7EB;">
           <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #4B5563; margin-top: 0; margin-bottom: 10px;">What This Means:</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563; line-height: 1.8;">
             <li>All templates you previously downloaded remain in your account forever with perpetual commercial rights.</li>
-            <li>Free Pro 80-template monthly quota and VIP WhatsApp channel are now paused.</li>
+            <li>Free Pro template monthly quota and VIP WhatsApp channel are now paused.</li>
             <li>You can still purchase individual presentation decks or reactivate Pro anytime.</li>
           </ul>
         </div>

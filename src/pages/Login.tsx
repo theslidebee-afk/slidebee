@@ -289,7 +289,7 @@ export default function Login() {
     const clientRole = userProfile?.role || "client";
     
     // Quota & Credits calculation
-    const quotaTotal = isProUser ? Number(userSubscription?.slides_limit || 80) : (userProfile?.credits_total ?? 5);
+    const quotaTotal = isProUser ? Number(userSubscription?.slides_limit || 15) : (userProfile?.credits_total ?? 5);
     const quotaUsed = isProUser ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
     const quotaRemaining = isProUser ? Math.max(0, quotaTotal - quotaUsed) : (userProfile?.credits_balance ?? 5);
     
@@ -312,13 +312,32 @@ export default function Login() {
                 {clientName[0]?.toUpperCase() || "S"}
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
                     {clientRole === "super_admin" || clientRole === "admin" ? "Studio Admin Portal" : isProUser ? "Pro VIP Client Portal" : "Client Portal"}
                   </span>
                   <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Check size={10} /> Verified Account
                   </span>
+                  {isProUser && (
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border shadow-xs ${
+                      proDaysRemaining !== null && proDaysRemaining <= 7
+                        ? "bg-amber-100 text-amber-900 border-amber-400 animate-pulse"
+                        : "bg-amber-50 text-amber-900 border-amber-300"
+                    }`}>
+                      <Clock size={11} className={proDaysRemaining !== null && proDaysRemaining <= 7 ? "text-amber-700" : "text-amber-600"} />
+                      {proDaysRemaining !== null
+                        ? proDaysRemaining === 0
+                          ? "Pro Expires Today"
+                          : `${proDaysRemaining} Days Left in Pro`
+                        : "Lifetime Pro Active"}
+                    </span>
+                  )}
+                  {isProExpired && (
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1.5 bg-rose-100 text-rose-900 border border-rose-300">
+                      <AlertTriangle size={11} className="text-rose-600" /> Pro Concluded
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111]">
                   Welcome, {clientName}
@@ -353,8 +372,12 @@ export default function Login() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
                   <CreditCard size={14} className="text-primary-amber" /> {isProUser ? "Templates Left" : "Credits Left"}
                 </span>
-                <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                  Available
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  isProUser && proDaysRemaining !== null && proDaysRemaining <= 7
+                    ? "bg-amber-100 text-amber-900 border border-amber-300"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  {isProUser ? (proDaysRemaining !== null ? `${proDaysRemaining}d remaining` : "Active") : "Available"}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mb-1">
@@ -367,7 +390,7 @@ export default function Login() {
               </div>
               <p className="text-[11px] text-[#726F6D] leading-relaxed">
                 {isProUser
-                  ? "Full presentation decks available to download this month from catalog."
+                  ? `Full presentation decks available to download this month (${proDaysRemaining !== null ? `${proDaysRemaining} days left in cycle` : "unrestricted"}).`
                   : "Ready to redeem on free library presentation templates."}
               </p>
             </div>
@@ -480,7 +503,7 @@ export default function Login() {
                 </h3>
                 <p className="text-xs text-[#726F6D] font-medium mb-4">
                   {isProUser
-                    ? "80 complete presentation template downloads every month, VIP WhatsApp hotline, and priority turnaround."
+                    ? "15 complete presentation template downloads every month, VIP WhatsApp hotline, and 15% discount on custom agency briefs."
                     : isProExpired
                     ? `Your Pro membership validity period ended on ${new Date(userSubscription.current_period_end).toLocaleDateString()}. Renew anytime to resume downloads.`
                     : "Access to free library starter templates and custom agency presentation design briefs."}
@@ -488,24 +511,44 @@ export default function Login() {
 
                 {/* Duration Left in Pro (User Dashboard Reflection) */}
                 {isProUser && proDaysRemaining !== null && (
-                  <div className={`mb-4 p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-xs ${
+                  <div className={`mb-4 p-4 rounded-xl border space-y-2.5 shadow-xs ${
                     proDaysRemaining <= 7 
                       ? "bg-amber-50/90 border-amber-300" 
                       : "bg-[#FFF9E8] border-primary/40"
                   }`}>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
-                        <Clock size={12} className="text-primary-amber" /> Duration Left in Pro:
-                      </span>
-                      <span className="text-sm font-heading font-black text-[#111111] block mt-0.5">
-                        {proDaysRemaining === 0 ? "Expires Today" : `${proDaysRemaining} Days Remaining`}
-                      </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                          <Clock size={12} className="text-primary-amber" /> Duration Left in Pro:
+                        </span>
+                        <span className="text-sm font-heading font-black text-[#111111] block mt-0.5">
+                          {proDaysRemaining === 0 ? "Expires Today" : `${proDaysRemaining} Days Remaining`}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-[#726F6D] block">Period Ends:</span>
+                        <span className="text-xs font-bold text-[#111111]">
+                          {new Date(userSubscription.current_period_end).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-[#726F6D] block">Period Ends:</span>
-                      <span className="text-xs font-bold text-[#111111]">
-                        {new Date(userSubscription.current_period_end).toLocaleDateString()}
-                      </span>
+
+                    {/* Cycle Progress Bar */}
+                    <div className="pt-1">
+                      <div className="w-full bg-black/10 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            proDaysRemaining <= 7 ? "bg-amber-500" : "bg-primary"
+                          }`}
+                          style={{
+                            width: `${Math.max(5, Math.min(100, (proDaysRemaining / 30) * 100))}%`
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] font-bold text-[#726F6D] mt-1">
+                        <span>{proDaysRemaining <= 7 ? "Expires this week - renewal recommended" : "Active VIP cycle"}</span>
+                        <span>{proDaysRemaining} of ~30 days</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -556,7 +599,7 @@ export default function Login() {
                     to="/pricing#marketplace"
                     className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs shadow-md transition-all flex items-center justify-center gap-1.5 hover:scale-[1.02]"
                   >
-                    <Zap size={13} className="text-[#111111]" /> Renew Pro Membership (80 Templates/mo) <ArrowRight size={13} />
+                    <Zap size={13} className="text-[#111111]" /> Renew Pro Membership (15 Templates/mo) <ArrowRight size={13} />
                   </Link>
                 ) : (
                   <Link
@@ -564,7 +607,7 @@ export default function Login() {
                     className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
                   >
                     <Zap size={13} className="inline mr-1.5 text-primary-amber" />
-                    Go Pro — Unlock 80 Downloads / Month <ArrowRight size={13} className="inline ml-1" />
+                    Go Pro — Unlock 15 Downloads / Month <ArrowRight size={13} className="inline ml-1" />
                   </Link>
                 )}
               </div>
@@ -833,7 +876,7 @@ export default function Login() {
                         </h3>
                         <p className="text-xs text-[#726F6D]">
                           {isProUser
-                            ? "80 complete presentation template downloads per billing cycle. Track quota and download history."
+                            ? "15 complete presentation template downloads per billing cycle. Track quota and download history."
                             : "Track your starter credit balance, slide usage, and deduction events"}
                         </p>
                       </div>
@@ -901,7 +944,7 @@ export default function Login() {
                               </div>
                             </div>
                             <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
-                              <Check size={9} /> {isProUser ? "Claimed (1 of 80)" : "Deducted"}
+                              <Check size={9} /> {isProUser ? `Claimed (1 of ${userSubscription?.slides_limit || 15})` : "Deducted"}
                             </span>
                           </div>
                         ))}
