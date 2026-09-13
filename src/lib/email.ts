@@ -327,3 +327,252 @@ export async function sendTemplatePurchaseReceiptEmail({
     html,
   });
 }
+
+/**
+ * 6. Complimentary Pro Membership Granted Email
+ */
+export async function sendProGrantedEmail({
+  clientEmail,
+  clientName,
+  slideQuota = 80,
+  durationMonths = 12,
+  partnershipReason = "VIP Strategic Client",
+  customMessage,
+  senderEmail = "design@theslidebee.com",
+  subject
+}: {
+  clientEmail: string;
+  clientName?: string;
+  slideQuota?: number;
+  durationMonths?: number;
+  partnershipReason?: string;
+  customMessage?: string;
+  senderEmail?: string;
+  subject?: string;
+}) {
+  const durationLabel = durationMonths >= 999 ? "Indefinite / Lifetime" : `${durationMonths} Months`;
+  const defaultSubject = `VIP Pro Membership Activated (${slideQuota} Slides/mo) — SlideBee Design Studio`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Executive Presentation Design Portal</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="display: inline-block; background-color: #FFF9E8; border: 1px solid #FCBF14; color: #936610; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 12px;">
+          VIP Pro Membership
+        </div>
+        <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Complimentary Pro Access Is Now Active</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          We are pleased to inform you that our leadership team has granted your account complimentary <strong>SlideBee Pro Studio Membership</strong>.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 12px;">Your Pro Membership Privileges</h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
+            <li><strong>Monthly Download Quota:</strong> ${slideQuota} Slide Downloads / month</li>
+            <li><strong>Complimentary Duration:</strong> ${durationLabel}</li>
+            <li><strong>Membership Justification:</strong> ${partnershipReason}</li>
+            <li><strong>Direct WhatsApp Studio Hotline:</strong> Unlocked in your portal dashboard</li>
+            <li><strong>VIP Deck Review:</strong> Priority turnaround on bespoke presentation briefs</li>
+          </ul>
+        </div>
+
+        ${customMessage ? `
+          <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
+            <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Note from SlideBee Studio Team:</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
+          </div>
+        ` : ''}
+
+        <div style="text-align: center; margin: 28px 0 16px 0;">
+          <a href="https://theslidebee.com/#/login" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Access Your Pro Portal
+          </a>
+        </div>
+
+        <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center; margin: 0;">
+          Simply sign in with <strong>${clientEmail}</strong> to begin redeeming your monthly slide credits.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • Official Inquiries: <a href="mailto:hello@theslidebee.com" style="color: #936610;">hello@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: senderEmail,
+    fromName: 'SlideBee Design Studio',
+    replyTo: senderEmail,
+    subject: subject?.trim() || defaultSubject,
+    html,
+  });
+}
+
+/**
+ * 7. Slide Credits Adjusted Email
+ */
+export async function sendCreditsAdjustedEmail({
+  clientEmail,
+  clientName,
+  creditsAdded,
+  newBalance,
+  reason = "Studio Bonus Allocation",
+  customMessage,
+  senderEmail = "design@theslidebee.com",
+  subject
+}: {
+  clientEmail: string;
+  clientName?: string;
+  creditsAdded: number;
+  newBalance: number;
+  reason?: string;
+  customMessage?: string;
+  senderEmail?: string;
+  subject?: string;
+}) {
+  const isAddition = creditsAdded > 0;
+  const defaultSubject = `Slide Credits Updated: ${isAddition ? `+${creditsAdded}` : creditsAdded} Credits — SlideBee Studio`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Executive Presentation Design Portal</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">Your Slide Download Credits Have Been Updated</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          Your SlideBee slide download credit balance has been modified by the studio operations team.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px;">
+            <span><strong>Credit Adjustment:</strong></span>
+            <span style="font-weight: 800; color: ${isAddition ? '#059669' : '#DC2626'};">${isAddition ? `+${creditsAdded}` : creditsAdded} Credits</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px;">
+            <span><strong>New Balance:</strong></span>
+            <span style="font-weight: 800; color: #111111;">${newBalance} Available Credits</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span><strong>Reason / Program:</strong></span>
+            <span style="color: #4B5563;">${reason}</span>
+          </div>
+        </div>
+
+        ${customMessage ? `
+          <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
+            <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Studio Notes:</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
+          </div>
+        ` : ''}
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="https://theslidebee.com/#/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Browse Master Presentation Catalog
+          </a>
+        </div>
+
+        <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center; margin: 0;">
+          Credits can be applied directly to unlock any master presentation decks (.pptx) with full commercial usage rights.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • Official Inquiries: <a href="mailto:hello@theslidebee.com" style="color: #936610;">hello@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: senderEmail,
+    fromName: 'SlideBee Design Studio',
+    replyTo: senderEmail,
+    subject: subject?.trim() || defaultSubject,
+    html,
+  });
+}
+
+/**
+ * 8. Account Deletion / Data Erasure Notice Email
+ */
+export async function sendAccountDeletionEmail({
+  clientEmail,
+  clientName,
+  reason = "User requested account closure",
+  customNotes,
+  senderEmail = "support@theslidebee.com",
+  subject
+}: {
+  clientEmail: string;
+  clientName?: string;
+  reason?: string;
+  customNotes?: string;
+  senderEmail?: string;
+  subject?: string;
+}) {
+  const defaultSubject = `Account Deletion & Data Privacy Confirmation — SlideBee Studio`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Account Security & Privacy Desk</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">Account Deletion Confirmed</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          This notice confirms that your SlideBee client account associated with <strong>${clientEmail}</strong> has been successfully closed and purged from our active ledger.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <strong style="color: #936610; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 4px;">Reason for Deletion:</strong>
+            <span style="color: #111111; font-weight: 600;">${reason}</span>
+          </div>
+          <div style="font-size: 13px;">
+            <strong style="color: #936610; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 4px;">Data Privacy Status:</strong>
+            <span style="color: #111111;">Your user profile, session authentication tokens, and active subscription entries have been purged in compliance with our data governance standards.</span>
+          </div>
+        </div>
+
+        ${customNotes ? `
+          <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
+            <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Additional Notes:</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customNotes}</p>
+          </div>
+        ` : ''}
+
+        <p style="font-size: 12px; color: #726F6D; line-height: 1.6; margin-top: 20px;">
+          If this action was taken in error or if you wish to commission new presentation decks in the future, you may register a new account anytime at <a href="https://theslidebee.com/#/login" style="color: #936610; font-weight: bold;">theslidebee.com</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Privacy Team • Inquiries: <a href="mailto:support@theslidebee.com" style="color: #936610;">support@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: senderEmail,
+    fromName: 'SlideBee Privacy Desk',
+    replyTo: senderEmail,
+    subject: subject?.trim() || defaultSubject,
+    html,
+  });
+}
+

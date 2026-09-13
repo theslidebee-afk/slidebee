@@ -53,6 +53,11 @@ import {
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
+import { 
+  sendProGrantedEmail, 
+  sendCreditsAdjustedEmail, 
+  sendAccountDeletionEmail 
+} from "../lib/email";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { DEFAULT_PORTFOLIO_CASE_STUDIES } from "./Examples";
 
@@ -193,6 +198,51 @@ export default function Admin() {
   const [grantProReason, setGrantProReason] = useState<string>("VIP Client Partnership");
   const [isProcessingProAction, setIsProcessingProAction] = useState(false);
   const [proActionFeedback, setProActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Option B In-Browser Email State for Pro Gifting
+  const [grantProSendEmail, setGrantProSendEmail] = useState(true);
+  const [grantProEmailSender, setGrantProEmailSender] = useState("design@theslidebee.com");
+  const [grantProEmailSubject, setGrantProEmailSubject] = useState("VIP Pro Membership Activated — SlideBee Design Studio");
+  const [grantProEmailMessage, setGrantProEmailMessage] = useState(
+    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has access to monthly slide downloads, our catalog of executive templates, and our VIP WhatsApp Studio hotline."
+  );
+
+  // Option C Adjust Slide Credits Modal & Mail State
+  const [isAdjustCreditsModalOpen, setIsAdjustCreditsModalOpen] = useState(false);
+  const [adjustCreditsTargetClient, setAdjustCreditsTargetClient] = useState<{
+    id: string;
+    email: string;
+    name?: string;
+    currentBalance: number;
+    currentTotal: number;
+  } | null>(null);
+  const [adjustCreditsDelta, setAdjustCreditsDelta] = useState<number>(25);
+  const [adjustCreditsReason, setAdjustCreditsReason] = useState<string>("VIP Studio Bonus Allocation");
+  const [adjustCreditsSendEmail, setAdjustCreditsSendEmail] = useState(true);
+  const [adjustCreditsEmailSender, setAdjustCreditsEmailSender] = useState("design@theslidebee.com");
+  const [adjustCreditsEmailSubject, setAdjustCreditsEmailSubject] = useState("Slide Credits Updated — SlideBee Studio");
+  const [adjustCreditsEmailMessage, setAdjustCreditsEmailMessage] = useState(
+    "We have credited your SlideBee account with additional slide download credits. You can redeem these immediately across any master presentation templates in our catalog."
+  );
+
+  // Account Deletion with In-Browser Mail Edition & Reason State
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<{
+    id: string;
+    email: string;
+    name?: string;
+    credits: number;
+    isPro: boolean;
+  } | null>(null);
+  const [deleteAccountReason, setDeleteAccountReason] = useState<string>("Client requested account closure");
+  const [deleteAccountCustomReason, setDeleteAccountCustomReason] = useState<string>("");
+  const [deleteAccountNotes, setDeleteAccountNotes] = useState<string>("");
+  const [deleteAccountSendEmail, setDeleteAccountSendEmail] = useState(true);
+  const [deleteAccountEmailSender, setDeleteAccountEmailSender] = useState("support@theslidebee.com");
+  const [deleteAccountEmailSubject, setDeleteAccountEmailSubject] = useState("Account Deletion & Data Privacy Confirmation — SlideBee Studio");
+  const [deleteAccountEmailBody, setDeleteAccountEmailBody] = useState<string>("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
   const TEMPLATE_CATEGORIES = [
     "All",
     "Pitch Decks",
@@ -489,7 +539,18 @@ export default function Admin() {
   };
 
   // User & Subscription Ledger Management Handlers
-  const handleGrantFreePro = async (targetEmail: string, customCredits = 80, durationMonths = 12, reason = "VIP Client Partnership") => {
+  const handleGrantFreePro = async (
+    targetEmail: string, 
+    customCredits = 80, 
+    durationMonths = 12, 
+    reason = "VIP Client Partnership",
+    emailOptions?: {
+      sendEmail?: boolean;
+      sender?: string;
+      subject?: string;
+      message?: string;
+    }
+  ) => {
     if (!targetEmail || !targetEmail.includes("@")) {
       alert("Please provide a valid client email address.");
       return;
@@ -545,9 +606,31 @@ export default function Admin() {
         }, { onConflict: "email" });
       }
 
+      // Dispatch customized email notice if enabled
+      let emailNotice = "";
+      if (emailOptions?.sendEmail !== false) {
+        try {
+          const emailRes = await sendProGrantedEmail({
+            clientEmail: cleanEmail,
+            clientName: existingProfile?.full_name || cleanEmail.split("@")[0],
+            slideQuota: customCredits,
+            durationMonths,
+            partnershipReason: reason,
+            customMessage: emailOptions?.message,
+            senderEmail: emailOptions?.sender || "design@theslidebee.com",
+            subject: emailOptions?.subject,
+          });
+          if (emailRes.success) {
+            emailNotice = " Official email dispatch sent to client.";
+          }
+        } catch (mailErr) {
+          console.warn("Failed to dispatch Pro grant email:", mailErr);
+        }
+      }
+
       setProActionFeedback({
         type: "success",
-        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} slide download credits and unlocked VIP WhatsApp Studio line.`,
+        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} slide download credits and unlocked VIP WhatsApp Studio line.${emailNotice}`,
       });
       setTimeout(() => setProActionFeedback(null), 6000);
       setIsGrantProModalOpen(false);
@@ -588,12 +671,41 @@ export default function Admin() {
     }
   };
 
-  const handleAdjustCredits = async (clientId: string, clientEmail: string, deltaCredits: number) => {
+  // Option C: Open Adjust Credits Modal
+  const handleOpenAdjustCreditsModal = (profile: any) => {
+    const currentBal = Number(profile.credits_balance ?? 5);
+    const currentTot = Number(profile.credits_total ?? 5);
+    const clientName = profile.full_name || profile.email?.split("@")[0] || "Client";
+    setAdjustCreditsTargetClient({
+      id: profile.id,
+      email: profile.email,
+      name: clientName,
+      currentBalance: currentBal,
+      currentTotal: currentTot,
+    });
+    setAdjustCreditsDelta(25);
+    setAdjustCreditsReason("VIP Studio Bonus Allocation");
+    setAdjustCreditsSendEmail(true);
+    setAdjustCreditsEmailSender("design@theslidebee.com");
+    setAdjustCreditsEmailSubject(`Slide Credits Updated (+25 Added) — SlideBee Studio`);
+    setAdjustCreditsEmailMessage(
+      `Hello ${clientName},\n\nWe have credited your SlideBee account with 25 complimentary slide download credits. You can redeem these immediately to download any master presentation decks in our catalog.`
+    );
+    setIsAdjustCreditsModalOpen(true);
+  };
+
+  // Option C: Execute Credit Adjustment with In-Browser Mail Dispatch
+  const handleExecuteAdjustCredits = async () => {
+    if (!adjustCreditsTargetClient) return;
     setIsProcessingProAction(true);
     try {
+      const clientId = adjustCreditsTargetClient.id;
+      const clientEmail = adjustCreditsTargetClient.email;
+      const deltaCredits = adjustCreditsDelta;
+
       const profile = profiles.find((p) => p.id === clientId || p.email?.toLowerCase() === clientEmail.toLowerCase());
-      const currentBal = Number(profile?.credits_balance) || 0;
-      const currentTot = Number(profile?.credits_total) || 5;
+      const currentBal = Number(profile?.credits_balance ?? adjustCreditsTargetClient.currentBalance) || 0;
+      const currentTot = Number(profile?.credits_total ?? adjustCreditsTargetClient.currentTotal) || 5;
       const newBal = Math.max(0, currentBal + deltaCredits);
       const newTot = Math.max(newBal, currentTot + (deltaCredits > 0 ? deltaCredits : 0));
 
@@ -605,17 +717,162 @@ export default function Admin() {
 
       if (error) throw error;
 
+      let emailNotice = "";
+      if (adjustCreditsSendEmail) {
+        try {
+          const emailRes = await sendCreditsAdjustedEmail({
+            clientEmail,
+            clientName: adjustCreditsTargetClient.name,
+            creditsAdded: deltaCredits,
+            newBalance: newBal,
+            reason: adjustCreditsReason,
+            customMessage: adjustCreditsEmailMessage,
+            senderEmail: adjustCreditsEmailSender,
+            subject: adjustCreditsEmailSubject,
+          });
+          if (emailRes.success) {
+            emailNotice = " Official email dispatch sent to client.";
+          }
+        } catch (mailErr) {
+          console.warn("Failed to dispatch credit update email:", mailErr);
+        }
+      }
+
       setProActionFeedback({
         type: "success",
-        message: `${deltaCredits > 0 ? `Added +${deltaCredits}` : `Adjusted ${deltaCredits}`} credits for ${clientEmail}. New balance: ${newBal} credits.`,
+        message: `${deltaCredits > 0 ? `Added +${deltaCredits}` : `Adjusted ${deltaCredits}`} credits for ${clientEmail}. New balance: ${newBal} credits.${emailNotice}`,
       });
       setTimeout(() => setProActionFeedback(null), 5000);
+      setIsAdjustCreditsModalOpen(false);
+      setAdjustCreditsTargetClient(null);
       await fetchDashboardData();
     } catch (err: any) {
       console.error("Failed to adjust credits:", err);
       alert(`Failed to update credits: ${err?.message || err}`);
     } finally {
       setIsProcessingProAction(false);
+    }
+  };
+
+  // Direct quick credit adder
+  const handleAdjustCredits = async (clientId: string, clientEmail: string, deltaCredits: number) => {
+    const profile = profiles.find((p) => p.id === clientId || p.email?.toLowerCase() === clientEmail.toLowerCase());
+    handleOpenAdjustCreditsModal({
+      id: clientId,
+      email: clientEmail,
+      full_name: profile?.full_name,
+      credits_balance: profile?.credits_balance,
+      credits_total: profile?.credits_total,
+    });
+    if (deltaCredits) {
+      setAdjustCreditsDelta(deltaCredits);
+      setAdjustCreditsEmailSubject(`Slide Credits Updated (+${deltaCredits} Added) — SlideBee Studio`);
+    }
+  };
+
+  // Account Deletion: Open Dedicated Modal with In-Browser Mail Composer
+  const handleOpenDeleteAccountModal = (client: any) => {
+    const isPro = Boolean(subscriptions.some(s => s.user_email?.toLowerCase() === client.email?.toLowerCase() && s.status === "active"));
+    const clientName = client.full_name || client.email.split("@")[0];
+    setDeleteAccountTarget({
+      id: client.id,
+      email: client.email,
+      name: clientName,
+      credits: Number(client.credits_balance ?? 0),
+      isPro,
+    });
+    const defaultReason = "Client requested account closure";
+    setDeleteAccountReason(defaultReason);
+    setDeleteAccountCustomReason("");
+    setDeleteAccountNotes("");
+    setDeleteAccountSendEmail(true);
+    setDeleteAccountEmailSender("support@theslidebee.com");
+    setDeleteAccountEmailSubject(`Account Closure & Data Privacy Confirmation — SlideBee Studio`);
+    setDeleteAccountEmailBody(
+`Dear ${clientName},
+
+This email confirms that your SlideBee client account associated with ${client.email} has been closed and purged from our active platform.
+
+Reason for Account Closure:
+${defaultReason}
+
+In compliance with our data governance standards and mutual NDA commitments, your profile data, session credentials, and associated subscriptions have been permanently removed.
+
+If this action was taken in error or if you wish to commission executive presentations in the future, you may register a new account anytime at theslidebee.com.
+
+Sincerely,
+SlideBee Executive Operations Desk
+support@theslidebee.com`
+    );
+    setIsDeleteAccountModalOpen(true);
+  };
+
+  // Account Deletion: Execute Deletion and Dispatch In-Browser Email
+  const handleExecuteDeleteAccount = async () => {
+    if (!deleteAccountTarget) return;
+    setIsDeletingAccount(true);
+    try {
+      const finalReason = deleteAccountCustomReason.trim() || deleteAccountReason;
+
+      // 1. Call server function /api/delete-account
+      try {
+        await fetch("/api/delete-account", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-slidebee-app-token": "slidebee_internal_app_2026",
+            "x-slidebee-admin-key": "slidebee_master_admin_2026",
+          },
+          body: JSON.stringify({
+            targetEmail: deleteAccountTarget.email,
+            targetUserId: deleteAccountTarget.id,
+            reason: finalReason,
+            customNotes: deleteAccountNotes,
+            sendNotice: deleteAccountSendEmail,
+            subject: deleteAccountEmailSubject,
+            senderEmail: deleteAccountEmailSender,
+            clientName: deleteAccountTarget.name,
+          }),
+        });
+      } catch (apiErr) {
+        console.warn("Server delete-account call notice:", apiErr);
+      }
+
+      // 2. Direct Supabase deletion guarantee
+      await supabase.from("subscriptions").delete().eq("user_email", deleteAccountTarget.email);
+      if (deleteAccountTarget.id) {
+        await supabase.from("profiles").delete().eq("id", deleteAccountTarget.id);
+      }
+
+      // 3. Fallback direct email dispatch if sendEmail is checked
+      if (deleteAccountSendEmail) {
+        try {
+          await sendAccountDeletionEmail({
+            clientEmail: deleteAccountTarget.email,
+            clientName: deleteAccountTarget.name,
+            reason: finalReason,
+            customNotes: deleteAccountEmailBody,
+            senderEmail: deleteAccountEmailSender,
+            subject: deleteAccountEmailSubject,
+          });
+        } catch (mailErr) {
+          console.warn("Direct deletion email notice:", mailErr);
+        }
+      }
+
+      setProActionFeedback({
+        type: "success",
+        message: `Account ${deleteAccountTarget.email} permanently purged. Deletion notice dispatched to client inbox.`,
+      });
+      setTimeout(() => setProActionFeedback(null), 6000);
+      setIsDeleteAccountModalOpen(false);
+      setDeleteAccountTarget(null);
+      await fetchDashboardData();
+    } catch (err: any) {
+      console.error("Failed to delete account:", err);
+      alert(`Failed to delete account: ${err?.message || err}`);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -6802,13 +7059,13 @@ SlideBee Design Studio`
                                 )}
                               </td>
                               <td className="p-4 text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-end gap-1.5">
                                   {sub.status === "active" ? (
                                     <button
                                       type="button"
                                       disabled={isProcessingProAction}
                                       onClick={() => handleRevokePro(sub.id, sub.user_email)}
-                                      className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                      className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
                                       title="Revoke Pro access for this account"
                                     >
                                       <UserX size={11} /> Revoke Pro
@@ -6824,6 +7081,24 @@ SlideBee Design Studio`
                                       <Gift size={11} /> Reactivate Pro
                                     </button>
                                   )}
+
+                                  <button
+                                    type="button"
+                                    disabled={isProcessingProAction}
+                                    onClick={() => {
+                                      const clientObj = matchedProfile || {
+                                        id: sub.user_id || "",
+                                        email: sub.user_email,
+                                        full_name: sub.user_email.split("@")[0],
+                                        credits_balance: sub.slides_limit || 80,
+                                      };
+                                      handleOpenDeleteAccountModal(clientObj);
+                                    }}
+                                    className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-2 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                    title="Delete account and dispatch closure notice"
+                                  >
+                                    <Trash2 size={11} /> Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -6954,6 +7229,15 @@ SlideBee Design Studio`
                                     >
                                       +50
                                     </button>
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleOpenAdjustCreditsModal(p)}
+                                      className="hex-pill-sm bg-primary/20 hover:bg-primary text-[#111111] border border-primary/40 px-2 py-0.5 font-extrabold text-[9px] cursor-pointer flex items-center gap-1"
+                                      title="Adjust credits and compose email notification"
+                                    >
+                                      <Edit3 size={9} /> Custom
+                                    </button>
                                   </div>
                                 </div>
                               </td>
@@ -6979,25 +7263,42 @@ SlideBee Design Studio`
                                 )}
                               </td>
                               <td className="p-4 text-right whitespace-nowrap">
-                                {isPro ? (
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {isPro ? (
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleRevokePro(clientSub!.id, p.email)}
+                                      className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                      title="Revoke Pro access"
+                                    >
+                                      <UserX size={11} /> Revoke Pro
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => {
+                                        setGrantProTargetEmail(p.email);
+                                        setIsGrantProModalOpen(true);
+                                      }}
+                                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
+                                      title="Grant Pro access and customize email notice"
+                                    >
+                                      <Gift size={12} /> Grant Free Pro
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     disabled={isProcessingProAction}
-                                    onClick={() => handleRevokePro(clientSub!.id, p.email)}
-                                    className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-3 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                    onClick={() => handleOpenDeleteAccountModal(p)}
+                                    className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-2 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                    title="Delete account and send closure notice"
                                   >
-                                    <UserX size={11} /> Revoke Pro
+                                    <Trash2 size={11} /> Delete
                                   </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    disabled={isProcessingProAction}
-                                    onClick={() => handleGrantFreePro(p.email, 80, 12)}
-                                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
-                                  >
-                                    <Gift size={12} /> Grant Free Pro
-                                  </button>
-                                )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -8888,6 +9189,72 @@ SlideBee Design Studio`
                     </li>
                   </ul>
                 </div>
+                {/* Option B: In-Browser Email Notice Section */}
+                <div className="bg-[#FFF9E8] border border-primary/40 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={grantProSendEmail}
+                        onChange={(e) => setGrantProSendEmail(e.target.checked)}
+                        className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                      />
+                      <span className="text-xs font-black text-[#111111]">
+                        Send In-Browser Email Notice to Client
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-[#726F6D] font-bold">
+                      Direct Resend Dispatch
+                    </span>
+                  </div>
+
+                  {grantProSendEmail && (
+                    <div className="space-y-2.5 pt-2 border-t border-primary/20">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                          From (Studio Sender):
+                        </label>
+                        <select
+                          value={grantProEmailSender}
+                          onChange={(e) => setGrantProEmailSender(e.target.value)}
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                        >
+                          <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                          <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
+                          <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                          Email Subject:
+                        </label>
+                        <input
+                          type="text"
+                          value={grantProEmailSubject}
+                          onChange={(e) => setGrantProEmailSubject(e.target.value)}
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                          Custom Note / Message Body:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={grantProEmailMessage}
+                          onChange={(e) => setGrantProEmailMessage(e.target.value)}
+                          placeholder="Add custom notes or instructions for this client..."
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-y leading-relaxed"
+                        />
+                        <span className="text-[10px] text-[#726F6D] block mt-0.5">
+                          Wrapped inside SlideBee's luxury cream HTML layout with VIP badge and access CTA.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/8">
@@ -8901,7 +9268,20 @@ SlideBee Design Studio`
                 <button
                   type="button"
                   disabled={isProcessingProAction || !grantProTargetEmail}
-                  onClick={() => handleGrantFreePro(grantProTargetEmail, grantProCredits, grantProDurationMonths, grantProReason)}
+                  onClick={() =>
+                    handleGrantFreePro(
+                      grantProTargetEmail,
+                      grantProCredits,
+                      grantProDurationMonths,
+                      grantProReason,
+                      {
+                        sendEmail: grantProSendEmail,
+                        sender: grantProEmailSender,
+                        subject: grantProEmailSubject,
+                        message: grantProEmailMessage,
+                      }
+                    )
+                  }
                   className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isProcessingProAction ? (
@@ -8918,9 +9298,450 @@ SlideBee Design Studio`
             </motion.div>
           </div>
         )}
+
+        {/* MODAL: ADJUST SLIDE CREDITS (Option C) */}
+        {isAdjustCreditsModalOpen && adjustCreditsTargetClient && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-[#111111]/8 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-[#111111]">
+                    <Coins size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-black text-base text-[#111111]">
+                      Adjust Slide Download Credits
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Top-up or modify slide credits with in-browser email dispatch
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdjustCreditsModalOpen(false);
+                    setAdjustCreditsTargetClient(null);
+                  }}
+                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Target Client Info */}
+              <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                  <span className="font-extrabold text-xs text-[#111111] block">
+                    {adjustCreditsTargetClient.name || "Client"}
+                  </span>
+                  <span className="text-[11px] text-[#726F6D]">
+                    {adjustCreditsTargetClient.email}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#726F6D] font-bold block uppercase">
+                    Current Balance
+                  </span>
+                  <span className="font-heading font-black text-sm text-[#111111]">
+                    {adjustCreditsTargetClient.currentBalance} Credits
+                  </span>
+                </div>
+              </div>
+
+              {/* Credit Adjustment Selector */}
+              <div className="space-y-3">
+                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                  Credits to Add / Adjust
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[10, 25, 50, 80].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        setAdjustCreditsDelta(amt);
+                        setAdjustCreditsEmailSubject(`Slide Credits Updated (+${amt} Added) — SlideBee Studio`);
+                      }}
+                      className={`py-2 rounded-xl text-xs font-black border transition-all cursor-pointer ${
+                        adjustCreditsDelta === amt
+                          ? "bg-[#111111] text-[#FCBF14] border-[#111111] shadow-sm"
+                          : "bg-white text-[#111111] border-[#111111]/15 hover:border-primary"
+                      }`}
+                    >
+                      +{amt}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs font-bold text-[#726F6D]">Custom Amount:</span>
+                  <input
+                    type="number"
+                    value={adjustCreditsDelta}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setAdjustCreditsDelta(val);
+                      setAdjustCreditsEmailSubject(`Slide Credits Updated (${val > 0 ? `+${val}` : val} Credits) — SlideBee Studio`);
+                    }}
+                    className="w-28 bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-black focus:border-primary outline-none"
+                  />
+                  <span className="text-xs text-[#726F6D]">
+                    New Total: <strong>{Math.max(0, adjustCreditsTargetClient.currentBalance + adjustCreditsDelta)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                  Adjustment Reason / Program
+                </label>
+                <input
+                  type="text"
+                  value={adjustCreditsReason}
+                  onChange={(e) => setAdjustCreditsReason(e.target.value)}
+                  placeholder="e.g. Complimentary Studio Bonus, Survey Reward, Enterprise Top-up"
+                  className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
+                />
+              </div>
+
+              {/* In-Browser Email Composer */}
+              <div className="bg-[#FFF9E8] border border-primary/40 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={adjustCreditsSendEmail}
+                      onChange={(e) => setAdjustCreditsSendEmail(e.target.checked)}
+                      className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                    />
+                    <span className="text-xs font-black text-[#111111]">
+                      Send In-Browser Email Notice to Client
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-[#726F6D] font-bold">
+                    Resend Router
+                  </span>
+                </div>
+
+                {adjustCreditsSendEmail && (
+                  <div className="space-y-2.5 pt-2 border-t border-primary/20">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                        From (Studio Sender):
+                      </label>
+                      <select
+                        value={adjustCreditsEmailSender}
+                        onChange={(e) => setAdjustCreditsEmailSender(e.target.value)}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      >
+                        <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                        <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
+                        <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                        Subject Line:
+                      </label>
+                      <input
+                        type="text"
+                        value={adjustCreditsEmailSubject}
+                        onChange={(e) => setAdjustCreditsEmailSubject(e.target.value)}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                        Message / Custom Note:
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={adjustCreditsEmailMessage}
+                        onChange={(e) => setAdjustCreditsEmailMessage(e.target.value)}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-y leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdjustCreditsModalOpen(false);
+                    setAdjustCreditsTargetClient(null);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingProAction}
+                  onClick={handleExecuteAdjustCredits}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessingProAction ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Updating Credits...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} /> Confirm & Update Credits
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: DELETE CLIENT ACCOUNT & IN-BROWSER MAIL EDITION */}
+        {isDeleteAccountModalOpen && deleteAccountTarget && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-red-200 p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-red-100 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600">
+                    <Trash2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-black text-base text-red-700">
+                      Delete Client Account & Notice
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Permanently purge client account from Supabase with customized notice
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteAccountModalOpen(false);
+                    setDeleteAccountTarget(null);
+                  }}
+                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Target Account Summary Banner */}
+              <div className="bg-red-50/70 border border-red-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="font-black text-xs text-red-900 block">
+                    {deleteAccountTarget.name}
+                  </span>
+                  <span className="text-[11px] text-red-700">
+                    {deleteAccountTarget.email}
+                  </span>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] text-red-700 font-bold block uppercase">
+                    Status / Credits
+                  </span>
+                  <span className="font-bold text-xs text-red-950">
+                    {deleteAccountTarget.isPro ? "Pro Member" : "Free Tier"} • {deleteAccountTarget.credits} Credits
+                  </span>
+                </div>
+              </div>
+
+              {/* Reason for Deletion */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                    Select Deletion Reason *
+                  </label>
+                  <select
+                    value={deleteAccountReason}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      setDeleteAccountReason(selected);
+                      const finalR = selected === "Other custom administrative reason" ? deleteAccountCustomReason : selected;
+                      setDeleteAccountEmailBody(
+`Dear ${deleteAccountTarget.name},
+
+This email confirms that your SlideBee client account associated with ${deleteAccountTarget.email} has been formally closed and purged from our active platform.
+
+Reason for Account Closure:
+${finalR || selected}
+
+In compliance with our data governance standards and mutual NDA commitments, your profile records, session credentials, and associated subscriptions have been permanently removed.
+
+If this action was taken in error or if you wish to commission executive presentations in the future, you may register a new account anytime at theslidebee.com.
+
+Sincerely,
+SlideBee Executive Operations Desk
+support@theslidebee.com`
+                      );
+                    }}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                  >
+                    <option value="Client requested account closure">Client requested account closure</option>
+                    <option value="Duplicate or test account purge">Duplicate or test account purge</option>
+                    <option value="Inactivity & offboarding">Inactivity & client offboarding</option>
+                    <option value="Terms of service violation / inappropriate use">Terms of service violation / inappropriate use</option>
+                    <option value="GDPR / data erasure compliance request">GDPR / data erasure compliance request</option>
+                    <option value="Other custom administrative reason">Other custom administrative reason</option>
+                  </select>
+                </div>
+
+                {deleteAccountReason === "Other custom administrative reason" && (
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                      Specify Custom Reason:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Migration to corporate parent contract..."
+                      value={deleteAccountCustomReason}
+                      onChange={(e) => setDeleteAccountCustomReason(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* IN-BROWSER MAIL EDITION BOX */}
+              <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-xl p-4 space-y-3 shadow-inner">
+                <div className="flex items-center justify-between pb-2 border-b border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <Mail size={16} className="text-primary-amber" />
+                    <span className="text-xs font-heading font-black text-[#111111]">
+                      In-Browser Deletion Notice Email Composer
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deleteAccountSendEmail}
+                      onChange={(e) => setDeleteAccountSendEmail(e.target.checked)}
+                      className="w-3.5 h-3.5 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                    />
+                    <span className="text-[11px] font-bold text-[#111111]">
+                      Dispatch Email
+                    </span>
+                  </label>
+                </div>
+
+                {deleteAccountSendEmail && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                          From (Studio Sender):
+                        </label>
+                        <select
+                          value={deleteAccountEmailSender}
+                          onChange={(e) => setDeleteAccountEmailSender(e.target.value)}
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                        >
+                          <option value="support@theslidebee.com">support@theslidebee.com (Privacy & Support)</option>
+                          <option value="hello@theslidebee.com">hello@theslidebee.com (General Operations)</option>
+                          <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                          To (Client Recipient):
+                        </label>
+                        <input
+                          type="email"
+                          readOnly
+                          value={deleteAccountTarget.email}
+                          className="w-full bg-black/5 border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                        Email Subject:
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteAccountEmailSubject}
+                        onChange={(e) => setDeleteAccountEmailSubject(e.target.value)}
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10px] font-black uppercase text-[#726F6D]">
+                          Editable Email Message Body:
+                        </label>
+                        <span className="text-[10px] text-primary-amber font-bold">
+                          Fully editable before sending
+                        </span>
+                      </div>
+                      <textarea
+                        rows={6}
+                        value={deleteAccountEmailBody}
+                        onChange={(e) => setDeleteAccountEmailBody(e.target.value)}
+                        placeholder="Customize deletion email message..."
+                        className="w-full bg-white border border-[#111111]/15 rounded-lg p-3 text-xs text-[#111111] font-mono leading-relaxed focus:border-primary outline-none resize-y"
+                      />
+                      <p className="text-[10px] text-[#726F6D] mt-1">
+                        The admin can add custom notes, instructions, or specific contractual details directly in this box.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-red-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteAccountModalOpen(false);
+                    setDeleteAccountTarget(null);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={handleExecuteDeleteAccount}
+                  className="hex-pill bg-red-600 hover:bg-red-700 text-white font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isDeletingAccount ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Purging Account & Dispatching Notice...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} /> Permanently Delete Account & Send Notice
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
     </div>
   );
 }
+
 

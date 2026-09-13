@@ -23,8 +23,12 @@ import {
   ShieldCheck,
   Zap,
   X,
-  MessageSquare
+  MessageSquare,
+  Trash2,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
@@ -45,6 +49,15 @@ export default function Login() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [signUpSuccessMessage, setSignUpSuccessMessage] = useState("");
+
+  // Self-service Account Deletion State
+  const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
+  const [clientDeleteReason, setClientDeleteReason] = useState("My presentation project is complete");
+  const [clientDeleteCustomReason, setClientDeleteCustomReason] = useState("");
+  const [clientDeleteComments, setClientDeleteComments] = useState("");
+  const [clientDeleteConfirmation, setClientDeleteConfirmation] = useState("");
+  const [isDeletingClientAccount, setIsDeletingClientAccount] = useState(false);
+  const [accountDeletedNotice, setAccountDeletedNotice] = useState("");
 
   // Deep Module: ClientLedgerAuth
   const {
@@ -200,6 +213,48 @@ export default function Login() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleDeleteMyAccount = async () => {
+    if (clientDeleteConfirmation.trim().toUpperCase() !== "DELETE") {
+      alert("Please type DELETE to confirm account closure.");
+      return;
+    }
+
+    if (!currentUser?.email) return;
+
+    setIsDeletingClientAccount(true);
+    try {
+      const finalReason = clientDeleteCustomReason.trim() || clientDeleteReason;
+
+      await fetch("/api/delete-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-slidebee-app-token": "slidebee_internal_app_2026",
+        },
+        body: JSON.stringify({
+          targetEmail: currentUser.email,
+          targetUserId: currentUser.id,
+          reason: finalReason,
+          customNotes: clientDeleteComments,
+          sendNotice: true,
+          clientName: userProfile?.full_name || currentUser.email.split("@")[0],
+        }),
+      });
+
+      // Sign out and clear session
+      await logout();
+      setIsDeleteAccountOpen(false);
+      setAccountDeletedNotice(
+        "Your SlideBee client account has been permanently deleted and personal data purged. A confirmation notice with your deletion details has been sent to your email."
+      );
+    } catch (err: any) {
+      console.error("Account deletion failed:", err);
+      alert(`Account deletion failed: ${err?.message || err}`);
+    } finally {
+      setIsDeletingClientAccount(false);
+    }
   };
 
   if (loading) {
@@ -975,6 +1030,165 @@ export default function Login() {
 
           </div>
 
+          {/* Account Privacy & Data Governance Section */}
+          <div className="mt-8 bg-white border border-[#111111]/10 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 shrink-0 mt-0.5">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h4 className="font-heading font-extrabold text-sm text-[#111111]">
+                  Account Privacy & Data Governance
+                </h4>
+                <p className="text-xs text-[#726F6D] mt-0.5 max-w-xl leading-relaxed">
+                  SlideBee operates under strict mutual NDAs. You have the permanent right to request full erasure of your account, download history, and personal profile data.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setClientDeleteReason("My presentation project is complete");
+                setClientDeleteCustomReason("");
+                setClientDeleteComments("");
+                setClientDeleteConfirmation("");
+                setIsDeleteAccountOpen(true);
+              }}
+              className="hex-pill bg-white hover:bg-red-50 text-[#726F6D] hover:text-red-700 border border-[#111111]/15 hover:border-red-300 px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0 cursor-pointer"
+            >
+              <Trash2 size={13} /> Delete Account
+            </button>
+          </div>
+
+          {/* CLIENT SELF-SERVICE DELETE ACCOUNT MODAL */}
+          <AnimatePresence>
+            {isDeleteAccountOpen && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="hex-card-lg bg-white border border-red-200 p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4"
+                >
+                  <div className="flex items-center justify-between border-b border-red-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                        <AlertTriangle size={18} />
+                      </div>
+                      <div>
+                        <h3 className="font-heading font-black text-sm text-red-700">
+                          Delete SlideBee Account
+                        </h3>
+                        <p className="text-[11px] text-[#726F6D]">
+                          Permanent removal of account and slide credits
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteAccountOpen(false)}
+                      className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-900 leading-relaxed">
+                    <strong>Warning:</strong> Deleting your account will immediately forfeit your remaining <strong>{creditsBalance} slide credits</strong> and revoke portal access. An official confirmation will be dispatched to <strong>{currentUser.email}</strong>.
+                  </div>
+
+                  {/* Reason for Deletion */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#111111] mb-1">
+                        Why are you deleting your account? *
+                      </label>
+                      <select
+                        value={clientDeleteReason}
+                        onChange={(e) => setClientDeleteReason(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      >
+                        <option value="My presentation project is complete">My presentation project is complete</option>
+                        <option value="Switching to alternative design workflow">Switching to alternative design workflow</option>
+                        <option value="Need to change or update primary email">Need to change or update primary email</option>
+                        <option value="Privacy / GDPR data erasure request">Privacy / GDPR data erasure request</option>
+                        <option value="Other reason">Other reason</option>
+                      </select>
+                    </div>
+
+                    {clientDeleteReason === "Other reason" && (
+                      <div>
+                        <label className="block text-xs font-bold text-[#111111] mb-1">
+                          Specify Reason:
+                        </label>
+                        <input
+                          type="text"
+                          value={clientDeleteCustomReason}
+                          onChange={(e) => setClientDeleteCustomReason(e.target.value)}
+                          placeholder="Briefly describe..."
+                          className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-bold text-[#111111] mb-1">
+                        Optional Feedback / Notes for our Team:
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={clientDeleteComments}
+                        onChange={(e) => setClientDeleteComments(e.target.value)}
+                        placeholder="Any suggestions or feedback on your experience?"
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-none leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-red-700 mb-1">
+                        Type <strong>DELETE</strong> to confirm:
+                      </label>
+                      <input
+                        type="text"
+                        value={clientDeleteConfirmation}
+                        onChange={(e) => setClientDeleteConfirmation(e.target.value)}
+                        placeholder="DELETE"
+                        className="w-full bg-white border border-red-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-red-900 focus:border-red-600 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteAccountOpen(false)}
+                      className="px-3.5 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isDeletingClientAccount || clientDeleteConfirmation.trim().toUpperCase() !== "DELETE"}
+                      onClick={handleDeleteMyAccount}
+                      className="hex-pill bg-red-600 hover:bg-red-700 text-white font-black text-xs px-5 py-2.5 shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    >
+                      {isDeletingClientAccount ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" /> Purging Account...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 size={13} /> Confirm Permanent Deletion
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
         </div>
       </div>
     );
@@ -987,6 +1201,13 @@ export default function Login() {
 
       <div className="hex-card-lg bg-white border-2 border-primary/40 p-8 sm:p-10 shadow-2xl max-w-md w-full relative z-10">
         
+        {accountDeletedNotice && (
+          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-start gap-2">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+            <span>{accountDeletedNotice}</span>
+          </div>
+        )}
+
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <SlideBeeLogo variant="light" size="lg" />
