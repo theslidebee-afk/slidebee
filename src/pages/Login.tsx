@@ -22,13 +22,15 @@ import {
   FileText,
   ShieldCheck,
   Zap,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ORDER_MILESTONES, getMilestoneIndex } from "./Admin";
 import { usePageSEO } from "../hooks/usePageSEO";
+import { WHATSAPP_CONFIG } from "../config/whatsapp";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -113,6 +115,27 @@ export default function Login() {
         });
     }
   }, [currentUser?.email]);
+
+  const [studioWhatsapp, setStudioWhatsapp] = useState<string>(WHATSAPP_CONFIG.phoneNumber || "919876543210");
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "contact_cms")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value?.whatsapp) setStudioWhatsapp(data.value.whatsapp);
+      });
+  }, []);
+
+  const isProUser = Boolean(
+    userSubscription &&
+    (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+    (userSubscription.plan_name?.toLowerCase().includes("pro") ||
+     userSubscription.plan_tier?.toLowerCase().includes("pro") ||
+     userSubscription.plan_name?.toLowerCase().includes("membership"))
+  );
 
   // Handle Sign In / Sign Up via Deep Module
   const handleSubmitAuth = async (e: React.FormEvent) => {
@@ -441,27 +464,54 @@ export default function Login() {
 
               {/* Direct Studio Channel */}
               <div className="hex-card bg-white border-2 border-primary/40 p-5 shadow-sm">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-1.5">
-                  Direct Studio Contact
-                </h4>
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber">
+                    Direct Studio Contact
+                  </h4>
+                  {isProUser && (
+                    <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[9px] font-black px-2 py-0.5 border border-primary/40">
+                      Pro VIP Line
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-[#726F6D] font-medium leading-relaxed mb-3">
-                  Need an urgent 24-hour turnaround or custom master deck? Connect directly with your dedicated art director.
+                  Need an urgent 24-hour turnaround or custom master deck? Connect directly with our studio directors.
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <a
                     href="mailto:support@theslidebee.com"
                     className="hex-pill w-full bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] font-black py-2 text-xs flex items-center justify-center gap-1.5 border border-primary/40 transition-colors"
                   >
                     <Mail size={13} /> support@theslidebee.com
                   </a>
-                  <a
-                    href="https://wa.me/919999999999?text=Hello%20SlideBee%20Team"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hex-pill w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black py-2 text-xs flex items-center justify-center gap-1.5 border border-emerald-300 transition-colors"
-                  >
-                    Direct WhatsApp Studio
-                  </a>
+
+                  {isProUser ? (
+                    <a
+                      href={`https://wa.me/${studioWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                        `Hello SlideBee Team! I am an active Pro Member (${currentUser?.email || "Client"}) reaching out for direct design studio assistance.`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hex-pill w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black py-2.5 text-xs flex items-center justify-center gap-2 border border-emerald-300 transition-colors shadow-sm"
+                    >
+                      <MessageSquare size={13} className="text-emerald-600" /> Direct WhatsApp Studio
+                    </a>
+                  ) : (
+                    <div className="p-3 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-center">
+                      <p className="text-[11px] font-bold text-gray-700 flex items-center justify-center gap-1.5 mb-1">
+                        <Lock size={12} className="text-gray-400" /> Direct WhatsApp Line (Pro Members Only)
+                      </p>
+                      <p className="text-[10px] text-[#726F6D] mb-2 leading-tight">
+                        24/7 direct messaging with senior art directors is reserved exclusively for active Pro subscribers.
+                      </p>
+                      <Link
+                        to="/pricing#marketplace"
+                        className="text-[10px] font-black text-primary-amber hover:underline inline-flex items-center gap-1"
+                      >
+                        Upgrade to Pro to Unlock <ArrowRight size={10} />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
