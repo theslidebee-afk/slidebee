@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { MagneticButton } from "../components/MagneticButton";
 import { 
@@ -56,12 +56,27 @@ export default function Services() {
     description: "Full-service presentation design studio: pitch deck design, keynote polish, board decks, financial data visualization, and master template design in 24h–48h.",
   });
 
+  const [searchParams] = useSearchParams();
+  const serviceParam = searchParams.get("service");
+
   const [sliderPosition, setSliderPosition] = useState(50);
-  const [selectedService, setSelectedService] = useState<string>("redesign");
+  const [selectedService, setSelectedService] = useState<string>(() => {
+    const validServices = ["redesign", "pitch", "keynote", "data", "template", "sales"];
+    const initialParam = new URLSearchParams(window.location.hash.split("?")[1] || window.location.search).get("service");
+    return initialParam && validServices.includes(initialParam) ? initialParam : "redesign";
+  });
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
   const [topMarqueeSlides, setTopMarqueeSlides] = useState<string[]>(defaultTopMarqueeSlides);
   const [bottomMarqueeSlides, setBottomMarqueeSlides] = useState<string[]>(defaultBottomMarqueeSlides);
   const [workedCompanies, setWorkedCompanies] = useState<{ name: string; category: string }[]>(defaultWorkedCompanies);
+
+  useEffect(() => {
+    const validServices = ["redesign", "pitch", "keynote", "data", "template", "sales"];
+    if (serviceParam && validServices.includes(serviceParam)) {
+      setSelectedService(serviceParam);
+      setSliderPosition(50);
+    }
+  }, [serviceParam]);
 
   useEffect(() => {
     // 1. Fetch custom services configuration

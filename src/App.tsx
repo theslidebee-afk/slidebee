@@ -1,4 +1,5 @@
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import ScrollToTop from "./components/ScrollToTop";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Templates from "./pages/Templates";
@@ -27,6 +28,7 @@ function App() {
   return (
     <CurrencyProvider>
       <Router>
+        <ScrollToTop />
         <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
           <Routes>
             {/* 1. Admin Studio (no public Navbar or Footer) */}

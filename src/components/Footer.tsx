@@ -29,13 +29,19 @@ export default function Footer() {
       });
   }, []);
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  };
+
   return (
     <footer className="bg-foreground text-white pt-20 pb-24 md:pb-10 border-t border-white/10 relative z-10">
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="space-y-6">
-            <Link to="/" className="inline-block">
+            <Link to="/" onClick={scrollToTop} className="inline-block">
               <SlideBeeLogo variant="dark" size="lg" />
             </Link>
             <p className="text-gray-400 font-light leading-relaxed text-xs sm:text-sm">
@@ -93,11 +99,11 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-6 text-white uppercase tracking-wider">Quick Links</h4>
             <ul className="space-y-4 text-gray-400">
-              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
-              <li><Link to="/services" className="hover:text-primary transition-colors">Our Services</Link></li>
-              <li><Link to="/examples" className="hover:text-primary transition-colors">Portfolio & Examples</Link></li>
-              <li><Link to="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-              <li><Link to="/blog" className="hover:text-primary transition-colors">Blog & Insights</Link></li>
+              <li><Link to="/about" onClick={scrollToTop} className="hover:text-primary transition-colors">About Us</Link></li>
+              <li><Link to="/services" onClick={scrollToTop} className="hover:text-primary transition-colors">Our Services</Link></li>
+              <li><Link to="/examples" onClick={scrollToTop} className="hover:text-primary transition-colors">Portfolio & Examples</Link></li>
+              <li><Link to="/pricing" onClick={scrollToTop} className="hover:text-primary transition-colors">Pricing</Link></li>
+              <li><Link to="/blog" onClick={scrollToTop} className="hover:text-primary transition-colors">Blog & Insights</Link></li>
             </ul>
           </div>
 
@@ -105,11 +111,11 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-6 text-white uppercase tracking-wider">Services</h4>
             <ul className="space-y-4 text-gray-400">
-              <li><Link to="/services" className="hover:text-primary transition-colors">Redesign & Visuals</Link></li>
-              <li><Link to="/services" className="hover:text-primary transition-colors">Handwritten Conversions</Link></li>
-              <li><Link to="/services" className="hover:text-primary transition-colors">Quick Scrub & Cleanup</Link></li>
-              <li><Link to="/services" className="hover:text-primary transition-colors">Data Visualization</Link></li>
-              <li><Link to="/services" className="hover:text-primary transition-colors">Custom Templates</Link></li>
+              <li><Link to="/services?service=redesign" onClick={scrollToTop} className="hover:text-primary transition-colors">Redesign & Visuals</Link></li>
+              <li><Link to="/services?service=pitch" onClick={scrollToTop} className="hover:text-primary transition-colors">Investor Pitch Decks</Link></li>
+              <li><Link to="/services?service=keynote" onClick={scrollToTop} className="hover:text-primary transition-colors">Executive Keynotes</Link></li>
+              <li><Link to="/services?service=data" onClick={scrollToTop} className="hover:text-primary transition-colors">Data Visualization</Link></li>
+              <li><Link to="/services?service=template" onClick={scrollToTop} className="hover:text-primary transition-colors">Custom Templates</Link></li>
             </ul>
           </div>
 
@@ -136,9 +142,9 @@ export default function Footer() {
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <p>&copy; {currentYear} {footerConfig.copyrightText || "SlideBee. All rights reserved."}</p>
           <div className="flex gap-6">
-            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-            <Link to="/login" className="hover:text-white transition-colors">Admin & Client Login</Link>
+            <Link to="/privacy" onClick={scrollToTop} className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms" onClick={scrollToTop} className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link to="/login" onClick={scrollToTop} className="hover:text-white transition-colors">Admin & Client Login</Link>
           </div>
         </div>
       </div>
