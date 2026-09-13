@@ -150,6 +150,9 @@ export default function Admin() {
   const [storageSearchTerm, setStorageSearchTerm] = useState("");
   const [storageFolderFilter, setStorageFolderFilter] = useState<string>("all");
   const [copiedUrlKey, setCopiedUrlKey] = useState<string | null>(null);
+  const [isRefreshingDashboard, setIsRefreshingDashboard] = useState(false);
+  const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "success" | "error">("idle");
+  const [lastRefreshedTime, setLastRefreshedTime] = useState<string | null>(null);
 
   // Single Template Modal State
   const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
@@ -343,83 +346,85 @@ export default function Admin() {
   }, [session]);
 
   const fetchDashboardData = async () => {
-    // Fetch Orders
-    const { data: ordersData } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (ordersData) setOrders(ordersData);
+    setIsRefreshingDashboard(true);
+    setRefreshFeedback("idle");
 
-    // Fetch Waitlist
-    const { data: waitlistData } = await supabase
-      .from("waitlist")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (waitlistData) setWaitlist(waitlistData);
-
-    // Fetch Templates
-    const { data: templatesData } = await supabase
-      .from("templates")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (templatesData && templatesData.length > 0) {
-      setTemplates(templatesData);
-    } else {
-      // Resilient fallback for PIN / local admin session
-      const { data: catalogData } = await supabase
-        .from("v_storefront_catalog")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (catalogData && catalogData.length > 0) {
-        setTemplates(catalogData);
-      }
-    }
-
-    // Fetch Profiles & Subscriptions
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (profilesData) setProfiles(profilesData);
-
-    const { data: subsData } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (subsData) setSubscriptions(subsData);
-
-    // Fetch Site Configurations
-    const { data: configData } = await supabase
-      .from("site_config")
-      .select("*");
-    if (configData) {
-      const configMap: Record<string, any> = {};
-      configData.forEach((c) => {
-        configMap[c.key] = c.value;
-      });
-      setSiteConfigs(configMap);
-      if (configMap["show_template_metrics"]) {
-        setTemplateMetricsSettings({
-          show_stars: Boolean(configMap["show_template_metrics"].show_stars),
-          show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
-        });
-      }
-      if (configMap["razorpay_settings"]) {
-        const rz = configMap["razorpay_settings"];
-        if (rz.key_id) setRazorpayKeyId(rz.key_id);
-        if (rz.mode) setRazorpayMode(rz.mode);
-      }
-      if (configMap["zoho_mail_settings"]) {
-        const zh = configMap["zoho_mail_settings"];
-        if (zh.deliverables) setZohoDeliverableEmail(zh.deliverables);
-        if (zh.inquiries) setZohoInquiriesEmail(zh.inquiries);
-        if (zh.billing) setZohoBillingEmail(zh.billing);
-      }
-    }
-
-    // Fetch Live Storage Telemetry from Cloudflare R2 bucket (slidebee)
     try {
-      const r2Data = await fetchR2Telemetry();
+      // Parallel concurrent retrieval for instant sub-second refresh
+      const [
+        ordersRes,
+        waitlistRes,
+        templatesRes,
+        profilesRes,
+        subsRes,
+        configRes,
+        r2Data
+      ] = await Promise.all([
+        supabase.from("orders").select("*").order("created_at", { ascending: false }),
+        supabase.from("waitlist").select("*").order("created_at", { ascending: false }),
+        supabase.from("templates").select("*").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
+        supabase.from("site_config").select("*"),
+        fetchR2Telemetry().catch((err) => {
+          console.warn("Cloudflare R2 telemetry fetch error:", err);
+          return null;
+        })
+      ]);
+
+      // Update Orders
+      if (ordersRes.data) setOrders(ordersRes.data);
+
+      // Update Waitlist
+      if (waitlistRes.data) setWaitlist(waitlistRes.data);
+
+      // Update Templates
+      if (templatesRes.data && templatesRes.data.length > 0) {
+        setTemplates(templatesRes.data);
+      } else {
+        // Resilient fallback for PIN / local admin session or catalog view
+        const { data: catalogData } = await supabase
+          .from("v_storefront_catalog")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (catalogData) {
+          setTemplates(catalogData);
+        } else if (templatesRes.data) {
+          setTemplates(templatesRes.data);
+        }
+      }
+
+      // Update Profiles & Subscriptions
+      if (profilesRes.data) setProfiles(profilesRes.data);
+      if (subsRes.data) setSubscriptions(subsRes.data);
+
+      // Update Site Configurations
+      if (configRes.data) {
+        const configMap: Record<string, any> = {};
+        configRes.data.forEach((c) => {
+          configMap[c.key] = c.value;
+        });
+        setSiteConfigs(configMap);
+        if (configMap["show_template_metrics"]) {
+          setTemplateMetricsSettings({
+            show_stars: Boolean(configMap["show_template_metrics"].show_stars),
+            show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
+          });
+        }
+        if (configMap["razorpay_settings"]) {
+          const rz = configMap["razorpay_settings"];
+          if (rz.key_id) setRazorpayKeyId(rz.key_id);
+          if (rz.mode) setRazorpayMode(rz.mode);
+        }
+        if (configMap["zoho_mail_settings"]) {
+          const zh = configMap["zoho_mail_settings"];
+          if (zh.deliverables) setZohoDeliverableEmail(zh.deliverables);
+          if (zh.inquiries) setZohoInquiriesEmail(zh.inquiries);
+          if (zh.billing) setZohoBillingEmail(zh.billing);
+        }
+      }
+
+      // Update Cloudflare R2 Storage Stats
       if (r2Data && r2Data.success) {
         setStorageStats({
           pptxMB: r2Data.pptxMB,
@@ -433,9 +438,21 @@ export default function Admin() {
           objects: r2Data.objects || [],
           loading: false,
         });
+      } else if (r2Data) {
+        setStorageStats((prev: any) => ({ ...prev, loading: false }));
       }
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastRefreshedTime(timeStr);
+      setRefreshFeedback("success");
+      setTimeout(() => setRefreshFeedback("idle"), 2500);
     } catch (err) {
-      console.warn("Cloudflare R2 telemetry fetch error:", err);
+      console.error("Dashboard refresh error:", err);
+      setRefreshFeedback("error");
+      setTimeout(() => setRefreshFeedback("idle"), 3000);
+    } finally {
+      setIsRefreshingDashboard(false);
     }
   };
 
@@ -1794,10 +1811,39 @@ SlideBee Design Studio`
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
+              disabled={isRefreshingDashboard}
               onClick={fetchDashboardData}
-              className="hex-pill bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 px-4 py-2 text-xs font-extrabold hover:bg-black/5 transition-all flex items-center gap-1.5"
+              className={`hex-pill text-xs font-extrabold px-4 py-2 flex items-center gap-1.5 transition-all shadow-sm ${
+                refreshFeedback === "success"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
+                  : refreshFeedback === "error"
+                  ? "bg-red-50 text-red-800 border border-red-300"
+                  : "bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 hover:bg-black/5 hover:border-primary/50"
+              } disabled:opacity-60 disabled:cursor-not-allowed`}
+              title={lastRefreshedTime ? `Last synced at ${lastRefreshedTime}` : "Fetch latest live data from database"}
             >
-              <RefreshCw size={12} /> Refresh Data
+              {isRefreshingDashboard ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin text-primary-amber" />
+                  <span>Refreshing...</span>
+                </>
+              ) : refreshFeedback === "success" ? (
+                <>
+                  <Check size={12} className="text-emerald-600" />
+                  <span>Updated {lastRefreshedTime || "Just Now"}</span>
+                </>
+              ) : refreshFeedback === "error" ? (
+                <>
+                  <AlertCircle size={12} className="text-red-600" />
+                  <span>Sync Failed</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={12} />
+                  <span>Refresh Data</span>
+                </>
+              )}
             </button>
             <button
               onClick={handleLogout}
