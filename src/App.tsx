@@ -29,12 +29,11 @@ function App() {
       <Router>
         <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
           <Routes>
-            {/* 1. Public Default Landing View: Coming Soon */}
-            <Route path="/" element={<ComingSoon />} />
-            <Route path="/coming-soon" element={<ComingSoon />} />
-
-            {/* 2. Admin Studio (no public Navbar or Footer) */}
+            {/* 1. Admin Studio (no public Navbar or Footer) */}
             <Route path="/admin/*" element={<Admin />} />
+
+            {/* 2. Coming Soon (available via explicit URL) */}
+            <Route path="/coming-soon" element={<ComingSoon />} />
 
             {/* 3. Full Platform Pages (with Navbar & Footer) */}
             <Route
@@ -44,6 +43,7 @@ function App() {
                   <Navbar />
                   <main className="flex-grow">
                     <Routes>
+                      <Route path="/" element={<Home />} />
                       <Route path="/home" element={<Home />} />
                       <Route path="/templates" element={<Templates />} />
                       <Route path="/templates/:id" element={<TemplateDetail />} />
