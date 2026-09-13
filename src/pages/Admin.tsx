@@ -46,7 +46,7 @@ import {
   ShieldCheck,
   Cloud,
   Loader2,
-  Sparkles,
+  Crown,
   Gift,
   UserX
 } from "lucide-react";
@@ -2060,7 +2060,7 @@ SlideBee Design Studio`
                 className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
               >
                 <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <Sparkles size={18} className="text-amber-500" />
+                  <Crown size={18} className="text-amber-500" />
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
                     Clients & Pro
                   </span>
@@ -2269,7 +2269,7 @@ SlideBee Design Studio`
                           : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
                       }`}
                     >
-                      <Sparkles size={13} className="text-amber-500" /> Active Pro Retainers ({subscriptions.filter(s => s.status === "active").length})
+                      <Crown size={13} className="text-amber-500" /> Active Pro Retainers ({subscriptions.filter(s => s.status === "active").length})
                     </button>
                     <button
                       onClick={() => setClientFilter("free")}
@@ -6643,7 +6643,7 @@ SlideBee Design Studio`
                   </span>
                   <div className="text-3xl font-heading font-black text-amber-600 flex items-center gap-2">
                     {activeSubscriptions.length}
-                    <Sparkles size={20} className="text-amber-500" />
+                    <Crown size={20} className="text-amber-500" />
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
                     {complimentarySubs.length} Complimentary • {activeSubscriptions.length - complimentarySubs.length} Paid
@@ -6793,7 +6793,7 @@ SlideBee Design Studio`
                               <td className="p-4 whitespace-nowrap">
                                 {sub.status === "active" ? (
                                   <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 inline-flex items-center gap-1">
-                                    <Sparkles size={10} className="text-emerald-600" /> Active
+                                    <CheckCircle2 size={10} className="text-emerald-600" /> Active
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-300 text-[10px] font-bold px-2.5 py-0.5">
@@ -6922,7 +6922,7 @@ SlideBee Design Studio`
                               <td className="p-4 whitespace-nowrap">
                                 {isPro ? (
                                   <span className="hex-pill-sm bg-amber-50 text-amber-800 border border-amber-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
-                                    <Sparkles size={11} className="text-amber-500" /> Pro Member
+                                    <Crown size={11} className="text-amber-500" /> Pro Member
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
