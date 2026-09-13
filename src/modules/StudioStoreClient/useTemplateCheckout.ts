@@ -103,7 +103,82 @@ export function useTemplateCheckout() {
     }
   };
 
-  // 2. Razorpay Checkout Flow (Payment Gateway Integration)
+  // 2. Pro Membership Template Download (80 Monthly Quota - Applies to ANY template)
+  const executeProTemplateDownload = async (
+    template: StoreTemplate,
+    clientEmail: string
+  ): Promise<CheckoutResult> => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      if (!clientEmail) {
+        throw new Error("Please log in to your Pro account to download templates.");
+      }
+
+      const res = await fetch("/api/redeem-pro-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientEmail,
+          templateId: template.id
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to download template with Pro quota.");
+      }
+
+      const pptxUrl = data.downloadUrl || template.download_url || template.image_url;
+      const fileName = data.fileName || template.file_name || `${template.code}_Master.pptx`;
+
+      setIsPurchased(true);
+      setPurchasedClientEmail(clientEmail);
+      setDeliverableUrl(pptxUrl);
+
+      // Auto-trigger browser download for client
+      if (typeof window !== "undefined" && pptxUrl) {
+        try {
+          const dlLink = document.createElement("a");
+          dlLink.href = pptxUrl;
+          dlLink.download = fileName;
+          dlLink.target = "_blank";
+          document.body.appendChild(dlLink);
+          dlLink.click();
+          document.body.removeChild(dlLink);
+        } catch (dlErr) {
+          console.warn("Auto-download notice:", dlErr);
+        }
+      }
+
+      // Trigger deliverable email asynchronously in background
+      sendTemplatePurchaseReceiptEmail({
+        clientEmail,
+        clientName: clientEmail.split("@")[0],
+        templateTitle: template.title,
+        templateCode: template.code,
+        downloadUrl: pptxUrl.startsWith("http") ? pptxUrl : `https://theslidebee.com${pptxUrl}`,
+        amountPaid: 0,
+        currency: "INR"
+      }).catch(err => console.warn("Receipt email dispatch notice:", err));
+
+      return {
+        success: true,
+        message: data.message || "Template successfully downloaded using Pro quota.",
+        downloadUrl: pptxUrl,
+        isCreditRedemption: true
+      };
+    } catch (err: any) {
+      setError(err.message || "Pro download failed.");
+      return { success: false, message: err.message };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 3. Razorpay Checkout Flow (Payment Gateway Integration)
   const executeRazorpayCheckout = async (
     template: StoreTemplate,
     currency: "USD" | "INR",
@@ -232,6 +307,7 @@ export function useTemplateCheckout() {
     deliverableUrl,
     error,
     executeCreditRedemption,
+    executeProTemplateDownload,
     executeRazorpayCheckout
   };
 }

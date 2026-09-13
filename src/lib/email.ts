@@ -373,7 +373,8 @@ export async function sendProGrantedEmail({
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 12px;">Your Pro Membership Privileges</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
-            <li><strong>Monthly Download Quota:</strong> ${slideQuota} Slide Downloads / month</li>
+            <li><strong>Monthly Download Quota:</strong> ${slideQuota} Full Presentation Template Downloads / month</li>
+            <li><strong>Unrestricted Catalog Access:</strong> All presentation decks in our store are 100% unlocked for you</li>
             <li><strong>Complimentary Duration:</strong> ${durationLabel}</li>
             <li><strong>Membership Justification:</strong> ${partnershipReason}</li>
             <li><strong>Direct WhatsApp Studio Hotline:</strong> Unlocked in your portal dashboard</li>
@@ -389,13 +390,13 @@ export async function sendProGrantedEmail({
         ` : ''}
 
         <div style="text-align: center; margin: 28px 0 16px 0;">
-          <a href="https://theslidebee.com/#/login" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
-            Access Your Pro Portal
+          <a href="https://theslidebee.com/#/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Browse & Download Templates
           </a>
         </div>
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center; margin: 0;">
-          Simply sign in with <strong>${clientEmail}</strong> to begin redeeming your monthly slide credits.
+          Simply sign in with <strong>${clientEmail}</strong> to begin downloading up to ${slideQuota} full master presentation decks this month.
         </p>
       </div>
 
@@ -570,6 +571,150 @@ export async function sendAccountDeletionEmail({
     to: clientEmail,
     fromEmail: senderEmail,
     fromName: 'SlideBee Privacy Desk',
+    replyTo: senderEmail,
+    subject: subject?.trim() || defaultSubject,
+    html,
+  });
+}
+
+/**
+ * 9. Pro Membership 1-Week Expiration Reminder Email
+ */
+export async function sendProExpiringSoonEmail({
+  clientEmail,
+  clientName,
+  daysRemaining = 7,
+  expiryDate,
+  remainingQuota = 80,
+  senderEmail = "design@theslidebee.com",
+  subject,
+}: {
+  clientEmail: string;
+  clientName?: string;
+  daysRemaining?: number;
+  expiryDate?: string;
+  remainingQuota?: number;
+  senderEmail?: string;
+  subject?: string;
+}) {
+  const defaultSubject = `Reminder: Your SlideBee Pro Membership Expires in ${daysRemaining} Days`;
+  const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "in 7 days";
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Membership & Account Operations</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="display: inline-block; background-color: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 12px;">
+          Expiring Soon (${daysRemaining} Days Left)
+        </div>
+        <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Pro Membership Concludes on ${formattedExpiry}</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || "there"}</strong>,<br/><br/>
+          This is a friendly reminder that your SlideBee Pro Studio Membership is scheduled to conclude on <strong>${formattedExpiry}</strong>.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 10px;">Cycle Summary</h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
+            <li><strong>Remaining Template Downloads:</strong> ${remainingQuota} of 80 full presentation decks</li>
+            <li><strong>Expiration Date:</strong> ${formattedExpiry}</li>
+            <li><strong>Perks At Stake:</strong> Unrestricted marketplace template downloads and direct WhatsApp Studio hotline</li>
+          </ul>
+        </div>
+
+        <p style="font-size: 13px; color: #4B5563; line-height: 1.6;">
+          Be sure to download any desired master PowerPoint decks before your validity period ends, or renew today to keep your unlimited workflow active without disruption.
+        </p>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="https://theslidebee.com/#/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Renew Pro Membership
+          </a>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio Desk • <a href="mailto:support@theslidebee.com" style="color: #936610;">support@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: senderEmail,
+    fromName: "SlideBee Studio",
+    replyTo: senderEmail,
+    subject: subject?.trim() || defaultSubject,
+    html,
+  });
+}
+
+/**
+ * 10. Pro Membership Expired / Concluded Email
+ */
+export async function sendProExpiredEmail({
+  clientEmail,
+  clientName,
+  expiryDate,
+  senderEmail = "design@theslidebee.com",
+  subject,
+}: {
+  clientEmail: string;
+  clientName?: string;
+  expiryDate?: string;
+  senderEmail?: string;
+  subject?: string;
+}) {
+  const defaultSubject = `Your SlideBee Pro Membership Has Concluded`;
+  const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "recently";
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Membership Services</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="display: inline-block; background-color: #FEE2E2; border: 1px solid #EF4444; color: #991B1B; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 12px;">
+          Membership Expired
+        </div>
+        <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Pro Membership Ended on ${formattedExpiry}</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${clientName || "there"}</strong>,<br/><br/>
+          Your SlideBee Pro Studio Membership ended on <strong>${formattedExpiry}</strong>. Your account has safely transitioned to our standard Free Tier.
+        </p>
+
+        <div style="background-color: #F9FAFB; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #E5E7EB;">
+          <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #4B5563; margin-top: 0; margin-bottom: 10px;">What This Means:</h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563; line-height: 1.8;">
+            <li>All templates you previously downloaded remain in your account forever with perpetual commercial rights.</li>
+            <li>Free Pro 80-template monthly quota and VIP WhatsApp channel are now paused.</li>
+            <li>You can still purchase individual presentation decks or reactivate Pro anytime.</li>
+          </ul>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="https://theslidebee.com/#/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Reactivate Pro Membership
+          </a>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • <a href="mailto:support@theslidebee.com" style="color: #936610;">support@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: senderEmail,
+    fromName: "SlideBee Studio",
     replyTo: senderEmail,
     subject: subject?.trim() || defaultSubject,
     html,

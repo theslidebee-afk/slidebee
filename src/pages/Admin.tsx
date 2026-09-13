@@ -48,13 +48,16 @@ import {
   Loader2,
   Crown,
   Gift,
-  UserX
+  UserX,
+  Clock
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import { 
   sendProGrantedEmail, 
+  sendProExpiringSoonEmail,
+  sendProExpiredEmail,
   sendCreditsAdjustedEmail, 
   sendAccountDeletionEmail 
 } from "../lib/email";
@@ -194,7 +197,7 @@ export default function Admin() {
   const [isGrantProModalOpen, setIsGrantProModalOpen] = useState(false);
   const [grantProTargetEmail, setGrantProTargetEmail] = useState("");
   const [grantProCredits, setGrantProCredits] = useState<number>(80);
-  const [grantProDurationMonths, setGrantProDurationMonths] = useState<number>(12);
+  const [grantProDurationMonths, setGrantProDurationMonths] = useState<number>(1);
   const [grantProReason, setGrantProReason] = useState<string>("VIP Client Partnership");
   const [isProcessingProAction, setIsProcessingProAction] = useState(false);
   const [proActionFeedback, setProActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -204,7 +207,7 @@ export default function Admin() {
   const [grantProEmailSender, setGrantProEmailSender] = useState("design@theslidebee.com");
   const [grantProEmailSubject, setGrantProEmailSubject] = useState("VIP Pro Membership Activated — SlideBee Design Studio");
   const [grantProEmailMessage, setGrantProEmailMessage] = useState(
-    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has access to monthly slide downloads, our catalog of executive templates, and our VIP WhatsApp Studio hotline."
+    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has unrestricted access to download up to 80 master presentation decks per month from our marketplace catalog completely free of charge, along with our VIP WhatsApp Studio hotline."
   );
 
   // Option C Adjust Slide Credits Modal & Mail State
@@ -542,7 +545,7 @@ export default function Admin() {
   const handleGrantFreePro = async (
     targetEmail: string, 
     customCredits = 80, 
-    durationMonths = 12, 
+    durationMonths = 1, 
     reason = "VIP Client Partnership",
     emailOptions?: {
       sendEmail?: boolean;
@@ -630,7 +633,7 @@ export default function Admin() {
 
       setProActionFeedback({
         type: "success",
-        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} slide download credits and unlocked VIP WhatsApp Studio line.${emailNotice}`,
+        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} monthly template downloads quota and unlocked VIP WhatsApp Studio line.${emailNotice}`,
       });
       setTimeout(() => setProActionFeedback(null), 6000);
       setIsGrantProModalOpen(false);
@@ -657,15 +660,101 @@ export default function Admin() {
 
       if (error) throw error;
 
+      // Dispatch subscription ended notice to user
+      try {
+        const clientProfile = profiles.find((p) => p.email?.toLowerCase() === clientEmail?.toLowerCase());
+        await sendProExpiredEmail({
+          clientEmail,
+          clientName: clientProfile?.full_name || clientEmail.split("@")[0],
+          expiryDate: new Date().toISOString(),
+        });
+      } catch (mailErr) {
+        console.warn("Failed to dispatch revocation notice email:", mailErr);
+      }
+
       setProActionFeedback({
         type: "success",
-        message: `Pro membership revoked for ${clientEmail}. Account reverted to standard tier.`,
+        message: `Pro membership revoked for ${clientEmail}. Account reverted to standard tier and notification dispatched.`,
       });
       setTimeout(() => setProActionFeedback(null), 5000);
       await fetchDashboardData();
     } catch (err: any) {
       console.error("Failed to revoke Pro:", err);
       alert(`Failed to revoke Pro: ${err?.message || err}`);
+    } finally {
+      setIsProcessingProAction(false);
+    }
+  };
+
+  const handleSendProExpiryReminder = async (sub: any) => {
+    const cleanEmail = sub.user_email?.trim().toLowerCase();
+    if (!cleanEmail) return;
+    const clientName = profiles.find((p) => p.email?.toLowerCase() === cleanEmail)?.full_name || cleanEmail.split("@")[0];
+    const expiryDate = sub.current_period_end;
+    const daysRemaining = expiryDate
+      ? Math.max(0, Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 7;
+    const remainingQuota = Math.max(0, (sub.slides_limit || 80) - (sub.slides_used || 0));
+
+    if (!window.confirm(`Send 1-Week Expiration Reminder email to ${cleanEmail} (${daysRemaining} days remaining, ${remainingQuota} templates left)?`)) {
+      return;
+    }
+
+    setIsProcessingProAction(true);
+    try {
+      const res = await sendProExpiringSoonEmail({
+        clientEmail: cleanEmail,
+        clientName,
+        daysRemaining,
+        expiryDate,
+        remainingQuota,
+      });
+      if (res.success) {
+        setProActionFeedback({
+          type: "success",
+          message: `1-Week Expiration Reminder email successfully dispatched to ${cleanEmail}!`,
+        });
+      } else {
+        throw new Error(String(res.error || "Email dispatch failed"));
+      }
+      setTimeout(() => setProActionFeedback(null), 5000);
+    } catch (err: any) {
+      console.error("Failed to send expiration reminder:", err);
+      alert(`Failed to send reminder email: ${err?.message || err}`);
+    } finally {
+      setIsProcessingProAction(false);
+    }
+  };
+
+  const handleSendProExpiredNotice = async (sub: any) => {
+    const cleanEmail = sub.user_email?.trim().toLowerCase();
+    if (!cleanEmail) return;
+    const clientName = profiles.find((p) => p.email?.toLowerCase() === cleanEmail)?.full_name || cleanEmail.split("@")[0];
+    const expiryDate = sub.current_period_end;
+
+    if (!window.confirm(`Send Subscription Ended / Concluded email notice to ${cleanEmail}?`)) {
+      return;
+    }
+
+    setIsProcessingProAction(true);
+    try {
+      const res = await sendProExpiredEmail({
+        clientEmail: cleanEmail,
+        clientName,
+        expiryDate,
+      });
+      if (res.success) {
+        setProActionFeedback({
+          type: "success",
+          message: `Subscription Ended notice email successfully dispatched to ${cleanEmail}!`,
+        });
+      } else {
+        throw new Error(String(res.error || "Email dispatch failed"));
+      }
+      setTimeout(() => setProActionFeedback(null), 5000);
+    } catch (err: any) {
+      console.error("Failed to send subscription ended email:", err);
+      alert(`Failed to send subscription ended email: ${err?.message || err}`);
     } finally {
       setIsProcessingProAction(false);
     }
@@ -2473,7 +2562,7 @@ SlideBee Design Studio`
                       onClick={() => {
                         setGrantProTargetEmail("");
                         setGrantProCredits(80);
-                        setGrantProDurationMonths(12);
+                        setGrantProDurationMonths(1);
                         setIsGrantProModalOpen(true);
                       }}
                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
@@ -6833,7 +6922,11 @@ SlideBee Design Studio`
           const clientProfiles = profiles.filter(
             (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
           );
-          const activeSubscriptions = subscriptions.filter((s) => s.status === "active");
+          const isSubActive = (s: any) => s.status === "active" && (!s.current_period_end || new Date(s.current_period_end) > new Date());
+          const activeSubscriptions = subscriptions.filter(isSubActive);
+          const expiredSubscriptions = subscriptions.filter(
+            (s) => s.status === "active" && s.current_period_end && new Date(s.current_period_end) <= new Date()
+          );
           const complimentarySubs = activeSubscriptions.filter(
             (s) => Number(s.amount_usd) === 0 || s.plan_name?.toLowerCase().includes("complimentary")
           );
@@ -6903,7 +6996,7 @@ SlideBee Design Studio`
                     <Crown size={20} className="text-amber-500" />
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    {complimentarySubs.length} Complimentary • {activeSubscriptions.length - complimentarySubs.length} Paid
+                    {complimentarySubs.length} Complimentary • {expiredSubscriptions.length} Expired
                   </span>
                 </div>
 
@@ -6953,7 +7046,7 @@ SlideBee Design Studio`
                     onClick={() => {
                       setGrantProTargetEmail("");
                       setGrantProCredits(80);
-                      setGrantProDurationMonths(12);
+                      setGrantProDurationMonths(1);
                       setIsGrantProModalOpen(true);
                     }}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer self-start sm:self-auto"
@@ -6982,7 +7075,7 @@ SlideBee Design Studio`
                           <th className="p-4">Subscriber</th>
                           <th className="p-4">Plan Name & Tier</th>
                           <th className="p-4">Monthly Rate</th>
-                          <th className="p-4">Monthly Slide Quota</th>
+                          <th className="p-4">Monthly Template Quota</th>
                           <th className="p-4">Renewal / Expiry</th>
                           <th className="p-4">Status</th>
                           <th className="p-4 text-right">Actions</th>
@@ -6992,6 +7085,8 @@ SlideBee Design Studio`
                         {subscriptions.map((sub) => {
                           const isComplimentary = Number(sub.amount_usd) === 0 || sub.plan_name?.toLowerCase().includes("complimentary");
                           const matchedProfile = profiles.find((p) => p.email?.toLowerCase() === sub.user_email?.toLowerCase());
+                          const isCurrentlyActive = isSubActive(sub);
+                          const isPeriodEnded = sub.current_period_end && new Date(sub.current_period_end) <= new Date();
 
                           return (
                             <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
@@ -7024,7 +7119,7 @@ SlideBee Design Studio`
                               </td>
                               <td className="p-4">
                                 <div className="font-bold mb-1">
-                                  {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
+                                  {sub.slides_used || 0} / {sub.slides_limit || 80} Templates
                                 </div>
                                 <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
                                   <div 
@@ -7039,18 +7134,28 @@ SlideBee Design Studio`
                                     <span className="font-bold text-[#111111]">
                                       {new Date(sub.current_period_end).toLocaleDateString()}
                                     </span>
-                                    <span className="block text-[10px]">
-                                      {new Date(sub.current_period_end) > new Date() ? "Active validity" : "Expired"}
-                                    </span>
+                                    {!isPeriodEnded ? (
+                                      <span className="block text-[10px] text-emerald-700 font-extrabold">
+                                        {Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} Days Left
+                                      </span>
+                                    ) : (
+                                      <span className="block text-[10px] text-rose-700 font-extrabold">
+                                        Expired (Period Ended)
+                                      </span>
+                                    )}
                                   </div>
                                 ) : (
-                                  "Every 30 Days"
+                                  "Continuous"
                                 )}
                               </td>
                               <td className="p-4 whitespace-nowrap">
-                                {sub.status === "active" ? (
+                                {isCurrentlyActive ? (
                                   <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 inline-flex items-center gap-1">
                                     <CheckCircle2 size={10} className="text-emerald-600" /> Active
+                                  </span>
+                                ) : isPeriodEnded ? (
+                                  <span className="hex-pill-sm bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2.5 py-0.5 inline-flex items-center gap-1">
+                                    <Clock size={10} className="text-rose-600" /> Expired
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-300 text-[10px] font-bold px-2.5 py-0.5">
@@ -7060,26 +7165,53 @@ SlideBee Design Studio`
                               </td>
                               <td className="p-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
-                                  {sub.status === "active" ? (
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleRevokePro(sub.id, sub.user_email)}
-                                      className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
-                                      title="Revoke Pro access for this account"
-                                    >
-                                      <UserX size={11} /> Revoke Pro
-                                    </button>
+                                  {isCurrentlyActive ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={isProcessingProAction}
+                                        onClick={() => handleSendProExpiryReminder(sub)}
+                                        className="hex-pill-sm bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-[10px] px-2 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Dispatch 7-Day Renewal/Expiry reminder email"
+                                      >
+                                        <Send size={11} /> 7-Day Notice
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={isProcessingProAction}
+                                        onClick={() => handleRevokePro(sub.id, sub.user_email)}
+                                        className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Revoke Pro access for this account"
+                                      >
+                                        <UserX size={11} /> Revoke Pro
+                                      </button>
+                                    </>
                                   ) : (
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleGrantFreePro(sub.user_email, sub.slides_limit || 80, 12)}
-                                      className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
-                                      title="Reactivate Pro access"
-                                    >
-                                      <Gift size={11} /> Reactivate Pro
-                                    </button>
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={isProcessingProAction}
+                                        onClick={() => handleSendProExpiredNotice(sub)}
+                                        className="hex-pill-sm bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-extrabold text-[10px] px-2 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Dispatch Pro Subscription Ended notice email"
+                                      >
+                                        <Send size={11} /> Expired Notice
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={isProcessingProAction}
+                                        onClick={() => {
+                                          setGrantProTargetEmail(sub.user_email);
+                                          setGrantProCredits(sub.slides_limit || 80);
+                                          setGrantProDurationMonths(1);
+                                          setIsGrantProModalOpen(true);
+                                        }}
+                                        className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Reactivate Pro access"
+                                      >
+                                        <Gift size={11} /> Reactivate Pro
+                                      </button>
+                                    </>
                                   )}
 
                                   <button
@@ -7176,10 +7308,13 @@ SlideBee Design Studio`
                         </tr>
                       ) : (
                         filteredProfiles.map((p) => {
-                          const clientSub = activeSubscriptions.find(
+                          const clientSub = subscriptions.find(
                             (s) => s.user_email?.toLowerCase() === p.email?.toLowerCase()
                           );
-                          const isPro = Boolean(clientSub);
+                          const isPro = Boolean(clientSub && isSubActive(clientSub));
+                          const isExpiredPro = Boolean(
+                            clientSub && clientSub.status === "active" && clientSub.current_period_end && new Date(clientSub.current_period_end) <= new Date()
+                          );
 
                           return (
                             <tr key={p.id} className="hover:bg-primary/5 transition-colors">
@@ -7198,6 +7333,10 @@ SlideBee Design Studio`
                                 {isPro ? (
                                   <span className="hex-pill-sm bg-amber-50 text-amber-800 border border-amber-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
                                     <Crown size={11} className="text-amber-500" /> Pro Member
+                                  </span>
+                                ) : isExpiredPro ? (
+                                  <span className="hex-pill-sm bg-rose-50 text-rose-800 border border-rose-300 font-extrabold text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
+                                    <Clock size={11} className="text-rose-500" /> Pro Expired
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
@@ -7280,12 +7419,14 @@ SlideBee Design Studio`
                                       disabled={isProcessingProAction}
                                       onClick={() => {
                                         setGrantProTargetEmail(p.email);
+                                        setGrantProDurationMonths(1);
+                                        setGrantProCredits(80);
                                         setIsGrantProModalOpen(true);
                                       }}
                                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
-                                      title="Grant Pro access and customize email notice"
+                                      title={isExpiredPro ? "Reactivate Pro access for expired subscriber" : "Grant Pro access and customize email notice"}
                                     >
-                                      <Gift size={12} /> Grant Free Pro
+                                      <Gift size={12} /> {isExpiredPro ? "Reactivate Pro" : "Grant Free Pro"}
                                     </button>
                                   )}
 
@@ -9119,21 +9260,21 @@ SlideBee Design Studio`
                   </span>
                 </div>
 
-                {/* Slide quota and duration */}
+                {/* Template quota and duration */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                      Monthly Slides Quota
+                      Monthly Template Quota
                     </label>
                     <select
                       value={grantProCredits}
                       onChange={(e) => setGrantProCredits(Number(e.target.value))}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
                     >
-                      <option value={50}>50 Slides / Month</option>
-                      <option value={80}>80 Slides / Month (Standard Pro)</option>
-                      <option value={120}>120 Slides / Month (VIP Enterprise)</option>
-                      <option value={200}>200 Slides / Month (Unlimited Master)</option>
+                      <option value={50}>50 Templates / Month</option>
+                      <option value={80}>80 Templates / Month (Standard Pro)</option>
+                      <option value={120}>120 Templates / Month (VIP Enterprise)</option>
+                      <option value={200}>200 Templates / Month (Unlimited Master)</option>
                     </select>
                   </div>
 
@@ -9146,13 +9287,31 @@ SlideBee Design Studio`
                       onChange={(e) => setGrantProDurationMonths(Number(e.target.value))}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
                     >
-                      <option value={1}>1 Month Trial</option>
+                      <option value={1}>1 Month (Default)</option>
+                      <option value={2}>2 Months</option>
                       <option value={3}>3 Months</option>
                       <option value={6}>6 Months</option>
-                      <option value={12}>1 Year (Recommended)</option>
+                      <option value={12}>1 Year (12 Months)</option>
                       <option value={999}>Lifetime / Indefinite</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Live Expiry Preview Box */}
+                <div className="bg-amber-50/80 border border-amber-300/80 rounded-xl p-3.5 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
+                      Calculated Expiration Date
+                    </span>
+                    <span className="text-xs font-extrabold text-[#111111]">
+                      {grantProDurationMonths >= 999
+                        ? "Lifetime Access (Never Expires)"
+                        : `Active until ${new Date(Date.now() + grantProDurationMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} (${grantProDurationMonths * 30} Days)`}
+                    </span>
+                  </div>
+                  <span className="hex-pill-sm bg-amber-200/60 text-amber-900 border border-amber-400/50 text-[10px] font-black px-2 py-0.5">
+                    {grantProDurationMonths >= 999 ? "Indefinite" : `${grantProDurationMonths} Month${grantProDurationMonths > 1 ? "s" : ""}`}
+                  </span>
                 </div>
 
                 {/* Reason Note */}
@@ -9176,15 +9335,19 @@ SlideBee Design Studio`
                   </span>
                   <ul className="text-xs text-amber-900 space-y-1">
                     <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600" />
-                      <span><strong>{grantProCredits} Free Monthly Slide Downloads</strong> in Template Catalog</span>
+                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                      <span><strong>{grantProCredits} Free Template Downloads / Month</strong> in Marketplace Catalog (Zero payment, 100% unlocked)</span>
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                      <span><strong>All Templates Unlocked</strong> regardless of individual presentation price</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
                       <span><strong>VIP WhatsApp Studio Hotline</strong> unlocked directly in client dashboard</span>
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
                       <span><strong>Pro Member Badge</strong> on account and client portal banner</span>
                     </li>
                   </ul>

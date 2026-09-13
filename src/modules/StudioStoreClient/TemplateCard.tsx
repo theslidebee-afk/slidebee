@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, Download, ArrowRight, Coins } from "lucide-react";
+import { Star, Download, ArrowRight, Coins, Crown } from "lucide-react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { type StoreTemplate } from "./useStudioStore";
 
@@ -8,9 +8,10 @@ interface TemplateCardProps {
   template: StoreTemplate;
   showStars?: boolean;
   showDownloads?: boolean;
+  isPro?: boolean;
 }
 
-export function TemplateCard({ template, showStars = false, showDownloads = false }: TemplateCardProps) {
+export function TemplateCard({ template, showStars = false, showDownloads = false, isPro = false }: TemplateCardProps) {
   const { formatPrice, currency } = useCurrency();
   const price = currency === "USD" ? template.price_usd : template.price_inr;
   const originalPrice = currency === "USD" ? template.price_usd * 2 : template.original_price_inr;
@@ -84,24 +85,42 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
       <div className="px-5 pb-5 pt-1">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-heading font-extrabold text-[#111111]">
-                {formatPrice(price)}
-              </span>
-              {originalPrice && originalPrice > price && (
-                <span className="text-xs text-[#726F6D] line-through font-medium">
-                  {formatPrice(originalPrice)}
+            {isPro ? (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
+                    Free
+                  </span>
+                  <span className="text-xs text-[#726F6D] line-through font-bold">
+                    {formatPrice(price)}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
+                  <Crown size={10} /> Pro Template Quota
                 </span>
-              )}
-            </div>
-            {template.is_credit_eligible ? (
-              <span className="text-[10px] font-bold text-emerald-700 block">
-                Eligible for 5 Free Starter Credits
-              </span>
+              </>
             ) : (
-              <span className="text-[10px] font-medium text-[#726F6D] block">
-                Commercial PPTX Master License
-              </span>
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-heading font-extrabold text-[#111111]">
+                    {formatPrice(price)}
+                  </span>
+                  {originalPrice && originalPrice > price && (
+                    <span className="text-xs text-[#726F6D] line-through font-medium">
+                      {formatPrice(originalPrice)}
+                    </span>
+                  )}
+                </div>
+                {template.is_credit_eligible ? (
+                  <span className="text-[10px] font-bold text-emerald-700 block">
+                    Eligible for 5 Free Starter Credits
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-[#726F6D] block">
+                    Commercial PPTX Master License
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -109,7 +128,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
             to={`/template/${template.id}`}
             className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-bold text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all shadow-sm group-hover:scale-105"
           >
-            <span>Inspect</span>
+            <span>{isPro ? "Download" : "Inspect"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

@@ -26,7 +26,8 @@ import {
   MessageSquare,
   Trash2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Crown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabase";
@@ -66,7 +67,6 @@ export default function Login() {
     userOrders,
     loading,
     creditsBalance,
-    creditsUsed,
     purchasedItems,
     usageHistory,
     signIn,
@@ -142,13 +142,25 @@ export default function Login() {
       });
   }, []);
 
+  const isProExpired = Boolean(
+    userSubscription &&
+    userSubscription.current_period_end &&
+    new Date(userSubscription.current_period_end) <= new Date()
+  );
+
   const isProUser = Boolean(
     userSubscription &&
     (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+    (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()) &&
     (userSubscription.plan_name?.toLowerCase().includes("pro") ||
      userSubscription.plan_tier?.toLowerCase().includes("pro") ||
      userSubscription.plan_name?.toLowerCase().includes("membership"))
   );
+
+  const proDaysRemaining = userSubscription?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
 
   // Handle Sign In / Sign Up via Deep Module
   const handleSubmitAuth = async (e: React.FormEvent) => {
@@ -276,8 +288,10 @@ export default function Login() {
     const clientCompany = userProfile?.company || currentUser.user_metadata?.company || "Enterprise Client";
     const clientRole = userProfile?.role || "client";
     
-    // Credits calculation
-    const creditsTotal = userProfile?.credits_total ?? 5;
+    // Quota & Credits calculation
+    const quotaTotal = isProUser ? Number(userSubscription?.slides_limit || 80) : (userProfile?.credits_total ?? 5);
+    const quotaUsed = isProUser ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
+    const quotaRemaining = isProUser ? Math.max(0, quotaTotal - quotaUsed) : (userProfile?.credits_balance ?? 5);
     
     // Purchases & usage data
     const directPurchases: any[] = Array.isArray(purchasedItems) ? purchasedItems : [];
@@ -300,7 +314,7 @@ export default function Login() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
-                    {clientRole === "super_admin" || clientRole === "admin" ? "Studio Admin Portal" : "Client Portal"}
+                    {clientRole === "super_admin" || clientRole === "admin" ? "Studio Admin Portal" : isProUser ? "Pro VIP Client Portal" : "Client Portal"}
                   </span>
                   <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Check size={10} /> Verified Account
@@ -333,11 +347,11 @@ export default function Login() {
 
           {/* 4 Executive Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            {/* 1. Credits Balance Left */}
+            {/* 1. Template Downloads / Credits Balance Left */}
             <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
-                  <CreditCard size={14} className="text-primary-amber" /> Credits Left
+                  <CreditCard size={14} className="text-primary-amber" /> {isProUser ? "Templates Left" : "Credits Left"}
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
                   Available
@@ -345,22 +359,24 @@ export default function Login() {
               </div>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-heading font-black text-[#111111]">
-                  {creditsBalance}
+                  {quotaRemaining}
                 </span>
                 <span className="text-xs font-bold text-[#726F6D]">
-                  / {creditsTotal} Total
+                  / {quotaTotal} {isProUser ? "Templates" : "Total"}
                 </span>
               </div>
               <p className="text-[11px] text-[#726F6D] leading-relaxed">
-                Ready to redeem on instant template downloads & presentation polish.
+                {isProUser
+                  ? "Full presentation decks available to download this month from catalog."
+                  : "Ready to redeem on free library presentation templates."}
               </p>
             </div>
 
-            {/* 2. Credits Used */}
+            {/* 2. Quota / Credits Used */}
             <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
-                  <History size={14} className="text-primary-amber" /> Used Credits
+                  <History size={14} className="text-primary-amber" /> {isProUser ? "Decks Claimed" : "Used Credits"}
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
                   Redeemed
@@ -368,14 +384,16 @@ export default function Login() {
               </div>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-heading font-black text-[#111111]">
-                  {creditsUsed}
+                  {quotaUsed}
                 </span>
                 <span className="text-xs font-bold text-[#726F6D]">
-                  Items Used
+                  {isProUser ? "This Month" : "Items Used"}
                 </span>
               </div>
               <p className="text-[11px] text-[#726F6D] leading-relaxed">
-                Total presentation slides & master assets claimed to date.
+                {isProUser
+                  ? "Complete presentation templates unlocked with your Pro quota."
+                  : "Total presentation slides & master assets claimed to date."}
               </p>
             </div>
 
@@ -436,52 +454,110 @@ export default function Login() {
               <div className="hex-card bg-white border-2 border-primary/40 p-6 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <span className="text-[#726F6D] text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
-                    <CreditCard size={13} className="text-primary-amber" /> Account Status
+                    <CreditCard size={13} className="text-primary-amber" /> Account Tier
                   </span>
-                  <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5 border border-primary/30 flex items-center gap-1">
-                    {userSubscription?.status ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                        {userSubscription.status}
-                      </>
-                    ) : (
-                      "Active Client"
-                    )}
-                  </span>
+                  {isProUser ? (
+                    <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1 shadow-xs">
+                      <Crown size={11} className="text-amber-500" /> Pro Member
+                    </span>
+                  ) : isProExpired ? (
+                    <span className="hex-pill-sm bg-rose-100 text-rose-900 border border-rose-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1">
+                      <AlertTriangle size={11} className="text-rose-600" /> Pro Expired
+                    </span>
+                  ) : (
+                    <span className="hex-pill-sm bg-gray-100 text-gray-800 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
+                      Free Starter Tier
+                    </span>
+                  )}
                 </div>
 
                 <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-1">
-                  {userSubscription?.plan_name || "SlideBee Client Account"}
+                  {isProUser
+                    ? (userSubscription?.plan_name || "SlideBee Pro Studio Membership")
+                    : isProExpired
+                    ? "SlideBee Pro Membership (Expired)"
+                    : "SlideBee Free Client Account"}
                 </h3>
                 <p className="text-xs text-[#726F6D] font-medium mb-4">
-                  {userSubscription?.plan_description || "Full access to executive presentation templates, custom briefs, and priority downloads."}
+                  {isProUser
+                    ? "80 complete presentation template downloads every month, VIP WhatsApp hotline, and priority turnaround."
+                    : isProExpired
+                    ? `Your Pro membership validity period ended on ${new Date(userSubscription.current_period_end).toLocaleDateString()}. Renew anytime to resume downloads.`
+                    : "Access to free library starter templates and custom agency presentation design briefs."}
                 </p>
+
+                {/* Duration Left in Pro (User Dashboard Reflection) */}
+                {isProUser && proDaysRemaining !== null && (
+                  <div className={`mb-4 p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-xs ${
+                    proDaysRemaining <= 7 
+                      ? "bg-amber-50/90 border-amber-300" 
+                      : "bg-[#FFF9E8] border-primary/40"
+                  }`}>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                        <Clock size={12} className="text-primary-amber" /> Duration Left in Pro:
+                      </span>
+                      <span className="text-sm font-heading font-black text-[#111111] block mt-0.5">
+                        {proDaysRemaining === 0 ? "Expires Today" : `${proDaysRemaining} Days Remaining`}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#726F6D] block">Period Ends:</span>
+                      <span className="text-xs font-bold text-[#111111]">
+                        {new Date(userSubscription.current_period_end).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {isProExpired && userSubscription?.current_period_end && (
+                  <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900">
+                    <span className="font-black flex items-center gap-1.5 mb-1 text-rose-900">
+                      <AlertTriangle size={12} className="text-rose-600" /> Membership Concluded
+                    </span>
+                    <p className="text-[11px] text-rose-800 leading-relaxed font-medium">
+                      Concluded on {new Date(userSubscription.current_period_end).toLocaleDateString()}. Previously unlocked templates remain available in your library.
+                    </p>
+                  </div>
+                )}
 
                 {/* Quota Progress Bar */}
                 <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 mb-4">
                   <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-                    <span className="text-[#726F6D]">Credits Usage:</span>
+                    <span className="text-[#726F6D]">
+                      {isProUser ? "Monthly Template Quota:" : "Credits Usage:"}
+                    </span>
                     <span className="text-[#111111] font-black">
-                      {creditsUsed} / {creditsTotal} Credits
+                      {quotaUsed} / {quotaTotal} {isProUser ? "Templates" : "Credits"}
                     </span>
                   </div>
                   <div className="w-full bg-black/10 rounded-full h-2.5 overflow-hidden">
                     <div 
                       className="bg-primary h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${Math.min(100, Math.max(8, (creditsUsed / Math.max(1, creditsTotal)) * 100))}%` }} 
+                      style={{ width: `${Math.min(100, Math.max(8, (quotaUsed / Math.max(1, quotaTotal)) * 100))}%` }} 
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-[#726F6D] mt-2 font-medium">
-                    <span>{creditsBalance} credits remaining</span>
-                    <span>{Math.round((creditsUsed / Math.max(1, creditsTotal)) * 100)}% consumed</span>
+                    <span>{quotaRemaining} {isProUser ? "templates" : "credits"} remaining</span>
+                    <span>{Math.round((quotaUsed / Math.max(1, quotaTotal)) * 100)}% consumed</span>
                   </div>
                 </div>
 
-                {/* Template Marketplace Upgrade CTA */}
-                {userSubscription?.plan_name?.toLowerCase().includes("pro") ? (
-                  <div className="hex-pill w-full text-center text-[#111111] font-black py-2.5 text-xs bg-primary/20 border border-primary/40 flex items-center justify-center gap-1.5">
-                    <Check size={13} className="text-primary-amber" /> Pro Plan Active — 80 Downloads / Month
-                  </div>
+                {/* Template Marketplace Upgrade / Actions CTA */}
+                {isProUser ? (
+                  <Link
+                    to="/templates"
+                    className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs shadow-sm transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Download size={13} /> Browse & Download Templates ({quotaRemaining} Left)
+                  </Link>
+                ) : isProExpired ? (
+                  <Link
+                    to="/pricing#marketplace"
+                    className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs shadow-md transition-all flex items-center justify-center gap-1.5 hover:scale-[1.02]"
+                  >
+                    <Zap size={13} className="text-[#111111]" /> Renew Pro Membership (80 Templates/mo) <ArrowRight size={13} />
+                  </Link>
                 ) : (
                   <Link
                     to="/pricing#marketplace"
@@ -753,36 +829,53 @@ export default function Login() {
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                          Credits Breakdown & Deduction History
+                          {isProUser ? "Monthly Template Downloads Quota & History" : "Credits Breakdown & Deduction History"}
                         </h3>
                         <p className="text-xs text-[#726F6D]">
-                          Track your balance, slide usage, and deduction events
+                          {isProUser
+                            ? "80 complete presentation template downloads per billing cycle. Track quota and download history."
+                            : "Track your starter credit balance, slide usage, and deduction events"}
                         </p>
                       </div>
-                      <Link
-                        to="/pricing"
-                        className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
-                      >
-                        + Add Credits
-                      </Link>
+                      {isProUser ? (
+                        <Link
+                          to="/templates"
+                          className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
+                        >
+                          Browse Templates →
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/pricing"
+                          className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
+                        >
+                          + Add Credits
+                        </Link>
+                      )}
                     </div>
 
                     {/* Summary Highlight Box */}
                     <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/40 flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <span className="text-xs text-[#726F6D] block">Current Balance:</span>
+                        <span className="text-xs text-[#726F6D] block">
+                          {isProUser ? "Current Monthly Allowance:" : "Current Balance:"}
+                        </span>
                         <span className="text-2xl font-heading font-black text-[#111111]">
-                          {creditsBalance} Credits Available
+                          {quotaRemaining} {isProUser ? "Template Downloads Available" : "Credits Available"}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-xs font-bold text-[#726F6D]">
                         <div>
-                          <span>Total Granted:</span>
-                          <strong className="text-[#111111] ml-1">{creditsTotal}</strong>
+                          <span>{isProUser ? "Monthly Quota:" : "Total Granted:"}</span>
+                          <strong className="text-[#111111] ml-1">
+                            {quotaTotal} {isProUser ? "Decks" : ""}
+                          </strong>
                         </div>
                         <div>
-                          <span>Total Redeemed:</span>
-                          <strong className="text-primary-amber ml-1">{creditsUsed}</strong>
+                          <span>{isProUser ? "Downloaded:" : "Total Redeemed:"}</span>
+                          <strong className="text-primary-amber ml-1">
+                            {quotaUsed} {isProUser ? "Decks" : ""}
+                          </strong>
                         </div>
                       </div>
                     </div>
@@ -800,7 +893,7 @@ export default function Login() {
                               </div>
                               <div>
                                 <h4 className="font-extrabold text-xs text-[#111111]">
-                                  {event.action || "Credits Deduction"}
+                                  {event.action || (isProUser ? "Template Quota Download" : "Credits Deduction")}
                                 </h4>
                                 <p className="text-[11px] text-[#726F6D]">
                                   {event.item_title ? `Item: ${event.item_title} • ` : ""}{event.date ? new Date(event.date).toLocaleString() : "Recently"}
@@ -808,7 +901,7 @@ export default function Login() {
                               </div>
                             </div>
                             <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
-                              <Check size={9} /> Deducted
+                              <Check size={9} /> {isProUser ? "Claimed (1 of 80)" : "Deducted"}
                             </span>
                           </div>
                         ))}
@@ -816,9 +909,13 @@ export default function Login() {
                     ) : (
                       <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-primary/20">
                         <History size={32} className="mx-auto text-primary-amber mb-2" />
-                        <h4 className="text-sm font-extrabold text-[#111111]">No Credits Deducted Yet</h4>
+                        <h4 className="text-sm font-extrabold text-[#111111]">
+                          {isProUser ? "No Templates Downloaded Yet This Cycle" : "No Credits Deducted Yet"}
+                        </h4>
                         <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto">
-                          You have all <strong>{creditsBalance} credits</strong> remaining. Credits are automatically deducted when downloading premium deliverables.
+                          {isProUser
+                            ? `You have all ${quotaRemaining} template downloads ready to use. Each download provides full perpetual commercial rights to complete Master PowerPoint decks.`
+                            : `You have all ${creditsBalance} credits remaining. Credits are automatically deducted when downloading free library deliverables.`}
                         </p>
                       </div>
                     )}

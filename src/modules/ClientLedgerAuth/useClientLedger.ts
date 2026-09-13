@@ -60,6 +60,7 @@ export function useClientLedger() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [userSubscription, setUserSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchClientData = useCallback(async (userEmail: string) => {
@@ -86,6 +87,17 @@ export function useClientLedger() {
     if (ords) {
       setUserOrders(ords);
     }
+
+    // 3. Fetch Subscription
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("user_email", userEmail)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    setUserSubscription(sub || null);
   }, []);
 
   const checkUserSession = useCallback(async () => {
@@ -352,15 +364,46 @@ export function useClientLedger() {
     setCurrentUser(null);
     setUserProfile(null);
     setUserOrders([]);
+    setUserSubscription(null);
   };
+
+  const isPro = Boolean(
+    userSubscription &&
+    userSubscription.status === "active" &&
+    (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date())
+  );
+
+  const isProExpired = Boolean(
+    userSubscription &&
+    userSubscription.current_period_end &&
+    new Date(userSubscription.current_period_end) <= new Date()
+  );
+
+  const daysRemaining = userSubscription?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  const templateQuotaTotal = isPro ? Number(userSubscription?.slides_limit || 80) : (userProfile?.credits_total ?? 5);
+  const templateQuotaUsed = isPro ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
+  const templateQuotaRemaining = isPro
+    ? Math.max(0, templateQuotaTotal - templateQuotaUsed)
+    : (userProfile?.credits_balance ?? 5);
 
   return {
     currentUser,
     userProfile,
     userOrders,
+    userSubscription,
+    isPro,
+    isProExpired,
+    daysRemaining,
+    templateQuotaTotal,
+    templateQuotaUsed,
+    templateQuotaRemaining,
     loading,
-    creditsBalance: userProfile?.credits_balance ?? 5,
-    creditsUsed: userProfile?.credits_used ?? 0,
+    creditsBalance: templateQuotaRemaining,
+    creditsUsed: templateQuotaUsed,
+    creditsTotal: templateQuotaTotal,
     purchasedItems: userProfile?.purchased_items ?? [],
     usageHistory: userProfile?.usage_history ?? [],
     signIn,

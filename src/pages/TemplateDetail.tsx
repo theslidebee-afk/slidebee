@@ -15,7 +15,9 @@ import {
   FileText,
   Download,
   AlertCircle,
-  Lock
+  Lock,
+  Crown,
+  Zap
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
@@ -54,6 +56,7 @@ export default function TemplateDetail() {
     deliverableUrl,
     error: checkoutError,
     executeCreditRedemption,
+    executeProTemplateDownload,
     executeRazorpayCheckout
   } = useTemplateCheckout();
 
@@ -205,6 +208,9 @@ export default function TemplateDetail() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const [clientSub, setClientSub] = useState<any>(null);
+  const [clientPurchases, setClientPurchases] = useState<any[]>([]);
+
   const getClientInfo = () => {
     const local = localStorage.getItem("slidebee_client_user");
     if (local) {
@@ -214,6 +220,82 @@ export default function TemplateDetail() {
       } catch (e) {}
     }
     return null;
+  };
+
+  const client = getClientInfo();
+
+  useEffect(() => {
+    if (client?.email) {
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_email", client.email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setClientSub(data);
+        });
+
+      supabase
+        .from("profiles")
+        .select("purchased_items")
+        .eq("email", client.email)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (Array.isArray(data?.purchased_items)) {
+            setClientPurchases(data.purchased_items);
+          }
+        });
+    }
+  }, []);
+
+  const isPro = Boolean(
+    clientSub &&
+    clientSub.status === "active" &&
+    (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())
+  );
+
+  const quotaRemaining = isPro
+    ? Math.max(0, Number(clientSub?.slides_limit || 80) - Number(clientSub?.slides_used || 0))
+    : 0;
+
+  const alreadyOwned = Boolean(
+    clientPurchases.some(
+      (item: any) =>
+        String(item.id) === String(template?.id) ||
+        (item.code && template?.code && String(item.code).toLowerCase() === String(template.code).toLowerCase())
+    )
+  );
+
+  // Pro Template Download (Uses 80 monthly template quota, completely free for all decks)
+  const handleProDownload = async () => {
+    setCreditNotice(null);
+    const client = getClientInfo();
+    if (!client) {
+      navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
+      return;
+    }
+    if (!template) return;
+
+    const result = await executeProTemplateDownload(template, client.email);
+    if (!result.success && result.message) {
+      setCreditNotice(result.message);
+    } else if (result.success) {
+      // Re-sync subscription quota in state
+      if (client.email) {
+        supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_email", client.email)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) setClientSub(data);
+          });
+      }
+    }
   };
 
   // Redeem with Starter Credits
@@ -379,24 +461,42 @@ export default function TemplateDetail() {
               </div>
 
               {/* Price Display */}
-              <div className="p-4 bg-[#FFF9E8] rounded-2xl border-2 border-primary/30 flex flex-wrap items-center justify-between gap-3">
+              <div className="p-4 bg-[#FFF9E8] rounded-2xl border-2 border-primary/30 flex flex-wrap items-center justify-between gap-3 shadow-xs">
                 <div>
                   <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                    Perpetual Commercial License
+                    {isPro ? "Included with Pro Membership" : "Perpetual Commercial License"}
                   </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
-                      {formatPrice(currency === "USD" ? template.price_usd : template.price_inr)}
-                    </span>
-                    {template.original_price_inr && (
-                      <span className="text-xs text-[#726F6D] line-through font-medium">
-                        {formatPrice(template.original_price_inr)}
-                      </span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    {isPro ? (
+                      <>
+                        <span className="text-2xl sm:text-3xl font-heading font-black text-emerald-800">
+                          Free with Pro
+                        </span>
+                        <span className="text-xs text-[#726F6D] line-through font-bold">
+                          {formatPrice(currency === "USD" ? template.price_usd : template.price_inr)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
+                          {formatPrice(currency === "USD" ? template.price_usd : template.price_inr)}
+                        </span>
+                        {template.original_price_inr && (
+                          <span className="text-xs text-[#726F6D] line-through font-medium">
+                            {formatPrice(template.original_price_inr)}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
+                  {isPro && (
+                    <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
+                      Deducts 1 template from your 80 monthly quota ({quotaRemaining} downloads remaining)
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-white border border-primary/50 px-3 py-1.5 rounded-xl text-xs font-black text-[#111111]">
+                <div className="flex items-center gap-1.5 bg-white border border-primary/50 px-3 py-1.5 rounded-xl text-xs font-black text-[#111111] shadow-xs">
                   <FileText size={15} className="text-primary-amber" />
                   <span>Master PowerPoint (.pptx)</span>
                 </div>
@@ -419,33 +519,64 @@ export default function TemplateDetail() {
 
               {/* Purchase & Credit Action Buttons */}
               <div className="space-y-3 pt-2">
-                {isPurchased ? (
+                {isPurchased || alreadyOwned ? (
                   <div className="bg-emerald-50 border-2 border-emerald-400/60 p-5 rounded-2xl space-y-3 shadow-sm">
                     <div className="flex items-center gap-2 text-xs font-black text-emerald-900">
                       <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-                      <span>Order Confirmed & Deliverables Ready</span>
+                      <span>Master Presentation Deck Ready in Library</span>
                     </div>
                     <p className="text-xs text-emerald-800 leading-relaxed font-medium">
-                      Your editable Master PowerPoint presentation (.pptx) has been dispatched to:
+                      Your editable Master PowerPoint presentation (.pptx) is unlocked with perpetual commercial rights.
                     </p>
                     <div className="bg-white border border-emerald-300 px-3.5 py-2.5 rounded-xl text-xs font-black text-[#111111] flex items-center justify-between shadow-xs">
-                      <span className="truncate">{purchasedClientEmail}</span>
+                      <span className="truncate">{purchasedClientEmail || client?.email || "Account Library"}</span>
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded uppercase shrink-0">
-                        Direct Deliverable
+                        {isPro ? "Pro Quota" : "Commercial License"}
                       </span>
                     </div>
 
-                    {deliverableUrl && (
-                      <a
-                        href={deliverableUrl}
-                        download={template.file_name || `${template.code}_Master.pptx`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-                      >
-                        <Download size={14} /> Download Master PowerPoint (.pptx)
-                      </a>
-                    )}
+                    <a
+                      href={deliverableUrl || template.download_url || template.image_url}
+                      download={template.file_name || `${template.code}_Master.pptx`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
+                    >
+                      <Download size={14} /> Download Master PowerPoint (.pptx)
+                    </a>
+                  </div>
+                ) : isPro ? (
+                  /* Pro Member Instant Download (80/Month Template Quota - All Templates Unlocked) */
+                  <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary rounded-2xl space-y-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
+                        <Crown size={15} className="text-amber-500" />
+                        <span>Pro VIP Membership Access</span>
+                      </div>
+                      <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
+                        {quotaRemaining} of 80 Left
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                      This complete presentation deck is fully covered by your active Pro membership quota. Instant delivery with zero payment.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isProcessing || quotaRemaining <= 0}
+                      onClick={handleProDownload}
+                      className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
+                    >
+                      <Download size={17} />
+                      {isProcessing
+                        ? "Unlocking Presentation..."
+                        : quotaRemaining > 0
+                        ? `Download Master PPTX (Pro Quota • ${quotaRemaining} Left)`
+                        : "Monthly Template Quota Exhausted (80/80)"}
+                    </button>
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                      <span>Perpetual Commercial Rights • Direct PPTX Master File</span>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -499,6 +630,14 @@ export default function TemplateDetail() {
                         {isProcessing ? "Processing..." : `Instant Commercial PPTX License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
                       </button>
                     )}
+
+                    {/* Upgrade to Pro Prompt */}
+                    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 flex items-center justify-between gap-2">
+                      <span>Unlock 80 presentation template downloads every month</span>
+                      <Link to="/pricing#marketplace" className="text-amber-900 font-extrabold underline shrink-0 flex items-center gap-0.5">
+                        <Zap size={11} className="text-amber-600" /> Go Pro →
+                      </Link>
+                    </div>
 
                     <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                       <ShieldCheck size={12} className="text-emerald-600 shrink-0" />

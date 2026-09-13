@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Search, Download, Eye, ArrowRight, Star, FileText, Coins } from "lucide-react";
+import { Search, Download, Eye, ArrowRight, Star, FileText, Coins, Crown } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore, type StoreTemplate } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
+import { supabase } from "../lib/supabase";
 
 export type { StoreTemplate as TemplateItem };
 
@@ -23,6 +24,34 @@ export default function Templates() {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [onlyCreditEligible, setOnlyCreditEligible] = useState<boolean>(initialOnlyFree);
+  const [isProUser, setIsProUser] = useState<boolean>(false);
+
+  useEffect(() => {
+    const local = localStorage.getItem("slidebee_client_user");
+    if (local) {
+      try {
+        const u = JSON.parse(local);
+        if (u?.email) {
+          supabase
+            .from("subscriptions")
+            .select("status, current_period_end")
+            .eq("user_email", u.email)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (
+                data &&
+                data.status === "active" &&
+                (!data.current_period_end || new Date(data.current_period_end) > new Date())
+              ) {
+                setIsProUser(true);
+              }
+            });
+        }
+      } catch (e) {}
+    }
+  }, []);
 
   // Read dynamically from deep storefront hook
   const { templates: allTemplates, loading, showStars, showDownloads } = useStudioStore();
@@ -253,13 +282,31 @@ export default function Templates() {
                   <div>
                     <div className="flex items-center justify-between pt-3 border-t border-primary/15 mb-3">
                       <div>
-                        <div className="text-lg font-heading font-black text-[#111111]">
-                          {formatPrice(item.price_inr)}
-                        </div>
-                        {item.original_price_inr && (
-                          <div className="text-[10px] text-[#726F6D] line-through font-medium">
-                            {formatPrice(item.original_price_inr)}
-                          </div>
+                        {isProUser ? (
+                          <>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
+                                Free
+                              </span>
+                              <span className="text-xs text-[#726F6D] line-through font-bold">
+                                {formatPrice(item.price_inr)}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
+                              <Crown size={10} /> Pro 80-Deck Quota
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-lg font-heading font-black text-[#111111]">
+                              {formatPrice(item.price_inr)}
+                            </div>
+                            {item.original_price_inr && (
+                              <div className="text-[10px] text-[#726F6D] line-through font-medium">
+                                {formatPrice(item.original_price_inr)}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                       
@@ -270,8 +317,12 @@ export default function Templates() {
                       </div>
                     </div>
 
-                    {/* Credit Eligibility Subtext */}
-                    {item.is_credit_eligible ? (
+                    {/* Credit / Quota Eligibility Subtext */}
+                    {isProUser ? (
+                      <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
+                        <Crown size={11} className="text-amber-500" /> Included with Pro Membership Quota
+                      </div>
+                    ) : item.is_credit_eligible ? (
                       <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
                         <Coins size={11} /> Eligible for 5 Free Starter Credits
                       </div>
@@ -288,13 +339,23 @@ export default function Templates() {
                       </div>
                     ) : null}
 
-                    <Link
-                      to={`/template/${item.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
-                    >
-                      <Download size={14} /> View Details & Buy <ArrowRight size={12} />
-                    </Link>
+                    {isProUser ? (
+                      <Link
+                        to={`/template/${item.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
+                      >
+                        <Download size={14} /> Download with Pro <ArrowRight size={12} />
+                      </Link>
+                    ) : (
+                      <Link
+                        to={`/template/${item.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
+                      >
+                        <Download size={14} /> View Details & Buy <ArrowRight size={12} />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </motion.div>
