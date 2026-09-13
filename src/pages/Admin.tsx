@@ -11,6 +11,7 @@ import {
   Download, 
   Plus, 
   AlertCircle,
+  AlertTriangle,
   Search,
   Image as ImageIcon,
   Sliders,
@@ -7457,14 +7458,15 @@ SlideBee Design Studio`
       </div>
 
       {/* MODAL: BULK SPREADSHEET TEMPLATES IMPORT */}
+      {/* MODAL: BULK IMPORT TEMPLATES (CSV & ASSETS) */}
       <AnimatePresence>
         {isBulkImportOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto"
             >
               <div className="flex flex-wrap items-center justify-between pb-4 border-b border-[#111111]/10 mb-4 gap-3">
                 <div>
@@ -7479,9 +7481,16 @@ SlideBee Design Studio`
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleDownloadSampleCSV}
-                    className="hex-pill bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
                     <Download size={13} /> Download Sample CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkImportOpen(false)}
+                    className="p-1.5 text-gray-400 hover:text-[#111111] rounded-lg hover:bg-black/5 cursor-pointer"
+                  >
+                    <X size={18} />
                   </button>
                 </div>
               </div>
@@ -7491,7 +7500,7 @@ SlideBee Design Studio`
                 <button
                   type="button"
                   onClick={() => setBulkModalTab("csv")}
-                  className={`hex-pill px-4 py-1.5 text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                  className={`rounded-lg px-4 py-2 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
                     bulkModalTab === "csv"
                       ? "bg-[#111111] text-primary shadow"
                       : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
@@ -7502,7 +7511,7 @@ SlideBee Design Studio`
                 <button
                   type="button"
                   onClick={() => setBulkModalTab("assets")}
-                  className={`hex-pill px-4 py-1.5 text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                  className={`rounded-lg px-4 py-2 text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
                     bulkModalTab === "assets"
                       ? "bg-[#111111] text-primary shadow"
                       : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111]"
@@ -7524,7 +7533,7 @@ SlideBee Design Studio`
                         type="file"
                         accept=".csv,.txt"
                         onChange={handleFileUpload}
-                        className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-lg px-4 py-2.5 text-xs text-[#111111] font-medium outline-none cursor-pointer"
                       />
                       <span className="text-[10px] text-[#726F6D] mt-1 block">
                         Supports standard CSV from Microsoft Excel, Google Sheets, or Numbers.
@@ -7787,7 +7796,7 @@ SlideBee Design Studio`
                 <button
                   type="button"
                   onClick={() => setIsBulkImportOpen(false)}
-                  className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
+                  className="rounded-lg px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5 cursor-pointer"
                 >
                   Close
                 </button>
@@ -7795,7 +7804,7 @@ SlideBee Design Studio`
                   type="button"
                   disabled={parsedBulkTemplates.length === 0 || isImportingBulk}
                   onClick={handleExecuteBulkImport}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 shadow-md"
+                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 shadow-md cursor-pointer"
                 >
                   <UploadCloud size={15} />
                   {isImportingBulk ? "Importing to Database..." : `Import ${parsedBulkTemplates.length} Templates to Store`}
@@ -7809,50 +7818,57 @@ SlideBee Design Studio`
       {/* MODAL: ADD SINGLE TEMPLATE WITH AUTOMATED SLIDE CONVERSION */}
       <AnimatePresence>
         {isAddTemplateOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto space-y-5"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10 mb-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
                 <div>
-                  <h3 className="text-xl font-heading font-extrabold text-[#111111]">
-                    Add New Presentation Template
+                  <h3 className="text-xl font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                    <Plus size={20} className="text-primary-amber" /> Add New Presentation Template
                   </h3>
                   <p className="text-xs text-[#726F6D]">
                     Upload a local PPTX/PDF file for automated slide-to-JPEG conversion, or create manually.
                   </p>
                 </div>
-                <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-3 py-1">
-                  SKU: {newCode}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-primary/20 text-[#111111] font-black text-[10px] px-3 py-1">
+                    SKU: {newCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddTemplateOpen(false)}
+                    className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
-              {/* SECTION 1: PRESENTATION DELIVERABLE FILE (.pptx / Cloud Link) */}
-              <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
-                      <FileText size={15} />
-                    </div>
-                    <div>
+              {/* 2-Column Row 1: Deliverable File & Software Tags */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* SECTION 1: PRESENTATION DELIVERABLE FILE */}
+                <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-6 h-6 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
+                        <FileText size={13} />
+                      </div>
                       <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
-                        1. Presentation Deliverable File (.pptx / Download Link)
+                        1. Master PowerPoint Deliverable
                       </h4>
-                      <p className="text-[10px] text-[#726F6D]">
-                        The Master PowerPoint (.pptx) file buyers receive upon checkout or instant download
-                      </p>
                     </div>
+                    <p className="text-[10px] text-[#726F6D]">
+                      The Master PowerPoint (.pptx) file buyers receive upon checkout or instant download.
+                    </p>
                   </div>
-                </div>
 
-                <div className="pt-1">
-                  {/* Single Clean Upload Directly to Cloudflare R2 */}
-                  <div className="bg-white p-4 rounded-xl border border-[#111111]/10 space-y-2">
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-4 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
-                      <HardDrive size={14} className="text-primary-amber" />
+                  <div className="bg-white p-3 rounded-lg border border-[#111111]/10 space-y-2">
+                    <label className="rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
+                      <HardDrive size={13} className="text-primary-amber" />
                       <span>{isUploadingPpt ? "Uploading to Cloudflare R2..." : "Choose Master PowerPoint File (.pptx)"}</span>
                       <input
                         type="file"
@@ -7864,10 +7880,10 @@ SlideBee Design Studio`
                     </label>
 
                     {newPptFilename ? (
-                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between">
-                        <div className="truncate flex items-center gap-2">
-                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                          <span className="truncate">{newPptFilename} ({newPptSize})</span>
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-xs font-bold flex items-center justify-between">
+                        <div className="truncate flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate text-[11px]">{newPptFilename} ({newPptSize})</span>
                         </div>
                         <button
                           type="button"
@@ -7876,26 +7892,70 @@ SlideBee Design Studio`
                             setNewPptFilename("");
                             setNewPptSize("");
                           }}
-                          className="text-red-600 hover:text-red-800 ml-2 text-xs font-bold underline cursor-pointer"
+                          className="text-red-600 hover:text-red-800 ml-2 text-[11px] font-bold underline cursor-pointer"
                         >
                           Remove
                         </button>
                       </div>
                     ) : (
                       <span className="text-[10px] text-[#726F6D] block text-center">
-                        Master presentation (.pptx) will be uploaded directly to Cloudflare R2 object storage.
+                        Master presentation (.pptx) uploaded directly to Cloudflare R2.
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS */}
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 text-left space-y-2 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
+                        <LayoutTemplate size={13} className="text-primary-amber" />
+                        <span>3. Software Compatibility</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-[#726F6D]">
+                        {newFormats.length === 0 ? "0 Selected" : `${newFormats.length} Selected`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#726F6D]">
+                      Select presentation software supported by this template. Click to toggle.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {AVAILABLE_FORMAT_TAGS.map((fmt) => {
+                      const isSelected = newFormats.includes(fmt);
+                      return (
+                        <button
+                          key={fmt}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setNewFormats(newFormats.filter(f => f !== fmt));
+                            } else {
+                              setNewFormats([...newFormats, fmt]);
+                            }
+                          }}
+                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs ${
+                            isSelected
+                              ? "bg-[#111111] text-[#FCBF14] border border-[#111111]"
+                              : "bg-white text-[#111111] border border-[#111111]/15 hover:border-primary"
+                          }`}
+                        >
+                          {isSelected ? <Check size={11} className="text-[#FCBF14]" /> : <Plus size={11} className="text-[#726F6D]" />}
+                          <span>{fmt}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
               {/* SECTION 2: TEMPLATE PREVIEWS & SLIDE DECK GALLERY */}
-              <div className="bg-white border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-4 shadow-sm">
+              <div className="bg-white border border-[#111111]/10 rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-primary text-[#111111] flex items-center justify-center font-bold">
-                      <ImageIcon size={15} />
+                    <div className="w-6 h-6 rounded-lg bg-primary text-[#111111] flex items-center justify-center font-bold">
+                      <ImageIcon size={14} />
                     </div>
                     <div>
                       <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
@@ -7907,175 +7967,139 @@ SlideBee Design Studio`
                     </div>
                   </div>
                   {newSlides.length > 0 && (
-                    <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5">
+                    <span className="rounded-lg bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5">
                       {newSlides.length} Slide Previews
                     </span>
                   )}
                 </div>
 
-                {/* Primary Cover Thumbnail */}
-                <div className="bg-[#FFF9E8] p-3.5 rounded-xl border border-[#111111]/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-extrabold text-[#111111] block">
-                        Primary Cover / Thumbnail Image *
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Primary Cover Thumbnail */}
+                  <div className="bg-[#FFF9E8] p-3 rounded-lg border border-[#111111]/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-extrabold text-[#111111] block">
+                          Primary Cover / Thumbnail Image *
+                        </label>
+                        <span className="text-[10px] text-[#726F6D]">
+                          Main display card across marketplace.
+                        </span>
+                      </div>
+                      <label className={`rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
+                        <UploadCloud size={13} className="text-primary-amber" />
+                        <span>{isUploadingCover ? "Uploading..." : "Upload Cover"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingCover}
+                          onChange={handleCoverImageUpload}
+                          className="hidden"
+                        />
                       </label>
-                      <span className="text-[10px] text-[#726F6D]">
-                        Appears as the main display card across the marketplace.
-                      </span>
                     </div>
-                    <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
-                      <UploadCloud size={13} className="text-primary-amber" />
-                      <span>{isUploadingCover ? "Uploading to R2..." : "Upload Cover to R2"}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploadingCover}
-                        onChange={handleCoverImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
 
-                  {newThumbnail ? (
-                    <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
-                      <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                        <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="text-xs text-[#726F6D] space-y-0.5 flex-1 min-w-0">
-                        <span className="font-extrabold text-[#111111] block">Cover Image Selected</span>
-                        <span className="text-[11px] block truncate">{newThumbnail}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setNewThumbnail("")}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 cursor-pointer"
-                      >
-                        Remove Cover
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="p-3.5 border-2 border-dashed border-[#111111]/15 rounded-xl text-center bg-white/60">
-                      <p className="text-xs text-[#726F6D]">No primary cover selected. Click "Upload Cover to R2" to set the catalog cover image.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Multi-Slide Interior Previews Gallery */}
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
-                      <Layers size={14} className="text-primary-amber" /> Interior Slide Images ({newSlides.length} Slides)
-                    </span>
-                    <label className={`hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
-                      <UploadCloud size={13} />
-                      <span>{isUploadingSlide ? "Uploading Slides to R2..." : "Upload Slides to R2"}</span>
-                      <input
-                        type="file"
-                        multiple
-                        disabled={isUploadingSlide}
-                        accept="image/*"
-                        onChange={handleSlideImagesUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  {/* Visual Slide Thumbnails Strip */}
-                  {newSlides.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1 border border-[#111111]/10 rounded-xl bg-[#FFF9E8]/50">
-                      {newSlides.map((s, idx) => (
-                        <div
-                          key={idx}
-                          className="hex-card overflow-hidden bg-white border border-[#111111]/10 text-left p-1.5 shadow-sm relative group"
+                    {newThumbnail ? (
+                      <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-[#111111]/8">
+                        <div className="w-20 h-14 bg-[#111111] rounded overflow-hidden shrink-0 border border-primary/30">
+                          <img src={normalizeR2Url(newThumbnail)} alt="Cover Preview" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="text-xs text-[#726F6D] space-y-0.5 flex-1 min-w-0">
+                          <span className="font-extrabold text-[#111111] block text-[11px]">Cover Image Selected</span>
+                          <span className="text-[10px] block truncate">{newThumbnail}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setNewThumbnail("")}
+                          className="text-red-500 hover:text-red-700 text-xs font-bold px-1.5 py-1 cursor-pointer"
                         >
-                          <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                            <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex items-center justify-between px-0.5">
-                            <span className="text-[9px] font-black text-[#111111]">
-                              {idx === 0 ? "Cover" : `Slide #${idx + 1}`}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              {idx > 0 && (
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-3 border-2 border-dashed border-[#111111]/15 rounded-lg text-center bg-white/60">
+                        <p className="text-[11px] text-[#726F6D]">No cover selected. Click "Upload Cover" to set catalog cover image.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Multi-Slide Interior Previews Gallery */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                        <Layers size={13} className="text-primary-amber" /> Interior Slides ({newSlides.length})
+                      </span>
+                      <label className={`rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
+                        <UploadCloud size={13} />
+                        <span>{isUploadingSlide ? "Uploading..." : "Upload Slides"}</span>
+                        <input
+                          type="file"
+                          multiple
+                          disabled={isUploadingSlide}
+                          accept="image/*"
+                          onChange={handleSlideImagesUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Visual Slide Thumbnails Strip */}
+                    {newSlides.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1.5 border border-[#111111]/10 rounded-lg bg-[#FFF9E8]/50">
+                        {newSlides.map((s, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-white border border-[#111111]/10 rounded p-1 text-left shadow-sm relative group"
+                          >
+                            <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                              <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex items-center justify-between px-0.5">
+                              <span className="text-[8px] font-black text-[#111111]">
+                                {idx === 0 ? "Cover" : `#${idx + 1}`}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = [...newSlides];
+                                      const [moved] = next.splice(idx, 1);
+                                      next.unshift(moved);
+                                      setNewSlides(next);
+                                      setNewThumbnail(moved);
+                                    }}
+                                    className="text-[8px] text-primary-amber font-extrabold hover:underline"
+                                    title="Make Cover"
+                                  >
+                                    Top
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const next = [...newSlides];
-                                    const [moved] = next.splice(idx, 1);
-                                    next.unshift(moved);
+                                    const next = newSlides.filter((_, i) => i !== idx);
                                     setNewSlides(next);
-                                    setNewThumbnail(moved);
+                                    setNewSlideCount(next.length || 1);
+                                    if (idx === 0 && next.length > 0) {
+                                      setNewThumbnail(next[0]);
+                                    }
                                   }}
-                                  className="text-[8px] text-primary-amber font-extrabold hover:underline"
-                                  title="Make Cover"
+                                  className="text-red-500 hover:text-red-700"
+                                  title="Remove"
                                 >
-                                  Top
+                                  <Trash2 size={10} />
                                 </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = newSlides.filter((_, i) => i !== idx);
-                                  setNewSlides(next);
-                                  setNewSlideCount(next.length || 1);
-                                  if (idx === 0 && next.length > 0) {
-                                    setNewThumbnail(next[0]);
-                                  }
-                                }}
-                                className="text-red-500 hover:text-red-700"
-                                title="Remove"
-                              >
-                                <Trash2 size={10} />
-                              </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS (OPTIONAL) */}
-              <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 text-left space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                    <LayoutTemplate size={13} className="text-primary-amber" />
-                    <span>3. Software Compatibility Tags</span>
-                  </label>
-                  <span className="text-[10px] font-bold text-[#726F6D]">
-                    {newFormats.length === 0 ? "0 Formats Selected (Optional)" : `${newFormats.length} Format${newFormats.length > 1 ? "s" : ""} Selected`}
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#726F6D]">
-                  Select presentation software supported by this template. Click any format pill to toggle on or off.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {AVAILABLE_FORMAT_TAGS.map((fmt) => {
-                    const isSelected = newFormats.includes(fmt);
-                    return (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setNewFormats(newFormats.filter(f => f !== fmt));
-                          } else {
-                            setNewFormats([...newFormats, fmt]);
-                          }
-                        }}
-                        className={`hex-pill-sm px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          isSelected
-                            ? "bg-[#111111] text-[#FCBF14] border border-[#111111]"
-                            : "bg-white text-[#111111] border border-[#111111]/15 hover:border-primary"
-                        }`}
-                      >
-                        {isSelected ? <Check size={12} className="text-[#FCBF14]" /> : <Plus size={12} className="text-[#726F6D]" />}
-                        <span>{fmt}</span>
-                      </button>
-                    );
-                  })}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 border-2 border-dashed border-[#111111]/15 rounded-lg text-center bg-[#FFF9E8]/30">
+                        <p className="text-[11px] text-[#726F6D]">No interior slides uploaded yet.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -8092,7 +8116,7 @@ SlideBee Design Studio`
                       placeholder="e.g. Series A Pitch Deck Pro"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
@@ -8106,12 +8130,12 @@ SlideBee Design Studio`
                       placeholder="e.g. SLD-201"
                       value={newCode}
                       onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-black uppercase outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-black uppercase outline-none focus:border-primary"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
                       Category
@@ -8119,7 +8143,7 @@ SlideBee Design Studio`
                     <select
                       value={newCategory}
                       onChange={(e) => setNewCategory(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       <option value="Pitch Decks">Pitch Decks</option>
                       <option value="Business">Business</option>
@@ -8134,18 +8158,16 @@ SlideBee Design Studio`
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Total Slides Count *
+                      Total Slides *
                     </label>
                     <input
                       type="number"
                       value={newSlideCount ?? ""}
                       onChange={(e) => setNewSlideCount(e.target.value === "" ? "" : Number(e.target.value))}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
                       Price INR (₹) *
@@ -8154,7 +8176,7 @@ SlideBee Design Studio`
                       type="number"
                       value={newPriceINR ?? ""}
                       onChange={(e) => setNewPriceINR(e.target.value === "" ? "" : Number(e.target.value))}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
@@ -8166,7 +8188,7 @@ SlideBee Design Studio`
                       type="number"
                       value={newPriceUSD ?? ""}
                       onChange={(e) => setNewPriceUSD(e.target.value === "" ? "" : Number(e.target.value))}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
                 </div>
@@ -8176,72 +8198,72 @@ SlideBee Design Studio`
                     Description & Features
                   </label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     placeholder="Short summary of the template features and layout styles..."
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
                   />
                 </div>
 
                 {/* Prominent Free Template Tag Toggle */}
-                <div className={`p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                <div className={`p-3.5 rounded-xl border-2 transition-all flex items-center justify-between ${
                   newIsCreditEligible 
                     ? "bg-primary/20 border-primary shadow-sm" 
                     : "bg-[#FFF9E8] border-primary/30"
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#111111] text-primary flex items-center justify-center font-bold">
-                      <Coins size={16} />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[#111111] text-primary flex items-center justify-center font-bold">
+                      <Coins size={15} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          Free Template Tag (Free for Normal Users / 5 Starter Credits)
+                          Free Template Tag (5 Starter Credits)
                         </span>
                         {newIsCreditEligible && (
-                          <span className="hex-pill-sm bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
-                            FREE TAG ACTIVE
+                          <span className="rounded bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
+                            ACTIVE
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-[#726F6D] font-medium">
-                        Eligible for registered users to redeem for 0 rupees using their 5 free starter credits.
+                      <span className="text-[10px] text-[#726F6D] font-medium">
+                        Eligible for registered users to redeem using starter credits.
                       </span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setNewIsCreditEligible(!Boolean(newIsCreditEligible))}
-                    className={`hex-pill px-4 py-2 text-xs font-black transition-all cursor-pointer shadow-xs ${
+                    className={`rounded-lg px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer shadow-xs ${
                       newIsCreditEligible
                         ? "bg-[#111111] text-primary border border-primary"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
                     }`}
                   >
-                    {newIsCreditEligible ? "Tagged as Free" : "+ Tag as Free Template"}
+                    {newIsCreditEligible ? "Tagged as Free" : "+ Tag as Free"}
                   </button>
                 </div>
 
                 {addTemplateWarning && (
-                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-lg text-xs font-bold flex items-center gap-2">
                     <AlertCircle size={15} className="text-amber-600 shrink-0" />
                     <span>{addTemplateWarning}</span>
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/10">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
                   <button
                     type="button"
                     onClick={() => setIsAddTemplateOpen(false)}
-                    className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5"
+                    className="rounded-lg px-4 py-2 text-xs font-extrabold text-[#726F6D] hover:bg-black/5 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isCreatingTemplate || isUploadingPpt}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50"
+                    className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {isCreatingTemplate ? "Publishing to Database..." : "Publish Template to Marketplace"}
                   </button>
@@ -8255,25 +8277,24 @@ SlideBee Design Studio`
       {/* MODAL: EDIT TEMPLATE */}
       <AnimatePresence>
         {isEditTemplateOpen && editingTemplate && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] overflow-y-auto space-y-5"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10 mb-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
                 <div>
                   <h3 className="text-xl font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                    <Edit3 size={18} className="text-primary-amber" />
-                    Edit Presentation Template
+                    <Edit3 size={18} className="text-primary-amber" /> Edit Presentation Template
                   </h3>
                   <p className="text-xs text-[#726F6D]">
                     Modify template title, pricing, previews, attached deliverable, and categories.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-3 py-1">
+                  <span className="rounded-lg bg-primary/20 text-[#111111] font-black text-[10px] px-3 py-1">
                     SKU: {editingTemplate.code}
                   </span>
                   <button
@@ -8282,7 +8303,7 @@ SlideBee Design Studio`
                       setIsEditTemplateOpen(false);
                       setEditingTemplate(null);
                     }}
-                    className="text-[#726F6D] hover:text-[#111111] p-1 rounded-full hover:bg-black/5 cursor-pointer"
+                    className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
                   >
                     <X size={18} />
                   </button>
@@ -8290,33 +8311,32 @@ SlideBee Design Studio`
               </div>
 
               {editTemplateSuccess && (
-                <div className="bg-green-50 border border-green-200 text-green-800 p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 mb-4 shadow-sm">
+                <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm">
                   <CheckCircle2 size={16} /> Template updated successfully in database!
                 </div>
               )}
 
-              {/* SECTION 1: PRESENTATION DELIVERABLE FILE */}
-              <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-4 sm:p-5 mb-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
-                      <FileText size={15} />
-                    </div>
-                    <div>
+              {/* 2-Column Row 1: Deliverable File & Software Tags */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* SECTION 1: PRESENTATION DELIVERABLE FILE */}
+                <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-6 h-6 rounded-lg bg-[#111111] text-primary flex items-center justify-center">
+                        <FileText size={13} />
+                      </div>
                       <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
-                        1. Presentation Deliverable File (.pptx / Download Link)
+                        1. Master PowerPoint Deliverable
                       </h4>
-                      <p className="text-[10px] text-[#726F6D]">
-                        Dispatched securely directly to client's email with instant browser download upon checkout
-                      </p>
                     </div>
+                    <p className="text-[10px] text-[#726F6D]">
+                      Dispatched securely directly to client's email with instant browser download upon checkout.
+                    </p>
                   </div>
-                </div>
 
-                <div className="pt-1">
-                  <div className="bg-white p-4 rounded-xl border border-[#111111]/10 space-y-2">
-                    <label className="hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-4 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
-                      <HardDrive size={14} className="text-primary-amber" />
+                  <div className="bg-white p-3 rounded-lg border border-[#111111]/10 space-y-2">
+                    <label className="rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
+                      <HardDrive size={13} className="text-primary-amber" />
                       <span>{isUploadingEditPpt ? "Uploading to Cloudflare R2..." : "Replace Master PowerPoint File (.pptx)"}</span>
                       <input
                         type="file"
@@ -8348,10 +8368,10 @@ SlideBee Design Studio`
                     </label>
 
                     {editingTemplate.download_url ? (
-                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between">
-                        <div className="truncate flex items-center gap-2">
-                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                          <span className="truncate">Attached: {editingTemplate.download_url.split("/").pop()}</span>
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-xs font-bold flex items-center justify-between">
+                        <div className="truncate flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate text-[11px]">Attached: {editingTemplate.download_url.split("/").pop()}</span>
                         </div>
                         <a
                           href={normalizeR2Url(editingTemplate.download_url, "decks")}
@@ -8370,14 +8390,63 @@ SlideBee Design Studio`
                     )}
                   </div>
                 </div>
+
+                {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS */}
+                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 text-left space-y-2 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
+                        <LayoutTemplate size={13} className="text-primary-amber" />
+                        <span>3. Software Compatibility</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-[#726F6D]">
+                        {(!Array.isArray(editingTemplate.formats) || editingTemplate.formats.length === 0)
+                          ? "0 Selected"
+                          : `${editingTemplate.formats.length} Selected`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#726F6D]">
+                      Select presentation software supported by this template. Click to toggle.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {AVAILABLE_FORMAT_TAGS.map((fmt) => {
+                      const currentFormats: string[] = Array.isArray(editingTemplate.formats) ? editingTemplate.formats : [];
+                      const isSelected = currentFormats.includes(fmt);
+                      return (
+                        <button
+                          key={fmt}
+                          type="button"
+                          onClick={() => {
+                            const next = isSelected
+                              ? currentFormats.filter(f => f !== fmt)
+                              : [...currentFormats, fmt];
+                            setEditingTemplate({
+                              ...editingTemplate,
+                              formats: next
+                            });
+                          }}
+                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs ${
+                            isSelected
+                              ? "bg-[#111111] text-[#FCBF14] border border-[#111111]"
+                              : "bg-white text-[#111111] border border-[#111111]/15 hover:border-primary"
+                          }`}
+                        >
+                          {isSelected ? <Check size={11} className="text-[#FCBF14]" /> : <Plus size={11} className="text-[#726F6D]" />}
+                          <span>{fmt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* SECTION 2: TEMPLATE PREVIEWS & SLIDES */}
-              <div className="bg-white border border-[#111111]/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-4 shadow-sm">
+              <div className="bg-white border border-[#111111]/10 rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-primary text-[#111111] flex items-center justify-center font-bold">
-                      <ImageIcon size={15} />
+                    <div className="w-6 h-6 rounded-lg bg-primary text-[#111111] flex items-center justify-center font-bold">
+                      <ImageIcon size={14} />
                     </div>
                     <div>
                       <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider">
@@ -8389,193 +8458,152 @@ SlideBee Design Studio`
                     </div>
                   </div>
                   {Array.isArray(editingTemplate.slides) && editingTemplate.slides.length > 0 && (
-                    <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5">
+                    <span className="rounded-lg bg-primary/20 text-[#111111] font-black text-[10px] px-2.5 py-0.5">
                       {editingTemplate.slides.length} Slides
                     </span>
                   )}
                 </div>
 
-                {/* Primary Cover Thumbnail */}
-                <div className="bg-[#FFF9E8] p-3.5 rounded-xl border border-[#111111]/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-extrabold text-[#111111] block">
-                        Primary Cover / Thumbnail Image *
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Primary Cover Thumbnail */}
+                  <div className="bg-[#FFF9E8] p-3 rounded-lg border border-[#111111]/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-extrabold text-[#111111] block">
+                          Primary Cover / Thumbnail Image *
+                        </label>
+                        <span className="text-[10px] text-[#726F6D]">
+                          Main display card across marketplace.
+                        </span>
+                      </div>
+                      <label className={`rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
+                        <UploadCloud size={13} className="text-primary-amber" />
+                        <span>{isUploadingCover ? "Uploading..." : "Upload Cover"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingCover}
+                          onChange={handleEditCoverImageUpload}
+                          className="hidden"
+                        />
                       </label>
-                      <span className="text-[10px] text-[#726F6D]">
-                        Appears as the main display card across the marketplace.
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-[#111111]/8">
+                      <div className="w-20 h-14 bg-[#111111] rounded overflow-hidden shrink-0 border border-primary/30">
+                        <img src={normalizeR2Url(editingTemplate.thumbnail_url)} alt="Cover Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="text-xs text-[#726F6D] space-y-0.5 flex-1 min-w-0">
+                        <span className="font-extrabold text-[#111111] block text-[11px]">Current Cover Active</span>
+                        <span className="text-[10px] block truncate">{editingTemplate.thumbnail_url}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Slide Interior Previews Gallery */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                        <Layers size={13} className="text-primary-amber" /> Interior Slides ({editingTemplate.slides?.length || 0})
                       </span>
-                    </div>
-                    <label className={`hex-pill-sm bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingCover ? "opacity-60 cursor-not-allowed" : ""}`}>
-                      <UploadCloud size={13} className="text-primary-amber" />
-                      <span>{isUploadingCover ? "Uploading to R2..." : "Upload Cover to R2"}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploadingCover}
-                        onChange={handleEditCoverImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#111111]/8">
-                    <div className="w-24 h-16 bg-[#111111] rounded-lg overflow-hidden shrink-0 border border-primary/30">
-                      <img src={normalizeR2Url(editingTemplate.thumbnail_url)} alt="Cover Preview" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="text-xs text-[#726F6D] space-y-0.5">
-                      <span className="font-extrabold text-[#111111] block">Current Cover Active</span>
-                      <span className="text-[11px] block truncate max-w-xs">{editingTemplate.thumbnail_url}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Multi-Slide Interior Previews Gallery */}
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
-                      <Layers size={14} className="text-primary-amber" /> Interior Slide Images ({editingTemplate.slides?.length || 0} Slides)
-                    </span>
-                    <label className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
-                      <UploadCloud size={13} />
-                      <span>Upload Slides to R2</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length === 0) return;
-                          try {
-                            const uploadedUrls: string[] = [];
-                            for (const file of files) {
-                              const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
-                              if (r2Res.success && r2Res.publicUrl) {
-                                uploadedUrls.push(r2Res.publicUrl);
+                      <label className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm">
+                        <UploadCloud size={13} />
+                        <span>Upload Slides</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length === 0) return;
+                            try {
+                              const uploadedUrls: string[] = [];
+                              for (const file of files) {
+                                const r2Res = await uploadToR2(file, { folder: "templates/slides", fileName: file.name });
+                                if (r2Res.success && r2Res.publicUrl) {
+                                  uploadedUrls.push(r2Res.publicUrl);
+                                }
                               }
+                              setEditingTemplate((prev: any) => {
+                                const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
+                                const nextSlides = [...curSlides, ...uploadedUrls];
+                                return {
+                                  ...prev,
+                                  slides: nextSlides,
+                                  slide_count: nextSlides.length
+                                };
+                              });
+                            } catch (err: any) {
+                              alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
                             }
-                            setEditingTemplate((prev: any) => {
-                              const curSlides = Array.isArray(prev.slides) ? prev.slides : [];
-                              const nextSlides = [...curSlides, ...uploadedUrls];
-                              return {
-                                ...prev,
-                                slides: nextSlides,
-                                slide_count: nextSlides.length
-                              };
-                            });
-                          } catch (err: any) {
-                            alert("Failed to upload slide images to Cloudflare R2: " + (err.message || err));
-                          }
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
 
-                  {/* Visual Slide Thumbnails Strip */}
-                  {Array.isArray(editingTemplate.slides) && editingTemplate.slides.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1 border border-[#111111]/10 rounded-xl bg-[#FFF9E8]/50">
-                      {editingTemplate.slides.map((s: string, idx: number) => (
-                        <div
-                          key={idx}
-                          className="hex-card overflow-hidden bg-white border border-[#111111]/10 text-left p-1.5 shadow-sm relative group"
-                        >
-                          <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
-                            <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex items-center justify-between px-0.5">
-                            <span className="text-[9px] font-black text-[#111111]">
-                              {idx === 0 ? "Cover" : `Slide #${idx + 1}`}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              {idx > 0 && (
+                    {/* Visual Slide Thumbnails Strip */}
+                    {Array.isArray(editingTemplate.slides) && editingTemplate.slides.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1.5 border border-[#111111]/10 rounded-lg bg-[#FFF9E8]/50">
+                        {editingTemplate.slides.map((s: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-white border border-[#111111]/10 rounded p-1 text-left shadow-sm relative group"
+                          >
+                            <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                              <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex items-center justify-between px-0.5">
+                              <span className="text-[8px] font-black text-[#111111]">
+                                {idx === 0 ? "Cover" : `#${idx + 1}`}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = [...editingTemplate.slides];
+                                      const [moved] = next.splice(idx, 1);
+                                      next.unshift(moved);
+                                      setEditingTemplate({
+                                        ...editingTemplate,
+                                        slides: next,
+                                        thumbnail_url: moved
+                                      });
+                                    }}
+                                    className="text-[8px] text-primary-amber font-extrabold hover:underline cursor-pointer"
+                                    title="Make Cover"
+                                  >
+                                    Top
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const next = [...editingTemplate.slides];
-                                    const [moved] = next.splice(idx, 1);
-                                    next.unshift(moved);
+                                    const next = editingTemplate.slides.filter((_: any, i: number) => i !== idx);
                                     setEditingTemplate({
                                       ...editingTemplate,
                                       slides: next,
-                                      thumbnail_url: moved
+                                      slide_count: next.length || 1,
+                                      thumbnail_url: idx === 0 && next.length > 0 ? next[0] : editingTemplate.thumbnail_url
                                     });
                                   }}
-                                  className="text-[8px] text-primary-amber font-extrabold hover:underline cursor-pointer"
-                                  title="Make Cover"
+                                  className="text-red-500 hover:text-red-700 cursor-pointer"
+                                  title="Remove"
                                 >
-                                  Top
+                                  <Trash2 size={10} />
                                 </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = editingTemplate.slides.filter((_: any, i: number) => i !== idx);
-                                  setEditingTemplate({
-                                    ...editingTemplate,
-                                    slides: next,
-                                    slide_count: next.length || 1,
-                                    thumbnail_url: idx === 0 && next.length > 0 ? next[0] : editingTemplate.thumbnail_url
-                                  });
-                                }}
-                                className="text-red-500 hover:text-red-700 cursor-pointer"
-                                title="Remove"
-                              >
-                                <Trash2 size={10} />
-                              </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SECTION 3: SOFTWARE COMPATIBILITY TAGS (OPTIONAL) */}
-              <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10 text-left space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                    <LayoutTemplate size={13} className="text-primary-amber" />
-                    <span>3. Software Compatibility Tags</span>
-                  </label>
-                  <span className="text-[10px] font-bold text-[#726F6D]">
-                    {(!Array.isArray(editingTemplate.formats) || editingTemplate.formats.length === 0)
-                      ? "0 Formats Selected (Optional)"
-                      : `${editingTemplate.formats.length} Format${editingTemplate.formats.length > 1 ? "s" : ""} Selected`}
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#726F6D]">
-                  Select presentation software supported by this template. Click any format pill to toggle on or off.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {AVAILABLE_FORMAT_TAGS.map((fmt) => {
-                    const currentFormats: string[] = Array.isArray(editingTemplate.formats) ? editingTemplate.formats : [];
-                    const isSelected = currentFormats.includes(fmt);
-                    return (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => {
-                          const next = isSelected
-                            ? currentFormats.filter(f => f !== fmt)
-                            : [...currentFormats, fmt];
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            formats: next
-                          });
-                        }}
-                        className={`hex-pill-sm px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          isSelected
-                            ? "bg-[#111111] text-[#FCBF14] border border-[#111111]"
-                            : "bg-white text-[#111111] border border-[#111111]/15 hover:border-primary"
-                        }`}
-                      >
-                        {isSelected ? <Check size={12} className="text-[#FCBF14]" /> : <Plus size={12} className="text-[#726F6D]" />}
-                        <span>{fmt}</span>
-                      </button>
-                    );
-                  })}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 border-2 border-dashed border-[#111111]/15 rounded-lg text-center bg-[#FFF9E8]/30">
+                        <p className="text-[11px] text-[#726F6D]">No interior slides uploaded yet.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -8591,7 +8619,7 @@ SlideBee Design Studio`
                       required
                       value={editingTemplate.title}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, title: e.target.value })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
@@ -8604,12 +8632,12 @@ SlideBee Design Studio`
                       required
                       value={editingTemplate.code}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, code: e.target.value.toUpperCase() })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-black uppercase outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-black uppercase outline-none focus:border-primary"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
                       Category
@@ -8617,7 +8645,7 @@ SlideBee Design Studio`
                     <select
                       value={editingTemplate.category}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       <option value="Pitch Decks">Pitch Decks</option>
                       <option value="Business">Business</option>
@@ -8632,18 +8660,16 @@ SlideBee Design Studio`
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                      Total Slides Count *
+                      Total Slides *
                     </label>
                     <input
                       type="number"
                       value={editingTemplate.slide_count ?? ""}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, slide_count: e.target.value === "" ? "" : Number(e.target.value) })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
                       Price INR (₹) *
@@ -8652,7 +8678,7 @@ SlideBee Design Studio`
                       type="number"
                       value={editingTemplate.price_inr ?? ""}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, price_inr: e.target.value === "" ? "" : Number(e.target.value) })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
 
@@ -8664,7 +8690,7 @@ SlideBee Design Studio`
                       type="number"
                       value={editingTemplate.price_usd ?? ""}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, price_usd: e.target.value === "" ? "" : Number(e.target.value) })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
                     />
                   </div>
                 </div>
@@ -8674,15 +8700,15 @@ SlideBee Design Studio`
                     Description
                   </label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={editingTemplate.description}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-card p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
                   />
                 </div>
 
                 {/* Storefront Marketplace Visibility Toggle */}
-                <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex items-center justify-between shadow-xs">
+                <div className="bg-[#FFF9E8] border border-primary/40 p-3 rounded-xl flex items-center justify-between shadow-xs">
                   <div>
                     <span className="text-xs font-black text-[#111111] block">Storefront Marketplace Visibility</span>
                     <span className="text-[10px] text-[#726F6D] font-medium">Show or hide this presentation deck on the public client catalog</span>
@@ -8690,7 +8716,7 @@ SlideBee Design Studio`
                   <button
                     type="button"
                     onClick={() => setEditingTemplate({ ...editingTemplate, is_published: editingTemplate.is_published === false ? true : false })}
-                    className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                    className={`rounded-lg text-[10px] font-black px-3 py-1.5 transition-all flex items-center gap-1 cursor-pointer ${
                       editingTemplate.is_published !== false
                         ? "bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200"
                         : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
@@ -8711,7 +8737,7 @@ SlideBee Design Studio`
                 </div>
 
                 {/* Free Starter Credits Library Tag */}
-                <div className="bg-[#FFF9E8] border border-primary/40 p-3.5 rounded-xl flex items-center justify-between shadow-xs">
+                <div className="bg-[#FFF9E8] border border-primary/40 p-3 rounded-xl flex items-center justify-between shadow-xs">
                   <div>
                     <span className="text-xs font-black text-[#111111] block">5 Free Starter Credits Tag</span>
                     <span className="text-[10px] text-[#726F6D] font-medium">Allow registered clients to claim this template using their 5 free starter credits</span>
@@ -8719,7 +8745,7 @@ SlideBee Design Studio`
                   <button
                     type="button"
                     onClick={() => setEditingTemplate({ ...editingTemplate, is_credit_eligible: !editingTemplate.is_credit_eligible })}
-                    className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                    className={`rounded-lg text-[10px] font-black px-3 py-1.5 transition-all flex items-center gap-1 cursor-pointer ${
                       editingTemplate.is_credit_eligible
                         ? "bg-primary text-[#111111] border border-[#111111]/20 shadow-xs"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
@@ -8737,17 +8763,17 @@ SlideBee Design Studio`
                 </div>
 
                 {editTemplateWarning && (
-                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-lg text-xs font-bold flex items-center gap-2">
                     <AlertCircle size={15} className="text-amber-600 shrink-0" />
                     <span>{editTemplateWarning}</span>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#111111]/10">
                   <button
                     type="button"
                     onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
-                    className="hex-pill px-4 py-2.5 text-xs font-extrabold text-red-600 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
+                    className="rounded-lg px-4 py-2 text-xs font-extrabold text-red-600 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 size={13} /> Delete Template
                   </button>
@@ -8759,14 +8785,14 @@ SlideBee Design Studio`
                         setIsEditTemplateOpen(false);
                         setEditingTemplate(null);
                       }}
-                      className="hex-pill px-4 py-2.5 text-xs font-extrabold text-[#726F6D] hover:bg-black/5 cursor-pointer"
+                      className="rounded-lg px-4 py-2 text-xs font-extrabold text-[#726F6D] hover:bg-black/5 cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isSavingEditTemplate || isUploadingEditPpt}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                      className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                     >
                       <Save size={14} />
                       {isSavingEditTemplate ? "Saving Changes..." : "Save Template Changes"}
@@ -8784,12 +8810,12 @@ SlideBee Design Studio`
       {/* MODAL: ORDER DETAILS & MILESTONE STEPPER */}
       <AnimatePresence>
         {selectedOrderForModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-5"
             >
               <button
                 type="button"
@@ -8798,32 +8824,34 @@ SlideBee Design Studio`
                   setIsClientEmailComposerOpen(false);
                   setClientEmailStatus(null);
                 }}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#111111] transition-colors hex-pill bg-black/5 hover:bg-black/10"
+                className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-[#111111] transition-colors rounded-lg bg-black/5 hover:bg-black/10 cursor-pointer"
               >
                 <X size={18} />
               </button>
 
-              <div className="flex items-center gap-2 mb-2">
-                <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
-                  Order #{selectedOrderForModal.id?.slice(0, 8) || "N/A"}
-                </span>
-                {selectedOrderForModal.rush_delivery && (
-                  <span className="hex-pill-sm bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-0.5 border border-red-200 flex items-center gap-1">
-                    <Zap size={10} /> 24h Rush Order
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="rounded-lg bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                    Order #{selectedOrderForModal.id?.slice(0, 8) || "N/A"}
                   </span>
-                )}
+                  {selectedOrderForModal.rush_delivery && (
+                    <span className="rounded-lg bg-red-100 text-red-700 text-[10px] font-black px-2.5 py-0.5 border border-red-200 flex items-center gap-1">
+                      <Zap size={10} /> 24h Rush Order
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111] mb-1">
+                  {selectedOrderForModal.service_type || "Presentation Design"}
+                </h3>
+                <p className="text-xs text-[#726F6D] font-medium">
+                  Client: <strong className="text-[#111111]">{selectedOrderForModal.client_name || "N/A"}</strong> ({selectedOrderForModal.client_email})
+                </p>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111] mb-1">
-                {selectedOrderForModal.service_type || "Presentation Design"}
-              </h3>
-              <p className="text-xs text-[#726F6D] font-medium mb-6">
-                Client: <strong className="text-[#111111]">{selectedOrderForModal.client_name || "N/A"}</strong> ({selectedOrderForModal.client_email})
-              </p>
-
               {/* Milestone Timeline Stepper in Modal */}
-              <div className="bg-[#FFF9E8] border border-primary/30 rounded-2xl p-5 mb-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
                     <CheckCircle2 size={14} className="text-primary-amber" /> Live Milestone Progress
                   </h4>
@@ -8833,7 +8861,7 @@ SlideBee Design Studio`
                 </div>
 
                 {/* 4-Step Stepper */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {ORDER_MILESTONES.map((m, idx) => {
                     const currentIdx = getMilestoneIndex(selectedOrderForModal.status);
                     const isPassed = idx < currentIdx;
@@ -8847,7 +8875,7 @@ SlideBee Design Studio`
                           handleUpdateOrderStatus(selectedOrderForModal.id, m.key);
                           setSelectedOrderForModal({ ...selectedOrderForModal, status: m.key });
                         }}
-                        className={`text-left p-3 rounded-xl border transition-all ${
+                        className={`text-left p-2.5 rounded-lg border transition-all cursor-pointer ${
                           isCurrent
                             ? "bg-[#111111] text-white border-[#111111] shadow-md ring-2 ring-primary/40"
                             : isPassed
@@ -8855,7 +8883,7 @@ SlideBee Design Studio`
                             : "bg-white text-gray-500 border-gray-200 hover:border-primary/50"
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-1">
                           <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
                             isCurrent ? "bg-primary text-[#111111]" : isPassed ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600"
                           }`}>
@@ -8873,8 +8901,8 @@ SlideBee Design Studio`
                   })}
                 </div>
 
-                <div className="flex items-center justify-between text-xs pt-3 border-t border-[#111111]/10">
-                  <span className="text-[#726F6D]">
+                <div className="flex items-center justify-between text-xs pt-2.5 border-t border-[#111111]/10">
+                  <span className="text-[#726F6D] text-[11px]">
                     Click any stage above to update status instantly.
                   </span>
                   {getMilestoneIndex(selectedOrderForModal.status) < 3 && (
@@ -8885,7 +8913,7 @@ SlideBee Design Studio`
                         handleUpdateOrderStatus(selectedOrderForModal.id, nextKey);
                         setSelectedOrderForModal({ ...selectedOrderForModal, status: nextKey });
                       }}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-1.5 flex items-center gap-1.5 shadow-sm transition-all"
+                      className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
                       Advance to {ORDER_MILESTONES[getMilestoneIndex(selectedOrderForModal.status) + 1].label} <ArrowRight size={12} />
                     </button>
@@ -8894,8 +8922,8 @@ SlideBee Design Studio`
               </div>
 
               {/* Order Scope & Requirements */}
-              <div className="space-y-4 text-xs mb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-xl border border-[#111111]/8">
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-gray-50 p-3.5 rounded-lg border border-[#111111]/8">
                   <div>
                     <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">Slide Scope</span>
                     <span className="font-extrabold text-[#111111] text-sm">{selectedOrderForModal.slide_count || "Custom"} Slides</span>
@@ -8915,16 +8943,16 @@ SlideBee Design Studio`
                     <span className="text-xs font-extrabold uppercase tracking-wider text-[#111111] block mb-1">
                       Client Project Brief & Notes:
                     </span>
-                    <div className="p-3.5 bg-[#FFF9E8] rounded-xl border border-primary/20 text-[#111111] font-medium leading-relaxed whitespace-pre-wrap">
+                    <div className="p-3 bg-[#FFF9E8] rounded-lg border border-primary/20 text-[#111111] font-medium leading-relaxed whitespace-pre-wrap">
                       {selectedOrderForModal.notes}
                     </div>
                   </div>
                 )}
 
                 {selectedOrderForModal.drive_link && (
-                  <div className="flex items-center justify-between p-3.5 bg-primary/10 border border-primary/30 rounded-xl">
+                  <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/30 rounded-lg">
                     <div>
-                      <span className="font-extrabold text-[#111111] block">Google Drive / Cloud Assets</span>
+                      <span className="font-extrabold text-[#111111] block text-xs">Google Drive / Cloud Assets</span>
                       <span className="text-[11px] text-[#726F6D] truncate max-w-xs sm:max-w-md block">
                         {selectedOrderForModal.drive_link}
                       </span>
@@ -8933,7 +8961,7 @@ SlideBee Design Studio`
                       href={selectedOrderForModal.drive_link}
                       target="_blank"
                       rel="noreferrer"
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shrink-0 shadow-sm"
+                      className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-3.5 py-1.5 flex items-center gap-1.5 shrink-0 shadow-sm"
                     >
                       Open Link <ExternalLink size={12} />
                     </a>
@@ -8941,26 +8969,26 @@ SlideBee Design Studio`
                 )}
               </div>
 
-              {/* IN-APP STUDIO EMAIL COMPOSER (Direction 1) */}
+              {/* IN-APP STUDIO EMAIL COMPOSER */}
               <AnimatePresence>
                 {isClientEmailComposerOpen && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden mb-6"
+                    className="overflow-hidden"
                   >
-                    <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-2xl p-5 shadow-inner">
-                      <div className="flex items-center justify-between pb-3 mb-4 border-b border-primary/20">
+                    <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-xl p-4 sm:p-5 shadow-inner space-y-3">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-primary/20">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-primary/30 flex items-center justify-center text-[#111111]">
-                            <Mail size={16} />
+                          <div className="w-7 h-7 rounded-lg bg-primary/30 flex items-center justify-center text-[#111111]">
+                            <Mail size={15} />
                           </div>
                           <div>
-                            <h4 className="font-heading font-extrabold text-sm text-[#111111]">
+                            <h4 className="font-heading font-extrabold text-xs text-[#111111]">
                               Studio Email Dispatcher
                             </h4>
-                            <p className="text-[11px] text-[#726F6D] font-medium">
+                            <p className="text-[10px] text-[#726F6D] font-medium">
                               Direct Resend/Zoho mail router with 0 browser redirects
                             </p>
                           </div>
@@ -8971,36 +8999,36 @@ SlideBee Design Studio`
                             setIsClientEmailComposerOpen(false);
                             setClientEmailStatus(null);
                           }}
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-[#111111] hover:bg-black/5 transition-colors"
+                          className="p-1 rounded-lg text-gray-500 hover:text-[#111111] hover:bg-black/5 transition-colors cursor-pointer"
                         >
-                          <X size={16} />
+                          <X size={15} />
                         </button>
                       </div>
 
                       {/* 1-Click Templates */}
-                      <div className="mb-4">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
                           1-Click Studio Templates:
                         </label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "milestone")}
-                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                            className="rounded-lg text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all cursor-pointer"
                           >
                             Milestone Update
                           </button>
                           <button
                             type="button"
                             onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "assets")}
-                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                            className="rounded-lg text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all cursor-pointer"
                           >
                             Request Assets
                           </button>
                           <button
                             type="button"
                             onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "ready")}
-                            className="hex-pill text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all"
+                            className="rounded-lg text-[11px] font-extrabold px-3 py-1 bg-white border border-primary/40 hover:bg-primary/20 text-[#111111] transition-all cursor-pointer"
                           >
                             Draft Ready
                           </button>
@@ -9008,7 +9036,7 @@ SlideBee Design Studio`
                       </div>
 
                       {/* Sender & Recipient */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
                             From (Studio Sender):
@@ -9016,7 +9044,7 @@ SlideBee Design Studio`
                           <select
                             value={clientEmailSender}
                             onChange={(e) => setClientEmailSender(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/20 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
+                            className="w-full bg-white border border-[#111111]/20 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
                           >
                             <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
                             <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
@@ -9033,7 +9061,7 @@ SlideBee Design Studio`
                               type="email"
                               value={selectedOrderForModal.client_email}
                               readOnly
-                              className="w-full bg-black/5 border border-[#111111]/15 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] cursor-not-allowed pr-14"
+                              className="w-full bg-black/5 border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#111111] cursor-not-allowed pr-14"
                             />
                             <button
                               type="button"
@@ -9042,7 +9070,7 @@ SlideBee Design Studio`
                                 setCopiedClientEmailSuccess(true);
                                 setTimeout(() => setCopiedClientEmailSuccess(false), 2000);
                               }}
-                              className="absolute right-1.5 top-1.5 hex-pill px-2 py-0.5 text-[10px] font-black bg-white border border-gray-200 hover:border-[#111111] text-[#111111]"
+                              className="absolute right-1 top-1 rounded px-2 py-0.5 text-[10px] font-black bg-white border border-gray-200 hover:border-[#111111] text-[#111111] cursor-pointer"
                             >
                               {copiedClientEmailSuccess ? "Copied" : "Copy"}
                             </button>
@@ -9051,7 +9079,7 @@ SlideBee Design Studio`
                       </div>
 
                       {/* Subject Line */}
-                      <div className="mb-3">
+                      <div>
                         <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
                           Email Subject:
                         </label>
@@ -9060,40 +9088,37 @@ SlideBee Design Studio`
                           value={clientEmailSubject}
                           onChange={(e) => setClientEmailSubject(e.target.value)}
                           placeholder="e.g. SlideBee Milestone Update: Executive Pitch Deck"
-                          className="w-full bg-white border border-[#111111]/20 rounded-xl px-3 py-2 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
+                          className="w-full bg-white border border-[#111111]/20 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-primary"
                         />
                       </div>
 
                       {/* Email Body */}
-                      <div className="mb-4">
+                      <div>
                         <label className="text-[10px] font-black uppercase tracking-wider text-[#726F6D] block mb-1">
                           Message Body:
                         </label>
                         <textarea
-                          rows={6}
+                          rows={4}
                           value={clientEmailBody}
                           onChange={(e) => setClientEmailBody(e.target.value)}
                           placeholder="Type your message to the client..."
-                          className="w-full bg-white border border-[#111111]/20 rounded-xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-primary leading-relaxed resize-y"
+                          className="w-full bg-white border border-[#111111]/20 rounded-lg p-2.5 text-xs font-medium text-[#111111] focus:outline-none focus:border-primary leading-relaxed resize-y"
                         />
-                        <p className="text-[10px] text-[#726F6D] mt-1 font-medium">
-                          Auto-formatted into SlideBee's branded HTML email template with logo and signature.
-                        </p>
                       </div>
 
                       {/* Feedback status banner */}
                       {clientEmailStatus && (
                         <div
-                          className={`p-3 rounded-xl mb-4 text-xs font-bold flex items-center gap-2 ${
+                          className={`p-2.5 rounded-lg text-xs font-bold flex items-center gap-2 ${
                             clientEmailStatus.type === "success"
                               ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                               : "bg-red-50 text-red-800 border border-red-200"
                           }`}
                         >
                           {clientEmailStatus.type === "success" ? (
-                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                            <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
                           ) : (
-                            <AlertCircle size={16} className="text-red-600 shrink-0" />
+                            <AlertCircle size={15} className="text-red-600 shrink-0" />
                           )}
                           <span>{clientEmailStatus.message}</span>
                         </div>
@@ -9107,7 +9132,7 @@ SlideBee Design Studio`
                             setIsClientEmailComposerOpen(false);
                             setClientEmailStatus(null);
                           }}
-                          className="hex-pill text-xs font-bold px-4 py-2 border border-[#111111]/20 hover:border-[#111111] text-[#111111]"
+                          className="rounded-lg text-xs font-bold px-3.5 py-1.5 border border-[#111111]/20 hover:border-[#111111] text-[#111111] cursor-pointer"
                         >
                           Close Composer
                         </button>
@@ -9116,11 +9141,11 @@ SlideBee Design Studio`
                           type="button"
                           disabled={isSendingClientEmail || !clientEmailSubject.trim() || !clientEmailBody.trim()}
                           onClick={() => handleSendClientEmail(selectedOrderForModal)}
-                          className="hex-pill bg-[#111111] hover:bg-primary text-white hover:text-[#111111] font-black text-xs px-5 py-2.5 flex items-center gap-2 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="rounded-lg bg-[#111111] hover:bg-primary text-white hover:text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-2 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                           {isSendingClientEmail ? (
                             <>
-                              <Loader2 size={14} className="animate-spin" /> Dispatched via Router...
+                              <Loader2 size={13} className="animate-spin" /> Dispatched...
                             </>
                           ) : (
                             <>
@@ -9135,12 +9160,12 @@ SlideBee Design Studio`
               </AnimatePresence>
 
               {/* Modal Footer Controls */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#111111]/10">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#111111]/10">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleOpenClientEmailComposer(selectedOrderForModal, "milestone")}
-                    className={`hex-pill font-black text-xs px-4 py-2 flex items-center gap-1.5 transition-all ${
+                    className={`rounded-lg font-black text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all cursor-pointer ${
                       isClientEmailComposerOpen
                         ? "bg-primary text-[#111111] shadow-sm"
                         : "border border-[#111111]/20 hover:border-primary text-[#111111] hover:bg-primary/10"
@@ -9156,7 +9181,7 @@ SlideBee Design Studio`
                       setCopiedClientEmailSuccess(true);
                       setTimeout(() => setCopiedClientEmailSuccess(false), 2000);
                     }}
-                    className="hex-pill border border-[#111111]/20 hover:border-[#111111] text-[#111111] font-extrabold text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all"
+                    className="rounded-lg border border-[#111111]/20 hover:border-[#111111] text-[#111111] font-extrabold text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     {copiedClientEmailSuccess ? (
                       <>
@@ -9177,7 +9202,7 @@ SlideBee Design Studio`
                     setIsClientEmailComposerOpen(false);
                     setClientEmailStatus(null);
                   }}
-                  className="hex-pill bg-[#111111] text-white hover:text-primary font-black text-xs px-6 py-2.5 shadow-md"
+                  className="rounded-lg bg-[#111111] text-white hover:text-primary font-black text-xs px-6 py-2.5 shadow-md cursor-pointer"
                 >
                   Done
                 </button>
@@ -9186,19 +9211,21 @@ SlideBee Design Studio`
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {/* MODAL: GRANT COMPLIMENTARY PRO MEMBERSHIP */}
+      {/* MODAL: GRANT COMPLIMENTARY PRO MEMBERSHIP */}
+      <AnimatePresence>
         {isGrantProModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-4xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between border-b border-[#111111]/8 pb-4">
+              <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-primary-amber">
+                  <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-primary-amber shrink-0">
                     <Gift size={20} />
                   </div>
                   <div>
@@ -9206,225 +9233,244 @@ SlideBee Design Studio`
                       Grant Free Pro Membership
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Allocate complimentary VIP status, slide quota, and direct WhatsApp line
+                      Allocate complimentary VIP status, 80-template download quota, and direct WhatsApp studio line
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsGrantProModalOpen(false)}
-                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-[#111111] hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {/* Select from registered profiles */}
-                <div>
-                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                    Select Registered Client Profile
-                  </label>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) setGrantProTargetEmail(e.target.value);
-                    }}
-                    value={grantProTargetEmail}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                  >
-                    <option value="">-- Choose registered client (or enter custom email below) --</option>
-                    {profiles
-                      .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
-                      .map((p) => (
-                        <option key={p.id} value={p.email}>
-                          {p.full_name ? `${p.full_name} (${p.email})` : p.email} {p.company ? `- ${p.company}` : ""}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* Target Email Input */}
-                <div>
-                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                    Client Work Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="e.g. client@enterprise.com"
-                    value={grantProTargetEmail}
-                    onChange={(e) => setGrantProTargetEmail(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                  />
-                  <span className="text-[10px] text-[#726F6D] mt-1 block">
-                    Can be any email. If the account isn't registered yet, Pro perks and credits will be pre-allocated automatically.
-                  </span>
-                </div>
-
-                {/* Template quota and duration */}
-                <div className="grid grid-cols-2 gap-3">
+              {/* 2-Column Square Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                {/* Column 1: Client & Membership Parameters */}
+                <div className="space-y-3.5">
+                  {/* Select from registered profiles */}
                   <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                      Monthly Template Quota
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                      Select Registered Client Profile
                     </label>
                     <select
-                      value={grantProCredits}
-                      onChange={(e) => setGrantProCredits(Number(e.target.value))}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      onChange={(e) => {
+                        if (e.target.value) setGrantProTargetEmail(e.target.value);
+                      }}
+                      value={grantProTargetEmail}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
                     >
-                      <option value={50}>50 Templates / Month</option>
-                      <option value={80}>80 Templates / Month (Standard Pro)</option>
-                      <option value={120}>120 Templates / Month (VIP Enterprise)</option>
-                      <option value={200}>200 Templates / Month (Unlimited Master)</option>
+                      <option value="">-- Choose client profile (or type email below) --</option>
+                      {profiles
+                        .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
+                        .map((p) => (
+                          <option key={p.id} value={p.email}>
+                            {p.full_name ? `${p.full_name} (${p.email})` : p.email} {p.company ? `- ${p.company}` : ""}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
+                  {/* Target Email Input */}
                   <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                      Complimentary Duration
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                      Client Work Email Address *
                     </label>
-                    <select
-                      value={grantProDurationMonths}
-                      onChange={(e) => setGrantProDurationMonths(Number(e.target.value))}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                    >
-                      <option value={1}>1 Month (Default)</option>
-                      <option value={2}>2 Months</option>
-                      <option value={3}>3 Months</option>
-                      <option value={6}>6 Months</option>
-                      <option value={12}>1 Year (12 Months)</option>
-                      <option value={999}>Lifetime / Indefinite</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Live Expiry Preview Box */}
-                <div className="bg-amber-50/80 border border-amber-300/80 rounded-xl p-3.5 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
-                      Calculated Expiration Date
-                    </span>
-                    <span className="text-xs font-extrabold text-[#111111]">
-                      {grantProDurationMonths >= 999
-                        ? "Lifetime Access (Never Expires)"
-                        : `Active until ${new Date(Date.now() + grantProDurationMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} (${grantProDurationMonths * 30} Days)`}
-                    </span>
-                  </div>
-                  <span className="hex-pill-sm bg-amber-200/60 text-amber-900 border border-amber-400/50 text-[10px] font-black px-2 py-0.5">
-                    {grantProDurationMonths >= 999 ? "Indefinite" : `${grantProDurationMonths} Month${grantProDurationMonths > 1 ? "s" : ""}`}
-                  </span>
-                </div>
-
-                {/* Reason Note */}
-                <div>
-                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                    Partnership Note / Justification
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. VIP Strategic Client, Board Member, Early Beta Tester"
-                    value={grantProReason}
-                    onChange={(e) => setGrantProReason(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none"
-                  />
-                </div>
-
-                {/* Perks Preview */}
-                <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 space-y-1.5">
-                  <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider block">
-                    Perks Unlocked Immediately for this Account:
-                  </span>
-                  <ul className="text-xs text-amber-900 space-y-1">
-                    <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                      <span><strong>{grantProCredits} Free Template Downloads / Month</strong> in Marketplace Catalog (Zero payment, 100% unlocked)</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                      <span><strong>All Templates Unlocked</strong> regardless of individual presentation price</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                      <span><strong>VIP WhatsApp Studio Hotline</strong> unlocked directly in client dashboard</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                      <span><strong>Pro Member Badge</strong> on account and client portal banner</span>
-                    </li>
-                  </ul>
-                </div>
-                {/* Option B: In-Browser Email Notice Section */}
-                <div className="bg-[#FFF9E8] border border-primary/40 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={grantProSendEmail}
-                        onChange={(e) => setGrantProSendEmail(e.target.checked)}
-                        className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
-                      />
-                      <span className="text-xs font-black text-[#111111]">
-                        Send In-Browser Email Notice to Client
-                      </span>
-                    </label>
-                    <span className="text-[10px] text-[#726F6D] font-bold">
-                      Direct Resend Dispatch
+                    <input
+                      type="email"
+                      placeholder="e.g. client@enterprise.com"
+                      value={grantProTargetEmail}
+                      onChange={(e) => setGrantProTargetEmail(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    />
+                    <span className="text-[10px] text-[#726F6D] mt-0.5 block">
+                      Auto-allocates Pro perks if account is not registered yet.
                     </span>
                   </div>
 
-                  {grantProSendEmail && (
-                    <div className="space-y-2.5 pt-2 border-t border-primary/20">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                          From (Studio Sender):
-                        </label>
-                        <select
-                          value={grantProEmailSender}
-                          onChange={(e) => setGrantProEmailSender(e.target.value)}
-                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                        >
-                          <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
-                          <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
-                          <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                          Email Subject:
-                        </label>
-                        <input
-                          type="text"
-                          value={grantProEmailSubject}
-                          onChange={(e) => setGrantProEmailSubject(e.target.value)}
-                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                          Custom Note / Message Body:
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={grantProEmailMessage}
-                          onChange={(e) => setGrantProEmailMessage(e.target.value)}
-                          placeholder="Add custom notes or instructions for this client..."
-                          className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-y leading-relaxed"
-                        />
-                        <span className="text-[10px] text-[#726F6D] block mt-0.5">
-                          Wrapped inside SlideBee's luxury cream HTML layout with VIP badge and access CTA.
-                        </span>
-                      </div>
+                  {/* Template quota and duration */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        Monthly Template Quota
+                      </label>
+                      <select
+                        value={grantProCredits}
+                        onChange={(e) => setGrantProCredits(Number(e.target.value))}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      >
+                        <option value={50}>50 Templates / Mo</option>
+                        <option value={80}>80 Templates / Mo (Std)</option>
+                        <option value={120}>120 Templates / Mo (VIP)</option>
+                        <option value={200}>200 Templates / Mo (Max)</option>
+                      </select>
                     </div>
-                  )}
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        Duration Period
+                      </label>
+                      <select
+                        value={grantProDurationMonths}
+                        onChange={(e) => setGrantProDurationMonths(Number(e.target.value))}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      >
+                        <option value={1}>1 Month (Default)</option>
+                        <option value={2}>2 Months</option>
+                        <option value={3}>3 Months</option>
+                        <option value={6}>6 Months</option>
+                        <option value={12}>1 Year (12 Mo)</option>
+                        <option value={999}>Lifetime / Never</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live Expiry Preview Box */}
+                  <div className="bg-amber-50/90 border border-amber-300 rounded-lg p-3 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
+                        Calculated Expiration Date
+                      </span>
+                      <span className="text-xs font-extrabold text-[#111111]">
+                        {grantProDurationMonths >= 999
+                          ? "Lifetime Access (Never Expires)"
+                          : `Active until ${new Date(Date.now() + grantProDurationMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} (${grantProDurationMonths * 30} Days)`}
+                      </span>
+                    </div>
+                    <span className="bg-amber-200/80 text-amber-950 border border-amber-400 rounded text-[10px] font-black px-2 py-0.5">
+                      {grantProDurationMonths >= 999 ? "Indefinite" : `${grantProDurationMonths} Mo`}
+                    </span>
+                  </div>
+
+                  {/* Reason Note */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                      Partnership Note / Justification
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. VIP Strategic Client, Board Member, Early Beta Tester"
+                      value={grantProReason}
+                      onChange={(e) => setGrantProReason(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
+                    />
+                  </div>
+
+                  {/* Perks Preview */}
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 space-y-1">
+                    <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider block">
+                      Perks Unlocked Immediately:
+                    </span>
+                    <ul className="text-[11px] text-amber-900 space-y-1">
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span><strong>{grantProCredits} Master Decks / Month</strong> in Catalog (Free)</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span><strong>All Marketplace Templates Unlocked</strong> (Zero checkout)</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span><strong>VIP WhatsApp Studio Hotline</strong> in dashboard</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span><strong>Pro Member Badge</strong> on client account</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Column 2: In-Browser Email Notice Section */}
+                <div className="flex flex-col h-full justify-between bg-[#FFF9E8]/80 border border-primary/40 rounded-lg p-4 space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-primary/20 pb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={grantProSendEmail}
+                          onChange={(e) => setGrantProSendEmail(e.target.checked)}
+                          className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                        />
+                        <span className="text-xs font-black text-[#111111]">
+                          Send In-Browser Email Notice
+                        </span>
+                      </label>
+                      <span className="text-[10px] text-[#726F6D] font-bold bg-white/80 border border-primary/30 rounded px-2 py-0.5">
+                        Resend Dispatch
+                      </span>
+                    </div>
+
+                    {grantProSendEmail ? (
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            From (Studio Sender):
+                          </label>
+                          <select
+                            value={grantProEmailSender}
+                            onChange={(e) => setGrantProEmailSender(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                          >
+                            <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                            <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
+                            <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            Email Subject:
+                          </label>
+                          <input
+                            type="text"
+                            value={grantProEmailSubject}
+                            onChange={(e) => setGrantProEmailSubject(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            Custom Note / Message Body:
+                          </label>
+                          <textarea
+                            rows={6}
+                            value={grantProEmailMessage}
+                            onChange={(e) => setGrantProEmailMessage(e.target.value)}
+                            placeholder="Add custom notes or instructions for this client..."
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-none leading-relaxed"
+                          />
+                          <span className="text-[10px] text-[#726F6D] block mt-0.5">
+                            Delivered inside SlideBee's luxury cream HTML layout with VIP badge and access CTA.
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-[#726F6D] border border-dashed border-[#111111]/15 rounded-lg bg-white/40 my-auto">
+                        <Mail size={24} className="mx-auto text-gray-400 mb-2" />
+                        <p className="text-xs font-bold text-[#111111]">Email Notification Disabled</p>
+                        <p className="text-[11px] mt-1">Pro privileges will be provisioned silently without client email dispatch.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white/90 border border-primary/30 rounded-lg p-2 text-[11px] text-[#726F6D]">
+                    <span className="font-extrabold text-[#111111] block mb-0.5">Allocation Summary:</span>
+                    Granting {grantProCredits} decks for {grantProDurationMonths >= 999 ? "lifetime" : `${grantProDurationMonths} month(s)`} to {grantProTargetEmail || "recipient"}.
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/8">
+              {/* Modal Footer Controls */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
                 <button
                   type="button"
                   onClick={() => setIsGrantProModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                  className="rounded-lg px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] hover:bg-black/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -9445,7 +9491,7 @@ SlideBee Design Studio`
                       }
                     )
                   }
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {isProcessingProAction ? (
                     <>
@@ -9464,16 +9510,16 @@ SlideBee Design Studio`
 
         {/* MODAL: ADJUST SLIDE CREDITS (Option C) */}
         {isAdjustCreditsModalOpen && adjustCreditsTargetClient && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white border-2 border-[#111111]/15 rounded-xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between border-b border-[#111111]/8 pb-4">
+              <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-[#111111]">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-[#111111] shrink-0">
                     <Coins size={20} />
                   </div>
                   <div>
@@ -9481,7 +9527,7 @@ SlideBee Design Studio`
                       Adjust Slide Download Credits
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Top-up or modify slide credits with in-browser email dispatch
+                      Top-up or modify client slide credits with in-browser email notification
                     </p>
                   </div>
                 </div>
@@ -9491,160 +9537,173 @@ SlideBee Design Studio`
                     setIsAdjustCreditsModalOpen(false);
                     setAdjustCreditsTargetClient(null);
                   }}
-                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-[#111111] hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Target Client Info */}
-              <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-3.5 flex items-center justify-between">
-                <div>
-                  <span className="font-extrabold text-xs text-[#111111] block">
-                    {adjustCreditsTargetClient.name || "Client"}
-                  </span>
-                  <span className="text-[11px] text-[#726F6D]">
-                    {adjustCreditsTargetClient.email}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[#726F6D] font-bold block uppercase">
-                    Current Balance
-                  </span>
-                  <span className="font-heading font-black text-sm text-[#111111]">
-                    {adjustCreditsTargetClient.currentBalance} Credits
-                  </span>
-                </div>
-              </div>
-
-              {/* Credit Adjustment Selector */}
-              <div className="space-y-3">
-                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
-                  Credits to Add / Adjust
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[10, 25, 50, 80].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => {
-                        setAdjustCreditsDelta(amt);
-                        setAdjustCreditsEmailSubject(`Slide Credits Updated (+${amt} Added) — SlideBee Studio`);
-                      }}
-                      className={`py-2 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                        adjustCreditsDelta === amt
-                          ? "bg-[#111111] text-[#FCBF14] border-[#111111] shadow-sm"
-                          : "bg-white text-[#111111] border-[#111111]/15 hover:border-primary"
-                      }`}
-                    >
-                      +{amt}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs font-bold text-[#726F6D]">Custom Amount:</span>
-                  <input
-                    type="number"
-                    value={adjustCreditsDelta}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setAdjustCreditsDelta(val);
-                      setAdjustCreditsEmailSubject(`Slide Credits Updated (${val > 0 ? `+${val}` : val} Credits) — SlideBee Studio`);
-                    }}
-                    className="w-28 bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-black focus:border-primary outline-none"
-                  />
-                  <span className="text-xs text-[#726F6D]">
-                    New Total: <strong>{Math.max(0, adjustCreditsTargetClient.currentBalance + adjustCreditsDelta)}</strong>
-                  </span>
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div>
-                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                  Adjustment Reason / Program
-                </label>
-                <input
-                  type="text"
-                  value={adjustCreditsReason}
-                  onChange={(e) => setAdjustCreditsReason(e.target.value)}
-                  placeholder="e.g. Complimentary Studio Bonus, Survey Reward, Enterprise Top-up"
-                  className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
-                />
-              </div>
-
-              {/* In-Browser Email Composer */}
-              <div className="bg-[#FFF9E8] border border-primary/40 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={adjustCreditsSendEmail}
-                      onChange={(e) => setAdjustCreditsSendEmail(e.target.checked)}
-                      className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
-                    />
-                    <span className="text-xs font-black text-[#111111]">
-                      Send In-Browser Email Notice to Client
-                    </span>
-                  </label>
-                  <span className="text-[10px] text-[#726F6D] font-bold">
-                    Resend Router
-                  </span>
-                </div>
-
-                {adjustCreditsSendEmail && (
-                  <div className="space-y-2.5 pt-2 border-t border-primary/20">
+              {/* 2-Column Square Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                {/* Column 1: Client Info & Credit Adjustment */}
+                <div className="space-y-4">
+                  {/* Target Client Info */}
+                  <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-3.5 flex items-center justify-between">
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                        From (Studio Sender):
-                      </label>
-                      <select
-                        value={adjustCreditsEmailSender}
-                        onChange={(e) => setAdjustCreditsEmailSender(e.target.value)}
-                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                      >
-                        <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
-                        <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
-                        <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
-                      </select>
+                      <span className="font-extrabold text-xs text-[#111111] block">
+                        {adjustCreditsTargetClient.name || "Client"}
+                      </span>
+                      <span className="text-[11px] text-[#726F6D]">
+                        {adjustCreditsTargetClient.email}
+                      </span>
                     </div>
-
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                        Subject Line:
-                      </label>
-                      <input
-                        type="text"
-                        value={adjustCreditsEmailSubject}
-                        onChange={(e) => setAdjustCreditsEmailSubject(e.target.value)}
-                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                        Message / Custom Note:
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={adjustCreditsEmailMessage}
-                        onChange={(e) => setAdjustCreditsEmailMessage(e.target.value)}
-                        className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-y leading-relaxed"
-                      />
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#726F6D] font-bold block uppercase">
+                        Current Balance
+                      </span>
+                      <span className="font-heading font-black text-sm text-[#111111]">
+                        {adjustCreditsTargetClient.currentBalance} Credits
+                      </span>
                     </div>
                   </div>
-                )}
+
+                  {/* Credit Adjustment Selector */}
+                  <div className="space-y-2.5">
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                      Quick Amount Selector
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[10, 25, 50, 80].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            setAdjustCreditsDelta(amt);
+                            setAdjustCreditsEmailSubject(`Slide Credits Updated (+${amt} Added) — SlideBee Studio`);
+                          }}
+                          className={`py-2 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                            adjustCreditsDelta === amt
+                              ? "bg-[#111111] text-[#FCBF14] border-[#111111] shadow-sm"
+                              : "bg-white text-[#111111] border-[#111111]/15 hover:border-primary"
+                          }`}
+                        >
+                          +{amt}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs font-bold text-[#726F6D]">Custom:</span>
+                      <input
+                        type="number"
+                        value={adjustCreditsDelta}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setAdjustCreditsDelta(val);
+                          setAdjustCreditsEmailSubject(`Slide Credits Updated (${val > 0 ? `+${val}` : val} Credits) — SlideBee Studio`);
+                        }}
+                        className="w-24 bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-black focus:border-primary outline-none"
+                      />
+                      <span className="text-xs text-[#726F6D]">
+                        New Balance: <strong className="text-[#111111]">{Math.max(0, adjustCreditsTargetClient.currentBalance + adjustCreditsDelta)}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reason */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                      Adjustment Reason / Program
+                    </label>
+                    <input
+                      type="text"
+                      value={adjustCreditsReason}
+                      onChange={(e) => setAdjustCreditsReason(e.target.value)}
+                      placeholder="e.g. VIP Studio Bonus, Survey Reward"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Column 2: In-Browser Email Composer */}
+                <div className="flex flex-col h-full justify-between bg-[#FFF9E8]/80 border border-primary/40 rounded-lg p-4 space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-primary/20 pb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={adjustCreditsSendEmail}
+                          onChange={(e) => setAdjustCreditsSendEmail(e.target.checked)}
+                          className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                        />
+                        <span className="text-xs font-black text-[#111111]">
+                          Dispatch Email Notice
+                        </span>
+                      </label>
+                      <span className="text-[10px] text-[#726F6D] font-bold bg-white/80 border border-primary/30 rounded px-2 py-0.5">
+                        Resend Router
+                      </span>
+                    </div>
+
+                    {adjustCreditsSendEmail && (
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            From (Studio Sender):
+                          </label>
+                          <select
+                            value={adjustCreditsEmailSender}
+                            onChange={(e) => setAdjustCreditsEmailSender(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                          >
+                            <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                            <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
+                            <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            Subject Line:
+                          </label>
+                          <input
+                            type="text"
+                            value={adjustCreditsEmailSubject}
+                            onChange={(e) => setAdjustCreditsEmailSubject(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            Message / Custom Note:
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={adjustCreditsEmailMessage}
+                            onChange={(e) => setAdjustCreditsEmailMessage(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-none leading-relaxed"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white/90 border border-primary/30 rounded-lg p-2 text-[11px] text-[#726F6D]">
+                    Crediting {adjustCreditsDelta > 0 ? `+${adjustCreditsDelta}` : adjustCreditsDelta} downloads to {adjustCreditsTargetClient.email}.
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/8">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAdjustCreditsModalOpen(false);
                     setAdjustCreditsTargetClient(null);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                  className="rounded-lg px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] hover:bg-black/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -9652,7 +9711,7 @@ SlideBee Design Studio`
                   type="button"
                   disabled={isProcessingProAction}
                   onClick={handleExecuteAdjustCredits}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {isProcessingProAction ? (
                     <>
@@ -9660,7 +9719,7 @@ SlideBee Design Studio`
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 size={14} /> Confirm & Update Credits
+                      <Coins size={14} /> Update Client Credits
                     </>
                   )}
                 </button>
@@ -9671,16 +9730,16 @@ SlideBee Design Studio`
 
         {/* MODAL: DELETE CLIENT ACCOUNT & IN-BROWSER MAIL EDITION */}
         {isDeleteAccountModalOpen && deleteAccountTarget && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="hex-card-lg bg-white border border-red-200 p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+              className="bg-white border-2 border-red-200 rounded-xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-red-100 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600">
+                  <div className="w-10 h-10 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600">
                     <Trash2 size={20} />
                   </div>
                   <div>
@@ -9704,39 +9763,39 @@ SlideBee Design Studio`
                 </button>
               </div>
 
-              {/* Target Account Summary Banner */}
-              <div className="bg-red-50/70 border border-red-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="font-black text-xs text-red-900 block">
-                    {deleteAccountTarget.name}
-                  </span>
-                  <span className="text-[11px] text-red-700">
-                    {deleteAccountTarget.email}
-                  </span>
-                </div>
-                <div className="text-left sm:text-right">
-                  <span className="text-[10px] text-red-700 font-bold block uppercase">
-                    Status / Credits
-                  </span>
-                  <span className="font-bold text-xs text-red-950">
-                    {deleteAccountTarget.isPro ? "Pro Member" : "Free Tier"} • {deleteAccountTarget.credits} Credits
-                  </span>
-                </div>
-              </div>
+              {/* 2-Column Squarish Body Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Column 1: Client Info & Reason */}
+                <div className="space-y-4">
+                  {/* Target Account Summary Banner */}
+                  <div className="bg-red-50/70 border border-red-200 rounded-lg p-3.5 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-red-900 block">
+                        {deleteAccountTarget.name}
+                      </span>
+                      <span className="font-bold text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                        {deleteAccountTarget.isPro ? "Pro Member" : "Free Tier"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-red-700">
+                      <span>{deleteAccountTarget.email}</span>
+                      <span className="font-bold">{deleteAccountTarget.credits} Credits</span>
+                    </div>
+                  </div>
 
-              {/* Reason for Deletion */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
-                    Select Deletion Reason *
-                  </label>
-                  <select
-                    value={deleteAccountReason}
-                    onChange={(e) => {
-                      const selected = e.target.value;
-                      setDeleteAccountReason(selected);
-                      const finalR = selected === "Other custom administrative reason" ? deleteAccountCustomReason : selected;
-                      setDeleteAccountEmailBody(
+                  {/* Reason for Deletion */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                        Select Deletion Reason *
+                      </label>
+                      <select
+                        value={deleteAccountReason}
+                        onChange={(e) => {
+                          const selected = e.target.value;
+                          setDeleteAccountReason(selected);
+                          const finalR = selected === "Other custom administrative reason" ? deleteAccountCustomReason : selected;
+                          setDeleteAccountEmailBody(
 `Dear ${deleteAccountTarget.name},
 
 This email confirms that your SlideBee client account associated with ${deleteAccountTarget.email} has been formally closed and purged from our active platform.
@@ -9751,122 +9810,137 @@ If this action was taken in error or if you wish to commission executive present
 Sincerely,
 SlideBee Executive Operations Desk
 support@theslidebee.com`
-                      );
-                    }}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                  >
-                    <option value="Client requested account closure">Client requested account closure</option>
-                    <option value="Duplicate or test account purge">Duplicate or test account purge</option>
-                    <option value="Inactivity & offboarding">Inactivity & client offboarding</option>
-                    <option value="Terms of service violation / inappropriate use">Terms of service violation / inappropriate use</option>
-                    <option value="GDPR / data erasure compliance request">GDPR / data erasure compliance request</option>
-                    <option value="Other custom administrative reason">Other custom administrative reason</option>
-                  </select>
-                </div>
+                          );
+                        }}
+                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      >
+                        <option value="Client requested account closure">Client requested account closure</option>
+                        <option value="Duplicate or test account purge">Duplicate or test account purge</option>
+                        <option value="Inactivity & offboarding">Inactivity & client offboarding</option>
+                        <option value="Terms of service violation / inappropriate use">Terms of service violation / inappropriate use</option>
+                        <option value="GDPR / data erasure compliance request">GDPR / data erasure compliance request</option>
+                        <option value="Other custom administrative reason">Other custom administrative reason</option>
+                      </select>
+                    </div>
 
-                {deleteAccountReason === "Other custom administrative reason" && (
-                  <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                      Specify Custom Reason:
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Migration to corporate parent contract..."
-                      value={deleteAccountCustomReason}
-                      onChange={(e) => setDeleteAccountCustomReason(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* IN-BROWSER MAIL EDITION BOX */}
-              <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-xl p-4 space-y-3 shadow-inner">
-                <div className="flex items-center justify-between pb-2 border-b border-primary/20">
-                  <div className="flex items-center gap-2">
-                    <Mail size={16} className="text-primary-amber" />
-                    <span className="text-xs font-heading font-black text-[#111111]">
-                      In-Browser Deletion Notice Email Composer
-                    </span>
-                  </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={deleteAccountSendEmail}
-                      onChange={(e) => setDeleteAccountSendEmail(e.target.checked)}
-                      className="w-3.5 h-3.5 text-primary rounded accent-[#FCBF14] cursor-pointer"
-                    />
-                    <span className="text-[11px] font-bold text-[#111111]">
-                      Dispatch Email
-                    </span>
-                  </label>
-                </div>
-
-                {deleteAccountSendEmail && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {deleteAccountReason === "Other custom administrative reason" && (
                       <div>
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                          From (Studio Sender):
-                        </label>
-                        <select
-                          value={deleteAccountEmailSender}
-                          onChange={(e) => setDeleteAccountEmailSender(e.target.value)}
-                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                        >
-                          <option value="support@theslidebee.com">support@theslidebee.com (Privacy & Support)</option>
-                          <option value="hello@theslidebee.com">hello@theslidebee.com (General Operations)</option>
-                          <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                          To (Client Recipient):
+                        <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                          Specify Custom Reason:
                         </label>
                         <input
-                          type="email"
-                          readOnly
-                          value={deleteAccountTarget.email}
-                          className="w-full bg-black/5 border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold cursor-not-allowed"
+                          type="text"
+                          placeholder="e.g. Migration to corporate parent contract..."
+                          value={deleteAccountCustomReason}
+                          onChange={(e) => setDeleteAccountCustomReason(e.target.value)}
+                          className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
                         />
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                        Email Subject:
-                      </label>
-                      <input
-                        type="text"
-                        value={deleteAccountEmailSubject}
-                        onChange={(e) => setDeleteAccountEmailSubject(e.target.value)}
-                        className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                      />
-                    </div>
+                  {/* Warning Box */}
+                  <div className="bg-red-50/50 border border-red-200/80 rounded-lg p-3 space-y-1.5 text-red-900">
+                    <span className="text-[11px] font-black uppercase tracking-wider block flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="text-red-600" /> Irreversible Action
+                    </span>
+                    <p className="text-[10px] text-red-700 leading-relaxed">
+                      Purging this account will permanently delete the client's profile from the database, wipe all authentication sessions, and cancel remaining presentation credits.
+                    </p>
+                  </div>
+                </div>
 
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[10px] font-black uppercase text-[#726F6D]">
-                          Editable Email Message Body:
-                        </label>
-                        <span className="text-[10px] text-primary-amber font-bold">
-                          Fully editable before sending
+                {/* Column 2: IN-BROWSER MAIL EDITION BOX */}
+                <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-lg p-4 space-y-3 shadow-inner flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-primary/20">
+                      <div className="flex items-center gap-2">
+                        <Mail size={16} className="text-primary-amber" />
+                        <span className="text-xs font-heading font-black text-[#111111]">
+                          In-Browser Deletion Notice Email Composer
                         </span>
                       </div>
-                      <textarea
-                        rows={6}
-                        value={deleteAccountEmailBody}
-                        onChange={(e) => setDeleteAccountEmailBody(e.target.value)}
-                        placeholder="Customize deletion email message..."
-                        className="w-full bg-white border border-[#111111]/15 rounded-lg p-3 text-xs text-[#111111] font-mono leading-relaxed focus:border-primary outline-none resize-y"
-                      />
-                      <p className="text-[10px] text-[#726F6D] mt-1">
-                        The admin can add custom notes, instructions, or specific contractual details directly in this box.
-                      </p>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={deleteAccountSendEmail}
+                          onChange={(e) => setDeleteAccountSendEmail(e.target.checked)}
+                          className="w-3.5 h-3.5 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                        />
+                        <span className="text-[11px] font-bold text-[#111111]">
+                          Dispatch Email
+                        </span>
+                      </label>
                     </div>
+
+                    {deleteAccountSendEmail ? (
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                              From (Studio Sender):
+                            </label>
+                            <select
+                              value={deleteAccountEmailSender}
+                              onChange={(e) => setDeleteAccountEmailSender(e.target.value)}
+                              className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-[11px] text-[#111111] font-bold focus:border-primary outline-none"
+                            >
+                              <option value="support@theslidebee.com">support@theslidebee.com (Privacy & Support)</option>
+                              <option value="hello@theslidebee.com">hello@theslidebee.com (General Operations)</option>
+                              <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                              To (Client Recipient):
+                            </label>
+                            <input
+                              type="email"
+                              readOnly
+                              value={deleteAccountTarget.email}
+                              className="w-full bg-black/5 border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-[11px] text-[#111111] font-bold cursor-not-allowed"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
+                            Email Subject:
+                          </label>
+                          <input
+                            type="text"
+                            value={deleteAccountEmailSubject}
+                            onChange={(e) => setDeleteAccountEmailSubject(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-[11px] text-[#111111] font-bold focus:border-primary outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] font-black uppercase text-[#726F6D]">
+                              Editable Message Body:
+                            </label>
+                            <span className="text-[10px] text-primary-amber font-bold">
+                              Fully editable
+                            </span>
+                          </div>
+                          <textarea
+                            rows={5}
+                            value={deleteAccountEmailBody}
+                            onChange={(e) => setDeleteAccountEmailBody(e.target.value)}
+                            placeholder="Customize deletion email message..."
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-mono leading-relaxed focus:border-primary outline-none resize-y"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-white/70 border border-primary/20 rounded-lg text-center text-xs text-[#726F6D]">
+                        Email notification disabled. The account will be deleted silently.
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -9885,7 +9959,7 @@ support@theslidebee.com`
                   type="button"
                   disabled={isDeletingAccount}
                   onClick={handleExecuteDeleteAccount}
-                  className="hex-pill bg-red-600 hover:bg-red-700 text-white font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isDeletingAccount ? (
                     <>
