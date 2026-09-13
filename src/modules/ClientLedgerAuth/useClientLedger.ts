@@ -115,15 +115,18 @@ export function useClientLedger() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
+        session.user.email === "superadmin@theslidebee.com" ||
         session.user.email === "admin@theslidebee.com" ||
         session.user.email === "admin@slidebee.com" ||
         session.user.email?.startsWith("admin@") ||
-        session.user.user_metadata?.role === "admin";
+        session.user.email?.startsWith("superadmin@") ||
+        session.user.user_metadata?.role === "admin" ||
+        session.user.user_metadata?.role === "super_admin";
 
       if (isSessionAdmin) {
         localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
-        localStorage.setItem("slidebee_admin_email", session.user.email || "admin@theslidebee.com");
+        localStorage.setItem("slidebee_admin_email", session.user.email || "superadmin@theslidebee.com");
         setCurrentUser(null);
         setUserProfile(null);
         setUserOrders([]);
@@ -169,7 +172,7 @@ export function useClientLedger() {
   }, [checkUserSession]);
 
   // Log authentication events to auth_logs
-  const recordAuthEvent = async (userEmail: string, event: "LOGIN" | "SIGNUP", meta: any = {}) => {
+  const recordAuthEvent = async (userEmail: string, event: "LOGIN" | "SIGNUP" | "LOGOUT" | "PASSWORD_RESET", meta: any = {}) => {
     try {
       await supabase.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("email", userEmail);
       await supabase.from("auth_logs").insert([
@@ -199,7 +202,13 @@ export function useClientLedger() {
     });
 
     if (authData?.user) {
-      const isUserAdmin = authData.user.email?.startsWith("admin@") || authData.user.user_metadata?.role === "admin";
+      const isUserAdmin =
+        authData.user.email === "superadmin@theslidebee.com" ||
+        authData.user.email === "admin@theslidebee.com" ||
+        authData.user.email?.startsWith("admin@") ||
+        authData.user.email?.startsWith("superadmin@") ||
+        authData.user.user_metadata?.role === "admin" ||
+        authData.user.user_metadata?.role === "super_admin";
       if (isUserAdmin) {
         await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin" });
         localStorage.removeItem("slidebee_client_user");
@@ -340,15 +349,16 @@ export function useClientLedger() {
     return data;
   };
 
-  // Secure Password Reset Request (Prompts 11 & 12)
+  // Secure Password Reset Request (Dispatches tokenized recovery link to inbox)
   const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = emailInput.toLowerCase().trim();
     if (!cleanEmail) {
       return { success: false, message: "Please enter your registered email address." };
     }
     try {
+      const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "https://dev.slidebee.pages.dev";
       await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/#/login?action=reset`
+        redirectTo: `${redirectOrigin}/#/login?action=reset`
       });
     } catch (err) {
       // Fail closed with uniform feedback to prevent enumeration
@@ -357,6 +367,29 @@ export function useClientLedger() {
       success: true,
       message: "If an account exists with this email, a secure password recovery link has been dispatched."
     };
+  };
+
+  // Secure Password Reset Completion via GoTrue Auth
+  const completePasswordReset = async (newPasswordInput: string): Promise<{ success: boolean; message: string }> => {
+    const cleanPass = newPasswordInput.trim();
+    if (!cleanPass || cleanPass.length < 8) {
+      return { success: false, message: "Password must be at least 8 characters in length." };
+    }
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password: cleanPass
+      });
+      if (error) {
+        return { success: false, message: error.message || "Failed to update password. Recovery link may have expired." };
+      }
+      if (data?.user) {
+        await recordAuthEvent(data.user.email || "unknown", "PASSWORD_RESET", { provider: "supabase_auth" });
+        return { success: true, message: "Password has been successfully updated." };
+      }
+      return { success: true, message: "Password has been updated." };
+    } catch (err: any) {
+      return { success: false, message: err.message || "Password update failed. Please try again." };
+    }
   };
 
   const logout = async () => {
@@ -410,6 +443,7 @@ export function useClientLedger() {
     signUp,
     logout,
     requestPasswordReset,
+    completePasswordReset,
     redeemCredit,
     refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined)
   };

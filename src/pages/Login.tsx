@@ -72,8 +72,52 @@ export default function Login() {
     signIn,
     signUp,
     logout,
-    requestPasswordReset
+    requestPasswordReset,
+    completePasswordReset
   } = useClientLedger();
+
+  // Password Recovery Mode State
+  const [isResetMode, setIsResetMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const url = window.location.href;
+    return (
+      url.includes("action=reset") ||
+      url.includes("type=recovery") ||
+      sessionStorage.getItem("slidebee_password_recovery") === "true"
+    );
+  });
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetCompleted, setResetCompleted] = useState(false);
+
+  useEffect(() => {
+    const checkRecovery = () => {
+      if (typeof window === "undefined") return;
+      const url = window.location.href;
+      if (
+        url.includes("action=reset") ||
+        url.includes("type=recovery") ||
+        sessionStorage.getItem("slidebee_password_recovery") === "true"
+      ) {
+        setIsResetMode(true);
+      }
+    };
+    checkRecovery();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResetMode(true);
+        sessionStorage.setItem("slidebee_password_recovery", "true");
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
 
   // Brute-force throttling state (Prompt 08)
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
@@ -223,6 +267,59 @@ export default function Login() {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError("");
+
+    if (!newPassword || newPassword.length < 8) {
+      setResetError("Password must be at least 8 characters in length.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError("Passwords do not match. Please verify and re-enter.");
+      return;
+    }
+
+    setResetSubmitting(true);
+    try {
+      const res = await completePasswordReset(newPassword);
+      if (!res.success) {
+        setResetError(res.message || "Failed to update password. Link may have expired.");
+        setResetSubmitting(false);
+        return;
+      }
+
+      setResetCompleted(true);
+      sessionStorage.removeItem("slidebee_password_recovery");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email?.toLowerCase().trim() || "";
+      const isSuperOrAdmin =
+        userEmail === "superadmin@theslidebee.com" ||
+        userEmail === "admin@theslidebee.com" ||
+        userEmail.startsWith("admin@") ||
+        userEmail.startsWith("superadmin@") ||
+        session?.user?.user_metadata?.role === "admin" ||
+        session?.user?.user_metadata?.role === "super_admin";
+
+      setTimeout(() => {
+        if (isSuperOrAdmin) {
+          localStorage.setItem("slidebee_admin_session", "true");
+          localStorage.setItem("slidebee_admin_email", userEmail || "superadmin@theslidebee.com");
+          window.location.hash = "#/admin";
+        } else {
+          setIsResetMode(false);
+          setResetCompleted(false);
+          window.location.hash = "#/login";
+        }
+      }, 1500);
+    } catch (err: any) {
+      setResetError(err.message || "Password update failed. Please try again.");
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
   };
@@ -283,7 +380,7 @@ export default function Login() {
   }
 
   // --- 1. AUTHENTICATED CLIENT DASHBOARD ---
-  if (currentUser) {
+  if (currentUser && !isResetMode) {
     const clientName = userProfile?.full_name || currentUser.user_metadata?.full_name || currentUser.email.split("@")[0];
     const clientCompany = userProfile?.company || currentUser.user_metadata?.company || "Enterprise Client";
     const clientRole = userProfile?.role || "client";
@@ -1348,171 +1445,292 @@ export default function Login() {
           </div>
         )}
 
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-4">
-            <SlideBeeLogo variant="light" size="lg" />
-          </div>
-          <h2 className="text-2xl font-heading font-extrabold text-[#111111]">
-            {isSignUp ? "Create Client Account" : "Sign In to Client Portal"}
-          </h2>
-          <p className="text-xs text-[#726F6D] font-medium mt-1">
-            {isSignUp 
-              ? "Access deck briefs, retainer quotas, and deliverables" 
-              : "Manage your active presentation projects & templates"}
-          </p>
-        </div>
-
-        {/* Tab Selector */}
-        <div className="flex bg-[#FFF9E8] border border-primary/30 p-1 hex-pill mb-6">
-          <button
-            type="button"
-            onClick={() => { setIsSignUp(false); setFormError(""); setSignUpSuccessMessage(""); }}
-            className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
-              !isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsSignUp(true); setFormError(""); setSignUpSuccessMessage(""); }}
-            className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
-              isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmitAuth} className="space-y-4">
-          
-          {isSignUp && (
-            <>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                  Full Name *
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Sarah Jenkins"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                  />
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                </div>
+        {isResetMode ? (
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <div className="flex justify-center mb-4">
+                <SlideBeeLogo variant="light" size="lg" />
               </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                  Company / Organization
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="HyperGrowth Capital"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-                  />
-                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-primary/40 rounded-full text-[11px] font-bold text-amber-900 mb-2">
+                <ShieldCheck size={13} className="text-primary-amber" />
+                Verified Password Reset Session
               </div>
-            </>
-          )}
-
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-              Work Email *
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                required
-                placeholder="sarah@hypergrowth.vc"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-              />
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block">
-                Password *
-              </label>
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetEmail(email);
-                    setResetFeedback("");
-                    setShowForgotModal(true);
-                  }}
-                  className="text-[11px] font-bold text-primary-amber hover:underline"
-                >
-                  Forgot Password?
-                </button>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-              />
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#111111] p-1"
-              >
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-            {isSignUp && (
-              <p className="text-[10px] text-[#726F6D] font-medium mt-1 pl-2">
-                Minimum 8 characters with at least 1 uppercase letter and 1 digit.
+              <h2 className="text-2xl font-heading font-extrabold text-[#111111]">
+                Create New Password
+              </h2>
+              <p className="text-xs text-[#726F6D] font-medium mt-1">
+                Choose a strong new password for your account to restore portal access.
               </p>
+            </div>
+
+            {resetCompleted ? (
+              <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-4 rounded-xl text-xs font-medium space-y-2 shadow-sm">
+                <div className="flex items-center gap-2 font-bold text-sm text-emerald-950">
+                  <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                  Password Updated Successfully!
+                </div>
+                <p className="leading-relaxed">
+                  Your credentials have been securely refreshed. Redirecting you to your account...
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                {resetError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{resetError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                    New Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={8}
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#111111] p-1"
+                    >
+                      {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#726F6D] font-medium mt-1 pl-2">
+                    Minimum 8 characters with letters and numbers.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                    Confirm New Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={8}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                    />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={resetSubmitting}
+                  className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 disabled:opacity-50 mt-2"
+                >
+                  {resetSubmitting ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      Updating Password...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight size={15} />
+                      Set New Password & Continue
+                    </>
+                  )}
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetMode(false);
+                      sessionStorage.removeItem("slidebee_password_recovery");
+                      window.location.hash = "#/login";
+                    }}
+                    className="text-xs font-bold text-[#726F6D] hover:text-[#111111] transition-colors"
+                  >
+                    Cancel and Return to Sign In
+                  </button>
+                </div>
+              </form>
             )}
           </div>
-
-          {signUpSuccessMessage && (
-            <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3.5 rounded-xl text-xs font-medium flex items-start gap-2.5 shadow-sm">
-              <CheckCircle2 size={16} className="shrink-0 text-emerald-600 mt-0.5" />
-              <div className="leading-relaxed">{signUpSuccessMessage}</div>
+        ) : (
+          <>
+            <div className="text-center mb-6">
+              <div className="flex justify-center mb-4">
+                <SlideBeeLogo variant="light" size="lg" />
+              </div>
+              <h2 className="text-2xl font-heading font-extrabold text-[#111111]">
+                {isSignUp ? "Create Client Account" : "Sign In to Client Portal"}
+              </h2>
+              <p className="text-xs text-[#726F6D] font-medium mt-1">
+                {isSignUp 
+                  ? "Access deck briefs, retainer quotas, and deliverables" 
+                  : "Manage your active presentation projects & templates"}
+              </p>
             </div>
-          )}
 
-          {formError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
-              <AlertCircle size={15} className="shrink-0" />
-              <span>{formError}</span>
+            {/* Tab Selector */}
+            <div className="flex bg-[#FFF9E8] border border-primary/30 p-1 hex-pill mb-6">
+              <button
+                type="button"
+                onClick={() => { setIsSignUp(false); setFormError(""); setSignUpSuccessMessage(""); }}
+                className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
+                  !isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsSignUp(true); setFormError(""); setSignUpSuccessMessage(""); }}
+                className={`w-1/2 py-2 hex-pill text-xs font-black transition-all ${
+                  isSignUp ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#726F6D]"
+                }`}
+              >
+                Create Account
+              </button>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={formLoading || (!isSignUp && cooldownRemaining > 0)}
-            className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 disabled:opacity-50 mt-2"
-          >
-            <ArrowRight size={15} />
-            {formLoading
-              ? "Processing..."
-              : !isSignUp && cooldownRemaining > 0
-              ? `Cooldown Active (${cooldownRemaining}s)`
-              : isSignUp
-              ? "Create Client Account"
-              : "Sign In to Portal"}
-          </button>
-        </form>
+            <form onSubmit={handleSubmitAuth} className="space-y-4">
+              
+              {isSignUp && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                      Full Name *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Sarah Jenkins"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                      Company / Organization
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="HyperGrowth Capital"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                      />
+                      <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                  Work Email *
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    placeholder="sarah@hypergrowth.vc"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                  />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block">
+                    Password *
+                  </label>
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetEmail(email);
+                        setResetFeedback("");
+                        setShowForgotModal(true);
+                      }}
+                      className="text-[11px] font-bold text-primary-amber hover:underline"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
+                  />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#111111] p-1"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {isSignUp && (
+                  <p className="text-[10px] text-[#726F6D] font-medium mt-1 pl-2">
+                    Minimum 8 characters with at least 1 uppercase letter and 1 digit.
+                  </p>
+                )}
+              </div>
+
+              {signUpSuccessMessage && (
+                <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3.5 rounded-xl text-xs font-medium flex items-start gap-2.5 shadow-sm">
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-600 mt-0.5" />
+                  <div className="leading-relaxed">{signUpSuccessMessage}</div>
+                </div>
+              )}
+
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={formLoading || (!isSignUp && cooldownRemaining > 0)}
+                className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 disabled:opacity-50 mt-2"
+              >
+                <ArrowRight size={15} />
+                {formLoading
+                  ? "Processing..."
+                  : !isSignUp && cooldownRemaining > 0
+                  ? `Cooldown Active (${cooldownRemaining}s)`
+                  : isSignUp
+                  ? "Create Client Account"
+                  : "Sign In to Portal"}
+              </button>
+            </form>
+          </>
+        )}
 
         {/* Forgot Password Modal (Prompts 11 & 12) */}
         {showForgotModal && (
@@ -1533,7 +1751,7 @@ export default function Login() {
                 Password Recovery
               </h3>
               <p className="text-xs text-[#726F6D] mb-4">
-                Enter your registered work email. If an account exists, a secure password reset link will be sent to your inbox.
+                Enter your registered work email (clients or superadmin@theslidebee.com). If an account exists, a secure password reset link will be sent to your inbox.
               </p>
 
               <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -1545,7 +1763,7 @@ export default function Login() {
                     <input
                       type="email"
                       required
-                      placeholder="sarah@hypergrowth.vc"
+                      placeholder="sarah@hypergrowth.vc or superadmin@theslidebee.com"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"

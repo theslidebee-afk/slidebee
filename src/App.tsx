@@ -58,6 +58,7 @@ function App() {
                       <Route path="/contact" element={<Contact />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/account" element={<Login />} />
+                      <Route path="/reset-password" element={<Login />} />
                       <Route path="/blog" element={<Blog />} />
                       <Route path="/blog/:id" element={<BlogDetail />} />
                       <Route path="/media/blog" element={<Blog />} />

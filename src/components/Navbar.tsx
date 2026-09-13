@@ -34,8 +34,11 @@ export default function Navbar() {
 
     const email = session.user.email?.toLowerCase().trim() || "";
     const isSessionAdmin =
+      email === "superadmin@theslidebee.com" ||
       email === "admin@theslidebee.com" ||
       email === "admin@slidebee.com" ||
+      email.startsWith("admin@") ||
+      email.startsWith("superadmin@") ||
       session.user.user_metadata?.role === "admin" ||
       session.user.user_metadata?.role === "super_admin";
 

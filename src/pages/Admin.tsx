@@ -390,7 +390,7 @@ export default function Admin() {
         }
         const localPinAuth = localStorage.getItem("slidebee_admin_session");
         if (localPinAuth === "true") {
-          const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+          const email = localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
           setSession({ user: { email, role: "super_admin" } });
         } else {
           setSession(null);
@@ -400,11 +400,18 @@ export default function Admin() {
 
     const localPinAuth = localStorage.getItem("slidebee_admin_session");
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && (session.user.email?.startsWith("admin@") || session.user.user_metadata?.role === "admin" || localPinAuth === "true")) {
-        const email = session.user.email || localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+      const isSuperOrAdmin =
+        session?.user.email === "superadmin@theslidebee.com" ||
+        session?.user.email?.startsWith("admin@") ||
+        session?.user.email?.startsWith("superadmin@") ||
+        session?.user.user_metadata?.role === "admin" ||
+        session?.user.user_metadata?.role === "super_admin";
+
+      if (session && (isSuperOrAdmin || localPinAuth === "true")) {
+        const email = session.user.email || localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
         setSession({ ...session, user: { ...session.user, email, role: "super_admin" } });
       } else if (localPinAuth === "true") {
-        const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+        const email = localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
         setSession({ user: { email, role: "super_admin" } });
       } else {
         setSession(null);
