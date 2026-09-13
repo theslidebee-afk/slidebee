@@ -45,7 +45,10 @@ import {
   LayoutTemplate,
   ShieldCheck,
   Cloud,
-  Loader2
+  Loader2,
+  Sparkles,
+  Gift,
+  UserX
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -180,6 +183,16 @@ export default function Admin() {
   const [adminTemplateFilter, setAdminTemplateFilter] = useState<"all" | "published" | "draft" | "free">("all");
   const [adminTemplateCategory, setAdminTemplateCategory] = useState<string>("All");
   const [adminTemplateSearch, setAdminTemplateSearch] = useState<string>("");
+
+  // User & Subscription Ledger States
+  const [clientFilter, setClientFilter] = useState<"all" | "pro" | "free">("all");
+  const [isGrantProModalOpen, setIsGrantProModalOpen] = useState(false);
+  const [grantProTargetEmail, setGrantProTargetEmail] = useState("");
+  const [grantProCredits, setGrantProCredits] = useState<number>(80);
+  const [grantProDurationMonths, setGrantProDurationMonths] = useState<number>(12);
+  const [grantProReason, setGrantProReason] = useState<string>("VIP Client Partnership");
+  const [isProcessingProAction, setIsProcessingProAction] = useState(false);
+  const [proActionFeedback, setProActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const TEMPLATE_CATEGORIES = [
     "All",
     "Pitch Decks",
@@ -472,6 +485,137 @@ export default function Admin() {
 
     if (!error) {
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    }
+  };
+
+  // User & Subscription Ledger Management Handlers
+  const handleGrantFreePro = async (targetEmail: string, customCredits = 80, durationMonths = 12, reason = "VIP Client Partnership") => {
+    if (!targetEmail || !targetEmail.includes("@")) {
+      alert("Please provide a valid client email address.");
+      return;
+    }
+    setIsProcessingProAction(true);
+    try {
+      const cleanEmail = targetEmail.trim().toLowerCase();
+      const existingProfile = profiles.find((p) => p.email?.toLowerCase() === cleanEmail);
+      const existingSub = subscriptions.find((s) => s.user_email?.toLowerCase() === cleanEmail);
+
+      const periodEnd = durationMonths >= 999
+        ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() + durationMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const subPayload = {
+        user_id: existingProfile?.id || null,
+        user_email: cleanEmail,
+        plan_name: reason ? `Pro Studio Membership (${reason})` : "Pro Studio Membership (Complimentary)",
+        amount_usd: 0,
+        amount_inr: 0,
+        slides_used: 0,
+        slides_limit: customCredits,
+        current_period_end: periodEnd,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingSub?.id) {
+        const { error: subErr } = await supabase.from("subscriptions").update(subPayload).eq("id", existingSub.id);
+        if (subErr) throw subErr;
+      } else {
+        const { error: subErr } = await supabase.from("subscriptions").insert([subPayload]);
+        if (subErr) throw subErr;
+      }
+
+      if (existingProfile?.id) {
+        const updatedBalance = Math.max(Number(existingProfile.credits_balance || 0), customCredits);
+        const updatedTotal = Math.max(Number(existingProfile.credits_total || 0), customCredits);
+        await supabase.from("profiles").update({
+          credits_balance: updatedBalance,
+          credits_total: updatedTotal,
+          updated_at: new Date().toISOString(),
+        }).eq("id", existingProfile.id);
+      } else {
+        await supabase.from("profiles").upsert({
+          email: cleanEmail,
+          full_name: cleanEmail.split("@")[0],
+          role: "client",
+          credits_total: customCredits,
+          credits_used: 0,
+          credits_balance: customCredits,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "email" });
+      }
+
+      setProActionFeedback({
+        type: "success",
+        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} slide download credits and unlocked VIP WhatsApp Studio line.`,
+      });
+      setTimeout(() => setProActionFeedback(null), 6000);
+      setIsGrantProModalOpen(false);
+      setGrantProTargetEmail("");
+      await fetchDashboardData();
+    } catch (err: any) {
+      console.error("Failed to grant free Pro:", err);
+      alert(`Failed to grant Pro membership: ${err?.message || err}`);
+    } finally {
+      setIsProcessingProAction(false);
+    }
+  };
+
+  const handleRevokePro = async (subId: string, clientEmail: string) => {
+    if (!window.confirm(`Are you sure you want to revoke Pro membership for ${clientEmail}? Their account will revert to the standard free tier.`)) {
+      return;
+    }
+    setIsProcessingProAction(true);
+    try {
+      const { error } = await supabase.from("subscriptions").update({
+        status: "canceled",
+        updated_at: new Date().toISOString(),
+      }).eq("id", subId);
+
+      if (error) throw error;
+
+      setProActionFeedback({
+        type: "success",
+        message: `Pro membership revoked for ${clientEmail}. Account reverted to standard tier.`,
+      });
+      setTimeout(() => setProActionFeedback(null), 5000);
+      await fetchDashboardData();
+    } catch (err: any) {
+      console.error("Failed to revoke Pro:", err);
+      alert(`Failed to revoke Pro: ${err?.message || err}`);
+    } finally {
+      setIsProcessingProAction(false);
+    }
+  };
+
+  const handleAdjustCredits = async (clientId: string, clientEmail: string, deltaCredits: number) => {
+    setIsProcessingProAction(true);
+    try {
+      const profile = profiles.find((p) => p.id === clientId || p.email?.toLowerCase() === clientEmail.toLowerCase());
+      const currentBal = Number(profile?.credits_balance) || 0;
+      const currentTot = Number(profile?.credits_total) || 5;
+      const newBal = Math.max(0, currentBal + deltaCredits);
+      const newTot = Math.max(newBal, currentTot + (deltaCredits > 0 ? deltaCredits : 0));
+
+      const { error } = await supabase.from("profiles").update({
+        credits_balance: newBal,
+        credits_total: newTot,
+        updated_at: new Date().toISOString(),
+      }).eq("id", clientId);
+
+      if (error) throw error;
+
+      setProActionFeedback({
+        type: "success",
+        message: `${deltaCredits > 0 ? `Added +${deltaCredits}` : `Adjusted ${deltaCredits}`} credits for ${clientEmail}. New balance: ${newBal} credits.`,
+      });
+      setTimeout(() => setProActionFeedback(null), 5000);
+      await fetchDashboardData();
+    } catch (err: any) {
+      console.error("Failed to adjust credits:", err);
+      alert(`Failed to update credits: ${err?.message || err}`);
+    } finally {
+      setIsProcessingProAction(false);
     }
   };
 
@@ -1854,105 +1998,138 @@ SlideBee Design Studio`
           </div>
         </div>
 
-        {/* 5 Metric Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
-            <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <ShoppingBag size={18} />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Briefs
-              </span>
-            </div>
-            <div className="text-2xl font-heading font-black text-[#111111]">
-              {orders.length}
-            </div>
-            <span className="text-[10px] text-[#726F6D] font-medium block">
-              {orders.filter(o => o.status === 'pending').length} pending
-            </span>
-          </div>
+        {/* 6 Metric Summary Cards */}
+        {(() => {
+          const registeredClients = profiles.filter(
+            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+          );
+          const activeProSubscribers = subscriptions.filter((s) => s.status === "active");
 
-          <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
-            <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <Users size={18} />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Waitlist
-              </span>
-            </div>
-            <div className="text-2xl font-heading font-black text-[#111111]">
-              {waitlist.length}
-            </div>
-            <span className="text-[10px] text-[#726F6D] font-medium block">
-              Subscribers
-            </span>
-          </div>
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+              <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <ShoppingBag size={18} />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Briefs
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  {orders.length}
+                </div>
+                <span className="text-[10px] text-[#726F6D] font-medium block">
+                  {orders.filter(o => o.status === 'pending').length} pending
+                </span>
+              </div>
 
-          <div 
-            onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
-            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
-          >
-            <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <Layers size={18} />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Templates
-              </span>
-            </div>
-            <div className="text-2xl font-heading font-black text-[#111111]">
-              {templates.length}
-            </div>
-            <span className="text-[10px] text-[#726F6D] font-medium block">
-              In Store CMS
-            </span>
-          </div>
+              <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <Users size={18} />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Waitlist
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  {waitlist.length}
+                </div>
+                <span className="text-[10px] text-[#726F6D] font-medium block">
+                  Subscribers
+                </span>
+              </div>
 
-          <div 
-            onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
-            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
-          >
-            <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <Sliders size={18} />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Site CMS
-              </span>
-            </div>
-            <div className="text-2xl font-heading font-black text-[#111111]">
-              8
-            </div>
-            <span className="text-[10px] text-[#726F6D] font-medium block">
-              Dynamic Pages
-            </span>
-          </div>
-
-          {/* R2 Storage Live Monitor Card */}
-          <div 
-            onClick={() => setActiveTab("storage")}
-            className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all col-span-2 sm:col-span-1"
-          >
-            <div className="flex items-center justify-between text-primary-amber mb-1.5">
-              <HardDrive size={18} />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                Cloudflare R2
-              </span>
-            </div>
-            <div className="text-2xl font-heading font-black text-[#111111]">
-              {remainingGB} <span className="text-xs font-bold text-[#726F6D]">GB Free</span>
-            </div>
-            <div className="w-full bg-[#FFF9E8] rounded-full h-1.5 mt-2 overflow-hidden border border-[#111111]/10">
               <div 
-                className="bg-primary-amber h-full rounded-full transition-all" 
-                style={{ width: `${Math.max(3, Number(percentUsed))}%` }} 
-              />
+                onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
+              >
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <Layers size={18} />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Templates
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  {templates.length}
+                </div>
+                <span className="text-[10px] text-[#726F6D] font-medium block">
+                  In Store CMS
+                </span>
+              </div>
+
+              <div 
+                onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
+              >
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <Sparkles size={18} className="text-amber-500" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Clients & Pro
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  {registeredClients.length}
+                </div>
+                <span className="text-[10px] text-emerald-700 font-bold block">
+                  {activeProSubscribers.length} Active Pro VIP
+                </span>
+              </div>
+
+              <div 
+                onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
+                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
+              >
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <Sliders size={18} />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Site CMS
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  8
+                </div>
+                <span className="text-[10px] text-[#726F6D] font-medium block">
+                  Dynamic Pages
+                </span>
+              </div>
+
+              {/* R2 Storage Live Monitor Card */}
+              <div 
+                onClick={() => setActiveTab("storage")}
+                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all col-span-2 sm:col-span-1"
+              >
+                <div className="flex items-center justify-between text-primary-amber mb-1.5">
+                  <HardDrive size={18} />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
+                    Cloudflare R2
+                  </span>
+                </div>
+                <div className="text-2xl font-heading font-black text-[#111111]">
+                  {remainingGB} <span className="text-xs font-bold text-[#726F6D]">GB Free</span>
+                </div>
+                <div className="w-full bg-[#FFF9E8] rounded-full h-1.5 mt-2 overflow-hidden border border-[#111111]/10">
+                  <div 
+                    className="bg-primary-amber h-full rounded-full transition-all" 
+                    style={{ width: `${Math.max(3, Number(percentUsed))}%` }} 
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Tier 1: Dedicated Admin Sub-Page Navigation */}
         {(() => {
+          const registeredClientsCount = profiles.filter(
+            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+          ).length;
+
           const activeSection = (activeTab === "customization")
             ? "customization"
             : (activeTab === "billing")
             ? "billing"
             : (activeTab === "templates")
             ? "templates"
+            : (activeTab === "subscriptions")
+            ? "subscriptions"
             : "operations";
 
           return (
@@ -1978,6 +2155,16 @@ SlideBee Design Studio`
                     }`}
                   >
                     <Layers size={14} /> Template Studio ({templates.length})
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      activeSection === "subscriptions"
+                        ? "bg-[#111111] text-[#FCBF14] shadow"
+                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+                    }`}
+                  >
+                    <Users size={14} /> Client Ledger & Pro ({registeredClientsCount})
                   </button>
                   <button
                     onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
@@ -2006,7 +2193,7 @@ SlideBee Design Studio`
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="Search records..."
+                        placeholder={activeSection === "subscriptions" ? "Search clients by name, email..." : "Search records..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-4 py-1.5 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
@@ -2021,6 +2208,20 @@ SlideBee Design Studio`
                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
                     >
                       <Download size={14} /> Export CSV
+                    </button>
+                  )}
+
+                  {activeSection === "subscriptions" && (
+                    <button
+                      onClick={() => {
+                        setGrantProTargetEmail("");
+                        setGrantProCredits(80);
+                        setGrantProDurationMonths(12);
+                        setIsGrantProModalOpen(true);
+                      }}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+                    >
+                      <Gift size={14} /> Grant Pro Free
                     </button>
                   )}
 
@@ -2046,6 +2247,44 @@ SlideBee Design Studio`
                 </div>
               </div>
 
+              {/* Tier 2: Subscriptions Sub-Tabs */}
+              {activeSection === "subscriptions" && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 p-2 rounded-xl border border-[#111111]/8">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <button
+                      onClick={() => setClientFilter("all")}
+                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                        clientFilter === "all"
+                          ? "bg-primary text-[#111111] shadow-sm"
+                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                      }`}
+                    >
+                      <Users size={13} /> All Accounts ({registeredClientsCount})
+                    </button>
+                    <button
+                      onClick={() => setClientFilter("pro")}
+                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                        clientFilter === "pro"
+                          ? "bg-primary text-[#111111] shadow-sm"
+                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                      }`}
+                    >
+                      <Sparkles size={13} className="text-amber-500" /> Active Pro Retainers ({subscriptions.filter(s => s.status === "active").length})
+                    </button>
+                    <button
+                      onClick={() => setClientFilter("free")}
+                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                        clientFilter === "free"
+                          ? "bg-primary text-[#111111] shadow-sm"
+                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                      }`}
+                    >
+                      Free Tier ({profiles.filter(p => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@") && !subscriptions.some(s => s.user_email?.toLowerCase() === p.email?.toLowerCase() && s.status === "active")).length})
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Tier 2: Operations Sub-Tabs */}
               {activeSection === "operations" && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -2070,14 +2309,14 @@ SlideBee Design Studio`
                     <Users size={13} /> Inbound Waitlist ({waitlist.length})
                   </button>
                   <button
-                    onClick={() => setActiveTab("subscriptions")}
+                    onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
                     className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                       activeTab === "subscriptions"
                         ? "bg-primary text-[#111111] shadow"
                         : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
                     }`}
                   >
-                    <Users size={13} /> Client Accounts ({profiles.length})
+                    <Users size={13} /> Client Accounts ({registeredClientsCount})
                   </button>
                   <button
                     onClick={() => setActiveTab("storage")}
@@ -6335,16 +6574,57 @@ SlideBee Design Studio`
         {/* TAB 7: SUBSCRIPTIONS & CLIENT PROFILES */}
         {activeTab === "subscriptions" && (() => {
           const clientProfiles = profiles.filter(
-            (p) => (p.role === "client" || !p.role) && !p.email.toLowerCase().startsWith("admin@")
+            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+          );
+          const activeSubscriptions = subscriptions.filter((s) => s.status === "active");
+          const complimentarySubs = activeSubscriptions.filter(
+            (s) => Number(s.amount_usd) === 0 || s.plan_name?.toLowerCase().includes("complimentary")
+          );
+          const freeClients = clientProfiles.filter(
+            (p) => !activeSubscriptions.some((s) => s.user_email?.toLowerCase() === p.email?.toLowerCase())
           );
           const totalStarterCredits = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_total) || 5), 0);
           const activeCreditsBalance = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_balance) || 0), 0);
 
+          // Filtering logic
+          const filteredProfiles = clientProfiles.filter((p) => {
+            const matchesSearch = !searchTerm ||
+              p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              p.company?.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const isPro = activeSubscriptions.some((s) => s.user_email?.toLowerCase() === p.email?.toLowerCase());
+
+            if (clientFilter === "pro") return matchesSearch && isPro;
+            if (clientFilter === "free") return matchesSearch && !isPro;
+            return matchesSearch;
+          });
+
           return (
             <div className="space-y-8">
-              
+              {/* Action Notification Banner */}
+              {proActionFeedback && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-4 rounded-xl border flex items-center justify-between shadow-sm ${
+                    proActionFeedback.type === "success"
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                      : "bg-red-50 border-red-300 text-red-900"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 text-xs font-extrabold">
+                    <CheckCircle2 size={16} className={proActionFeedback.type === "success" ? "text-emerald-600" : "text-red-600"} />
+                    {proActionFeedback.message}
+                  </div>
+                  <button onClick={() => setProActionFeedback(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+
               {/* Top Metric Strip */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
                     Total Client Accounts
@@ -6359,13 +6639,26 @@ SlideBee Design Studio`
 
                 <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Total Starter Credits Issued
+                    Active Pro Members
                   </span>
-                  <div className="text-3xl font-heading font-black text-primary-amber">
-                    {totalStarterCredits}
+                  <div className="text-3xl font-heading font-black text-amber-600 flex items-center gap-2">
+                    {activeSubscriptions.length}
+                    <Sparkles size={20} className="text-amber-500" />
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    5 free credits allocated per client
+                    {complimentarySubs.length} Complimentary • {activeSubscriptions.length - complimentarySubs.length} Paid
+                  </span>
+                </div>
+
+                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Free Tier Accounts
+                  </span>
+                  <div className="text-3xl font-heading font-black text-[#111111]">
+                    {freeClients.length}
+                  </div>
+                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                    Standard 5-credit starter accounts
                   </span>
                 </div>
 
@@ -6373,33 +6666,56 @@ SlideBee Design Studio`
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
                     Active Credits Balance
                   </span>
-                  <div className="text-3xl font-heading font-black text-[#111111]">
-                    {activeCreditsBalance} Credits
+                  <div className="text-3xl font-heading font-black text-primary-amber">
+                    {activeCreditsBalance}
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    Available design purchasing power
+                    Total issued: {totalStarterCredits} credits
                   </span>
                 </div>
               </div>
 
               {/* 1. Subscriptions Table */}
               <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
-                <div className="p-6 border-b border-[#111111]/8 flex items-center justify-between">
+                <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Active Monthly Retainer Subscriptions
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Real-time monitoring of client slide quotas, billing tiers, and renewals
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                        Active Monthly Retainer Subscriptions
+                      </h3>
+                      <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2 py-0.5 border border-primary/40">
+                        {activeSubscriptions.length} Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#726F6D] mt-0.5">
+                      Real-time monitoring of client slide quotas, billing tiers, renewals, and complimentary VIP access
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      setGrantProTargetEmail("");
+                      setGrantProCredits(80);
+                      setGrantProDurationMonths(12);
+                      setIsGrantProModalOpen(true);
+                    }}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer self-start sm:self-auto"
+                  >
+                    <Gift size={14} /> Grant Pro Access to Any Account
+                  </button>
                 </div>
 
                 {subscriptions.length === 0 ? (
                   <div className="p-10 text-center text-[#726F6D]">
                     <CreditCard size={32} className="mx-auto text-gray-300 mb-2" />
                     <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
-                    <p className="text-xs font-medium mt-1">Client retainers will be tracked here.</p>
+                    <p className="text-xs font-medium mt-1">Client retainers and complimentary grants will appear here.</p>
+                    <button
+                      onClick={() => setIsGrantProModalOpen(true)}
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs inline-flex items-center gap-1.5 shadow-sm mt-4 cursor-pointer"
+                    >
+                      <Gift size={13} /> Grant First Free Pro Access
+                    </button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -6407,46 +6723,112 @@ SlideBee Design Studio`
                       <thead>
                         <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
                           <th className="p-4">Subscriber</th>
-                          <th className="p-4">Plan Name</th>
-                          <th className="p-4">Rate / Month</th>
+                          <th className="p-4">Plan Name & Tier</th>
+                          <th className="p-4">Monthly Rate</th>
                           <th className="p-4">Monthly Slide Quota</th>
-                          <th className="p-4">Renewal Cycle</th>
+                          <th className="p-4">Renewal / Expiry</th>
                           <th className="p-4">Status</th>
+                          <th className="p-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
-                        {subscriptions.map((sub) => (
-                          <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
-                            <td className="p-4">
-                              <div className="font-extrabold text-[#111111]">{sub.user_email}</div>
-                            </td>
-                            <td className="p-4 font-bold text-[#111111]">
-                              {sub.plan_name}
-                            </td>
-                            <td className="p-4 font-black text-primary-amber">
-                              ${sub.amount_usd} / ₹{sub.amount_inr?.toLocaleString()}
-                            </td>
-                            <td className="p-4">
-                              <div className="font-bold mb-1">
-                                {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
-                              </div>
-                              <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
-                                <div 
-                                  className="bg-primary-amber h-full rounded-full" 
-                                  style={{ width: `${((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100}%` }} 
-                                />
-                              </div>
-                            </td>
-                            <td className="p-4 whitespace-nowrap text-[#726F6D]">
-                              {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "Every 30 Days"}
-                            </td>
-                            <td className="p-4 whitespace-nowrap">
-                              <span className="hex-pill-sm bg-green-100 text-green-800 text-[10px] font-black px-2.5 py-0.5">
-                                ● {sub.status || 'Active'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {subscriptions.map((sub) => {
+                          const isComplimentary = Number(sub.amount_usd) === 0 || sub.plan_name?.toLowerCase().includes("complimentary");
+                          const matchedProfile = profiles.find((p) => p.email?.toLowerCase() === sub.user_email?.toLowerCase());
+
+                          return (
+                            <tr key={sub.id} className="hover:bg-primary/5 transition-colors">
+                              <td className="p-4">
+                                <div className="font-extrabold text-[#111111]">
+                                  {matchedProfile?.full_name || sub.user_email}
+                                </div>
+                                <div className="text-[11px] text-[#726F6D]">{sub.user_email}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="font-bold text-[#111111] flex items-center gap-1.5">
+                                  {sub.plan_name}
+                                </div>
+                                {isComplimentary ? (
+                                  <span className="hex-pill-sm bg-amber-50 text-amber-800 border border-amber-300 text-[9px] font-black px-1.5 py-0.5 mt-0.5 inline-block">
+                                    Complimentary Grant
+                                  </span>
+                                ) : (
+                                  <span className="hex-pill-sm bg-blue-50 text-blue-800 border border-blue-200 text-[9px] font-bold px-1.5 py-0.5 mt-0.5 inline-block">
+                                    Paid Retainer
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 font-black text-primary-amber">
+                                {isComplimentary ? (
+                                  <span className="text-emerald-700 font-extrabold">Free ($0 / ₹0)</span>
+                                ) : (
+                                  <span>${sub.amount_usd} / ₹{sub.amount_inr?.toLocaleString()}</span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <div className="font-bold mb-1">
+                                  {sub.slides_used || 0} / {sub.slides_limit || 80} Slides
+                                </div>
+                                <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
+                                  <div 
+                                    className="bg-primary-amber h-full rounded-full" 
+                                    style={{ width: `${Math.min(100, ((sub.slides_used || 0) / (sub.slides_limit || 80)) * 100)}%` }} 
+                                  />
+                                </div>
+                              </td>
+                              <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                                {sub.current_period_end ? (
+                                  <div>
+                                    <span className="font-bold text-[#111111]">
+                                      {new Date(sub.current_period_end).toLocaleDateString()}
+                                    </span>
+                                    <span className="block text-[10px]">
+                                      {new Date(sub.current_period_end) > new Date() ? "Active validity" : "Expired"}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  "Every 30 Days"
+                                )}
+                              </td>
+                              <td className="p-4 whitespace-nowrap">
+                                {sub.status === "active" ? (
+                                  <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 inline-flex items-center gap-1">
+                                    <Sparkles size={10} className="text-emerald-600" /> Active
+                                  </span>
+                                ) : (
+                                  <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-300 text-[10px] font-bold px-2.5 py-0.5">
+                                    {sub.status || "Canceled"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-2">
+                                  {sub.status === "active" ? (
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleRevokePro(sub.id, sub.user_email)}
+                                      className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                      title="Revoke Pro access for this account"
+                                    >
+                                      <UserX size={11} /> Revoke Pro
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleGrantFreePro(sub.user_email, sub.slides_limit || 80, 12)}
+                                      className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                      title="Reactivate Pro access"
+                                    >
+                                      <Gift size={11} /> Reactivate Pro
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -6455,58 +6837,172 @@ SlideBee Design Studio`
 
               {/* 2. Registered Client Accounts Table */}
               <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
-                <div className="p-6 border-b border-[#111111]/8">
-                  <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                    Registered Client Profiles ({clientProfiles.length})
-                  </h3>
-                  <p className="text-xs text-[#726F6D]">
-                    All clients who registered an account or submitted a presentation brief
-                  </p>
+                <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                      Registered Client Profiles & Credits Ledger ({filteredProfiles.length})
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      All registered clients with 1-click Pro membership granting, custom slide quota allocation, and VIP WhatsApp permissions
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-[#726F6D]">Filter:</span>
+                    <button
+                      type="button"
+                      onClick={() => setClientFilter("all")}
+                      className={`px-3 py-1 hex-pill text-[11px] font-extrabold transition-all cursor-pointer ${
+                        clientFilter === "all" ? "bg-primary text-[#111111]" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      All ({clientProfiles.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientFilter("pro")}
+                      className={`px-3 py-1 hex-pill text-[11px] font-extrabold transition-all cursor-pointer ${
+                        clientFilter === "pro" ? "bg-primary text-[#111111]" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      Pro Only ({activeSubscriptions.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientFilter("free")}
+                      className={`px-3 py-1 hex-pill text-[11px] font-extrabold transition-all cursor-pointer ${
+                        clientFilter === "free" ? "bg-primary text-[#111111]" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      Free Only ({freeClients.length})
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
-                        <th className="p-4">Full Name</th>
+                        <th className="p-4">Full Name & Organization</th>
                         <th className="p-4">Work Email</th>
-                        <th className="p-4">Company / Organization</th>
-                        <th className="p-4">Account Role</th>
-                        <th className="p-4">Joined Date</th>
-                        <th className="p-4">Last Active / Sign In</th>
+                        <th className="p-4">Tier & Pro Status</th>
+                        <th className="p-4">Download Credits</th>
+                        <th className="p-4">WhatsApp VIP Hotline</th>
+                        <th className="p-4">Joined / Last Active</th>
+                        <th className="p-4 text-right">Pro Access Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
-                      {clientProfiles.map((p) => (
-                        <tr key={p.id} className="hover:bg-primary/5 transition-colors">
-                          <td className="p-4 font-extrabold text-[#111111]">
-                            {p.full_name || "N/A"}
-                          </td>
-                          <td className="p-4 font-bold text-[#111111]">
-                            {p.email}
-                          </td>
-                          <td className="p-4 text-[#726F6D]">
-                            {p.company || "Enterprise Client"}
-                          </td>
-                          <td className="p-4 whitespace-nowrap">
-                            <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber font-extrabold text-[10px] px-2.5 py-0.5">
-                              {p.role || "Client"}
-                            </span>
-                          </td>
-                          <td className="p-4 whitespace-nowrap text-[#726F6D]">
-                            {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
-                          </td>
-                          <td className="p-4 whitespace-nowrap">
-                            {p.last_sign_in_at ? (
-                              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                {new Date(p.last_sign_in_at).toLocaleDateString()} {new Date(p.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            ) : (
-                              <span className="text-[#726F6D] text-[11px]">Recent</span>
-                            )}
+                      {filteredProfiles.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-[#726F6D]">
+                            No client profiles matching filter "{clientFilter}" or search query.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredProfiles.map((p) => {
+                          const clientSub = activeSubscriptions.find(
+                            (s) => s.user_email?.toLowerCase() === p.email?.toLowerCase()
+                          );
+                          const isPro = Boolean(clientSub);
+
+                          return (
+                            <tr key={p.id} className="hover:bg-primary/5 transition-colors">
+                              <td className="p-4">
+                                <div className="font-extrabold text-[#111111]">
+                                  {p.full_name || "Enterprise Founder"}
+                                </div>
+                                <div className="text-[11px] text-[#726F6D]">
+                                  {p.company || "Direct Client"}
+                                </div>
+                              </td>
+                              <td className="p-4 font-bold text-[#111111]">
+                                {p.email}
+                              </td>
+                              <td className="p-4 whitespace-nowrap">
+                                {isPro ? (
+                                  <span className="hex-pill-sm bg-amber-50 text-amber-800 border border-amber-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
+                                    <Sparkles size={11} className="text-amber-500" /> Pro Member
+                                  </span>
+                                ) : (
+                                  <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
+                                    Free Tier
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-black text-[#111111] text-xs">
+                                    {p.credits_balance ?? 5} / {p.credits_total ?? 5}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleAdjustCredits(p.id, p.email, 10)}
+                                      className="hex-pill-sm bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] border border-[#111111]/10 px-1.5 py-0.5 font-bold text-[9px] cursor-pointer"
+                                      title="Add +10 Credits"
+                                    >
+                                      +10
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isProcessingProAction}
+                                      onClick={() => handleAdjustCredits(p.id, p.email, 50)}
+                                      className="hex-pill-sm bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] border border-[#111111]/10 px-1.5 py-0.5 font-bold text-[9px] cursor-pointer"
+                                      title="Add +50 Credits"
+                                    >
+                                      +50
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 whitespace-nowrap">
+                                {isPro ? (
+                                  <span className="text-emerald-700 font-extrabold text-[11px] inline-flex items-center gap-1">
+                                    <CheckCircle2 size={12} className="text-emerald-600" /> Unlocked
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 font-medium text-[11px]">
+                                    Locked (Free)
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 whitespace-nowrap text-[#726F6D]">
+                                <div className="text-[11px] font-bold text-[#111111]">
+                                  {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
+                                </div>
+                                {p.last_sign_in_at && (
+                                  <span className="text-[10px] text-emerald-700 block">
+                                    Active: {new Date(p.last_sign_in_at).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 text-right whitespace-nowrap">
+                                {isPro ? (
+                                  <button
+                                    type="button"
+                                    disabled={isProcessingProAction}
+                                    onClick={() => handleRevokePro(clientSub!.id, p.email)}
+                                    className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-3 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                  >
+                                    <UserX size={11} /> Revoke Pro
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isProcessingProAction}
+                                    onClick={() => handleGrantFreePro(p.email, 80, 12)}
+                                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
+                                  >
+                                    <Gift size={12} /> Grant Free Pro
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -8245,6 +8741,180 @@ SlideBee Design Studio`
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: GRANT COMPLIMENTARY PRO MEMBERSHIP */}
+        {isGrantProModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6"
+            >
+              <div className="flex items-center justify-between border-b border-[#111111]/8 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-primary-amber">
+                    <Gift size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-black text-base text-[#111111]">
+                      Grant Free Pro Membership
+                    </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Allocate complimentary VIP status, slide quota, and direct WhatsApp line
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGrantProModalOpen(false)}
+                  className="p-1 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Select from registered profiles */}
+                <div>
+                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                    Select Registered Client Profile
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) setGrantProTargetEmail(e.target.value);
+                    }}
+                    value={grantProTargetEmail}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                  >
+                    <option value="">-- Choose registered client (or enter custom email below) --</option>
+                    {profiles
+                      .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
+                      .map((p) => (
+                        <option key={p.id} value={p.email}>
+                          {p.full_name ? `${p.full_name} (${p.email})` : p.email} {p.company ? `- ${p.company}` : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Target Email Input */}
+                <div>
+                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                    Client Work Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. client@enterprise.com"
+                    value={grantProTargetEmail}
+                    onChange={(e) => setGrantProTargetEmail(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                  />
+                  <span className="text-[10px] text-[#726F6D] mt-1 block">
+                    Can be any email. If the account isn't registered yet, Pro perks and credits will be pre-allocated automatically.
+                  </span>
+                </div>
+
+                {/* Slide quota and duration */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                      Monthly Slides Quota
+                    </label>
+                    <select
+                      value={grantProCredits}
+                      onChange={(e) => setGrantProCredits(Number(e.target.value))}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    >
+                      <option value={50}>50 Slides / Month</option>
+                      <option value={80}>80 Slides / Month (Standard Pro)</option>
+                      <option value={120}>120 Slides / Month (VIP Enterprise)</option>
+                      <option value={200}>200 Slides / Month (Unlimited Master)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                      Complimentary Duration
+                    </label>
+                    <select
+                      value={grantProDurationMonths}
+                      onChange={(e) => setGrantProDurationMonths(Number(e.target.value))}
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    >
+                      <option value={1}>1 Month Trial</option>
+                      <option value={3}>3 Months</option>
+                      <option value={6}>6 Months</option>
+                      <option value={12}>1 Year (Recommended)</option>
+                      <option value={999}>Lifetime / Indefinite</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Reason Note */}
+                <div>
+                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1.5">
+                    Partnership Note / Justification
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. VIP Strategic Client, Board Member, Early Beta Tester"
+                    value={grantProReason}
+                    onChange={(e) => setGrantProReason(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none"
+                  />
+                </div>
+
+                {/* Perks Preview */}
+                <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 space-y-1.5">
+                  <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider block">
+                    Perks Unlocked Immediately for this Account:
+                  </span>
+                  <ul className="text-xs text-amber-900 space-y-1">
+                    <li className="flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <span><strong>{grantProCredits} Free Monthly Slide Downloads</strong> in Template Catalog</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <span><strong>VIP WhatsApp Studio Hotline</strong> unlocked directly in client dashboard</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <span><strong>Pro Member Badge</strong> on account and client portal banner</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#111111]/8">
+                <button
+                  type="button"
+                  onClick={() => setIsGrantProModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingProAction || !grantProTargetEmail}
+                  onClick={() => handleGrantFreePro(grantProTargetEmail, grantProCredits, grantProDurationMonths, grantProReason)}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessingProAction ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Provisioning Pro Access...
+                    </>
+                  ) : (
+                    <>
+                      <Gift size={14} /> Grant Pro Membership Free
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
