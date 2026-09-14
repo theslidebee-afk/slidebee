@@ -1,6 +1,12 @@
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
+import { useSessionEnforcer } from "./hooks/useSessionEnforcer";
 import Navbar from "./components/Navbar";
+
+function SessionGuardWatcher() {
+  useSessionEnforcer();
+  return null;
+}
 import Home from "./pages/Home";
 import Templates from "./pages/Templates";
 import TemplateDetail from "./pages/TemplateDetail";
@@ -29,6 +35,7 @@ function App() {
     <CurrencyProvider>
       <Router>
         <ScrollToTop />
+        <SessionGuardWatcher />
         <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
           <Routes>
             {/* 1. Admin Studio (no public Navbar or Footer) */}

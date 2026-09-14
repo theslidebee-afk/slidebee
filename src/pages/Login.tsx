@@ -21,6 +21,7 @@ import {
   Check,
   FileText,
   ShieldCheck,
+  ShieldAlert,
   Zap,
   X,
   MessageSquare,
@@ -50,6 +51,33 @@ export default function Login() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [signUpSuccessMessage, setSignUpSuccessMessage] = useState("");
+
+  // Session Displacement Security State
+  const [sessionDisplacedInfo, setSessionDisplacedInfo] = useState<{ displaced: boolean; newDevice: string }>(() => {
+    if (typeof window === "undefined") return { displaced: false, newDevice: "" };
+    const url = window.location.href;
+    const isDisplacedUrl = url.includes("reason=session_displaced");
+    const isDisplacedStorage = sessionStorage.getItem("slidebee_session_displaced") === "true";
+    if (isDisplacedUrl || isDisplacedStorage) {
+      const device = sessionStorage.getItem("slidebee_displaced_by") || "another device";
+      return { displaced: true, newDevice: device };
+    }
+    return { displaced: false, newDevice: "" };
+  });
+
+  useEffect(() => {
+    const handleCheckDisplaced = () => {
+      if (typeof window === "undefined") return;
+      const url = window.location.href;
+      if (url.includes("reason=session_displaced") || sessionStorage.getItem("slidebee_session_displaced") === "true") {
+        const device = sessionStorage.getItem("slidebee_displaced_by") || "another device";
+        setSessionDisplacedInfo({ displaced: true, newDevice: device });
+      }
+    };
+    handleCheckDisplaced();
+    window.addEventListener("hashchange", handleCheckDisplaced);
+    return () => window.removeEventListener("hashchange", handleCheckDisplaced);
+  }, []);
 
   // Self-service Account Deletion State
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
@@ -217,6 +245,9 @@ export default function Login() {
     setFormLoading(true);
     setFormError("");
     setSignUpSuccessMessage("");
+    sessionStorage.removeItem("slidebee_session_displaced");
+    sessionStorage.removeItem("slidebee_displaced_by");
+    setSessionDisplacedInfo({ displaced: false, newDevice: "" });
 
     try {
       if (isSignUp) {
@@ -1577,6 +1608,37 @@ export default function Login() {
                   : "Manage your active presentation projects & templates"}
               </p>
             </div>
+
+            {/* Session Displacement Security Notice */}
+            {sessionDisplacedInfo.displaced && (
+              <div className="mb-6 bg-[#111111] border-2 border-[#FCBF14] text-white p-4 rounded-2xl shadow-xl relative overflow-hidden">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <ShieldAlert size={18} className="text-[#FCBF14]" />
+                  </div>
+                  <div className="flex-1 pr-6">
+                    <h4 className="text-xs font-heading font-black text-[#FCBF14] uppercase tracking-wider mb-1">
+                      Security Alert: Active Session Displaced
+                    </h4>
+                    <p className="text-xs text-gray-300 leading-relaxed font-medium">
+                      Your account was logged in on another device ({sessionDisplacedInfo.newDevice}). To enforce strict single-session security, this device was safely logged out. Sign in below if you wish to reactivate this device.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.removeItem("slidebee_session_displaced");
+                      sessionStorage.removeItem("slidebee_displaced_by");
+                      setSessionDisplacedInfo({ displaced: false, newDevice: "" });
+                    }}
+                    className="absolute top-3.5 right-3.5 text-gray-400 hover:text-white transition-colors"
+                    title="Dismiss alert"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Tab Selector */}
             <div className="flex bg-[#FFF9E8] border border-primary/30 p-1 hex-pill mb-6">

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
 import { sendWelcomeEmail } from "../../lib/email";
+import { isDisposableEmail, getDeviceFingerprint } from "../../lib/deviceFingerprint";
+import { registerActiveSession, verifyActiveSession, triggerSessionDisplacement } from "../../lib/sessionGuard";
 
 export interface UserProfile {
   id: string;
@@ -131,6 +133,14 @@ export function useClientLedger() {
         setUserProfile(null);
         setUserOrders([]);
       } else {
+        if (session.user.email) {
+          const sessionVerification = await verifyActiveSession(session.user.email);
+          if (!sessionVerification.valid) {
+            await triggerSessionDisplacement(sessionVerification.newDevice);
+            setLoading(false);
+            return;
+          }
+        }
         localStorage.removeItem("slidebee_admin_session");
         localStorage.removeItem("slidebee_admin_email");
         setCurrentUser(session.user);
@@ -210,6 +220,7 @@ export function useClientLedger() {
         authData.user.user_metadata?.role === "admin" ||
         authData.user.user_metadata?.role === "super_admin";
       if (isUserAdmin) {
+        await registerActiveSession(cleanEmail);
         await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin" });
         localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
@@ -222,6 +233,7 @@ export function useClientLedger() {
         return { success: true };
       }
 
+      await registerActiveSession(cleanEmail);
       await recordAuthEvent(cleanEmail, "LOGIN", { provider: "supabase_auth" });
       localStorage.removeItem("slidebee_admin_session");
       localStorage.removeItem("slidebee_admin_email");
@@ -242,7 +254,7 @@ export function useClientLedger() {
     return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
-  // Sign Up with 5 Free Starter Credits Provisioning via RPC
+  // Sign Up with 5 Free Starter Credits Provisioning via RPC & Anti-Abuse Protection
   const signUp = async (
     emailInput: string,
     passwordInput: string,
@@ -259,7 +271,37 @@ export function useClientLedger() {
       throw new Error("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
     }
 
-    // Check duplicate
+    // 1. Block disposable and burner temporary email domains
+    if (isDisposableEmail(cleanEmail)) {
+      throw new Error("Disposable or temporary email addresses are not permitted. Please use a valid personal or corporate email.");
+    }
+
+    // 2. Hardware and device fingerprinting for trial anti-abuse check
+    const fingerprint = await getDeviceFingerprint();
+    let trialEligible = true;
+
+    try {
+      const trialCheckRes = await fetch("/api/trial-guard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "CHECK_AND_CLAIM",
+          email: cleanEmail,
+          deviceFingerprint: fingerprint
+        })
+      });
+
+      if (trialCheckRes.ok) {
+        const trialData = await trialCheckRes.json();
+        if (trialData && trialData.eligible === false) {
+          trialEligible = false;
+        }
+      }
+    } catch (trialGuardErr) {
+      console.warn("Trial guard pre-check notice:", trialGuardErr);
+    }
+
+    // 3. Check duplicate account
     const { data: existingProfile } = await supabase
       .from("profiles")
       .select("id")
@@ -270,7 +312,7 @@ export function useClientLedger() {
       throw new Error("An account with this email already exists. Please sign in instead.");
     }
 
-    // Register in Supabase Auth
+    // 4. Register in Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: cleanEmail,
       password: cleanPassword,
@@ -286,18 +328,44 @@ export function useClientLedger() {
       throw new Error(authErr.message || "Failed to register account.");
     }
 
-    // Atomically grant 5 starter credits via Deep Module RPC
-    try {
-      await supabase.rpc("fn_grant_starter_credits", {
-        p_email: cleanEmail,
-        p_full_name: cleanName,
-        p_company: cleanCompany
-      });
-    } catch (e) {
-      console.warn("Starter credit RPC notice:", e);
+    // 5. Enforce trial provisioning or zero credits if already claimed
+    if (trialEligible) {
+      try {
+        await supabase.rpc("fn_grant_starter_credits", {
+          p_email: cleanEmail,
+          p_full_name: cleanName,
+          p_company: cleanCompany
+        });
+      } catch (e) {
+        console.warn("Starter credit RPC notice:", e);
+      }
+    } else {
+      // Free trial already claimed on this device/canonical email: initialize with 0 credits
+      try {
+        await supabase.from("profiles").upsert({
+          email: cleanEmail,
+          full_name: cleanName,
+          company: cleanCompany,
+          role: "client",
+          credits_total: 0,
+          credits_used: 0,
+          credits_balance: 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "email" });
+      } catch (profileErr) {
+        console.warn("Profile zero-credit initialization notice:", profileErr);
+      }
     }
 
-    await recordAuthEvent(cleanEmail, "SIGNUP", { fullName: cleanName, company: cleanCompany });
+    // 6. Register this device as the active session
+    await registerActiveSession(cleanEmail);
+
+    await recordAuthEvent(cleanEmail, "SIGNUP", {
+      fullName: cleanName,
+      company: cleanCompany,
+      trialEligible,
+      deviceFingerprint: fingerprint
+    });
 
     // Send Welcome Onboarding Email
     sendWelcomeEmail({
@@ -305,6 +373,10 @@ export function useClientLedger() {
       clientEmail: cleanEmail,
       company: cleanCompany
     }).catch(err => console.warn("Welcome email notice:", err));
+
+    const welcomeNotice = trialEligible
+      ? "Welcome! Your 5 free starter design credits are active."
+      : "Welcome to SlideBee! Notice: Free starter credits were previously claimed on this device. Your account has been initialized with 0 credits.";
 
     if (authData?.session?.user || authData?.user) {
       const clientObj = authData.session?.user || authData.user;
@@ -314,12 +386,14 @@ export function useClientLedger() {
       broadcastAuthEvent("LOGIN", "client");
       setCurrentUser(clientObj);
       await fetchClientData(cleanEmail);
-      return { success: true, message: "Welcome! Your 5 free starter design credits are active." };
+      return { success: true, message: welcomeNotice };
     }
 
     return {
       success: true,
-      message: "Account created successfully with 5 free design credits. Please sign in."
+      message: trialEligible
+        ? "Account created successfully with 5 free design credits. Please sign in."
+        : "Account created successfully. Free starter trial was already claimed on this device. Please sign in."
     };
   };
 
