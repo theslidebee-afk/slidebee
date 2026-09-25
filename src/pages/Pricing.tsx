@@ -441,7 +441,7 @@ export default function Pricing() {
 
             <button
               onClick={() => handleSubscribeTier("yearly")}
-              className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.03] flex items-center justify-center gap-1.5 shadow-xl"
+              className="mt-8 hex-pill w-full block text-center bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.03] flex items-center justify-center gap-1.5 shadow-xl"
             >
               Get Yearly Plan <ArrowRight size={14} />
             </button>

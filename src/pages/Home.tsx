@@ -341,7 +341,7 @@ export default function Home() {
 
               <button
                 onClick={scrollToTemplates}
-                className="hex-pill bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/20 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
+                className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
               >
                 <span>Explore Now</span>
                 <ArrowRight size={16} />
@@ -353,81 +353,95 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. HERO MAIN SECTION (Video Background + Central Frosted Glass Card)       */}
+      {/* 2. HERO MAIN SECTION (Total Section Covered By Video Background)          */}
       {/* ========================================================================= */}
-      <section className="pt-6 sm:pt-8 pb-16 overflow-hidden">
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative w-full py-16 sm:py-24 lg:py-32 overflow-hidden border-b-2 border-primary/20 flex items-center justify-center min-h-[580px] sm:min-h-[660px] lg:min-h-[740px]">
+        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes */}
+        <video
+          src="/hero_section.mp4"
+          poster="/hero_section_1.jpeg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+        />
+
+        {/* Ambient Warm Golden Overlay & Contrast Vignette */}
+        <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-black/25 pointer-events-none" />
+
+        {/* Central Stage Container */}
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center justify-center">
           
-          {/* Main Hero Container with 3D Isometric Cubes Video Background */}
-          <div className="relative rounded-[32px] sm:rounded-[44px] overflow-hidden min-h-[520px] sm:min-h-[580px] lg:min-h-[640px] flex items-center justify-center p-6 sm:p-10 lg:p-14 border-2 border-primary/40 shadow-2xl">
+          {/* Central Translucent Frosted Glass Card (Matching hero section_1.jpeg & reference) */}
+          <div className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all">
             
-            {/* Background Video: 3D Isometric Animated Cubes */}
-            <video
-              src="/hero_section.mp4"
-              poster="/hero_section_1.jpeg"
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-            />
+            {/* Eyebrow */}
+            <div className="mb-4">
+              <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
+                PRESENTATIONS FOR A BRIGHTER TOMORROW
+              </span>
+            </div>
 
-            {/* Subtle Warm Amber Wash Overlay */}
-            <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
+            {/* Bold Display Headline */}
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl">
+              Ideas Deserve<br />
+              Better Slides<span className="text-primary-amber">.</span>
+            </h1>
 
-            {/* Central Translucent Frosted Glass Card (Matching hero section_1.jpeg) */}
-            <div className="relative z-10 w-full max-w-4xl mx-auto bg-[#FFFDF5]/75 sm:bg-[#FFFDF5]/85 backdrop-blur-2xl border-2 border-white/90 rounded-[28px] sm:rounded-[36px] p-8 sm:p-12 lg:p-14 text-center shadow-[0_25px_70px_rgba(0,0,0,0.14)] flex flex-col items-center justify-center">
-              
-              {/* Eyebrow */}
-              <div className="mb-4">
-                <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-sm">
-                  PRESENTATIONS FOR A BRIGHTER TOMORROW
+            {/* Subtitle */}
+            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-2xl mx-auto mb-8">
+              At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
+            </p>
+
+            {/* Action Buttons Row */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 w-full sm:w-auto">
+              <button
+                onClick={scrollToTemplates}
+                className="w-full sm:w-auto hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-sm sm:text-base font-black px-8 py-3.5 sm:py-4 rounded-full flex items-center justify-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/25 hover:scale-105 cursor-pointer"
+              >
+                <span>Explore Templates</span>
+                <ArrowRight size={17} />
+              </button>
+
+              <Link
+                to="/ordernow"
+                className="w-full sm:w-auto hex-pill bg-[#111111] hover:bg-black text-white text-sm sm:text-base font-bold px-7 py-3.5 sm:py-4 rounded-full flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-105"
+              >
+                <span>Get a Custom Presentation</span>
+              </Link>
+            </div>
+
+            {/* Trust Indicators Row */}
+            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-6 border-t border-[#111111]/10 w-full">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary-amber fill-[#FCBF14]" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Professional Quality
                 </span>
               </div>
-
-              {/* Bold Display Headline */}
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl">
-                Ideas Deserve<br />
-                Better Slides<span className="text-primary-amber">.</span>
-              </h1>
-
-              {/* Subtitle */}
-              <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-2xl mx-auto mb-8">
-                At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
-              </p>
-
-              {/* Trust Indicators Row */}
-              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-6 border-t border-[#111111]/10 w-full">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-primary-amber fill-[#FCBF14]" />
-                  <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                    Professional Quality
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-[#111111]" />
-                  <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                    Trusted by Creators & Teams
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-primary-amber" />
-                  <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                    Save Time. Present Better.
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#111111]" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Trusted by Creators & Teams
+                </span>
               </div>
-
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-primary-amber" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Save Time. Present Better.
+                </span>
+              </div>
             </div>
 
           </div>
 
           {/* Playful Note Beneath Hero Stage */}
-          <div className="mt-4 text-center">
-            <span className="inline-block font-heading font-black italic text-base sm:text-xl text-[#111111] tracking-tight relative">
+          <div className="mt-6 text-center">
+            <span className="inline-block font-heading font-black italic text-base sm:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
               Better Presentations Brighter Ideas
-              <svg className="absolute -bottom-1 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
+              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
                 <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
               </svg>
             </span>
@@ -1052,7 +1066,7 @@ export default function Home() {
               <MagneticButton>
                 <Link
                   to="/ordernow"
-                  className="hex-cut-btn text-[#111111] font-black px-7 py-3 text-xs sm:text-sm gap-2 shrink-0 bg-primary hover:bg-primary-dark"
+                  className="rounded-full text-[#111111] font-black px-7 py-3 text-xs sm:text-sm gap-2 shrink-0 bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow shadow-md shadow-[#FCBF14]/25 hover:scale-105 transition-all flex items-center"
                 >
                   Request Custom Design <ArrowRight size={15} />
                 </Link>

@@ -152,7 +152,7 @@ export function Suspended3DCarousel() {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* 1. Header Section (Matching Pinterest Reference) */}
-      <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12">
+      <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12 relative z-10">
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-black text-[#111111] tracking-tight leading-[1.08] mb-4">
           Supercharge Your Workflow
         </h2>
@@ -161,49 +161,56 @@ export function Suspended3DCarousel() {
         </p>
         <Link
           to="/ordernow"
-          className="inline-flex items-center gap-2 bg-[#111111] hover:bg-black text-white font-black text-xs sm:text-sm px-7 py-3.5 rounded-full shadow-lg hover:scale-105 transition-all"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black text-xs sm:text-sm px-8 py-3.5 rounded-full shadow-lg shadow-[#FCBF14]/25 hover:scale-105 transition-all"
         >
           <span>Get Started for Free</span>
-          <ArrowRight size={15} className="text-[#FCBF14]" />
+          <ArrowRight size={15} className="text-[#111111]" />
         </Link>
       </div>
 
       {/* 2. 3D Suspended Curved Perspective Carousel Container */}
       <div
-        className="relative w-full h-[360px] sm:h-[440px] md:h-[480px] lg:h-[520px] flex items-center justify-center select-none"
-        style={{ perspective: "1400px" }}
+        className="relative w-full h-[380px] sm:h-[460px] md:h-[500px] lg:h-[540px] flex items-center justify-center select-none"
+        style={{ perspective: "1500px" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleTouchStart}
         onMouseUp={handleTouchEnd}
       >
+        {/* Suspended Stage Floor Shadow - Creates the Hovering Sensation */}
+        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[85%] max-w-[1100px] h-12 bg-black/15 blur-2xl rounded-full pointer-events-none" />
+
+        {/* Left & Right Atmospheric Edge Vignette Fades */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-36 bg-gradient-to-r from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-36 bg-gradient-to-l from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
+
         <div
-          className="relative w-full h-full flex items-center justify-center"
+          className="relative w-full h-full flex items-center justify-center animate-float-suspended"
           style={{ transformStyle: "preserve-3d" }}
         >
           {slides.map((slide, index) => {
             // Calculate circular offset relative to activeIndex
             let offset = ((index - activeIndex + total + Math.floor(total / 2)) % total) - Math.floor(total / 2);
 
-            // Hide cards positioned too far in the back for performance & crispness
+            // Hide cards positioned too far around the ring
             const isVisible = Math.abs(offset) <= 3;
             if (!isVisible) return null;
 
-            // 3D Arc calculation:
-            // rotateY inward toward center (cylindrical amphitheater arc)
-            const rotateY = -offset * 18;
-            // horizontal displacement along perspective plane
-            const translateX = offset * 240;
-            // depth displacement (pushes outer cards deeper into Z space)
-            const translateZ = -Math.pow(Math.abs(offset), 1.6) * 75;
-            // vertical displacement: creates the convex suspended smile arc curve
-            const translateY = Math.pow(Math.abs(offset), 1.4) * 16;
-            // scale drops gracefully as cards curve backward
-            const scale = Math.max(0.7, 1 - Math.abs(offset) * 0.08);
-            // opacity falls off gently
-            const opacity = Math.max(0.4, 1 - Math.abs(offset) * 0.16);
-            // zIndex ensures center card is always prominently on top
-            const zIndex = 50 - Math.abs(offset) * 10;
+            // Concave Amphitheater 3D Arc calculation (Matching Pinterest Reference):
+            // Outer cards wrap forward toward the viewer and rotate inward facing the center.
+            const absOffset = Math.abs(offset);
+            const rotateY = -offset * (absOffset >= 2 ? 18 : 13);
+            const translateX = offset * (window.innerWidth < 640 ? 150 : 210);
+            // Center is slightly recessed, outer cards step forward into space
+            const translateZ = (Math.pow(absOffset, 1.4) * 45) - 40;
+            // Slight vertical elevation curve matching the panoramic ribbon
+            const translateY = -(Math.pow(absOffset, 1.2) * 8);
+            // Scale increases slightly as cards swing forward
+            const scale = 0.92 + (absOffset * 0.035);
+            // Smooth falloff for outer cards
+            const opacity = Math.max(0.65, 1 - absOffset * 0.12);
+            // zIndex ensures proper 3D stacking order
+            const zIndex = 40 - Math.round(absOffset * 5);
 
             const isCenter = offset === 0;
 
@@ -211,9 +218,9 @@ export function Suspended3DCarousel() {
               <div
                 key={slide.id}
                 onClick={() => setActiveIndex(index)}
-                className={`absolute w-[220px] sm:w-[280px] md:w-[320px] lg:w-[360px] aspect-[4/5] rounded-[24px] sm:rounded-[30px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-2xl ${
+                className={`absolute w-[200px] sm:w-[260px] md:w-[300px] lg:w-[340px] aspect-[4/5] rounded-[24px] sm:rounded-[32px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${
                   isCenter
-                    ? "ring-4 ring-[#FCBF14] ring-offset-4 ring-offset-[#FFF9E8]"
+                    ? "ring-4 ring-[#FCBF14] ring-offset-4 ring-offset-[#FFF9E8] shadow-[0_25px_60px_rgba(252,191,20,0.25)]"
                     : "hover:brightness-105"
                 }`}
                 style={{

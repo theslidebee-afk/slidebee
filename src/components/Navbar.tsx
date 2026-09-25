@@ -219,14 +219,14 @@ export default function Navbar() {
               <MagneticButton>
                 <Link
                   to="/admin"
-                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-black text-white px-4 py-2 bg-white/10 border border-[#FCBF14]/40 hover:bg-white/20"
+                  className="rounded-full flex items-center gap-1.5 text-xs font-black text-white px-5 py-2 bg-white/10 border border-[#FCBF14]/40 hover:bg-white/20 transition-all"
                 >
                   <Shield size={14} className="text-[#FCBF14]" /> Admin Studio
                 </Link>
               </MagneticButton>
               <button
                 onClick={handleLogoutAdmin}
-                className="hex-cut-btn flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-300 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10"
+                className="rounded-full flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-300 px-3.5 py-2 bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
                 title="Log out from Admin"
               >
                 <LogOut size={13} />
@@ -235,7 +235,7 @@ export default function Navbar() {
           ) : clientUser ? (
             /* Client User Logged-in State */
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-[#FCBF14]/30 px-3 py-1.5 rounded-lg shadow-sm">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-[#FCBF14]/30 px-3.5 py-1.5 rounded-full shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-[#FCBF14] animate-pulse" />
                 <span className="text-xs font-black uppercase tracking-wider text-white">
                   {userTier === "lifetime" ? "Lifetime VIP" : (userTier === "yearly" ? "Yearly VIP" : (userTier === "monthly" ? "Monthly Pro" : "Free Member"))}
@@ -244,7 +244,7 @@ export default function Navbar() {
               <MagneticButton>
                 <Link
                   to="/login"
-                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
+                  className="rounded-full flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
                 >
                   <User size={15} /> Dashboard
                 </Link>
@@ -255,7 +255,7 @@ export default function Navbar() {
             <MagneticButton>
               <Link
                 to="/login"
-                className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
+                className="rounded-full flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
               >
                 <User size={15} /> Login
               </Link>
@@ -265,7 +265,7 @@ export default function Navbar() {
           <MagneticButton>
             <Link
               to="/ordernow"
-              className="hex-cut-btn bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] font-black text-xs sm:text-sm px-6 py-2.5 transition-all shadow-md shadow-[#FCBF14]/20 hover:scale-105 flex items-center gap-1.5"
+              className="rounded-full bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black text-xs sm:text-sm px-6 py-2.5 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 flex items-center gap-1.5"
             >
               Get a Quote <ArrowRight size={14} />
             </Link>
@@ -310,13 +310,13 @@ export default function Navbar() {
                   <>
                     <Link
                       to="/admin"
-                      className="hex-cut-btn text-base text-white font-black py-3 border border-[#FCBF14]/40 bg-white/10 gap-2 flex items-center justify-center"
+                      className="rounded-full text-base text-white font-black py-3 border border-[#FCBF14]/40 bg-white/10 gap-2 flex items-center justify-center transition-all"
                     >
                       <Shield size={18} className="text-[#FCBF14]" /> Admin Studio Hub
                     </Link>
                     <button
                       onClick={handleLogoutAdmin}
-                      className="hex-cut-btn text-sm text-red-400 font-bold py-2.5 bg-white/5 border border-white/10"
+                      className="rounded-full text-sm text-red-400 font-bold py-2.5 bg-white/5 border border-white/10 transition-all"
                     >
                       Log Out Admin
                     </button>
@@ -324,21 +324,21 @@ export default function Navbar() {
                 ) : clientUser ? (
                   <Link
                     to="/login"
-                    className="hex-cut-btn text-base text-white font-black py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center"
+                    className="rounded-full text-base text-white font-black py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all"
                   >
                     <User size={18} /> My Dashboard ({userTier.toUpperCase()})
                   </Link>
                 ) : (
                   <Link
                     to="/login"
-                    className="hex-cut-btn text-base text-white font-bold py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center"
+                    className="rounded-full text-base text-white font-bold py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all"
                   >
                     <User size={18} /> Login to Account
                   </Link>
                 )}
                 <Link
                   to="/ordernow"
-                  className="hex-cut-btn bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5"
+                  className="rounded-full bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5 transition-all"
                 >
                   Get a Quote <ArrowRight size={15} />
                 </Link>

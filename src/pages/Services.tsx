@@ -345,7 +345,7 @@ export default function Services() {
 
                 <Link
                   to={`/ordernow?service=${encodeURIComponent(activeServiceData.title)}`}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-7 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0"
+                  className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black px-7 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0"
                 >
                   Order {activeServiceData.title} <ArrowRight size={15} />
                 </Link>
@@ -476,7 +476,7 @@ export default function Services() {
                 </div>
                 <Link
                   to={`/ordernow?service=${encodeURIComponent(activeServiceData.title)}`}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-7 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0"
+                  className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black px-7 py-3 text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0"
                 >
                   Order {activeServiceData.title} <ArrowRight size={15} />
                 </Link>
@@ -555,7 +555,7 @@ export default function Services() {
           </p>
           <Link
             to="/ordernow"
-            className="hex-pill inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-[#111111] font-black px-8 py-4 text-xs sm:text-sm transition-all shadow-xl hover:scale-105"
+            className="hex-pill inline-flex items-center gap-2 bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black px-8 py-4 text-xs sm:text-sm transition-all shadow-xl shadow-[#FCBF14]/25 hover:scale-105"
           >
             Start Your Project Brief <ArrowRight size={16} />
           </Link>

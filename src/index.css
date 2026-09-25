@@ -231,3 +231,42 @@
   filter: drop-shadow(0px 4px 10px rgba(252, 191, 20, 0.6));
 }
 
+/* =========================================
+   ANIMATED FLOWING GRADIENTS & 3D SUSPENSION
+   ========================================= */
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
+}
+
+.animate-gradient-fast {
+  background-size: 200% 200%;
+  animation: gradientShift 2.5s ease infinite;
+}
+
+@keyframes floatSuspended {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-suspended {
+  animation: floatSuspended 6s ease-in-out infinite;
+}
+
