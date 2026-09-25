@@ -1,18 +1,15 @@
-name = "theslidebee"
+name = "slidebee"
 compatibility_date = "2024-09-01"
 pages_build_output_dir = "dist"
 
 # Cloudflare D1 Database Binding
-[[d1_databases]]
-binding = "DB"
-database_name = "slidebee-db"
-database_id = "slidebee-d1-prod"
-migrations_dir = "migrations"
-
-# Cloudflare R2 Object Storage Binding
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "slidebee"
+# In Cloudflare Pages, bind D1 in Dashboard: Settings -> Functions -> D1 database bindings (Variable: DB)
+# Or uncomment below and insert your D1 UUID:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "slidebee-db"
+# database_id = "<YOUR_D1_DATABASE_UUID>"
+# migrations_dir = "migrations"
 
 [vars]
 ENVIRONMENT = "production"
