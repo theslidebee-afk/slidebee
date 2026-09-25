@@ -12,9 +12,16 @@ export interface UserProfile {
   company?: string;
   phone?: string;
   role: "client" | "admin" | "super_admin";
-  credits_total: number;
-  credits_used: number;
-  credits_balance: number;
+  tier?: "free" | "monthly" | "yearly" | "lifetime";
+  tier_expires_at?: string;
+  downloads_today?: number;
+  last_download_date?: string;
+  downloads_this_month?: number;
+  month_cycle_start?: string;
+  is_bot_flagged?: number;
+  credits_total?: number;
+  credits_used?: number;
+  credits_balance?: number;
   purchased_items: Array<{
     id: string;
     slug?: string;
@@ -23,14 +30,15 @@ export interface UserProfile {
     category?: string;
     slides_count?: number;
     download_url: string;
-    purchased_at: string;
+    purchased_at?: string;
+    is_premium?: boolean;
     is_credit_redemption?: boolean;
     amount?: number;
     currency?: string;
   }>;
   usage_history: Array<{
     item_title: string;
-    credits_used: number;
+    credits_used?: number;
     action: string;
     date: string;
   }>;
@@ -397,31 +405,48 @@ export function useClientLedger() {
     };
   };
 
-  // Atomic Credit Redemption for Eligible Templates
-  const redeemCredit = async (templateId: string) => {
+  // Entitlement-backed Template Download Engine (3/day Free, 30/mo Pro, 45/mo Lifetime Anti-bot)
+  const downloadTemplate = async (templateId: string) => {
     if (!currentUser?.email && !userProfile?.email) {
-      throw new Error("Please log in to redeem templates using your credits.");
+      throw new Error("Please log in to download presentation templates.");
     }
 
     const emailToUse = currentUser?.email || userProfile?.email;
 
-    const { data, error } = await supabase.rpc("fn_redeem_template_credit", {
-      p_user_email: emailToUse,
-      p_template_id: templateId
-    });
+    try {
+      const res = await fetch("/api/entitlement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId,
+          userEmail: emailToUse,
+        }),
+      });
 
-    if (error) {
-      throw new Error(error.message || "Credit redemption failed.");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to download template.");
+      }
+
+      await fetchClientData(emailToUse);
+      return data;
+    } catch (err: any) {
+      // Fallback to legacy RPC
+      const { data, error } = await supabase.rpc("fn_redeem_template_credit", {
+        p_user_email: emailToUse,
+        p_template_id: templateId
+      });
+
+      if (error) {
+        throw new Error(error.message || err.message || "Download failed.");
+      }
+
+      await fetchClientData(emailToUse);
+      return data;
     }
-
-    if (!data?.success) {
-      throw new Error(data?.message || "Failed to redeem template with credits.");
-    }
-
-    // Refresh client ledger state
-    await fetchClientData(emailToUse);
-    return data;
   };
+
+  const redeemCredit = downloadTemplate;
 
   // Secure Password Reset Request (Dispatches tokenized recovery link to inbox)
   const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message: string }> => {
@@ -475,9 +500,10 @@ export function useClientLedger() {
   };
 
   const isPro = Boolean(
-    userSubscription &&
-    userSubscription.status === "active" &&
-    (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date())
+    (userProfile?.tier && userProfile.tier !== "free") ||
+    (userSubscription &&
+      userSubscription.status === "active" &&
+      (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
   );
 
   const isProExpired = Boolean(
@@ -490,11 +516,22 @@ export function useClientLedger() {
     ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
-  const templateQuotaTotal = isPro ? Number(userSubscription?.slides_limit || 15) : (userProfile?.credits_total ?? 5);
-  const templateQuotaUsed = isPro ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
-  const templateQuotaRemaining = isPro
-    ? Math.max(0, templateQuotaTotal - templateQuotaUsed)
-    : (userProfile?.credits_balance ?? 5);
+  const userTier: "free" | "monthly" | "yearly" | "lifetime" =
+    userProfile?.tier || (isPro ? (userSubscription?.plan_name?.toLowerCase()?.includes("year") ? "yearly" : "monthly") : "free");
+
+  const downloadsToday = userProfile?.downloads_today || 0;
+  const downloadsThisMonth = userProfile?.downloads_this_month || 0;
+  const remainingFreeToday = Math.max(0, 3 - downloadsToday);
+  const remainingPremiumThisMonth =
+    userTier === "monthly" || userTier === "yearly"
+      ? Math.max(0, 30 - downloadsThisMonth)
+      : userTier === "lifetime"
+      ? Math.max(0, 45 - downloadsThisMonth)
+      : 0;
+
+  const templateQuotaTotal = userTier === "lifetime" ? 45 : (userTier === "free" ? 3 : 30);
+  const templateQuotaUsed = userTier === "free" ? downloadsToday : downloadsThisMonth;
+  const templateQuotaRemaining = userTier === "free" ? remainingFreeToday : remainingPremiumThisMonth;
 
   return {
     currentUser,
@@ -503,6 +540,11 @@ export function useClientLedger() {
     userSubscription,
     isPro,
     isProExpired,
+    userTier,
+    downloadsToday,
+    downloadsThisMonth,
+    remainingFreeToday,
+    remainingPremiumThisMonth,
     daysRemaining,
     templateQuotaTotal,
     templateQuotaUsed,
@@ -518,6 +560,7 @@ export function useClientLedger() {
     logout,
     requestPasswordReset,
     completePasswordReset,
+    downloadTemplate,
     redeemCredit,
     refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined)
   };

@@ -30,7 +30,7 @@ export function useTemplateCheckout() {
   const [deliverableUrl, setDeliverableUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Starter Credit Redemption (Atomic Postgres RPC)
+  // 1. Template Entitlement Download (Free 3/day, Pro 30/mo, Lifetime 45/mo)
   const executeCreditRedemption = async (
     template: StoreTemplate,
     clientEmail: string
@@ -40,25 +40,24 @@ export function useTemplateCheckout() {
 
     try {
       if (!clientEmail) {
-        throw new Error("Please log in to use your starter design credits.");
+        throw new Error("Please log in to download this presentation template.");
       }
 
-      if (!template.is_credit_eligible) {
-        throw new Error("This template is not eligible for free starter credits. Starter credits apply strictly to tagged free templates.");
-      }
-
-      const { data, error: rpcErr } = await supabase.rpc("fn_redeem_template_credit", {
-        p_user_email: clientEmail,
-        p_template_id: template.id
+      const res = await fetch("/api/entitlement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: template.id,
+          userEmail: clientEmail,
+        }),
       });
 
-      if (rpcErr) throw rpcErr;
-
-      if (!data?.success) {
-        throw new Error(data?.message || "Credit redemption failed.");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Download entitlement check failed.");
       }
 
-      const pptxUrl = data.download_url || template.download_url || template.image_url;
+      const pptxUrl = data.downloadUrl || template.download_url || template.image_url;
       setIsPurchased(true);
       setPurchasedClientEmail(clientEmail);
       setDeliverableUrl(pptxUrl);
@@ -68,7 +67,7 @@ export function useTemplateCheckout() {
         try {
           const dlLink = document.createElement("a");
           dlLink.href = pptxUrl;
-          dlLink.download = template.file_name || `${template.code}_Master.pptx`;
+          dlLink.download = data.fileName || template.file_name || `${template.code}_Master.pptx`;
           dlLink.target = "_blank";
           document.body.appendChild(dlLink);
           dlLink.click();
@@ -78,25 +77,14 @@ export function useTemplateCheckout() {
         }
       }
 
-      // Trigger deliverable email asynchronously in background (non-blocking)
-      sendTemplatePurchaseReceiptEmail({
-        clientEmail,
-        clientName: clientEmail.split("@")[0],
-        templateTitle: template.title,
-        templateCode: template.code,
-        downloadUrl: pptxUrl.startsWith("http") ? pptxUrl : `https://theslidebee.com${pptxUrl}`,
-        amountPaid: 0,
-        currency: "INR"
-      }).catch(err => console.warn("Receipt email dispatch notice:", err));
-
       return {
         success: true,
-        message: data.message,
+        message: data.message || "Template download unlocked successfully.",
         downloadUrl: pptxUrl,
         isCreditRedemption: true
       };
     } catch (err: any) {
-      setError(err.message || "Failed to redeem credits.");
+      setError(err.message || "Failed to download template.");
       return { success: false, message: err.message };
     } finally {
       setIsProcessing(false);

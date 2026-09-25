@@ -160,6 +160,7 @@ export default function TemplateDetail() {
                   "Commercial Royalty-Free License"
                 ],
             formats: Array.isArray(data.formats) && data.formats.length > 0 ? data.formats : ["PowerPoint"],
+            is_premium: data.is_premium !== undefined ? Number(data.is_premium) === 1 : !Boolean(data.is_credit_eligible),
             is_credit_eligible: Boolean(data.is_credit_eligible),
             is_featured: Boolean(data.is_featured),
             is_published: true
@@ -205,6 +206,7 @@ export default function TemplateDetail() {
               description: t.description || "Executive presentation deck layout.",
               features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
               formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
+              is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : !Boolean(t.is_credit_eligible),
               is_credit_eligible: Boolean(t.is_credit_eligible),
               is_featured: Boolean(t.is_featured),
               is_published: true

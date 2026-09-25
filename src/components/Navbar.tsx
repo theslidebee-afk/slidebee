@@ -15,7 +15,7 @@ export default function Navbar() {
   // Dynamic Auth State
   const [isAdmin, setIsAdmin] = useState(false);
   const [clientUser, setClientUser] = useState<any>(null);
-  const [credits, setCredits] = useState(5);
+  const [userTier, setUserTier] = useState<"free" | "monthly" | "yearly" | "lifetime">("free");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,9 +59,9 @@ export default function Navbar() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("credits_balance, role")
+          .select("tier, role")
           .eq("email", email)
-          .single();
+          .maybeSingle();
         if (profile) {
           if (profile.role === "admin" || profile.role === "super_admin") {
             setIsAdmin(true);
@@ -69,8 +69,8 @@ export default function Navbar() {
             localStorage.setItem("slidebee_admin_session", "true");
             return;
           }
-          if (profile.credits_balance !== undefined) {
-            setCredits(Number(profile.credits_balance));
+          if (profile.tier) {
+            setUserTier(profile.tier);
           }
         }
       } catch (err) {
@@ -216,9 +216,11 @@ export default function Navbar() {
           ) : clientUser ? (
             /* Client User Logged-in State */
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-primary/40 px-3 py-1.5 rounded-lg shadow-sm">
+              <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-primary/40 px-3 py-1.5 rounded-lg shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-extrabold text-[#111111]">{credits} Credits</span>
+                <span className="text-xs font-black uppercase tracking-wider text-[#111111]">
+                  {userTier === "lifetime" ? "Lifetime VIP" : (userTier === "yearly" ? "Yearly VIP" : (userTier === "monthly" ? "Monthly Pro" : "Free Member"))}
+                </span>
               </div>
               <MagneticButton>
                 <Link
@@ -301,7 +303,7 @@ export default function Navbar() {
                     to="/login"
                     className="hex-cut-btn text-base text-[#111111] font-black py-3 border border-primary/40 gap-2"
                   >
-                    <User size={18} /> My Dashboard ({credits} Credits)
+                    <User size={18} /> My Dashboard ({userTier.toUpperCase()})
                   </Link>
                 ) : (
                   <Link

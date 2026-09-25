@@ -94,9 +94,13 @@ export default function Login() {
     userProfile,
     userOrders,
     loading,
-    creditsBalance,
     purchasedItems,
     usageHistory,
+    userTier,
+    downloadsToday,
+    downloadsThisMonth,
+    remainingFreeToday,
+    remainingPremiumThisMonth,
     signIn,
     signUp,
     logout,
@@ -183,7 +187,7 @@ export default function Login() {
 
   usePageSEO({
     title: currentUser ? "Client Portal & Ledger | SlideBee" : "Client & Admin Login | SlideBee",
-    description: "Access your purchased PowerPoint decks, track custom presentation milestones, manage slide download credits, or sign in as administrator.",
+    description: "Access your purchased PowerPoint decks, track custom presentation milestones, manage presentation downloads, or sign in as administrator.",
   });
 
   const [userSubscription, setUserSubscription] = useState<any>(null);
@@ -221,12 +225,15 @@ export default function Login() {
   );
 
   const isProUser = Boolean(
-    userSubscription &&
+    (userSubscription &&
     (userSubscription.status === "active" || userSubscription.status === "trialing") &&
     (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()) &&
     (userSubscription.plan_name?.toLowerCase().includes("pro") ||
      userSubscription.plan_tier?.toLowerCase().includes("pro") ||
-     userSubscription.plan_name?.toLowerCase().includes("membership"))
+     userSubscription.plan_name?.toLowerCase().includes("membership"))) ||
+    userTier === "monthly" ||
+    userTier === "yearly" ||
+    userTier === "lifetime"
   );
 
   const proDaysRemaining = userSubscription?.current_period_end
@@ -416,10 +423,10 @@ export default function Login() {
     const clientCompany = userProfile?.company || currentUser.user_metadata?.company || "Enterprise Client";
     const clientRole = userProfile?.role || "client";
     
-    // Quota & Credits calculation
-    const quotaTotal = isProUser ? Number(userSubscription?.slides_limit || 15) : (userProfile?.credits_total ?? 5);
-    const quotaUsed = isProUser ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
-    const quotaRemaining = isProUser ? Math.max(0, quotaTotal - quotaUsed) : (userProfile?.credits_balance ?? 5);
+    // Quota & Downloads calculation
+    const quotaTotal = userTier === "free" ? 3 : (userTier === "lifetime" ? 45 : 30);
+    const quotaUsed = userTier === "free" ? downloadsToday : downloadsThisMonth;
+    const quotaRemaining = userTier === "free" ? remainingFreeToday : remainingPremiumThisMonth;
     
     // Purchases & usage data
     const directPurchases: any[] = Array.isArray(purchasedItems) ? purchasedItems : [];
@@ -494,57 +501,61 @@ export default function Login() {
 
           {/* 4 Executive Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            {/* 1. Template Downloads / Credits Balance Left */}
+            {/* 1. Template Downloads Balance Left */}
             <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
-                  <CreditCard size={14} className="text-primary-amber" /> {isProUser ? "Templates Left" : "Credits Left"}
+                  <CreditCard size={14} className="text-primary-amber" /> {userTier === "free" ? "Free Downloads Left" : "Premium Decks Left"}
                 </span>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                  isProUser && proDaysRemaining !== null && proDaysRemaining <= 7
-                    ? "bg-amber-100 text-amber-900 border border-amber-300"
-                    : "bg-emerald-100 text-emerald-800"
+                  userTier === "lifetime"
+                    ? "bg-purple-100 text-purple-900 border border-purple-300"
+                    : userTier === "yearly" || userTier === "monthly"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800"
                 }`}>
-                  {isProUser ? (proDaysRemaining !== null ? `${proDaysRemaining}d remaining` : "Active") : "Available"}
+                  {userTier === "lifetime" ? "Unlimited VIP" : userTier === "yearly" ? "Yearly VIP" : userTier === "monthly" ? "Monthly Pro" : "Free Plan"}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-heading font-black text-[#111111]">
-                  {quotaRemaining}
+                  {userTier === "free" ? remainingFreeToday : remainingPremiumThisMonth}
                 </span>
                 <span className="text-xs font-bold text-[#726F6D]">
-                  / {quotaTotal} {isProUser ? "Templates" : "Total"}
+                  / {userTier === "free" ? "3 Today" : userTier === "lifetime" ? "45 Bot Cap" : "30 This Month"}
                 </span>
               </div>
               <p className="text-[11px] text-[#726F6D] leading-relaxed">
-                {isProUser
-                  ? `Full presentation decks available to download this month (${proDaysRemaining !== null ? `${proDaysRemaining} days left in cycle` : "unrestricted"}).`
-                  : "Ready to redeem on free library presentation templates."}
+                {userTier === "free"
+                  ? "Free templates available to download today. Daily quota resets every 24 hours."
+                  : userTier === "lifetime"
+                  ? "Unlimited premium presentation downloads with fair-use anti-bot safety threshold."
+                  : `Premium executive templates remaining for this billing cycle.`}
               </p>
             </div>
 
-            {/* 2. Quota / Credits Used */}
+            {/* 2. Quota / Downloads Used */}
             <div className="bg-white border-2 border-primary/40 p-5 rounded-2xl shadow-sm hover:border-primary transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#726F6D] flex items-center gap-1.5">
-                  <History size={14} className="text-primary-amber" /> {isProUser ? "Decks Claimed" : "Used Credits"}
+                  <History size={14} className="text-primary-amber" /> {userTier === "free" ? "Downloaded Today" : "Downloaded This Month"}
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-                  Redeemed
+                  Claimed
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-heading font-black text-[#111111]">
-                  {quotaUsed}
+                  {userTier === "free" ? downloadsToday : downloadsThisMonth}
                 </span>
                 <span className="text-xs font-bold text-[#726F6D]">
-                  {isProUser ? "This Month" : "Items Used"}
+                  {userTier === "free" ? "Decks Today" : "Decks This Month"}
                 </span>
               </div>
               <p className="text-[11px] text-[#726F6D] leading-relaxed">
-                {isProUser
-                  ? "Complete presentation templates unlocked with your Pro quota."
-                  : "Total presentation slides & master assets claimed to date."}
+                {userTier === "free"
+                  ? "Free master decks downloaded by your account today."
+                  : "Complete executive presentation decks downloaded in current monthly cycle."}
               </p>
             </div>
 
@@ -607,34 +618,42 @@ export default function Login() {
                   <span className="text-[#726F6D] text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
                     <CreditCard size={13} className="text-primary-amber" /> Account Tier
                   </span>
-                  {isProUser ? (
-                    <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1 shadow-xs">
-                      <Crown size={11} className="text-amber-500" /> Pro Member
+                  {userTier === "lifetime" ? (
+                    <span className="hex-pill-sm bg-purple-100 text-purple-900 border border-purple-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1 shadow-xs">
+                      <Crown size={11} className="text-purple-600" /> Lifetime VIP
                     </span>
-                  ) : isProExpired ? (
-                    <span className="hex-pill-sm bg-rose-100 text-rose-900 border border-rose-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1">
-                      <AlertTriangle size={11} className="text-rose-600" /> Pro Expired
+                  ) : userTier === "yearly" ? (
+                    <span className="hex-pill-sm bg-primary/30 text-[#111111] border border-primary font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1 shadow-xs">
+                      <Crown size={11} className="text-amber-500" /> Yearly VIP
+                    </span>
+                  ) : userTier === "monthly" ? (
+                    <span className="hex-pill-sm bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1 shadow-xs">
+                      <Crown size={11} className="text-emerald-700" /> Monthly Pro
                     </span>
                   ) : (
                     <span className="hex-pill-sm bg-gray-100 text-gray-800 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
-                      Free Starter Tier
+                      Basic Free Plan
                     </span>
                   )}
                 </div>
 
                 <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-1">
-                  {isProUser
-                    ? (userSubscription?.plan_name || "SlideBee Pro Studio Membership")
-                    : isProExpired
-                    ? "SlideBee Pro Membership (Expired)"
-                    : "SlideBee Free Client Account"}
+                  {userTier === "lifetime"
+                    ? "SlideBee Lifetime VIP Access"
+                    : userTier === "yearly"
+                    ? "SlideBee Yearly Plan (10-Slide Bonus Included)"
+                    : userTier === "monthly"
+                    ? "SlideBee Monthly Pro Membership"
+                    : "SlideBee Basic Free Account"}
                 </h3>
                 <p className="text-xs text-[#726F6D] font-medium mb-4">
-                  {isProUser
-                    ? "15 complete presentation template downloads every month, VIP WhatsApp hotline, and 15% discount on custom agency briefs."
-                    : isProExpired
-                    ? `Your Pro membership validity period ended on ${new Date(userSubscription.current_period_end).toLocaleDateString()}. Renew anytime to resume downloads.`
-                    : "Access to free library starter templates and custom agency presentation design briefs."}
+                  {userTier === "lifetime"
+                    ? "Unlimited premium presentation template downloads forever, no renewal fees, and VIP priority direct channel."
+                    : userTier === "yearly"
+                    ? "30 premium presentation downloads every month plus a free bespoke design service for up to 10 slides."
+                    : userTier === "monthly"
+                    ? "30 premium presentation template downloads every month with full commercial licenses."
+                    : "3 free template downloads each day. Upgrade anytime to unlock all 30-slide executive decks."}
                 </p>
 
                 {/* Duration Left in Pro (User Dashboard Reflection) */}
@@ -696,10 +715,10 @@ export default function Login() {
                 <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 mb-4">
                   <div className="flex justify-between items-center text-xs font-bold mb-1.5">
                     <span className="text-[#726F6D]">
-                      {isProUser ? "Monthly Template Quota:" : "Credits Usage:"}
+                      {userTier === "free" ? "Daily Free Quota:" : userTier === "lifetime" ? "Monthly Fair-Use Cap:" : "Monthly Premium Quota:"}
                     </span>
                     <span className="text-[#111111] font-black">
-                      {quotaUsed} / {quotaTotal} {isProUser ? "Templates" : "Credits"}
+                      {quotaUsed} / {quotaTotal} Templates {userTier === "free" ? "Today" : "This Month"}
                     </span>
                   </div>
                   <div className="w-full bg-black/10 rounded-full h-2.5 overflow-hidden">
@@ -709,7 +728,7 @@ export default function Login() {
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-[#726F6D] mt-2 font-medium">
-                    <span>{quotaRemaining} {isProUser ? "templates" : "credits"} remaining</span>
+                    <span>{quotaRemaining} templates remaining {userTier === "free" ? "today" : "this month"}</span>
                     <span>{Math.round((quotaUsed / Math.max(1, quotaTotal)) * 100)}% consumed</span>
                   </div>
                 </div>
@@ -724,18 +743,18 @@ export default function Login() {
                   </Link>
                 ) : isProExpired ? (
                   <Link
-                    to="/pricing#marketplace"
+                    to="/pricing"
                     className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs shadow-md transition-all flex items-center justify-center gap-1.5 hover:scale-[1.02]"
                   >
-                    <Zap size={13} className="text-[#111111]" /> Renew Pro Membership (15 Templates/mo) <ArrowRight size={13} />
+                    <Zap size={13} className="text-[#111111]" /> Renew Pro Membership (30 Templates/mo) <ArrowRight size={13} />
                   </Link>
                 ) : (
                   <Link
-                    to="/pricing#marketplace"
+                    to="/pricing"
                     className="hex-cut-btn w-full block text-center text-[#111111] font-black py-2.5 text-xs shadow-md hover:scale-[1.02] transition-transform"
                   >
                     <Zap size={13} className="inline mr-1.5 text-primary-amber" />
-                    Go Pro — Unlock 15 Downloads / Month <ArrowRight size={13} className="inline ml-1" />
+                    Upgrade to Pro — Unlock 30 Premium Templates / Month <ArrowRight size={13} className="inline ml-1" />
                   </Link>
                 )}
               </div>
@@ -855,7 +874,7 @@ export default function Login() {
                         : "bg-[#FFF9E8] text-[#726F6D] hover:text-[#111111] border border-primary/30"
                     }`}
                   >
-                    <History size={14} /> Credit & Usage History ({usageEvents.length})
+                    <History size={14} /> Download & Usage History ({usageEvents.length})
                   </button>
 
                   <button
@@ -981,7 +1000,7 @@ export default function Login() {
                         <ShoppingBag size={36} className="mx-auto text-primary-amber mb-2" />
                         <h4 className="text-sm font-extrabold text-[#111111]">No Templates Purchased Yet</h4>
                         <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto mb-4">
-                          You currently have <strong>{creditsBalance} slide credits</strong> ready to redeem for ready-to-use executive templates.
+                          You currently have <strong>{quotaRemaining} downloads available</strong> ready to use from our curated presentation catalog.
                         </p>
                         <Link
                           to="/templates"
@@ -994,18 +1013,20 @@ export default function Login() {
                   </div>
                 )}
 
-                {/* TAB 2: CREDITS & USAGE HISTORY */}
+                {/* TAB 2: DOWNLOADS & USAGE HISTORY */}
                 {portalTab === "credits" && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                          {isProUser ? "Monthly Template Downloads Quota & History" : "Credits Breakdown & Deduction History"}
+                          {isProUser ? "Monthly Template Downloads Quota & History" : "Daily Free Downloads & History"}
                         </h3>
                         <p className="text-xs text-[#726F6D]">
-                          {isProUser
-                            ? "15 complete presentation template downloads per billing cycle. Track quota and download history."
-                            : "Track your starter credit balance, slide usage, and deduction events"}
+                          {userTier === "free"
+                            ? "3 free template downloads per day (resets every 24 hours). Upgrade to unlock 30 premium decks per month."
+                            : userTier === "lifetime"
+                            ? "Unlimited premium template downloads with a 45/month fair-use safety threshold."
+                            : "30 complete presentation template downloads per monthly billing cycle. Track quota and download history."}
                         </p>
                       </div>
                       {isProUser ? (
@@ -1020,7 +1041,7 @@ export default function Login() {
                           to="/pricing"
                           className="text-xs font-extrabold text-primary-amber hover:underline flex items-center gap-1 shrink-0"
                         >
-                          + Add Credits
+                          Upgrade to Pro →
                         </Link>
                       )}
                     </div>
@@ -1029,23 +1050,23 @@ export default function Login() {
                     <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/40 flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <span className="text-xs text-[#726F6D] block">
-                          {isProUser ? "Current Monthly Allowance:" : "Current Balance:"}
+                          {userTier === "free" ? "Free Downloads Left Today:" : "Downloads Left This Cycle:"}
                         </span>
                         <span className="text-2xl font-heading font-black text-[#111111]">
-                          {quotaRemaining} {isProUser ? "Template Downloads Available" : "Credits Available"}
+                          {quotaRemaining} Template Downloads Available
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-xs font-bold text-[#726F6D]">
                         <div>
-                          <span>{isProUser ? "Monthly Quota:" : "Total Granted:"}</span>
+                          <span>{userTier === "free" ? "Daily Allowance:" : "Monthly Allowance:"}</span>
                           <strong className="text-[#111111] ml-1">
-                            {quotaTotal} {isProUser ? "Decks" : ""}
+                            {quotaTotal} Decks
                           </strong>
                         </div>
                         <div>
-                          <span>{isProUser ? "Downloaded:" : "Total Redeemed:"}</span>
+                          <span>Downloaded:</span>
                           <strong className="text-primary-amber ml-1">
-                            {quotaUsed} {isProUser ? "Decks" : ""}
+                            {quotaUsed} Decks
                           </strong>
                         </div>
                       </div>
@@ -1060,11 +1081,11 @@ export default function Login() {
                           >
                             <div className="flex items-start gap-3">
                               <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                                -{event.credits_used || 1}
+                                <Download size={14} />
                               </div>
                               <div>
                                 <h4 className="font-extrabold text-xs text-[#111111]">
-                                  {event.action || (isProUser ? "Template Quota Download" : "Credits Deduction")}
+                                  {event.action || (isProUser ? "Template Download" : "Free Template Download")}
                                 </h4>
                                 <p className="text-[11px] text-[#726F6D]">
                                   {event.item_title ? `Item: ${event.item_title} • ` : ""}{event.date ? new Date(event.date).toLocaleString() : "Recently"}
@@ -1072,7 +1093,7 @@ export default function Login() {
                               </div>
                             </div>
                             <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
-                              <Check size={9} /> {isProUser ? `Claimed (1 of ${userSubscription?.slides_limit || 15})` : "Deducted"}
+                              <Check size={9} /> Downloaded
                             </span>
                           </div>
                         ))}
@@ -1081,12 +1102,12 @@ export default function Login() {
                       <div className="p-8 text-center bg-[#FFF9E8] rounded-2xl border border-primary/20">
                         <History size={32} className="mx-auto text-primary-amber mb-2" />
                         <h4 className="text-sm font-extrabold text-[#111111]">
-                          {isProUser ? "No Templates Downloaded Yet This Cycle" : "No Credits Deducted Yet"}
+                          {isProUser ? "No Templates Downloaded Yet This Cycle" : "No Free Templates Downloaded Today"}
                         </h4>
                         <p className="text-xs text-[#726F6D] mt-1 max-w-sm mx-auto">
-                          {isProUser
-                            ? `You have all ${quotaRemaining} template downloads ready to use. Each download provides full perpetual commercial rights to complete Master PowerPoint decks.`
-                            : `You have all ${creditsBalance} credits remaining. Credits are automatically deducted when downloading free library deliverables.`}
+                          {userTier === "free"
+                            ? `You have ${quotaRemaining} free template downloads available today. Daily allowance resets every 24 hours.`
+                            : `You have all ${quotaRemaining} template downloads ready to use. Each download provides full commercial rights to complete Master PowerPoint decks.`}
                         </p>
                       </div>
                     )}
@@ -1349,7 +1370,7 @@ export default function Login() {
                           Delete SlideBee Account
                         </h3>
                         <p className="text-[11px] text-[#726F6D]">
-                          Permanent removal of account and slide credits
+                          Permanent removal of account and download entitlements
                         </p>
                       </div>
                     </div>
@@ -1363,7 +1384,7 @@ export default function Login() {
                   </div>
 
                   <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-900 leading-relaxed">
-                    <strong>Warning:</strong> Deleting your account will immediately forfeit your remaining <strong>{creditsBalance} slide credits</strong> and revoke portal access. An official confirmation will be dispatched to <strong>{currentUser.email}</strong>.
+                    <strong>Warning:</strong> Deleting your account will immediately forfeit your account tier benefits, template download quotas, and revoke portal access. An official confirmation will be dispatched to <strong>{currentUser.email}</strong>.
                   </div>
 
                   {/* Reason for Deletion */}

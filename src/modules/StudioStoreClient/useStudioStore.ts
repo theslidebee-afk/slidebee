@@ -21,6 +21,7 @@ export interface StoreTemplate {
   description: string;
   features: string[];
   formats?: string[];
+  is_premium: boolean;
   is_credit_eligible: boolean;
   is_featured: boolean;
   is_published: boolean;
@@ -31,6 +32,7 @@ export interface StudioStoreOptions {
   category?: string;
   searchQuery?: string;
   onlyCreditEligible?: boolean;
+  filterTier?: "all" | "free" | "premium";
 }
 
 /**
@@ -102,6 +104,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
           features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
           formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
+          is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : !Boolean(t.is_credit_eligible),
           is_credit_eligible: Boolean(t.is_credit_eligible),
           is_featured: Boolean(t.is_featured),
           is_published: Boolean(t.is_published),
@@ -110,7 +113,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
       });
 
       setTemplates(normalized);
-      setFreeTemplates(normalized.filter(t => t.is_credit_eligible));
+      setFreeTemplates(normalized.filter(t => !t.is_premium));
     } catch (err: any) {
       console.warn("Studio Storefront fetch notice:", err.message);
       setError(err.message || "Failed to load templates.");
@@ -124,7 +127,9 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
   }, [fetchCatalog]);
 
   const filteredTemplates = templates.filter((t) => {
-    if (options.onlyCreditEligible && !t.is_credit_eligible) return false;
+    if (options.filterTier === "free" && t.is_premium) return false;
+    if (options.filterTier === "premium" && !t.is_premium) return false;
+    if (options.onlyCreditEligible && t.is_premium) return false;
     if (options.category && options.category !== "All" && t.category.toLowerCase() !== options.category.toLowerCase()) {
       return false;
     }

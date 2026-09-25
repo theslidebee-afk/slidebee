@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Search, Download, Eye, ArrowRight, Star, FileText, Coins, Crown } from "lucide-react";
+import { Search, Download, Eye, ArrowRight, Star, FileText, Crown, Check } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore, type StoreTemplate } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -12,19 +12,20 @@ export type { StoreTemplate as TemplateItem };
 export default function Templates() {
   usePageSEO({
     title: "Premium PowerPoint Templates & Slide Decks | SlideBee",
-    description: "Browse 100% editable corporate PowerPoint templates, pitch decks, keynote presentations, and master systems crafted by senior presentation designers.",
+    description: "Browse 100% editable corporate PowerPoint templates, pitch decks, keynote presentations, and master systems. Free templates with 3 daily downloads, and premium templates for Monthly, Yearly, and Lifetime members.",
   });
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "All";
   const initialSearch = searchParams.get("search") || "";
-  const initialOnlyFree = searchParams.get("freeCredits") === "true";
+  const initialTier = (searchParams.get("tier") as "all" | "free" | "premium") || (searchParams.get("freeCredits") === "true" ? "free" : "all");
 
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
-  const [onlyCreditEligible, setOnlyCreditEligible] = useState<boolean>(initialOnlyFree);
+  const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">(initialTier);
   const [isProUser, setIsProUser] = useState<boolean>(false);
+  const [userTier, setUserTier] = useState<string>("free");
 
   useEffect(() => {
     const checkProStatus = async () => {
@@ -34,6 +35,13 @@ export default function Templates() {
         try {
           const u = JSON.parse(local);
           if (u?.email) email = u.email;
+          if (u?.tier) {
+            setUserTier(u.tier);
+            if (["monthly", "yearly", "lifetime"].includes(u.tier)) {
+              setIsProUser(true);
+              return;
+            }
+          }
         } catch (e) {}
       }
       if (!email) {
@@ -41,6 +49,20 @@ export default function Templates() {
         if (data?.user?.email) email = data.user.email;
       }
       if (email) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("email", email.toLowerCase().trim())
+          .maybeSingle();
+
+        if (profile?.tier) {
+          setUserTier(profile.tier);
+          if (["monthly", "yearly", "lifetime"].includes(profile.tier)) {
+            setIsProUser(true);
+            return;
+          }
+        }
+
         const { data: sub } = await supabase
           .from("subscriptions")
           .select("status, current_period_end")
@@ -75,11 +97,15 @@ export default function Templates() {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCredit = !onlyCreditEligible || item.is_credit_eligible;
-    return matchesCategory && matchesSearch && matchesCredit;
+    const matchesTier =
+      tierFilter === "all" ||
+      (tierFilter === "free" && !item.is_premium) ||
+      (tierFilter === "premium" && item.is_premium);
+    return matchesCategory && matchesSearch && matchesTier;
   });
 
-  const freeTemplates = allTemplates.filter(t => t.is_credit_eligible);
+  const freeTemplates = allTemplates.filter(t => !t.is_premium);
+  const premiumTemplates = allTemplates.filter(t => t.is_premium);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
@@ -87,9 +113,15 @@ export default function Templates() {
         
         {/* Page Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="hex-pill inline-flex items-center gap-2 bg-[#111111] text-[#FCBF14] text-xs font-black px-4 py-1.5 uppercase tracking-wider mb-4 shadow-sm border border-primary/40">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            SlideBee Storefront
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+            <div className="hex-pill inline-flex items-center gap-2 bg-[#111111] text-[#FCBF14] text-xs font-black px-4 py-1.5 uppercase tracking-wider shadow-sm border border-primary/40">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              SlideBee Storefront
+            </div>
+            <div className="hex-pill inline-flex items-center gap-1.5 bg-white text-[#111111] text-xs font-extrabold px-3.5 py-1.5 shadow-sm border border-primary/30">
+              <Crown size={12} className="text-primary-amber" />
+              <span>Your Plan: {userTier === "free" ? "Basic Free (3/day)" : `${userTier.charAt(0).toUpperCase() + userTier.slice(1)} Pro`}</span>
+            </div>
           </div>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] mb-4 tracking-tight">
             Curated Executive Slide Decks
@@ -123,31 +155,62 @@ export default function Templates() {
               )}
             </div>
 
-            {/* Quick Filters */}
-            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  const nextVal = !onlyCreditEligible;
-                  setOnlyCreditEligible(nextVal);
-                  if (nextVal) {
-                    setSearchParams(prev => ({ ...Object.fromEntries(prev.entries()), freeCredits: "true" }));
-                  } else {
+            {/* Quick Segment Filter: All / Free (3/day) / Premium */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+              <div className="hex-pill inline-flex items-center gap-1 bg-[#FFF9E8] p-1 border-2 border-primary/40 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTierFilter("all");
+                    searchParams.delete("tier");
                     searchParams.delete("freeCredits");
                     setSearchParams(searchParams);
-                  }
-                }}
-                className={`hex-pill px-4 py-2 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm border ${
-                  onlyCreditEligible
-                    ? "bg-[#111111] text-primary border-primary"
-                    : "bg-[#FFF9E8] text-[#111111] border-primary/50 hover:bg-primary/20"
-                }`}
-              >
-                <Coins className="w-3.5 h-3.5 text-primary-amber" />
-                <span>5 Credits Library ({freeTemplates.length})</span>
-              </button>
+                  }}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all ${
+                    tierFilter === "all"
+                      ? "bg-[#111111] text-[#FCBF14] shadow"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  All ({allTemplates.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTierFilter("free");
+                    searchParams.set("tier", "free");
+                    searchParams.delete("freeCredits");
+                    setSearchParams(searchParams);
+                  }}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 ${
+                    tierFilter === "free"
+                      ? "bg-emerald-700 text-white shadow"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Free (3/day) ({freeTemplates.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTierFilter("premium");
+                    searchParams.set("tier", "premium");
+                    searchParams.delete("freeCredits");
+                    setSearchParams(searchParams);
+                  }}
+                  className={`hex-pill px-3.5 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 ${
+                    tierFilter === "premium"
+                      ? "bg-primary text-[#111111] shadow"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  <Crown size={12} className="text-[#111111]" />
+                  Premium ({premiumTemplates.length})
+                </button>
+              </div>
 
-              <div className="flex items-center gap-2 text-xs font-extrabold text-[#111111] bg-[#FFF9E8] border border-primary/40 px-3.5 py-2 rounded-xl">
+              <div className="hidden sm:flex items-center gap-2 text-xs font-extrabold text-[#111111] bg-[#FFF9E8] border border-primary/40 px-3.5 py-2 rounded-xl">
                 <FileText size={15} className="text-primary-amber" />
                 <span>Deliverable: Master PowerPoint (.pptx)</span>
               </div>
@@ -175,28 +238,57 @@ export default function Templates() {
           </div>
         </div>
 
-        {/* Free Credits Library Banner if Filter Active */}
-        {onlyCreditEligible && (
-          <div className="hex-card bg-[#FFFDF5] border-2 border-primary/50 p-4 sm:p-5 mb-8 flex items-center justify-between gap-4">
+        {/* Free Templates Banner if Filter Active */}
+        {tierFilter === "free" && (
+          <div className="hex-card bg-emerald-50/80 border-2 border-emerald-300 p-4 sm:p-5 mb-8 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                <Coins className="w-5 h-5 text-[#111111]" />
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center shrink-0">
+                <Check className="w-5 h-5 text-emerald-800" />
               </div>
               <div>
                 <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                  Design Credits Library (1 Free Master Deck with 5 Credits)
+                  Basic Free Library (3 Downloads Per Day)
                 </h4>
                 <p className="text-xs text-[#726F6D] font-medium">
-                  Showing designated templates eligible for your 5 free registration credits.
+                  Showing templates available to all free registered accounts. Up to 3 downloads each day.
                 </p>
               </div>
             </div>
             <button
-              onClick={() => setOnlyCreditEligible(false)}
-              className="hex-pill text-xs font-extrabold text-[#111111] bg-white border border-primary/40 px-3.5 py-1.5 hover:bg-primary/20 shrink-0"
+              onClick={() => {
+                setTierFilter("all");
+                searchParams.delete("tier");
+                setSearchParams(searchParams);
+              }}
+              className="hex-pill text-xs font-extrabold text-[#111111] bg-white border border-emerald-300 px-3.5 py-1.5 hover:bg-emerald-100 shrink-0"
             >
-              View Full Catalog ({allTemplates.length})
+              View All ({allTemplates.length})
             </button>
+          </div>
+        )}
+
+        {/* Premium Templates Banner if Filter Active */}
+        {tierFilter === "premium" && (
+          <div className="hex-card bg-[#FFFDF5] border-2 border-primary p-4 sm:p-5 mb-8 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center shrink-0">
+                <Crown className="w-5 h-5 text-primary-amber" />
+              </div>
+              <div>
+                <h4 className="text-sm font-heading font-extrabold text-[#111111]">
+                  Premium Executive Decks (30 Templates / Month)
+                </h4>
+                <p className="text-xs text-[#726F6D] font-medium">
+                  Full 30+ slide executive frameworks unlocked with Monthly ($5), Yearly ($45), or Lifetime ($75) membership.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/pricing"
+              className="hex-pill text-xs font-black text-[#111111] bg-primary border border-primary-dark px-4 py-2 hover:bg-primary-dark shrink-0 flex items-center gap-1.5 shadow-sm"
+            >
+              Upgrade Plan <ArrowRight size={13} />
+            </Link>
           </div>
         )}
 
@@ -221,7 +313,8 @@ export default function Templates() {
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("All");
-                setOnlyCreditEligible(false);
+                setTierFilter("all");
+                setSearchParams({});
               }}
               className="hex-pill bg-primary text-[#111111] font-extrabold px-6 py-2.5 text-xs"
             >
@@ -267,12 +360,16 @@ export default function Templates() {
                       <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
                         {item.category}
                       </span>
-                      {item.is_credit_eligible && (
-                        <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Coins size={10} className="text-[#111111]" /> Cost: 5 Credits
+                      {!item.is_premium ? (
+                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                          FREE TEMPLATE
+                        </span>
+                      ) : (
+                        <span className="bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Crown size={9} className="fill-[#FCBF14]" /> PREMIUM
                         </span>
                       )}
-                      {showStars && item.rating && !item.is_credit_eligible ? (
+                      {showStars && item.rating ? (
                         <span className="text-[#111111] text-[10px] font-extrabold flex items-center gap-1">
                           <Star size={10} className="text-amber-500 fill-amber-500" /> {item.rating}
                         </span>
@@ -290,7 +387,7 @@ export default function Templates() {
                   <div>
                     <div className="flex items-center justify-between pt-3 border-t border-primary/15 mb-3">
                       <div>
-                        {isProUser ? (
+                        {!item.is_premium ? (
                           <>
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
@@ -300,8 +397,22 @@ export default function Templates() {
                                 {formatPrice(item.price_inr)}
                               </span>
                             </div>
+                            <span className="text-[10px] font-bold text-emerald-700 block">
+                              3 Free Downloads / Day
+                            </span>
+                          </>
+                        ) : isProUser ? (
+                          <>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-base sm:text-lg font-heading font-black text-[#111111]">
+                                Unlocked
+                              </span>
+                              <span className="text-xs text-[#726F6D] line-through font-bold">
+                                {formatPrice(item.price_inr)}
+                              </span>
+                            </div>
                             <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
-                              <Crown size={10} /> Pro 15-Deck Quota
+                              <Crown size={10} /> Pro Plan Access
                             </span>
                           </>
                         ) : (
@@ -314,6 +425,9 @@ export default function Templates() {
                                 {formatPrice(item.original_price_inr)}
                               </div>
                             )}
+                            <span className="text-[10px] font-bold text-primary-amber block">
+                              Unlocked with $5/mo Pro
+                            </span>
                           </>
                         )}
                       </div>
@@ -325,14 +439,14 @@ export default function Templates() {
                       </div>
                     </div>
 
-                    {/* Credit / Quota Eligibility Subtext */}
-                    {isProUser ? (
+                    {/* Tier Subtext */}
+                    {!item.is_premium ? (
+                      <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
+                        <Check size={11} /> 100% Free with Basic Registration
+                      </div>
+                    ) : isProUser ? (
                       <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
                         <Crown size={11} className="text-amber-500" /> Included with Pro Membership Quota
-                      </div>
-                    ) : item.is_credit_eligible ? (
-                      <div className="text-[10px] text-emerald-700 font-extrabold mb-2.5 flex items-center gap-1">
-                        <Coins size={11} /> Cost: 5 Credits (1 Free Deck with Signup)
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#726F6D] font-medium mb-2.5">
@@ -347,13 +461,21 @@ export default function Templates() {
                       </div>
                     ) : null}
 
-                    {isProUser ? (
+                    {!item.is_premium ? (
+                      <Link
+                        to={`/template/${item.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
+                      >
+                        <Download size={14} /> Download Free <ArrowRight size={12} />
+                      </Link>
+                    ) : isProUser ? (
                       <Link
                         to={`/template/${item.id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
                       >
-                        <Crown size={14} className="text-[#111111]" /> Use Pro Quota <ArrowRight size={12} />
+                        <Crown size={14} className="text-[#111111]" /> Download with Pro <ArrowRight size={12} />
                       </Link>
                     ) : (
                       <Link
@@ -361,7 +483,7 @@ export default function Templates() {
                         onClick={(e) => e.stopPropagation()}
                         className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
                       >
-                        <Download size={14} /> View Details & Buy <ArrowRight size={12} />
+                        <Download size={14} /> Unlock with Pro ($5) <ArrowRight size={12} />
                       </Link>
                     )}
                   </div>

@@ -16,12 +16,11 @@ import { usePageSEO } from "../hooks/usePageSEO";
 export default function Pricing() {
   usePageSEO({
     title: "Pricing — Template Marketplace & Custom Presentation Design | SlideBee",
-    description: "SlideBee pricing: download presentation templates free with starter credits or go Pro for 15 master decks/month plus 15% agency discount. Also view transparent per-slide pricing for custom pitch decks and executive keynotes.",
+    description: "SlideBee pricing: download presentation templates free with 3 daily downloads or choose Monthly, Yearly, or Lifetime access. Also view transparent per-slide pricing for custom pitch decks and executive keynotes.",
   });
 
   const location = useLocation();
   const [currency, setCurrency] = useState<"USD" | "INR">("USD");
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const [pricingConfig, setPricingConfig] = useState<any>({
@@ -65,26 +64,55 @@ export default function Pricing() {
     }
   }, [location.hash]);
 
-  const handleGoPro = async () => {
-    const monthlyPrice = pricingConfig?.pro_monthly_inr ?? 199;
-    const discount = pricingConfig?.pro_discount_percent ?? 50;
-    const yearlyPrice = Math.round((monthlyPrice * 12) * (1 - discount / 100));
-    const amount = billingPeriod === "yearly" ? yearlyPrice : monthlyPrice;
+  const handleSubscribeTier = async (tier: "monthly" | "yearly" | "lifetime") => {
+    let amount = 5;
+    let title = "SlideBee Monthly Pro";
+    let desc = "30 Premium Presentation Templates per month";
+
+    if (currency === "USD") {
+      if (tier === "monthly") {
+        amount = 5;
+        title = "SlideBee Monthly Pro ($5/mo)";
+        desc = "30 Premium Presentation Templates per month";
+      } else if (tier === "yearly") {
+        amount = 45;
+        title = "SlideBee Yearly Pro ($45/yr)";
+        desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service";
+      } else if (tier === "lifetime") {
+        amount = 75;
+        title = "SlideBee Lifetime VIP ($75 one-time)";
+        desc = "Unlimited Premium Presentation Downloads Forever";
+      }
+    } else {
+      if (tier === "monthly") {
+        amount = 399;
+        title = "SlideBee Monthly Pro (₹399/mo)";
+        desc = "30 Premium Presentation Templates per month";
+      } else if (tier === "yearly") {
+        amount = 3499;
+        title = "SlideBee Yearly Pro (₹3,499/yr)";
+        desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service";
+      } else if (tier === "lifetime") {
+        amount = 5999;
+        title = "SlideBee Lifetime VIP (₹5,999 one-time)";
+        desc = "Unlimited Premium Presentation Downloads Forever";
+      }
+    }
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      window.location.href = "/#/login?redirect=pro&billing=" + billingPeriod;
+      window.location.href = `/#/login?redirect=pricing&tier=${tier}`;
       return;
     }
 
     await openRazorpayCheckout({
       amount,
-      currency: "INR",
-      title: "SlideBee Pro Membership",
-      description: `15 template downloads / month (${billingPeriod === "yearly" ? "Annual" : "Monthly"} billing)`,
+      currency: currency === "USD" ? "USD" : "INR",
+      title,
+      description: desc,
       prefill: {
         email: session.user.email || "",
-        name: session.user.user_metadata?.full_name || "SlideBee Pro Member",
+        name: session.user.user_metadata?.full_name || "SlideBee Member",
       },
       onSuccess: async (rzpRes: any) => {
         try {
@@ -95,25 +123,23 @@ export default function Pricing() {
               paymentId: rzpRes.razorpay_payment_id || "rzp_direct",
               userId: session.user.id,
               userEmail: session.user.email,
-              planName: billingPeriod === "yearly" ? "Pro Yearly" : "Pro Monthly",
+              tier,
               amount,
-              billingPeriod
-            })
+              currency,
+              planName: title,
+              billingPeriod: tier,
+            }),
           });
         } catch (subErr) {
           console.warn("Subscription provisioning error:", subErr);
         }
-        window.location.href = "/#/login";
+        window.location.href = "/#/login?tier_upgraded=" + tier;
       },
       onFailure: (err: any) => {
-        console.error("Pro checkout failed:", err);
-      }
+        console.error("Checkout failed:", err);
+      },
     });
   };
-
-  const proMonthly = pricingConfig?.pro_monthly_inr ?? 199;
-  const proDiscount = pricingConfig?.pro_discount_percent ?? 50;
-  const proYearly = Math.round((proMonthly * 12) * (1 - proDiscount / 100));
 
   const servicePlans = [
     {
@@ -184,8 +210,12 @@ export default function Pricing() {
 
   const defaultFaqs: FaqItem[] = [
     {
-      q: "How does the template credits system work?",
-      a: "Every new registered account receives 5 free teaser credits to explore and download starter templates. When you need more downloads, you can upgrade directly to SlideBee Pro for 15 monthly master template downloads and a 15% discount on custom agency services."
+      q: "How do template downloads and tiers work?",
+      a: "SlideBee offers four membership tiers: Basic Free gives you 3 daily downloads from our Free templates library. Monthly Pro ($5/mo or ₹399/mo) unlocks 30 Premium template downloads per month. Yearly Pro ($45/yr or ₹3,499/yr) includes 30 Premium templates/mo plus an exclusive free design service for up to 10 slides. Lifetime VIP ($75 or ₹5,999 one-time) gives you unlimited premium downloads forever without any renewal fees."
+    },
+    {
+      q: "What is the Lifetime Plan safety limit?",
+      a: "Our Lifetime VIP plan grants unlimited downloads for legitimate human presentation use. An automated fair-use safety threshold of 45 downloads per month is maintained solely to detect web scrapers and unauthorized bots. If you hit this threshold during an active project, simply reach out to support for immediate verification."
     },
     {
       q: "How does the per-slide custom design pricing work?",
@@ -237,123 +267,112 @@ export default function Pricing() {
       <section id="marketplace" className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24 scroll-mt-32">
 
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
+        <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 hex-pill bg-white border border-primary/40 px-5 py-2 text-xs font-extrabold uppercase tracking-wider text-primary-amber shadow-sm mb-4">
-            <LayoutGrid size={14} /> Template Marketplace
+            <LayoutGrid size={14} /> Template Marketplace Plans
           </div>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] leading-tight mb-3">
             Download Premium Templates.<br />
-            <span className="text-primary-amber">Start Free. Go Pro.</span>
+            <span className="text-primary-amber">Pick Your Plan.</span>
           </h1>
-          <p className="text-[#726F6D] text-sm font-medium max-w-lg mx-auto">
-            Every account gets 5 free credits on sign-up as a teaser to explore our library. Once finished, upgrade to Pro for 15 master downloads per month.
+          <p className="text-[#726F6D] text-sm font-medium max-w-xl mx-auto mb-6">
+            Start with 3 free downloads per day, or unlock our complete 30-slide executive presentation library with Monthly, Yearly, or Lifetime access.
           </p>
-        </div>
 
-        {/* Billing Toggle */}
-        <div className="flex justify-center mb-10">
-          <div className="hex-pill inline-flex items-center gap-1.5 bg-white p-1 border-2 border-primary/40 shadow-sm">
+          {/* Currency Switcher */}
+          <div className="inline-flex items-center hex-pill bg-white border-2 border-primary/40 p-1 shadow-sm">
             <button
-              onClick={() => setBillingPeriod("monthly")}
-              className={`hex-pill px-5 py-2 text-xs font-bold transition-all ${
-                billingPeriod === "monthly" ? "bg-primary text-[#111111] shadow" : "text-[#726F6D] hover:text-[#111111]"
+              onClick={() => setCurrency("USD")}
+              className={`px-6 py-2 hex-pill text-xs font-black transition-all ${
+                currency === "USD" ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#111111] hover:text-primary-amber"
               }`}
             >
-              Monthly
+              USD ($)
             </button>
             <button
-              onClick={() => setBillingPeriod("yearly")}
-              className={`hex-pill px-5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
-                billingPeriod === "yearly" ? "bg-primary text-[#111111] shadow" : "text-[#726F6D] hover:text-[#111111]"
+              onClick={() => setCurrency("INR")}
+              className={`px-6 py-2 hex-pill text-xs font-black transition-all ${
+                currency === "INR" ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#111111] hover:text-primary-amber"
               }`}
             >
-              Yearly
-              <span className="bg-green-500/20 text-green-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
-                {proDiscount}% OFF
-              </span>
+              INR (₹)
             </button>
           </div>
         </div>
 
-        {/* Two Plan Cards: Free Teaser vs Pro */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+        {/* 4-Card Responsive Pricing Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch max-w-7xl mx-auto mb-12">
 
-          {/* Free / Starter */}
-          <div className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary p-8 flex flex-col justify-between shadow-sm transition-all">
+          {/* CARD 1: Basic Free */}
+          <div className="hex-card-lg bg-white border-2 border-primary/40 hover:border-primary p-7 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all">
             <div>
-              <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-widest block mb-2">Starter Tier</span>
-              <div className="text-4xl font-heading font-black text-[#111111] mb-1">Free</div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="hex-pill bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                  START HERE
+                </span>
+                <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider">Basic</span>
+              </div>
+              
+              <div className="text-4xl font-heading font-black text-[#111111] mb-1">
+                {currency === "USD" ? "$0" : "₹0"}
+              </div>
               <p className="text-xs text-[#726F6D] font-medium mb-6">
-                Teaser package for exploring template quality — no card required.
+                Explore template quality with daily starter downloads — no card required.
               </p>
+
               <div className="space-y-3 border-t border-primary/20 pt-5">
-                <div className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
-                    <Check size={11} className="text-primary-amber stroke-[3]" />
+                {[
+                  "3 Downloads Per Day",
+                  "Access to Free Templates Library",
+                  "Master PowerPoint (.pptx) download export",
+                  "16:9 Ultra-Wide Presentation Format",
+                  "Preview full executive slide catalog",
+                  "Standard community email support",
+                ].map((feat, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-300 mt-0.5">
+                      <Check size={11} className="text-emerald-800 stroke-[3]" />
+                    </div>
+                    <span>{feat}</span>
                   </div>
-                  <span>5 Free Template Credits on Sign-up</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
-                    <Check size={11} className="text-primary-amber stroke-[3]" />
-                  </div>
-                  <span>Preview full executive slide catalog</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
-                    <Check size={11} className="text-primary-amber stroke-[3]" />
-                  </div>
-                  <span>Standard PowerPoint (.pptx) download export</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-xs text-[#726F6D] font-medium">
-                  <div className="w-5 h-5 rounded-full bg-black/5 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[10px] font-bold text-[#726F6D]">x</span>
-                  </div>
-                  <span>Non-renewable once credits are depleted</span>
-                </div>
+                ))}
               </div>
             </div>
+
             <Link
-              to="/templates"
+              to="/templates?tier=free"
               className="mt-8 hex-pill w-full block text-center bg-[#111111] hover:bg-black text-white font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-sm"
             >
-              Browse Templates <ArrowRight size={14} />
+              Browse Free Templates <ArrowRight size={14} />
             </Link>
           </div>
 
-          {/* Pro */}
-          <div className="hex-card-lg bg-white border-2 border-primary ring-4 ring-primary/20 p-8 flex flex-col justify-between shadow-xl relative">
-            <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
-              <Flame size={12} className="text-[#FCBF14]" /> Most Popular
-            </div>
-
+          {/* CARD 2: Monthly */}
+          <div className="hex-card-lg bg-white border-2 border-primary/50 hover:border-primary p-7 flex flex-col justify-between shadow-md hover:shadow-xl transition-all">
             <div>
-              <span className="text-[10px] text-primary-amber font-bold uppercase tracking-widest block mb-2">Pro Access</span>
-              <div className="text-4xl font-heading font-black text-[#111111] mb-0.5">
-                {billingPeriod === "yearly"
-                  ? `₹${proYearly.toLocaleString()}`
-                  : `₹${proMonthly.toLocaleString()}`}
-                <span className="text-sm font-normal text-[#726F6D] ml-1">
-                  /{billingPeriod === "yearly" ? "year" : "month"}
+              <div className="flex items-center justify-between mb-3">
+                <span className="hex-pill bg-primary/20 text-[#111111] border border-primary/40 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                  FLEXIBLE
                 </span>
+                <span className="text-[10px] text-primary-amber font-bold uppercase tracking-wider">Monthly</span>
               </div>
-              {billingPeriod === "yearly" && (
-                <p className="text-[11px] text-green-600 font-bold mb-1">
-                  Save {proDiscount}% vs monthly — billed annually
-                </p>
-              )}
+
+              <div className="text-4xl font-heading font-black text-[#111111] mb-1">
+                {currency === "USD" ? "$5" : "₹399"}
+                <span className="text-xs font-normal text-[#726F6D] ml-1">/month</span>
+              </div>
               <p className="text-xs text-[#726F6D] font-medium mb-6">
-                Unlimited marketplace flexibility with 15 monthly master deck downloads plus 15% agency discount.
+                For active presenters needing regular access to fresh executive decks.
               </p>
+
               <div className="space-y-3 border-t border-primary/20 pt-5">
                 {[
-                  "15 Master Template Downloads Every Month",
-                  "15% Discount on Custom Agency Services & Redesigns",
-                  "All premium & executive master templates",
+                  "30 Premium Templates Per Month",
+                  "Full access to all Premium & Executive decks",
                   "100% Editable Master PowerPoint (.pptx)",
-                  "Commercial license on all deliverables",
-                  "Priority customer support & asset requests",
-                  "Instant access to new weekly deck releases"
+                  "Commercial royalty-free presentation license",
+                  "New slide decks added weekly",
+                  "Standard customer support",
                 ].map((feat, i) => (
                   <div key={i} className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
                     <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
@@ -365,23 +384,141 @@ export default function Pricing() {
               </div>
             </div>
 
-            <div className="mt-8 space-y-2.5">
-              <button
-                onClick={handleGoPro}
-                className="hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
-              >
-                Go Pro Now <ArrowRight size={14} />
-              </button>
-              <Link
-                to="/templates"
-                className="hex-pill w-full block text-center bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <LayoutGrid size={13} className="text-[#FCBF14]" /> Go to Templates Marketplace <ArrowRight size={13} />
-              </Link>
+            <button
+              onClick={() => handleSubscribeTier("monthly")}
+              className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
+            >
+              Subscribe Monthly <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {/* CARD 3: Yearly (Dark VIP Highlighted Card) */}
+          <div className="hex-card-lg bg-[#111111] text-white border-2 border-primary ring-4 ring-primary/25 p-7 flex flex-col justify-between shadow-2xl relative lg:-translate-y-2 transition-all">
+            <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-[#111111] font-black text-[11px] px-5 py-1 uppercase tracking-wider shadow-xl inline-flex items-center gap-1.5 border border-black/20">
+              <Flame size={12} className="text-[#111111]" /> BEST VALUE
             </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3 mt-1">
+                <span className="text-[10px] text-primary font-black uppercase tracking-wider">
+                  ANNUAL PASS
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  Save 25%
+                </span>
+              </div>
+
+              <div className="text-4xl font-heading font-black text-white mb-0.5">
+                {currency === "USD" ? "$45" : "₹3,499"}
+                <span className="text-xs font-normal text-[#888888] ml-1">/year</span>
+              </div>
+              <p className="text-[11px] text-primary font-bold mb-2">
+                Equivalent to {currency === "USD" ? "$3.75/month" : "₹291/month"}
+              </p>
+              <p className="text-xs text-[#AAAAAA] font-medium mb-6">
+                Everything in Monthly plus our exclusive bespoke 10-slide design bonus.
+              </p>
+
+              <div className="space-y-3 border-t border-white/10 pt-5">
+                {[
+                  "30 Premium Templates Per Month",
+                  "Bonus: Free design service for up to 10 slides",
+                  "Full access to all Premium & Executive decks",
+                  "100% Editable Master PowerPoint (.pptx)",
+                  "Commercial royalty-free presentation license",
+                  "Priority WhatsApp & Slack direct support",
+                  "Immediate access to new weekly deck releases",
+                ].map((feat, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs text-white/90 font-medium">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/60 mt-0.5">
+                      <Check size={11} className="text-primary stroke-[3]" />
+                    </div>
+                    <span className={i === 1 ? "text-primary font-bold" : ""}>{feat}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSubscribeTier("yearly")}
+              className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.03] flex items-center justify-center gap-1.5 shadow-xl"
+            >
+              Get Yearly Plan <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {/* CARD 4: Lifetime */}
+          <div className="hex-card-lg bg-white border-2 border-primary/50 hover:border-primary p-7 flex flex-col justify-between shadow-md hover:shadow-xl transition-all">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="hex-pill bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                  ONE-TIME PAYMENT
+                </span>
+                <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider">Lifetime</span>
+              </div>
+
+              <div className="text-4xl font-heading font-black text-[#111111] mb-1">
+                {currency === "USD" ? "$75" : "₹5,999"}
+                <span className="text-xs font-normal text-[#726F6D] ml-1">one-time</span>
+              </div>
+              <p className="text-xs text-[#726F6D] font-medium mb-6">
+                Pay once, access forever. Never worry about another monthly or annual renewal.
+              </p>
+
+              <div className="space-y-3 border-t border-primary/20 pt-5">
+                {[
+                  "Unlimited Premium Templates & Downloads*",
+                  "Never pay another monthly or yearly renewal",
+                  "All current & future templates included forever",
+                  "100% Editable Master PowerPoint (.pptx)",
+                  "Full commercial license for all client projects",
+                  "VIP priority support & custom deck requests",
+                  "*Fair-use limit of 45/mo to prevent bot crawling",
+                ].map((feat, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
+                      <Check size={11} className="text-primary-amber stroke-[3]" />
+                    </div>
+                    <span className={i === 6 ? "text-[#726F6D] text-[11px]" : ""}>{feat}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSubscribeTier("lifetime")}
+              className="mt-8 hex-pill w-full block text-center bg-[#111111] hover:bg-black text-[#FCBF14] border border-primary/40 font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
+            >
+              Get Lifetime Access <ArrowRight size={14} />
+            </button>
           </div>
 
         </div>
+
+        {/* Full-width Honey Gold Bonus Showcase Banner */}
+        <div className="hex-card-lg bg-gradient-to-r from-[#FCBF14] via-[#F5B301] to-[#FCBF14] text-[#111111] p-8 sm:p-10 shadow-xl border-2 border-black/10 max-w-7xl mx-auto relative overflow-hidden">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
+            <div className="max-w-3xl">
+              <span className="hex-pill inline-block bg-[#111111] text-[#FCBF14] text-[10px] font-black px-3.5 py-1 uppercase tracking-wider mb-3">
+                Exclusive Annual Member Perk
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-heading font-black text-[#111111] mb-2">
+                YEARLY PLAN BONUS: Free Design Service for Up to 10 Slides
+              </h3>
+              <p className="text-sm font-medium text-[#111111]/85 leading-relaxed">
+                When you subscribe to the SlideBee Yearly Plan ({currency === "USD" ? "$45" : "₹3,499"}), our senior presentation studio designers will personally build or redesign up to 10 custom slides for your next investor pitch, keynote, or board meeting for free ({currency === "USD" ? "$190+" : "₹14,990+"} value).
+              </p>
+            </div>
+            <button
+              onClick={() => handleSubscribeTier("yearly")}
+              className="hex-pill px-8 py-4 bg-[#111111] hover:bg-black text-[#FCBF14] font-black text-sm transition-all hover:scale-105 shadow-2xl flex items-center gap-2 shrink-0 border border-primary"
+            >
+              <span>Claim 10-Slide Bonus</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+
       </section>
 
       {/* ======================================================== */}

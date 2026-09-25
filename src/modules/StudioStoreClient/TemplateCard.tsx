@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, Download, ArrowRight, Coins, Crown } from "lucide-react";
+import { Star, Download, ArrowRight, Crown } from "lucide-react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { type StoreTemplate } from "./useStudioStore";
 
@@ -15,6 +15,8 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
   const { formatPrice, currency } = useCurrency();
   const price = currency === "USD" ? template.price_usd : template.price_inr;
   const originalPrice = currency === "USD" ? template.price_usd * 2 : template.original_price_inr;
+
+  const isFree = !template.is_premium;
 
   return (
     <motion.div
@@ -45,9 +47,13 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
             </span>
 
             <div className="flex items-center gap-2">
-              {template.is_credit_eligible && (
-                <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Coins size={10} className="text-[#111111]" /> Cost: 5 Credits
+              {isFree ? (
+                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                  FREE TEMPLATE
+                </span>
+              ) : (
+                <span className="bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Crown size={9} className="fill-[#FCBF14]" /> PREMIUM
                 </span>
               )}
               {showStars && (
@@ -85,7 +91,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
       <div className="px-5 pb-5 pt-1">
         <div className="flex items-center justify-between mb-3">
           <div>
-            {isPro ? (
+            {isFree ? (
               <>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
@@ -95,8 +101,22 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                     {formatPrice(price)}
                   </span>
                 </div>
+                <span className="text-[10px] font-bold text-emerald-700 block">
+                  3 Free Downloads / Day
+                </span>
+              </>
+            ) : isPro ? (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base sm:text-lg font-heading font-black text-[#111111]">
+                    Unlocked
+                  </span>
+                  <span className="text-xs text-[#726F6D] line-through font-bold">
+                    {formatPrice(price)}
+                  </span>
+                </div>
                 <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
-                  <Crown size={10} /> Pro Template Quota
+                  <Crown size={10} /> Pro Plan Access
                 </span>
               </>
             ) : (
@@ -111,15 +131,9 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                     </span>
                   )}
                 </div>
-                {template.is_credit_eligible ? (
-                  <span className="text-[10px] font-bold text-emerald-700 block">
-                    Cost: 5 Credits (1 Free Deck with Signup)
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-[#726F6D] block">
-                    Commercial PPTX Master License
-                  </span>
-                )}
+                <span className="text-[10px] font-bold text-primary-amber block">
+                  Unlocked with \$5/mo Pro
+                </span>
               </>
             )}
           </div>
@@ -128,7 +142,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
             to={`/template/${template.id}`}
             className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-bold text-xs px-3.5 py-2 flex items-center gap-1.5 transition-all shadow-sm group-hover:scale-105"
           >
-            <span>{isPro ? "Download" : "Inspect"}</span>
+            <span>{isFree ? "Download Free" : (isPro ? "Download" : "Inspect")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

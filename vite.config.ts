@@ -739,6 +739,218 @@ function edgeDevPlugin(): Plugin {
           }
         });
       });
+
+      // 3. /api/entitlement Endpoint
+      server.middlewares.use("/api/entitlement", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { templateId, userEmail } = body;
+            const cleanEmail = String(userEmail || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              res.statusCode = 401;
+              return res.end(JSON.stringify({ success: false, errorCode: "LOGIN_REQUIRED", message: "Sign in required." }));
+            }
+
+            const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+            if (profiles.length === 0) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ success: false, errorCode: "USER_NOT_FOUND", message: "User profile not found." }));
+            }
+            const profile = profiles[0];
+            const tier = profile.tier || "free";
+            const today = new Date().toISOString().split("T")[0];
+            const currentMonth = today.substring(0, 7);
+
+            let downloadsToday = profile.downloads_today || 0;
+            if (profile.last_download_date !== today) downloadsToday = 0;
+
+            let downloadsThisMonth = profile.downloads_this_month || 0;
+            if (profile.month_cycle_start !== currentMonth) downloadsThisMonth = 0;
+
+            const templates = runSqliteQuery("SELECT * FROM templates WHERE id = ? OR slug = ? OR code = ?", [templateId, templateId, templateId]);
+            if (templates.length === 0) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ success: false, errorCode: "TEMPLATE_NOT_FOUND", message: "Template not found." }));
+            }
+            const template = templates[0];
+            const isPremium = template.is_premium !== 0;
+
+            if (!isPremium) {
+              if (tier === "free" && downloadsToday >= 3) {
+                res.statusCode = 429;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "DAILY_LIMIT_REACHED",
+                  message: "You have reached your daily limit of 3 free downloads. Upgrade to Monthly ($5) or Lifetime ($75) for unlimited downloads.",
+                  requiresUpgrade: true,
+                  limit: 3,
+                  used: downloadsToday,
+                }));
+              }
+            } else {
+              if (tier === "free") {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "UPGRADE_REQUIRED",
+                  message: "This is a Premium Template. Upgrade to Monthly ($5), Yearly ($45), or Lifetime ($75) to unlock this template and our entire library.",
+                  requiresUpgrade: true,
+                }));
+              }
+
+              if (tier === "monthly" || tier === "yearly") {
+                if (downloadsThisMonth >= 30) {
+                  res.statusCode = 429;
+                  return res.end(JSON.stringify({
+                    success: false,
+                    errorCode: "MONTHLY_LIMIT_REACHED",
+                    message: "You have reached your monthly allowance of 30 premium template downloads.",
+                    limit: 30,
+                    used: downloadsThisMonth,
+                  }));
+                }
+              }
+
+              if (tier === "lifetime" && downloadsThisMonth >= 45) {
+                runSqliteExec("UPDATE profiles SET is_bot_flagged = 1 WHERE id = ?", [profile.id]);
+                res.statusCode = 429;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "BOT_SAFETY_LIMIT",
+                  message: "Fair-Use Security Threshold Reached (45 downloads/month). Verification email sent to unlock additional downloads.",
+                  limit: 45,
+                  used: downloadsThisMonth,
+                }));
+              }
+            }
+
+            const newToday = downloadsToday + 1;
+            const newMonth = isPremium ? downloadsThisMonth + 1 : downloadsThisMonth;
+            const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+
+            runSqliteExec(
+              "UPDATE profiles SET downloads_today = ?, last_download_date = ?, downloads_this_month = ?, month_cycle_start = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+              [newToday, today, newMonth, currentMonth, profile.id]
+            );
+
+            runSqliteExec(
+              "INSERT INTO download_logs (id, user_email, template_id, template_title, tier, is_premium, download_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              ["log-" + Math.random().toString(36).substring(2, 9), cleanEmail, template.id, template.title, tier, isPremium ? 1 : 0, deliverable]
+            );
+
+            return res.end(JSON.stringify({
+              success: true,
+              message: "Download granted.",
+              downloadUrl: deliverable,
+              fileName: template.file_name || `${template.title}.pptx`,
+              tier,
+              isPremium,
+              downloadsToday: newToday,
+              downloadsThisMonth: newMonth,
+              remainingDailyFree: tier === "free" ? Math.max(0, 3 - newToday) : null,
+              remainingMonthlyPremium: (tier === "monthly" || tier === "yearly") ? Math.max(0, 30 - newMonth) : (tier === "lifetime" ? Math.max(0, 45 - newMonth) : null),
+            }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+          }
+        });
+      });
+
+      // 4. /api/subscribe-pro Endpoint
+      server.middlewares.use("/api/subscribe-pro", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { paymentId, userEmail, billingPeriod, tier: inputTier, planName, amount = 5, currency = "USD" } = body;
+            const cleanEmail = String(userEmail || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ success: false, error: "Invalid client email." }));
+            }
+
+            let resolvedTier: "monthly" | "yearly" | "lifetime" = "monthly";
+            const periodLower = String(billingPeriod || inputTier || "").toLowerCase();
+            if (periodLower.includes("life")) resolvedTier = "lifetime";
+            else if (periodLower.includes("year") || periodLower.includes("annual")) resolvedTier = "yearly";
+            else resolvedTier = "monthly";
+
+            const now = new Date();
+            const currentMonth = now.toISOString().substring(0, 7);
+            const durationDays = resolvedTier === "lifetime" ? 36500 : (resolvedTier === "yearly" ? 365 : 30);
+            const periodEnd = new Date(Date.now() + durationDays * 86400000).toISOString();
+            const quotaLimit = resolvedTier === "lifetime" ? 45 : 30;
+
+            const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+            if (profiles.length === 0) {
+              const newProfId = "prf-" + Math.random().toString(36).substring(2, 10);
+              const namePart = cleanEmail.split("@")[0];
+              runSqliteExec(
+                "INSERT INTO profiles (id, email, full_name, role, tier, tier_expires_at, downloads_today, downloads_this_month, month_cycle_start) VALUES (?, ?, ?, 'client', ?, ?, 0, 0, ?)",
+                [newProfId, cleanEmail, namePart, resolvedTier, periodEnd, currentMonth]
+              );
+            } else {
+              runSqliteExec(
+                "UPDATE profiles SET tier = ?, tier_expires_at = ?, downloads_this_month = 0, month_cycle_start = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?",
+                [resolvedTier, periodEnd, currentMonth, cleanEmail]
+              );
+            }
+
+            const subId = "sub-" + Math.random().toString(36).substring(2, 10);
+            const resolvedPlanName = planName || (resolvedTier === "lifetime" ? "Lifetime VIP" : (resolvedTier === "yearly" ? "Yearly Pro" : "Monthly Pro"));
+            const amountNum = Number(amount) || (resolvedTier === "lifetime" ? 75 : (resolvedTier === "yearly" ? 45 : 5));
+            const amountUsd = currency === "INR" ? (resolvedTier === "lifetime" ? 75 : (resolvedTier === "yearly" ? 45 : 5)) : amountNum;
+            const amountInr = currency === "INR" ? amountNum : (resolvedTier === "lifetime" ? 5999 : (resolvedTier === "yearly" ? 3499 : 399));
+
+            runSqliteExec(
+              "INSERT INTO subscriptions (id, user_email, plan_name, amount_usd, amount_inr, slides_limit, slides_used, status, current_period_end, razorpay_subscription_id) VALUES (?, ?, ?, ?, ?, ?, 0, 'active', ?, ?)",
+              [subId, cleanEmail, resolvedPlanName, amountUsd, amountInr, quotaLimit, periodEnd, paymentId || "rzp_manual"]
+            );
+
+            return res.end(JSON.stringify({
+              success: true,
+              message: `${resolvedPlanName} activated successfully.`,
+              tier: resolvedTier,
+              tierExpiresAt: periodEnd,
+              quotaLimit,
+            }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+          }
+        });
+      });
     },
   };
 }
