@@ -17,6 +17,7 @@ const ALLOWED_TABLES = [
   "auth_logs",
   "assets",
   "users",
+  "download_logs",
 ];
 
 const JSON_COLUMNS: Record<string, string[]> = {
