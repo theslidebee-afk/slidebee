@@ -3,13 +3,11 @@ compatibility_date = "2024-09-01"
 pages_build_output_dir = "dist"
 
 # Cloudflare D1 Database Binding
-# In Cloudflare Pages, bind D1 in Dashboard: Settings -> Functions -> D1 database bindings (Variable: DB)
-# Or uncomment below and insert your D1 UUID:
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "slidebee-db"
-# database_id = "<YOUR_D1_DATABASE_UUID>"
-# migrations_dir = "migrations"
+[[d1_databases]]
+binding = "DB"
+database_name = "slidebee-db"
+database_id = "3230a455-52fd-48be-a51c-ddab82be64e9"
+migrations_dir = "migrations"
 
 [vars]
 ENVIRONMENT = "production"
