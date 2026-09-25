@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://whwyfqtvuubkfypmgosi.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNjcyMzQsImV4cCI6MjEwMzk0MzIzNH0.cDUR7AhCc_5NGgO_iYHAka7wpk0cKTR0GsofBLw-taE';
-
-// Raw Supabase Client for fallback resilience
-export const rawSupabase = createClient(supabaseUrl, supabaseAnonKey);
+// Cloudflare Edge & D1 Query Engine Client for SlideBee
+// 100% Serverless Edge Data & Auth Engine backed by Cloudflare D1
+// Zero Supabase dependency, zero inactivity pause, instant cold starts.
 
 export interface OrderRecord {
   id?: string;
@@ -31,10 +27,6 @@ export interface WaitlistRecord {
   source?: string;
 }
 
-// =========================================================
-// Cloudflare Edge & D1 Query Engine Adapter
-// =========================================================
-
 type AuthChangeCallback = (event: string, session: any) => void;
 const authListeners = new Set<AuthChangeCallback>();
 
@@ -48,7 +40,7 @@ function notifyAuthListeners(event: string, session: any) {
   }
 }
 
-class EdgeQueryBuilder implements PromiseLike<any> {
+export class EdgeQueryBuilder implements PromiseLike<any> {
   private table: string;
   private action: string = 'select';
   private selectCols: string = '*';
@@ -80,7 +72,7 @@ class EdgeQueryBuilder implements PromiseLike<any> {
     return this;
   }
 
-  upsert(values: any) {
+  upsert(values: any, _options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
     this.action = 'upsert';
     this.valuesPayload = values;
     return this;
@@ -118,6 +110,11 @@ class EdgeQueryBuilder implements PromiseLike<any> {
 
   is(column: string, value: any) {
     this.filters.push({ column, op: 'is', value });
+    return this;
+  }
+
+  or(expr: string) {
+    this.filters.push({ column: '', op: 'or', value: expr });
     return this;
   }
 
@@ -171,39 +168,11 @@ class EdgeQueryBuilder implements PromiseLike<any> {
           const count = Array.isArray(json.data) ? json.data.length : (json.data ? 1 : 0);
           return { data: json.data, error: null, count };
         }
+        return { data: null, error: json?.error || { message: 'Query error' } };
       }
-    } catch {
-      // Fall through to raw Supabase fallback
-    }
-
-    // Fallback: Delegate to raw Supabase client
-    try {
-      let query: any = (rawSupabase.from as any)(this.table);
-      if (this.action === 'select') query = query.select(this.selectCols);
-      else if (this.action === 'insert') query = query.insert(this.valuesPayload);
-      else if (this.action === 'update') query = query.update(this.valuesPayload);
-      else if (this.action === 'upsert') query = query.upsert(this.valuesPayload);
-      else if (this.action === 'delete') query = query.delete();
-
-      for (const f of this.filters) {
-        if (f.op === 'eq') query = query.eq(f.column, f.value);
-        else if (f.op === 'neq') query = query.neq(f.column, f.value);
-        else if (f.op === 'like') query = query.like(f.column, f.value);
-        else if (f.op === 'ilike') query = query.ilike(f.column, f.value);
-        else if (f.op === 'in') query = query.in(f.column, f.value);
-        else if (f.op === 'is') query = query.is(f.column, f.value);
-      }
-
-      if (this.orderOpt) query = query.order(this.orderOpt.column, { ascending: this.orderOpt.ascending });
-      if (typeof this.limitVal === 'number') query = query.limit(this.limitVal);
-      if (typeof this.offsetVal === 'number' && typeof this.limitVal === 'number') {
-        query = query.range(this.offsetVal, this.offsetVal + this.limitVal - 1);
-      }
-      if (this.isSingle) query = query.single();
-
-      return await query;
-    } catch (fallbackErr: any) {
-      return { data: null, error: fallbackErr };
+      return { data: null, error: { message: `HTTP ${res.status}: Query failed` } };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'Network error' } };
     }
   }
 
@@ -223,20 +192,22 @@ const edgeAuth = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'login', email, password }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.data?.session) {
-          localStorage.setItem('slidebee_edge_session', JSON.stringify(json.data.session));
-          notifyAuthListeners('SIGNED_IN', json.data.session);
-          // Sync with raw Supabase in background if available
-          if (password) rawSupabase.auth.signInWithPassword({ email, password }).catch(() => {});
-          return { data: json.data, error: null };
-        }
+      const json = await res.json();
+      if (res.ok && json?.data?.session) {
+        localStorage.setItem('slidebee_edge_session', JSON.stringify(json.data.session));
+        localStorage.setItem('slidebee_client_user', JSON.stringify({
+          email: json.data.user.email,
+          tier: json.data.profile?.tier || 'free',
+          role: json.data.user.role || 'client',
+          user_metadata: json.data.user.user_metadata,
+        }));
+        notifyAuthListeners('SIGNED_IN', json.data.session);
+        return { data: json.data, error: null };
       }
-    } catch {}
-
-    // Fallback to Supabase GoTrue
-    return rawSupabase.auth.signInWithPassword({ email, password: password || '' });
+      return { data: { user: null, session: null }, error: json?.error || { message: 'Invalid credentials' } };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: { message: err?.message || 'Login failed' } };
+    }
   },
 
   async signUp({ email, password, options }: { email: string; password?: string; options?: any }) {
@@ -252,21 +223,25 @@ const edgeAuth = {
           company: options?.data?.company,
         }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.data?.session) {
-          localStorage.setItem('slidebee_edge_session', JSON.stringify(json.data.session));
-          notifyAuthListeners('SIGNED_IN', json.data.session);
-          if (password) rawSupabase.auth.signUp({ email, password, options }).catch(() => {});
-          return { data: json.data, error: null };
-        }
+      const json = await res.json();
+      if (res.ok && json?.data?.session) {
+        localStorage.setItem('slidebee_edge_session', JSON.stringify(json.data.session));
+        localStorage.setItem('slidebee_client_user', JSON.stringify({
+          email: json.data.user.email,
+          tier: 'free',
+          role: json.data.user.role || 'client',
+          user_metadata: json.data.user.user_metadata,
+        }));
+        notifyAuthListeners('SIGNED_IN', json.data.session);
+        return { data: json.data, error: null };
       }
-    } catch {}
-
-    return rawSupabase.auth.signUp({ email, password: password || '', options });
+      return { data: { user: null, session: null }, error: json?.error || { message: 'Signup failed' } };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: { message: err?.message || 'Signup failed' } };
+    }
   },
 
-  async signOut(options?: any) {
+  async signOut(_options?: any) {
     try {
       const rawStored = localStorage.getItem('slidebee_edge_session');
       const stored = rawStored ? JSON.parse(rawStored) : null;
@@ -280,8 +255,9 @@ const edgeAuth = {
     } catch {}
 
     localStorage.removeItem('slidebee_edge_session');
+    localStorage.removeItem('slidebee_client_user');
     notifyAuthListeners('SIGNED_OUT', null);
-    return rawSupabase.auth.signOut(options);
+    return { error: null };
   },
 
   async getSession() {
@@ -295,7 +271,7 @@ const edgeAuth = {
       }
     } catch {}
 
-    return rawSupabase.auth.getSession();
+    return { data: { session: null }, error: null };
   },
 
   async getUser() {
@@ -309,29 +285,61 @@ const edgeAuth = {
       }
     } catch {}
 
-    return rawSupabase.auth.getUser();
+    return { data: { user: null }, error: null };
   },
 
   onAuthStateChange(callback: AuthChangeCallback) {
     authListeners.add(callback);
-    const { data: rawListener } = rawSupabase.auth.onAuthStateChange((event, session) => {
-      callback(event, session);
-    });
+
+    // Initial check
+    const rawStored = localStorage.getItem('slidebee_edge_session');
+    if (rawStored) {
+      try {
+        const session = JSON.parse(rawStored);
+        if (session?.user) {
+          setTimeout(() => callback('SIGNED_IN', session), 0);
+        }
+      } catch {}
+    }
 
     return {
       data: {
         subscription: {
           unsubscribe: () => {
             authListeners.delete(callback);
-            rawListener?.subscription?.unsubscribe();
           },
         },
       },
     };
   },
 
-  updateUser: (attributes: any) => rawSupabase.auth.updateUser(attributes),
-  resetPasswordForEmail: (email: string, options?: any) => rawSupabase.auth.resetPasswordForEmail(email, options),
+  async updateUser(attributes: any) {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_user', ...attributes }),
+      });
+      const json = await res.json();
+      return { data: json?.data || null, error: json?.error || null };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'Update failed' } };
+    }
+  },
+
+  async resetPasswordForEmail(email: string, _options?: any) {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset_password', email }),
+      });
+      const json = await res.json();
+      return { data: json?.data || null, error: json?.error || null };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'Reset failed' } };
+    }
+  },
 };
 
 export const supabase = {
@@ -349,9 +357,14 @@ export const supabase = {
         if (json && !json.error) {
           return { data: json.data, error: null };
         }
+        return { data: null, error: json?.error || { message: 'RPC execution failed.' } };
       }
-    } catch {}
-
-    return (rawSupabase.rpc as any)(fnName, params);
+      return { data: null, error: { message: `HTTP ${res.status}: RPC failed` } };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'RPC invocation failed' } };
+    }
   },
-} as unknown as typeof rawSupabase;
+};
+
+// Aliases for seamless backward compatibility
+export const rawSupabase = supabase;

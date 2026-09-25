@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { MagneticButton } from "../components/MagneticButton";
+import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { 
   Shield, 
   Clock, 
@@ -639,7 +640,16 @@ export default function Services() {
         </div>
       </section>
 
-      {/* 3. STUDIO GUARANTEES (3 Equilateral Hex Cards) */}
+      {/* 3. HOW SLIDEBEE WORKS (4-Step Infographic Pipeline) */}
+      <section className="py-16 bg-[#FFF9E8] border-t border-primary/20">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white/85 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 lg:p-12 shadow-lg">
+            <HexProcessInfographic />
+          </div>
+        </div>
+      </section>
+
+      {/* 4. STUDIO GUARANTEES (3 Equilateral Hex Cards) */}
       <section className="py-16 bg-white large-hex-grid border-t border-primary/20">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">

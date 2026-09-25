@@ -120,54 +120,77 @@ export default function TemplateDetail() {
         }
       });
 
-    // 2. Fetch Template from Deep Module view
-    supabase
-      .from("v_storefront_catalog")
-      .select("*")
-      .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    // 2. Fetch Template from Deep Module view or templates table
+    const loadTemplate = async () => {
+      try {
+        let matched: any = null;
+
+        // Try v_storefront_catalog first
+        const { data, error } = await supabase
+          .from("v_storefront_catalog")
+          .select("*")
+          .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
+          .maybeSingle();
+
         if (data && !error) {
-          const coverImg = normalizeR2Url(data.thumbnail_url || data.image_url, "slides");
-          const slideUrls = Array.isArray(data.slides) && data.slides.length > 0
-            ? data.slides.map((s: string) => normalizeR2Url(s, "slides"))
+          matched = data;
+        } else {
+          // Fallback to direct templates table lookup
+          const { data: tData } = await supabase
+            .from("templates")
+            .select("*")
+            .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
+            .maybeSingle();
+          if (tData) matched = tData;
+        }
+
+        if (matched) {
+          const coverImg = normalizeR2Url(matched.thumbnail_url || matched.image_url, "slides");
+          const slideUrls = Array.isArray(matched.slides) && matched.slides.length > 0
+            ? matched.slides.map((s: string) => normalizeR2Url(s, "slides"))
             : [coverImg];
-          const pptxUrl = data.download_url ? normalizeR2Url(data.download_url, "decks") : undefined;
+          const pptxUrl = matched.download_url ? normalizeR2Url(matched.download_url, "decks") : undefined;
 
           setTemplate({
-            id: data.id,
-            code: data.code || `SLD-${data.id.slice(0, 4).toUpperCase()}`,
-            title: data.title,
-            category: data.category || "Business",
-            price_inr: Number(data.price_inr) || 499,
-            price_usd: Number(data.price_usd) || 9,
-            original_price_inr: Number(data.original_price_inr) || 999,
+            id: matched.id,
+            code: matched.code || `SLD-${matched.id.slice(0, 4).toUpperCase()}`,
+            title: matched.title,
+            category: matched.category || "Business",
+            price_inr: Number(matched.price_inr) || 499,
+            price_usd: Number(matched.price_usd) || 9,
+            original_price_inr: Number(matched.original_price_inr) || 999,
             image_url: coverImg,
             slides: slideUrls,
-            slides_count: Number(data.slides_count || data.slide_count) || slideUrls.length || 30,
-            rating: Number(data.rating) || 4.9,
-            downloads: Number(data.downloads) || 120,
+            slides_count: Number(matched.slides_count || matched.slide_count) || slideUrls.length || 30,
+            rating: Number(matched.rating) || 4.9,
+            downloads: Number(matched.downloads) || 120,
             download_url: pptxUrl,
-            file_name: data.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
-            file_size: data.file_size || "4.5 MB",
-            description: data.description || "Executive presentation deck tailored for high-stakes business meetings.",
-            features: Array.isArray(data.features) && data.features.length > 0
-              ? data.features
+            file_name: matched.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
+            file_size: matched.file_size || "4.5 MB",
+            description: matched.description || "Executive presentation deck tailored for high-stakes business meetings.",
+            features: Array.isArray(matched.features) && matched.features.length > 0
+              ? matched.features
               : [
-                  `${data.slides_count || 30}+ High-Impact Master Slides`,
+                  `${matched.slides_count || 30}+ High-Impact Master Slides`,
                   "16:9 Ultra-Wide Presentation Format",
                   "100% Fully Editable Vector Elements",
                   "Commercial Royalty-Free License"
                 ],
-            formats: Array.isArray(data.formats) && data.formats.length > 0 ? data.formats : ["PowerPoint"],
-            is_premium: data.is_premium !== undefined ? Number(data.is_premium) === 1 : !Boolean(data.is_credit_eligible),
-            is_credit_eligible: Boolean(data.is_credit_eligible),
-            is_featured: Boolean(data.is_featured),
+            formats: Array.isArray(matched.formats) && matched.formats.length > 0 ? matched.formats : ["PowerPoint"],
+            is_premium: matched.is_premium !== undefined ? Number(matched.is_premium) === 1 : !Boolean(matched.is_credit_eligible),
+            is_credit_eligible: Boolean(matched.is_credit_eligible),
+            is_featured: Boolean(matched.is_featured),
             is_published: true
           });
         }
+      } catch (err) {
+        console.error("Error loading template details:", err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadTemplate();
   }, [id]);
 
   // 2. Fetch similar / related templates from v_storefront_catalog
@@ -235,7 +258,7 @@ export default function TemplateDetail() {
           <FileText size={40} className="mx-auto text-primary-amber mb-3" />
           <h2 className="text-xl font-heading font-extrabold text-[#111111] mb-2">Presentation Deck Not Found</h2>
           <p className="text-xs text-[#726F6D] mb-6">The presentation master deck you are looking for might have been moved or archived.</p>
-          <Link to="/templates" className="hex-pill bg-primary font-black px-6 py-2.5 text-xs text-[#111111]">
+          <Link to="/#templates" className="hex-pill bg-primary font-black px-6 py-2.5 text-xs text-[#111111]">
             Back to Templates Marketplace
           </Link>
         </div>
@@ -767,7 +790,7 @@ export default function TemplateDetail() {
                 </h2>
               </div>
               <Link
-                to="/templates"
+                to="/#templates"
                 className="hex-pill-sm inline-flex items-center gap-1.5 bg-white border border-primary/40 px-3.5 py-1.5 text-xs font-bold text-[#111111] hover:border-primary transition-all shadow-sm"
               >
                 Browse Full Library <ArrowRight size={13} />

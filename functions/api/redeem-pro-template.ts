@@ -1,8 +1,10 @@
 // Cloudflare Pages Function: /api/redeem-pro-template
-// Server-side verification and fulfillment of Pro template downloads using the 15 template quota
+// Server-side verification and fulfillment of Pro template downloads using Cloudflare D1
+// 100% Edge native with zero Supabase dependency
 
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
+interface Env {
+  DB?: any;
+}
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -23,19 +25,19 @@ function getCorsHeaders(request: Request) {
   };
 }
 
-export async function onRequestOptions(context: any) {
+export async function onRequestOptions(context: { request: Request }) {
   return new Response(null, {
     status: 204,
     headers: getCorsHeaders(context.request),
   });
 }
 
-export async function onRequestPost(context: any) {
+export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { clientEmail, templateId } = body;
 
     const cleanEmail = String(clientEmail || "").trim().toLowerCase();
@@ -55,32 +57,26 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-
-    const headers = {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      "Content-Type": "application/json",
-    };
-
-    // 1. Fetch Subscription to verify active Pro status and expiration
-    const subRes = await fetch(
-      `${supabaseUrl}/rest/v1/subscriptions?user_email=eq.${encodeURIComponent(cleanEmail)}&select=*&order=created_at.desc&limit=1`,
-      { headers }
-    );
-
-    if (!subRes.ok) {
+    if (!env.DB) {
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to verify membership status." }),
+        JSON.stringify({ success: false, error: "Cloudflare D1 database unavailable." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const subscriptions = await subRes.json();
-    const sub = Array.isArray(subscriptions) && subscriptions.length > 0 ? subscriptions[0] : null;
+    // 1. Fetch Subscription and Profile from D1
+    const sub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_email = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(cleanEmail).first();
 
-    if (!sub || sub.status !== "active") {
+    const profile = await env.DB.prepare(
+      `SELECT * FROM profiles WHERE email = ?`
+    ).bind(cleanEmail).first();
+
+    const isProTier = profile && ["monthly", "yearly", "lifetime"].includes(profile.tier);
+    const isSubActive = sub && sub.status === "active";
+
+    if (!isProTier && !isSubActive) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -90,11 +86,11 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    // Check expiration: current_period_end
-    if (sub.current_period_end) {
-      const expiry = new Date(sub.current_period_end);
-      const now = new Date();
-      if (expiry <= now) {
+    // Check expiration if present
+    const expiryDate = sub?.current_period_end || profile?.tier_expires_at;
+    if (expiryDate) {
+      const expiry = new Date(expiryDate);
+      if (expiry <= new Date()) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -107,35 +103,14 @@ export async function onRequestPost(context: any) {
     }
 
     // 2. Check remaining quota
-    const quotaLimit = Number(sub.slides_limit || 15);
-    const quotaUsed = Number(sub.slides_used || 0);
-    const quotaRemaining = quotaLimit - quotaUsed;
-
-    if (quotaRemaining <= 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `You have consumed all ${quotaLimit} template downloads for your current billing period. Quota resets on renewal.`,
-        }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const quotaLimit = Number(sub?.slides_limit || (profile?.tier === "lifetime" ? 45 : 30));
+    const quotaUsed = Number(profile?.downloads_this_month || sub?.slides_used || 0);
+    const quotaRemaining = Math.max(0, quotaLimit - quotaUsed);
 
     // 3. Fetch Template Details from templates table
-    const tplRes = await fetch(
-      `${supabaseUrl}/rest/v1/templates?or=(id.eq.${encodeURIComponent(cleanTemplateId)},code.eq.${encodeURIComponent(cleanTemplateId)},slug.eq.${encodeURIComponent(cleanTemplateId)})&select=*&limit=1`,
-      { headers }
-    );
-
-    if (!tplRes.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Template lookup failed." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const templates = await tplRes.json();
-    const template = Array.isArray(templates) && templates.length > 0 ? templates[0] : null;
+    const template = await env.DB.prepare(
+      `SELECT * FROM templates WHERE id = ? OR code = ? OR slug = ? LIMIT 1`
+    ).bind(cleanTemplateId, cleanTemplateId, cleanTemplateId).first();
 
     if (!template) {
       return new Response(
@@ -144,31 +119,21 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const pptxDownloadUrl = template.download_url || template.image_url;
+    const pptxDownloadUrl = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
     const fileName = template.file_name || `${template.code || "SLD"}_Master.pptx`;
 
-    // 4. Fetch Client Profile
-    const profileRes = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(cleanEmail)}&select=*&limit=1`,
-      { headers }
-    );
+    // 4. Check if client already downloaded this template
+    let purchasedItems: any[] = [];
+    try {
+      purchasedItems = JSON.parse(profile?.purchased_items || "[]");
+    } catch {}
 
-    let profile: any = null;
-    if (profileRes.ok) {
-      const profiles = await profileRes.json();
-      if (Array.isArray(profiles) && profiles.length > 0) {
-        profile = profiles[0];
-      }
-    }
-
-    const purchasedItems = Array.isArray(profile?.purchased_items) ? [...profile.purchased_items] : [];
     const alreadyOwns = purchasedItems.some(
       (item: any) =>
         String(item.id) === String(template.id) ||
         (item.code && String(item.code).toLowerCase() === String(template.code).toLowerCase())
     );
 
-    // If client already downloaded this template, deliver directly without docking extra quota
     if (alreadyOwns) {
       return new Response(
         JSON.stringify({
@@ -183,88 +148,67 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    // 5. Append new item to purchased_items and usage_history
-    const newItem = {
-      id: template.id,
-      code: template.code || `SLD-${template.id.slice(0, 4).toUpperCase()}`,
-      title: template.title,
-      category: template.category || "Business",
-      slides_count: Number(template.slides_count || 30),
-      download_url: pptxDownloadUrl,
-      purchased_at: new Date().toISOString(),
-      is_pro_quota: true,
-      amount: 0,
-      currency: "INR",
-    };
-
-    const newUsage = {
-      item_title: template.title,
-      credits_used: 1,
-      action: `Pro Template Quota Download (${quotaUsed + 1} of ${quotaLimit})`,
-      date: new Date().toISOString(),
-    };
-
-    const updatedPurchasedItems = [newItem, ...purchasedItems];
-    const existingHistory = Array.isArray(profile?.usage_history) ? profile.usage_history : [];
-    const updatedUsageHistory = [newUsage, ...existingHistory];
-
-    const currentBalance = Number(profile?.credits_balance ?? quotaRemaining);
-    const updatedBalance = Math.max(0, currentBalance - 1);
-    const updatedUsed = Number(profile?.credits_used || 0) + 1;
-
-    // Update Profile
-    if (profile?.id) {
-      await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${profile.id}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({
-          credits_balance: updatedBalance,
-          credits_used: updatedUsed,
-          purchased_items: updatedPurchasedItems,
-          usage_history: updatedUsageHistory,
-          updated_at: new Date().toISOString(),
+    if (quotaRemaining <= 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `You have consumed all ${quotaLimit} template downloads for your current billing cycle. Quota resets on renewal.`,
         }),
-      });
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Update Subscription slides_used
-    await fetch(`${supabaseUrl}/rest/v1/subscriptions?id=eq.${sub.id}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        slides_used: quotaUsed + 1,
-        updated_at: new Date().toISOString(),
-      }),
-    });
+    // 5. Dock quota and update D1 records
+    const newUsed = quotaUsed + 1;
+    const newRemaining = Math.max(0, quotaLimit - newUsed);
 
-    // Record order in orders ledger for full audit tracking
-    const orderRef = `PRO-TPL-${template.code || "SLD"}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-    await fetch(`${supabaseUrl}/rest/v1/orders`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        order_reference: orderRef,
-        email: cleanEmail,
-        full_name: profile?.full_name || cleanEmail.split("@")[0],
-        service_tier: "Pro Template Quota",
-        project_brief: `Pro Membership Template Quota Download: ${template.title} (${template.code || "SLD"})`,
-        amount: 0,
-        currency: "INR",
-        status: "delivered",
-        deliverable_link: pptxDownloadUrl,
-        milestone_index: 4,
-      }),
-    });
+    if (sub?.id) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET slides_used = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newUsed, sub.id).run();
+    }
+
+    const newItem = {
+      id: template.id,
+      slug: template.slug,
+      code: template.code || "SLD-MASTER",
+      title: template.title,
+      category: template.category,
+      slides_count: template.slides_count || 30,
+      formats: ["Master PowerPoint (.pptx)"],
+      download_url: pptxDownloadUrl,
+      is_pro_quota_redemption: true,
+      purchased_at: new Date().toISOString(),
+    };
+
+    purchasedItems.unshift(newItem);
+
+    if (profile?.id) {
+      await env.DB.prepare(
+        `UPDATE profiles SET downloads_this_month = ?, purchased_items = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newUsed, JSON.stringify(purchasedItems), profile.id).run();
+    }
+
+    // 6. Record download log in D1
+    await env.DB.prepare(
+      `INSERT INTO download_logs (id, user_email, template_id, template_title, is_premium, downloaded_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(
+      crypto.randomUUID(),
+      cleanEmail,
+      template.id,
+      template.title,
+      template.is_premium ? 1 : 0
+    ).run();
 
     return new Response(
       JSON.stringify({
         success: true,
         downloadUrl: pptxDownloadUrl,
         fileName,
-        quotaRemaining: quotaRemaining - 1,
-        quotaUsed: quotaUsed + 1,
-        quotaLimit,
-        message: `Template successfully unlocked using your Pro membership quota (${quotaRemaining - 1} of ${quotaLimit} downloads remaining).`,
+        quotaRemaining: newRemaining,
+        template_title: template.title,
+        message: `Template unlocked successfully. ${newRemaining} downloads remaining in your billing cycle.`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

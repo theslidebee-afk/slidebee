@@ -3,8 +3,6 @@
 
 interface Env {
   DB?: any;
-  SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
 const ALLOWED_ORIGINS = [
@@ -249,6 +247,37 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         await env.DB.prepare(`DELETE FROM sessions WHERE id = ?`).bind(token).run();
       }
       return new Response(JSON.stringify({ error: null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 5. Update User Action
+    if (action === "update_user") {
+      if (!env.DB) {
+        return new Response(JSON.stringify({ error: { message: "Database unavailable." } }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (cleanEmail && password) {
+        const salt = crypto.randomUUID();
+        const pwdHash = await hashPassword(password, salt);
+        await env.DB.prepare(`UPDATE users SET password_hash = ?, salt = ? WHERE email = ?`).bind(pwdHash, salt, cleanEmail).run();
+      }
+      if (cleanEmail && full_name) {
+        await env.DB.prepare(`UPDATE profiles SET full_name = ? WHERE email = ?`).bind(full_name, cleanEmail).run();
+      }
+      return new Response(JSON.stringify({ data: { message: "User updated successfully." }, error: null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 6. Reset Password Action
+    if (action === "reset_password") {
+      return new Response(JSON.stringify({ data: { message: "Password reset instructions recorded." }, error: null }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

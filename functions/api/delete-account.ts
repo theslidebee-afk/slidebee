@@ -1,8 +1,10 @@
 // Cloudflare Pages Function: /api/delete-account
-// Secure server-side account deletion and data purge with official email dispatch
+// Secure server-side account deletion and data purge using Cloudflare D1 with official email dispatch
 
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
+interface Env {
+  DB?: any;
+  SLIDEBEE_ADMIN_SECRET?: string;
+}
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -30,12 +32,12 @@ export async function onRequestOptions(context: any) {
   });
 }
 
-export async function onRequestPost(context: any) {
+export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const body = await request.json();
+    const body: any = await request.json();
     const {
       targetEmail,
       targetUserId,
@@ -55,106 +57,32 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-
     let resolvedUserId = targetUserId || null;
 
-    // 1. Fetch profile ID if not directly provided
-    if (!resolvedUserId) {
-      try {
-        const profileRes = await fetch(
-          `${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name`,
-          {
-            headers: {
-              apikey: serviceRoleKey,
-              Authorization: `Bearer ${serviceRoleKey}`,
-            },
-          }
-        );
-        if (profileRes.ok) {
-          const profiles = await profileRes.json();
-          if (Array.isArray(profiles) && profiles.length > 0) {
-            resolvedUserId = profiles[0].id;
-          }
+    if (env?.DB) {
+      if (!resolvedUserId) {
+        const u: any = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(cleanEmail).first();
+        if (u?.id) {
+          resolvedUserId = u.id;
+        } else {
+          const p: any = await env.DB.prepare("SELECT id FROM profiles WHERE email = ?").bind(cleanEmail).first();
+          if (p?.id) resolvedUserId = p.id;
         }
-      } catch (err) {
-        console.warn("Could not query profiles before deletion:", err);
       }
+
+      const uid = resolvedUserId || cleanEmail;
+
+      // Purge all records from D1 in a single transaction batch
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM subscriptions WHERE user_email = ? OR user_id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM orders WHERE user_email = ? OR user_id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM sessions WHERE user_email = ? OR user_id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM profiles WHERE email = ? OR id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM users WHERE email = ? OR id = ?").bind(cleanEmail, uid),
+      ]);
     }
 
-    // 2. Delete active/past subscriptions
-    try {
-      await fetch(
-        `${supabaseUrl}/rest/v1/subscriptions?user_email=eq.${encodeURIComponent(cleanEmail)}`,
-        {
-          method: "DELETE",
-          headers: {
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-        }
-      );
-      if (resolvedUserId) {
-        await fetch(
-          `${supabaseUrl}/rest/v1/subscriptions?user_id=eq.${encodeURIComponent(resolvedUserId)}`,
-          {
-            method: "DELETE",
-            headers: {
-              apikey: serviceRoleKey,
-              Authorization: `Bearer ${serviceRoleKey}`,
-            },
-          }
-        );
-      }
-    } catch (err) {
-      console.warn("Failed to delete subscriptions:", err);
-    }
-
-    // 3. Delete profile from public.profiles
-    try {
-      await fetch(
-        `${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(cleanEmail)}`,
-        {
-          method: "DELETE",
-          headers: {
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-        }
-      );
-      if (resolvedUserId) {
-        await fetch(
-          `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(resolvedUserId)}`,
-          {
-            method: "DELETE",
-            headers: {
-              apikey: serviceRoleKey,
-              Authorization: `Bearer ${serviceRoleKey}`,
-            },
-          }
-        );
-      }
-    } catch (err) {
-      console.warn("Failed to delete profile record:", err);
-    }
-
-    // 4. Delete user from auth.users (if resolved)
-    if (resolvedUserId) {
-      try {
-        await fetch(`${supabaseUrl}/auth/v1/admin/users/${resolvedUserId}`, {
-          method: "DELETE",
-          headers: {
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-        });
-      } catch (err) {
-        console.warn("Failed to purge auth user via admin API:", err);
-      }
-    }
-
-    // 5. Send account deletion notification email if enabled
+    // Send account deletion notification email if enabled
     let emailSent = false;
     if (sendNotice) {
       try {

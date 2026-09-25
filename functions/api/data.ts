@@ -3,12 +3,12 @@
 
 interface Env {
   DB?: any;
-  SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
 const ALLOWED_TABLES = [
   "templates",
+  "v_storefront_catalog",
+  "v_free_credit_library",
   "orders",
   "profiles",
   "waitlist",
@@ -22,6 +22,8 @@ const ALLOWED_TABLES = [
 
 const JSON_COLUMNS: Record<string, string[]> = {
   templates: ["formats", "slides", "features"],
+  v_storefront_catalog: ["formats", "slides", "features"],
+  v_free_credit_library: ["formats", "slides", "features"],
   profiles: ["purchased_items", "usage_history"],
   orders: ["formats"],
   site_config: ["value"],
@@ -207,6 +209,23 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const whereClauses: string[] = [];
 
       for (const filter of filters) {
+        if (filter.op === "or" && typeof filter.value === "string") {
+          const parts = filter.value.split(",");
+          const orSubClauses: string[] = [];
+          for (const part of parts) {
+            const [c, op, ...valParts] = part.split(".");
+            const val = valParts.join(".");
+            if (c && op === "eq") {
+              orSubClauses.push(`${c} = ?`);
+              params.push(val);
+            }
+          }
+          if (orSubClauses.length > 0) {
+            whereClauses.push(`(${orSubClauses.join(" OR ")})`);
+          }
+          continue;
+        }
+
         if (!filter.column) continue;
         const col = filter.column;
         if (filter.op === "eq") {

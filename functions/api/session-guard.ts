@@ -1,8 +1,9 @@
 // Cloudflare Pages Function: /api/session-guard
-// Server-side strict single active session tracking and verification.
+// Server-side strict single active session tracking and verification using Cloudflare D1.
 
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
+interface Env {
+  DB?: any;
+}
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -30,12 +31,12 @@ export async function onRequestOptions(context: any) {
   });
 }
 
-export async function onRequestPost(context: any) {
+export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const body = await request.json();
+    const body: any = await request.json();
     const { action = "VERIFY", email, sessionId, deviceInfo = "Unknown Device" } = body;
 
     const cleanEmail = String(email || "").trim().toLowerCase();
@@ -47,22 +48,16 @@ export async function onRequestPost(context: any) {
     }
 
     const currentSessionId = String(sessionId || "").trim();
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-
-    // Fetch active session ledger from site_config
-    const ledgerRes = await fetch(`${supabaseUrl}/rest/v1/site_config?key=eq.active_sessions_ledger&select=value`, {
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-      }
-    });
 
     let sessionsMap: Record<string, any> = {};
-    if (ledgerRes.ok) {
-      const records = await ledgerRes.json();
-      if (records && records[0] && records[0].value) {
-        sessionsMap = records[0].value;
+    if (env?.DB) {
+      const row: any = await env.DB.prepare("SELECT value FROM site_config WHERE key = 'active_sessions_ledger'").first();
+      if (row?.value) {
+        try {
+          sessionsMap = typeof row.value === "string" ? JSON.parse(row.value) : row.value;
+        } catch {
+          sessionsMap = {};
+        }
       }
     }
 
@@ -70,45 +65,31 @@ export async function onRequestPost(context: any) {
       const sessionData = {
         sessionId: currentSessionId,
         deviceInfo,
-        registeredAt: new Date().toISOString()
+        registeredAt: new Date().toISOString(),
       };
 
       sessionsMap[cleanEmail] = sessionData;
 
-      // Upsert into site_config
-      await fetch(`${supabaseUrl}/rest/v1/site_config`, {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates"
-        },
-        body: JSON.stringify({
-          key: "active_sessions_ledger",
-          value: sessionsMap,
-          updated_at: new Date().toISOString()
-        })
-      });
+      if (env?.DB) {
+        await env.DB.prepare(`
+          INSERT INTO site_config (key, value, updated_at) VALUES ('active_sessions_ledger', ?, ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `).bind(JSON.stringify(sessionsMap), new Date().toISOString()).run();
 
-      // Also log login event
-      await fetch(`${supabaseUrl}/rest/v1/auth_logs`, {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_email: cleanEmail,
-          event: "LOGIN",
-          metadata: {
-            session_id: currentSessionId,
-            device_info: deviceInfo,
-            timestamp: new Date().toISOString()
-          }
-        })
-      });
+        try {
+          await env.DB.prepare(`
+            INSERT INTO auth_logs (id, user_email, event, metadata, created_at) VALUES (?, ?, ?, ?, ?)
+          `).bind(
+            crypto.randomUUID(),
+            cleanEmail,
+            "LOGIN",
+            JSON.stringify({ session_id: currentSessionId, device_info: deviceInfo, timestamp: new Date().toISOString() }),
+            new Date().toISOString()
+          ).run();
+        } catch (logErr) {
+          console.warn("Failed to write to auth_logs:", logErr);
+        }
+      }
 
       return new Response(
         JSON.stringify({ success: true, activeSession: sessionData }),
@@ -119,7 +100,6 @@ export async function onRequestPost(context: any) {
     if (action === "VERIFY") {
       const activeRecord = sessionsMap[cleanEmail];
       if (!activeRecord || !activeRecord.sessionId) {
-        // No session registered yet, or session is fresh
         return new Response(
           JSON.stringify({ success: true, valid: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -127,14 +107,13 @@ export async function onRequestPost(context: any) {
       }
 
       if (activeRecord.sessionId !== currentSessionId) {
-        // Session ID does not match -> displaced by another device!
         return new Response(
           JSON.stringify({
             success: true,
             valid: false,
             reason: "DISPLACED",
             newDevice: activeRecord.deviceInfo || "another device",
-            displacedAt: activeRecord.registeredAt
+            displacedAt: activeRecord.registeredAt,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

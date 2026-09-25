@@ -1,8 +1,9 @@
 // Cloudflare Pages Function: /api/trial-guard
-// Server-side verification to prevent free trial abuse, disposable emails, and Sybil farming.
+// Server-side verification to prevent free trial abuse, disposable emails, and Sybil farming using Cloudflare D1.
 
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
+interface Env {
+  DB?: any;
+}
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -58,12 +59,12 @@ function normalizeEmailBase(email: string): string {
   return `${baseLocal}@${domainPart}`;
 }
 
-export async function onRequestPost(context: any) {
+export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const body = await request.json();
+    const body: any = await request.json();
     const { action = "CHECK_AND_CLAIM", email, deviceFingerprint, userId } = body;
 
     const cleanEmail = String(email || "").trim().toLowerCase();
@@ -88,22 +89,15 @@ export async function onRequestPost(context: any) {
     const canonicalEmailBase = normalizeEmailBase(cleanEmail);
     const fingerprint = String(deviceFingerprint || "").trim();
 
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-
-    // Fetch existing trial claims ledger from site_config
-    const ledgerRes = await fetch(`${supabaseUrl}/rest/v1/site_config?key=eq.trial_claims_ledger&select=value`, {
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-      }
-    });
-
     let claimsMap: Record<string, any> = {};
-    if (ledgerRes.ok) {
-      const records = await ledgerRes.json();
-      if (records && records[0] && records[0].value) {
-        claimsMap = records[0].value;
+    if (env?.DB) {
+      const row: any = await env.DB.prepare("SELECT value FROM site_config WHERE key = 'trial_claims_ledger'").first();
+      if (row?.value) {
+        try {
+          claimsMap = typeof row.value === "string" ? JSON.parse(row.value) : row.value;
+        } catch {
+          claimsMap = {};
+        }
       }
     }
 
@@ -111,7 +105,6 @@ export async function onRequestPost(context: any) {
     const emailClaimed = claimsMap[`email:${canonicalEmailBase}`];
 
     if (fingerprintClaimed || emailClaimed) {
-      // Trial already consumed on this device or canonical email
       return new Response(
         JSON.stringify({
           success: true,
@@ -124,7 +117,6 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    // If action is CHECK_AND_CLAIM or RECORD_CLAIM, register the claim into the ledger
     if (action === "CHECK_AND_CLAIM" || action === "RECORD_CLAIM") {
       const claimRecord = {
         claimedAt: new Date().toISOString(),
@@ -139,42 +131,32 @@ export async function onRequestPost(context: any) {
       }
       claimsMap[`email:${canonicalEmailBase}`] = claimRecord;
 
-      // Upsert into site_config
-      await fetch(`${supabaseUrl}/rest/v1/site_config`, {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates"
-        },
-        body: JSON.stringify({
-          key: "trial_claims_ledger",
-          value: claimsMap,
-          updated_at: new Date().toISOString()
-        })
-      });
+      if (env?.DB) {
+        await env.DB.prepare(`
+          INSERT INTO site_config (key, value, updated_at) VALUES ('trial_claims_ledger', ?, ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `).bind(JSON.stringify(claimsMap), new Date().toISOString()).run();
 
-      // Record in auth_logs
-      await fetch(`${supabaseUrl}/rest/v1/auth_logs`, {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_email: cleanEmail,
-          event: "SIGNUP",
-          metadata: {
-            trial_status: "TRIAL_CLAIM_GRANTED",
-            starter_credits: 5,
-            canonicalEmail: canonicalEmailBase,
-            deviceFingerprint: fingerprint,
-            timestamp: new Date().toISOString()
-          }
-        })
-      });
+        try {
+          await env.DB.prepare(`
+            INSERT INTO auth_logs (id, user_email, event, metadata, created_at) VALUES (?, ?, ?, ?, ?)
+          `).bind(
+            crypto.randomUUID(),
+            cleanEmail,
+            "SIGNUP",
+            JSON.stringify({
+              trial_status: "TRIAL_CLAIM_GRANTED",
+              starter_credits: 5,
+              canonicalEmail: canonicalEmailBase,
+              deviceFingerprint: fingerprint,
+              timestamp: new Date().toISOString()
+            }),
+            new Date().toISOString()
+          ).run();
+        } catch (logErr) {
+          console.warn("Failed to write to auth_logs:", logErr);
+        }
+      }
 
       return new Response(
         JSON.stringify({

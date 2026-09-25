@@ -3,13 +3,8 @@
 
 interface Env {
   DB?: any;
-  SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
 }
-
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -143,88 +138,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    // 2. Supabase Fallback (if env.DB is not bound)
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-
-    // Check if subscription exists
-    const checkSubRes = await fetch(
-      `${supabaseUrl}/rest/v1/subscriptions?user_email=eq.${encodeURIComponent(cleanEmail)}&select=id`,
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-      }
-    );
-
-    let existingSubId: string | null = null;
-    if (checkSubRes.ok) {
-      const subs = await checkSubRes.json();
-      if (Array.isArray(subs) && subs.length > 0) existingSubId = subs[0].id;
-    }
-
-    const subPayload = {
-      user_id: userId || null,
-      user_email: cleanEmail,
-      plan_name: resolvedPlanName,
-      amount_inr: amountInr,
-      amount_usd: amountUsd,
-      slides_limit: quotaLimit,
-      slides_used: 0,
-      status: "active",
-      current_period_end: periodEnd,
-      razorpay_subscription_id: cleanPaymentId,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (existingSubId) {
-      await fetch(`${supabaseUrl}/rest/v1/subscriptions?id=eq.${existingSubId}`, {
-        method: "PATCH",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(subPayload),
-      });
-    } else {
-      await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(subPayload),
-      });
-    }
-
-    // Update profile tier in Supabase
-    await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(cleanEmail)}`, {
-      method: "PATCH",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        tier: resolvedTier,
-        tier_expires_at: periodEnd,
-        downloads_this_month: 0,
-        month_cycle_start: currentMonth,
-      }),
-    });
-
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: `${resolvedPlanName} activated successfully.`,
-        tier: resolvedTier,
-        tierExpiresAt: periodEnd,
-        quotaLimit,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: "Cloudflare D1 database unavailable." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     return new Response(

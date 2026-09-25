@@ -493,7 +493,7 @@ export default function Admin() {
       // Update Site Configurations
       if (configRes.data) {
         const configMap: Record<string, any> = {};
-        configRes.data.forEach((c) => {
+        configRes.data.forEach((c: any) => {
           configMap[c.key] = c.value;
         });
         setSiteConfigs(configMap);

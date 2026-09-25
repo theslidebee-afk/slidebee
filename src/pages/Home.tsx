@@ -13,7 +13,6 @@ import {
   PieChart,
   TrendingUp,
   Sparkles,
-  Sliders,
   Paintbrush,
   BarChart3,
   LayoutGrid,
@@ -25,7 +24,6 @@ import {
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore } from "../modules/StudioStoreClient";
-import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { MagneticButton } from "../components/MagneticButton";
 import { usePageSEO } from "../hooks/usePageSEO";
 import { supabase } from "../lib/supabase";
@@ -51,11 +49,6 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
   const [visibleCount, setVisibleCount] = useState<number>(12);
-
-  // Before & After Interactive Slider State
-  const [sliderPosition, setSliderPosition] = useState<number>(50);
-  const [activeTab, setActiveTab] = useState<"sales" | "executive" | "financial">("sales");
-  const [customComparisons, setCustomComparisons] = useState<any>(null);
   const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
 
   // Quick jump on hash change or mount
@@ -124,15 +117,15 @@ export default function Home() {
     checkProStatus();
 
     // Fetch site config comparison data
+    // Fetch testimonials configuration
     supabase
       .from("site_config")
       .select("*")
+      .eq("key", "testimonials")
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) {
-          data.forEach((item) => {
-            if (item.key === "home_before_after" && item.value) setCustomComparisons(item.value);
-            if (item.key === "testimonials" && Array.isArray(item.value)) setCustomTestimonials(item.value);
-          });
+        if (data?.value && Array.isArray(data.value)) {
+          setCustomTestimonials(data.value);
         }
       });
   }, []);
@@ -224,34 +217,6 @@ export default function Home() {
 
   const freeCount = useMemo(() => allTemplates.filter((t) => !t.is_premium).length, [allTemplates]);
   const premiumCount = useMemo(() => allTemplates.filter((t) => t.is_premium).length, [allTemplates]);
-
-  // Comparisons Data
-  const defaultComparisons = {
-    sales: {
-      title: "Q2 Sales Performance",
-      beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-      afterImg: "/portfolio/case_study_a_1.png",
-      beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
-      afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways."
-    },
-    executive: {
-      title: "Executive Strategic Keynote",
-      beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-      afterImg: "/portfolio/case_study_a_14.png",
-      beforeDesc: "Mismatched brand colors, generic bullet points.",
-      afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points."
-    },
-    financial: {
-      title: "Series A Investment Deck",
-      beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-      afterImg: "/portfolio/global_brands_1.png",
-      beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
-      afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones."
-    }
-  };
-
-  const comparisons = customComparisons || defaultComparisons;
-  const currentComparison = comparisons[activeTab] || defaultComparisons[activeTab];
 
   const defaultTestimonials = [
     {
@@ -366,22 +331,6 @@ export default function Home() {
               <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mb-8">
                 At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
               </p>
-
-              {/* CTAs */}
-              <div className="flex flex-wrap items-center gap-4 mb-10">
-                <button
-                  onClick={scrollToTemplates}
-                  className="hex-pill bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] font-black text-sm sm:text-base px-7 py-3.5 flex items-center gap-2 shadow-lg shadow-[#FCBF14]/25 hover:scale-105 transition-all cursor-pointer"
-                >
-                  Explore Templates <ArrowRight size={16} />
-                </button>
-                <Link
-                  to="/ordernow"
-                  className="hex-pill bg-white hover:bg-[#FFFDF5] text-[#111111] border-2 border-[#111111]/20 hover:border-[#111111] font-black text-sm sm:text-base px-7 py-3.5 flex items-center gap-2 transition-all shadow-sm"
-                >
-                  Get a Custom Presentation
-                </Link>
-              </div>
 
               {/* Trust Indicators Row */}
               <div className="flex flex-wrap items-center gap-6 sm:gap-8 pt-4 border-t border-[#111111]/10">
@@ -1183,108 +1132,7 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. INTERACTIVE BEFORE & AFTER SLIDER                                      */}
-      {/* ========================================================================= */}
-      <section className="py-14">
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            <div className="lg:col-span-5">
-              <span className="text-primary-amber text-xs font-bold uppercase tracking-widest block mb-1.5">
-                Proven Transformation
-              </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-extrabold text-[#111111] mb-3 leading-tight">
-                From Rough Content <br />
-                <span className="text-primary-amber">To Polished Slides</span>
-              </h2>
-              <p className="text-[#726F6D] text-xs sm:text-sm font-medium leading-relaxed mb-5">
-                We take your raw ideas and turn them into stunning, editable, brand-aligned presentations that make an impact.
-              </p>
-
-              {/* Comparison Tabs */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {(["sales", "executive", "financial"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`hex-pill px-4 py-2 text-xs font-bold capitalize transition-all cursor-pointer ${
-                      activeTab === tab
-                        ? "bg-primary text-[#111111] shadow-sm"
-                        : "bg-white text-[#726F6D] border-2 border-primary/40 hover:border-primary"
-                    }`}
-                  >
-                    {tab} Slide
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Draggable Split Slider (Hexagonal Frame) */}
-            <div className="lg:col-span-7">
-              <div className="hex-card-lg bg-white border-2 border-primary/40 p-3 md:p-4 shadow-xl">
-                <div className="relative aspect-[16/9] overflow-hidden select-none rounded-xl">
-                  <img
-                    src={currentComparison.afterImg}
-                    alt="After Redesign"
-                    className="absolute inset-0 w-full h-full object-contain bg-[#111111]"
-                  />
-                  <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-extrabold text-[10px] px-3 py-1 z-10 shadow">
-                    SlideBee Polish (After)
-                  </div>
-
-                  <div
-                    className="absolute inset-0 overflow-hidden"
-                    style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
-                  >
-                    <img
-                      src={currentComparison.beforeImg}
-                      alt="Before Redesign"
-                      className="absolute inset-0 w-full h-full object-contain bg-[#161a22]"
-                    />
-                    <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/80 backdrop-blur-md text-white font-bold text-[10px] px-3 py-1 border border-primary/30">
-                      Before
-                    </div>
-                  </div>
-
-                  <div
-                    className="absolute top-0 bottom-0 w-[2px] bg-primary cursor-ew-resize z-20"
-                    style={{ left: `${sliderPosition}%` }}
-                  >
-                    <div className="hex-slider-knob absolute top-1/2 -translate-y-1/2 -translate-x-1/2">
-                      <Sliders size={15} />
-                    </div>
-                  </div>
-
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={sliderPosition}
-                    aria-label="Before and after slider"
-                    onChange={(e) => setSliderPosition(Number(e.target.value))}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
-                  />
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 6. "HOW SLIDEBEE WORKS" 4-STEP INFOGRAPHIC PIPELINE                      */}
-      {/* ========================================================================= */}
-      <section className="py-12">
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white/85 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 lg:p-12 shadow-lg">
-            <HexProcessInfographic />
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 7. CLIENT TESTIMONIALS                                                    */}
+      {/* 5. CLIENT TESTIMONIALS                                                    */}
       {/* ========================================================================= */}
       <section className="pt-12 pb-20">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
