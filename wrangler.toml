@@ -1,0 +1,19 @@
+name = "theslidebee"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "dist"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "slidebee-db"
+database_id = "slidebee-d1-prod"
+migrations_dir = "migrations"
+
+# Cloudflare R2 Object Storage Binding
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "slidebee"
+
+[vars]
+ENVIRONMENT = "production"
+PUBLIC_CDN_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev"

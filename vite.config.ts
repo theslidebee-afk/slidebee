@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { execFileSync } from 'child_process'
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "9821e608622e999a9c0f06f52a168d97";
 const CF_BUCKET = process.env.CLOUDFLARE_R2_BUCKET || "slidebee";
@@ -294,12 +295,461 @@ function r2DevPlugin(): Plugin {
   };
 }
 
+const SQLITE_DB_PATH = path.resolve(process.cwd(), "scratch/slidebee_local.sqlite");
+
+function formatSql(sql: string, params: any[] = []): string {
+  if (!params || params.length === 0) return sql;
+  let idx = 0;
+  return sql.replace(/\?/g, () => {
+    if (idx >= params.length) return "?";
+    const val = params[idx++];
+    if (val === null || val === undefined) return "NULL";
+    if (typeof val === "number") return String(val);
+    if (typeof val === "boolean") return val ? "1" : "0";
+    return "'" + String(val).replace(/'/g, "''") + "'";
+  });
+}
+
+function runSqliteQuery(sql: string, params: any[] = []): any[] {
+  try {
+    const formatted = formatSql(sql, params);
+    const jsonOutput = execFileSync("sqlite3", ["-json", SQLITE_DB_PATH, formatted], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return jsonOutput.trim() ? JSON.parse(jsonOutput) : [];
+  } catch (err: any) {
+    console.warn("[Local D1 Fallback Error]:", err.message);
+    return [];
+  }
+}
+
+function runSqliteExec(sql: string, params: any[] = []): void {
+  try {
+    const formatted = formatSql(sql, params);
+    execFileSync("sqlite3", [SQLITE_DB_PATH, formatted], { encoding: "utf8" });
+  } catch (err: any) {
+    console.warn("[Local D1 Exec Fallback Error]:", err.message);
+  }
+}
+
+const JSON_COLUMNS: Record<string, string[]> = {
+  templates: ["formats", "slides", "features"],
+  profiles: ["purchased_items", "usage_history"],
+  orders: ["formats"],
+  site_config: ["value"],
+  auth_logs: ["metadata"],
+  assets: ["metadata"],
+};
+
+function parseRow(table: string, row: any) {
+  if (!row) return row;
+  const cols = JSON_COLUMNS[table] || [];
+  const parsed = { ...row };
+  for (const col of cols) {
+    if (typeof parsed[col] === "string") {
+      try {
+        parsed[col] = JSON.parse(parsed[col]);
+      } catch {}
+    }
+  }
+  return parsed;
+}
+
+function stringifyValue(val: any): any {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "object") return JSON.stringify(val);
+  if (typeof val === "boolean") return val ? 1 : 0;
+  return val;
+}
+
+function edgeDevPlugin(): Plugin {
+  return {
+    name: "edge-dev-sqlite-proxy",
+    configureServer(server) {
+      server.middlewares.use("/api/data", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          return res.end(JSON.stringify({ error: "Method not allowed" }));
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "select", table, select = "*", filters = [], order, limit, offset, values, single, rpcName, rpcParams } = body;
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (action === "rpc") {
+              if (rpcName === "fn_grant_starter_credits") {
+                const cleanEmail = String(rpcParams?.p_email || "").trim().toLowerCase();
+                const existing = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+                if (existing.length === 0) {
+                  const id = "prf-" + Math.random().toString(36).substring(2, 9);
+                  const name = rpcParams?.p_full_name || cleanEmail.split("@")[0];
+                  const company = rpcParams?.p_company || "Client Enterprise";
+                  runSqliteExec(
+                    "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, 'client', 5, 5)",
+                    [id, cleanEmail, name, company]
+                  );
+                }
+                const profile = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail])[0];
+                return res.end(JSON.stringify({ data: { success: true, credits_balance: profile?.credits_balance || 5, credits_total: profile?.credits_total || 5 }, error: null }));
+              }
+
+              if (rpcName === "fn_redeem_template_credit") {
+                const userEmail = String(rpcParams?.p_user_email || "").trim().toLowerCase();
+                const templateId = String(rpcParams?.p_template_id || "").trim();
+
+                const users = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [userEmail]);
+                if (users.length === 0) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "User account not found." }, error: null }));
+                }
+                const user = users[0];
+                if ((user.credits_balance || 0) < 5) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "Insufficient design credits." }, error: null }));
+                }
+
+                const templates = runSqliteQuery("SELECT * FROM templates WHERE id = ? OR slug = ? OR code = ?", [templateId, templateId, templateId]);
+                if (templates.length === 0) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "Template not found." }, error: null }));
+                }
+                const template = templates[0];
+
+                let purchasedItems = [];
+                try { purchasedItems = JSON.parse(user.purchased_items || "[]"); } catch {}
+
+                const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+                purchasedItems.unshift({
+                  id: template.id,
+                  slug: template.slug,
+                  code: template.code || "SLD-MASTER",
+                  title: template.title,
+                  category: template.category,
+                  slides_count: template.slides_count || 30,
+                  formats: ["Master PowerPoint (.pptx)"],
+                  amount: 0,
+                  currency: "INR",
+                  download_url: deliverable,
+                  is_credit_redemption: true,
+                  purchased_at: new Date().toISOString(),
+                });
+
+                const newBalance = Math.max(0, (user.credits_balance || 5) - 5);
+                const newUsed = (user.credits_used || 0) + 5;
+
+                runSqliteExec(
+                  "UPDATE profiles SET credits_balance = ?, credits_used = ?, purchased_items = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                  [newBalance, newUsed, JSON.stringify(purchasedItems), user.id]
+                );
+
+                const orderRef = "CRD-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+                runSqliteExec(
+                  "INSERT INTO orders (id, order_reference, service_type, slide_count, timeline, formats, project_brief, full_name, email, status) VALUES (?, ?, ?, ?, 'Instant Credit Dispatch', '[\"Master PowerPoint (.pptx)\"]', 'Redeemed via 5 starter credits.', ?, ?, 'completed')",
+                  ["ord-" + Math.random().toString(36).substring(2, 9), orderRef, "Starter Credit Claim: " + template.title, String(template.slides_count || 30), user.full_name || userEmail.split("@")[0], userEmail]
+                );
+
+                return res.end(JSON.stringify({
+                  data: {
+                    success: true,
+                    message: "Template claimed successfully with your design credits!",
+                    template_title: template.title,
+                    download_url: deliverable,
+                    credits_remaining: newBalance,
+                  },
+                  error: null,
+                }));
+              }
+            }
+
+            if (action === "select") {
+              let sql = `SELECT ${select || "*"} FROM ${table}`;
+              const params: any[] = [];
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                } else if (filter.op === "neq") {
+                  whereClauses.push(`${filter.column} != ?`);
+                  params.push(stringifyValue(filter.value));
+                } else if (filter.op === "like" || filter.op === "ilike") {
+                  whereClauses.push(`${filter.column} LIKE ?`);
+                  params.push(String(filter.value).replace(/\*/g, "%"));
+                } else if (filter.op === "in" && Array.isArray(filter.value)) {
+                  if (filter.value.length === 0) {
+                    whereClauses.push("1 = 0");
+                  } else {
+                    const placeholders = filter.value.map(() => "?").join(",");
+                    whereClauses.push(`${filter.column} IN (${placeholders})`);
+                    params.push(...filter.value.map(stringifyValue));
+                  }
+                } else if (filter.op === "is") {
+                  if (filter.value === null) whereClauses.push(`${filter.column} IS NULL`);
+                  else {
+                    whereClauses.push(`${filter.column} = ?`);
+                    params.push(stringifyValue(filter.value));
+                  }
+                }
+              }
+
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              if (order?.column) {
+                const dir = order.ascending === false ? "DESC" : "ASC";
+                sql += ` ORDER BY ${order.column} ${dir}`;
+              }
+              if (typeof limit === "number") {
+                sql += ` LIMIT ${limit}`;
+                if (typeof offset === "number") sql += ` OFFSET ${offset}`;
+              }
+
+              const rawRows = runSqliteQuery(sql, params);
+              const parsedRows = rawRows.map((r: any) => parseRow(table, r));
+              const finalData = single ? (parsedRows[0] || null) : parsedRows;
+              return res.end(JSON.stringify({ data: finalData, error: null }));
+            }
+
+            if (action === "insert") {
+              const rows = Array.isArray(values) ? values : [values];
+              const insertedRows: any[] = [];
+
+              for (const r of rows) {
+                const id = r.id || "rec-" + Math.random().toString(36).substring(2, 10);
+                const rowWithId = { ...r, id };
+                const keys = Object.keys(rowWithId);
+                const placeholders = keys.map(() => "?").join(", ");
+                const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`;
+                const params = keys.map((k) => stringifyValue(rowWithId[k]));
+                runSqliteExec(sql, params);
+                insertedRows.push(rowWithId);
+              }
+
+              const resData = Array.isArray(values) ? insertedRows : insertedRows[0];
+              return res.end(JSON.stringify({ data: resData, error: null }));
+            }
+
+            if (action === "update") {
+              const keys = Object.keys(values || {});
+              const setClauses = keys.map((k) => `${k} = ?`).join(", ");
+              const params = keys.map((k) => stringifyValue(values[k]));
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                }
+              }
+
+              let sql = `UPDATE ${table} SET ${setClauses}`;
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              runSqliteExec(sql, params);
+              return res.end(JSON.stringify({ data: values, error: null }));
+            }
+
+            if (action === "upsert") {
+              const rows = Array.isArray(values) ? values : [values];
+              const conflictCol = table === "site_config" ? "key" : (table === "profiles" ? "email" : "id");
+
+              for (const r of rows) {
+                const id = r.id || "cfg-" + Math.random().toString(36).substring(2, 9);
+                const rowWithId = { ...r, id };
+                const keys = Object.keys(rowWithId);
+                const placeholders = keys.map(() => "?").join(", ");
+                const updateClauses = keys.filter((k) => k !== conflictCol && k !== "id").map((k) => `${k} = excluded.${k}`).join(", ");
+                const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders}) ON CONFLICT(${conflictCol}) DO UPDATE SET ${updateClauses}`;
+                const params = keys.map((k) => stringifyValue(rowWithId[k]));
+                runSqliteExec(sql, params);
+              }
+
+              return res.end(JSON.stringify({ data: values, error: null }));
+            }
+
+            if (action === "delete") {
+              const params: any[] = [];
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                }
+              }
+
+              let sql = `DELETE FROM ${table}`;
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              runSqliteExec(sql, params);
+              return res.end(JSON.stringify({ data: null, error: null }));
+            }
+
+            return res.end(JSON.stringify({ data: null, error: { message: "Unsupported action." } }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ data: null, error: { message: e.message || String(e) } }));
+          }
+        });
+      });
+
+      server.middlewares.use("/api/auth", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "session", email, full_name, company, sessionId, deviceInfo } = body;
+            const cleanEmail = String(email || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (action === "session") {
+              const token = sessionId || req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+              if (!token) {
+                return res.end(JSON.stringify({ user: null, session: null }));
+              }
+              const sessions = runSqliteQuery("SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')", [token]);
+              if (sessions.length === 0) {
+                return res.end(JSON.stringify({ user: null, session: null }));
+              }
+              const s = sessions[0];
+              const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [s.email]);
+              const p = profiles[0] || {};
+              const userObj = {
+                id: s.user_id,
+                email: s.email,
+                role: s.role,
+                user_metadata: { full_name: p.full_name, company: p.company },
+              };
+              return res.end(JSON.stringify({ user: userObj, session: { access_token: s.id, user: userObj } }));
+            }
+
+            if (action === "login") {
+              const isAdmin = ["admin@theslidebee.com", "admin@slidebee.com"].includes(cleanEmail);
+              const role = isAdmin ? "admin" : "client";
+              const userId = "usr-" + Math.random().toString(36).substring(2, 10);
+              const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
+              const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+              runSqliteExec("DELETE FROM sessions WHERE email = ?", [cleanEmail]);
+              runSqliteExec(
+                "INSERT INTO sessions (id, user_id, email, role, device_info, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [newSessionId, userId, cleanEmail, role, deviceInfo || "Browser", expiresAt]
+              );
+
+              let profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+              if (profiles.length === 0) {
+                runSqliteExec(
+                  "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, ?, 5, 5)",
+                  ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", role]
+                );
+                profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+              } else {
+                runSqliteExec("UPDATE profiles SET last_sign_in_at = CURRENT_TIMESTAMP WHERE email = ?", [cleanEmail]);
+              }
+
+              const profile = parseRow("profiles", profiles[0]) || { full_name: cleanEmail.split("@")[0], company: "Enterprise" };
+              const userObj = {
+                id: userId,
+                email: cleanEmail,
+                role,
+                user_metadata: { full_name: profile.full_name || cleanEmail.split("@")[0], company: profile.company || "Enterprise" },
+              };
+
+              return res.end(JSON.stringify({
+                data: {
+                  user: userObj,
+                  session: { access_token: newSessionId, expires_at: expiresAt, user: userObj },
+                  profile,
+                },
+                error: null,
+              }));
+            }
+
+            if (action === "signup") {
+              const isAdmin = ["admin@theslidebee.com", "admin@slidebee.com"].includes(cleanEmail);
+              const role = isAdmin ? "admin" : "client";
+              const userId = "usr-" + Math.random().toString(36).substring(2, 10);
+              const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
+              const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+              const resolvedName = full_name || cleanEmail.split("@")[0];
+              const resolvedCompany = company || "Client Enterprise";
+
+              runSqliteExec(
+                "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, ?, 5, 5) ON CONFLICT(email) DO UPDATE SET full_name = excluded.full_name",
+                ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, resolvedName, resolvedCompany, role]
+              );
+
+              runSqliteExec(
+                "INSERT INTO sessions (id, user_id, email, role, device_info, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [newSessionId, userId, cleanEmail, role, deviceInfo || "Browser", expiresAt]
+              );
+
+              const userObj = {
+                id: userId,
+                email: cleanEmail,
+                role,
+                user_metadata: { full_name: resolvedName, company: resolvedCompany },
+              };
+
+              return res.end(JSON.stringify({
+                data: {
+                  user: userObj,
+                  session: { access_token: newSessionId, expires_at: expiresAt, user: userObj },
+                },
+                error: null,
+              }));
+            }
+
+            if (action === "logout") {
+              const token = sessionId || req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+              if (token) runSqliteExec("DELETE FROM sessions WHERE id = ?", [token]);
+              return res.end(JSON.stringify({ error: null }));
+            }
+
+            return res.end(JSON.stringify({ error: { message: "Invalid action." } }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: { message: e.message || String(e) } }));
+          }
+        });
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     r2DevPlugin(),
+    edgeDevPlugin(),
   ],
   resolve: {
     alias: {
