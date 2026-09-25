@@ -8,7 +8,6 @@ function SessionGuardWatcher() {
   return null;
 }
 import Home from "./pages/Home";
-import Templates from "./pages/Templates";
 import TemplateDetail from "./pages/TemplateDetail";
 import Services from "./pages/Services";
 import OrderNow from "./pages/OrderNow";
@@ -54,7 +53,7 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/home" element={<Home />} />
-                      <Route path="/templates" element={<Templates />} />
+                      <Route path="/templates" element={<Navigate to="/#templates" replace />} />
                       <Route path="/templates/:id" element={<TemplateDetail />} />
                       <Route path="/template/:id" element={<TemplateDetail />} />
                       <Route path="/services" element={<Services />} />

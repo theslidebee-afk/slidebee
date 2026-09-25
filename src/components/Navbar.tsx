@@ -142,52 +142,71 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { name: "Templates", path: "/templates" },
+    { name: "Templates", path: "/#templates", isHash: true },
     { name: "Services", path: "/services" },
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/examples" },
-    { name: "Blog", path: "/blog" },
     { name: "About", path: "/about" },
+    { name: "Contact", path: "/contact" },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof navLinks[0]) => {
+    if (link.isHash) {
+      e.preventDefault();
+      if (location.pathname === "/" || location.pathname === "/home") {
+        const el = document.getElementById("templates");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 750, behavior: "smooth" });
+        }
+      } else {
+        navigate("/#templates");
+      }
+    }
+  };
 
   return (
     <header
       className={clsx(
         "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
         isScrolled
-          ? "bg-[#FFF9E8]/95 backdrop-blur-md shadow-md border-b border-primary/20 py-3.5"
-          : "bg-[#FFF9E8]/85 backdrop-blur-sm py-4 border-b border-primary/10"
+          ? "bg-[#111111]/95 backdrop-blur-md shadow-xl border-b border-white/10 py-3.5"
+          : "bg-[#111111]/90 backdrop-blur-sm py-4 border-b border-white/10"
       )}
     >
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
         <Link to="/home" className="z-50 flex items-center">
-          <SlideBeeLogo variant="light" size="md" />
+          <SlideBeeLogo variant="dark" size="md" />
         </Link>
 
-        {/* Desktop Navigation Links (Increased Font Size & Crisp Weight) */}
-        <nav className="hidden md:flex items-center gap-5 lg:gap-7">
+        {/* Desktop Navigation Links */}
+        <nav className="hidden md:flex items-center gap-6 lg:gap-8">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
+            const isActive = link.isHash 
+              ? location.hash === "#templates"
+              : location.pathname === link.path;
             return (
-              <Link
+              <a
                 key={link.name}
-                to={link.path}
+                href={link.path}
+                onClick={(e) => handleNavClick(e, link)}
                 className={clsx(
-                  "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1",
+                  "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer",
                   isActive
-                    ? "text-primary-amber"
-                    : "text-[#111111] hover:text-primary-amber"
+                    ? "text-[#FCBF14]"
+                    : "text-white/85 hover:text-[#FCBF14]"
                 )}
               >
                 {link.name}
                 {isActive && (
                   <motion.div
                     layoutId="navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary-amber rounded-full"
+                    className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#FCBF14] rounded-full"
                   />
                 )}
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -200,14 +219,14 @@ export default function Navbar() {
               <MagneticButton>
                 <Link
                   to="/admin"
-                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-black text-[#111111] px-4 py-2 bg-primary/20 border border-primary/40 hover:bg-primary/40"
+                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-black text-white px-4 py-2 bg-white/10 border border-[#FCBF14]/40 hover:bg-white/20"
                 >
-                  <Shield size={14} className="text-[#111111]" /> Admin Studio
+                  <Shield size={14} className="text-[#FCBF14]" /> Admin Studio
                 </Link>
               </MagneticButton>
               <button
                 onClick={handleLogoutAdmin}
-                className="hex-cut-btn light-btn flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 px-3 py-2"
+                className="hex-cut-btn flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-300 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10"
                 title="Log out from Admin"
               >
                 <LogOut size={13} />
@@ -216,16 +235,16 @@ export default function Navbar() {
           ) : clientUser ? (
             /* Client User Logged-in State */
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-primary/40 px-3 py-1.5 rounded-lg shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#111111]">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-[#FCBF14]/30 px-3 py-1.5 rounded-lg shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-[#FCBF14] animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-white">
                   {userTier === "lifetime" ? "Lifetime VIP" : (userTier === "yearly" ? "Yearly VIP" : (userTier === "monthly" ? "Monthly Pro" : "Free Member"))}
                 </span>
               </div>
               <MagneticButton>
                 <Link
                   to="/login"
-                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-[#111111] hover:text-primary-amber transition-colors px-4 py-2 hover:bg-black/5 border border-primary/30 hover:border-primary"
+                  className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
                 >
                   <User size={15} /> Dashboard
                 </Link>
@@ -236,7 +255,7 @@ export default function Navbar() {
             <MagneticButton>
               <Link
                 to="/login"
-                className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-[#111111] hover:text-primary-amber transition-colors px-4 py-2 hover:bg-black/5 border border-primary/30 hover:border-primary"
+                className="hex-cut-btn flex items-center gap-1.5 text-xs font-extrabold text-white hover:text-[#FCBF14] transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#FCBF14]"
               >
                 <User size={15} /> Login
               </Link>
@@ -246,7 +265,7 @@ export default function Navbar() {
           <MagneticButton>
             <Link
               to="/ordernow"
-              className="hex-cut-btn bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs sm:text-sm px-6 py-2.5 transition-all shadow-md shadow-primary/20 hover:scale-105 flex items-center gap-1.5"
+              className="hex-cut-btn bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] font-black text-xs sm:text-sm px-6 py-2.5 transition-all shadow-md shadow-[#FCBF14]/20 hover:scale-105 flex items-center gap-1.5"
             >
               Get a Quote <ArrowRight size={14} />
             </Link>
@@ -255,7 +274,7 @@ export default function Navbar() {
 
         {/* Mobile Hamburger Button */}
         <button
-          className="md:hidden z-50 p-2 text-[#111111]"
+          className="md:hidden z-50 p-2 text-white hover:text-[#FCBF14] transition-colors"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -270,30 +289,34 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 bg-[#FFF9E8] z-40 md:hidden flex flex-col justify-center px-8 pt-20 pb-12"
+            className="fixed inset-0 bg-[#111111]/98 backdrop-blur-xl z-40 md:hidden flex flex-col justify-center px-8 pt-20 pb-12"
           >
             <nav className="flex flex-col gap-6 text-center">
               {navLinks.map((link) => (
-                <Link
+                <a
                   key={link.name}
-                  to={link.path}
-                  className="text-2xl font-heading font-extrabold text-[#111111] hover:text-primary-amber transition-colors"
+                  href={link.path}
+                  onClick={(e) => {
+                    setIsMobileMenuOpen(false);
+                    handleNavClick(e, link);
+                  }}
+                  className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer"
                 >
                   {link.name}
-                </Link>
+                </a>
               ))}
-              <div className="pt-6 border-t border-primary/20 flex flex-col gap-4">
+              <div className="pt-6 border-t border-white/10 flex flex-col gap-4">
                 {isAdmin ? (
                   <>
                     <Link
                       to="/admin"
-                      className="hex-cut-btn text-base text-[#111111] font-black py-3 border border-primary/40 gap-2"
+                      className="hex-cut-btn text-base text-white font-black py-3 border border-[#FCBF14]/40 bg-white/10 gap-2 flex items-center justify-center"
                     >
-                      <Shield size={18} /> Admin Studio Hub
+                      <Shield size={18} className="text-[#FCBF14]" /> Admin Studio Hub
                     </Link>
                     <button
                       onClick={handleLogoutAdmin}
-                      className="hex-cut-btn light-btn text-sm text-red-600 font-bold py-2.5"
+                      className="hex-cut-btn text-sm text-red-400 font-bold py-2.5 bg-white/5 border border-white/10"
                     >
                       Log Out Admin
                     </button>
@@ -301,21 +324,21 @@ export default function Navbar() {
                 ) : clientUser ? (
                   <Link
                     to="/login"
-                    className="hex-cut-btn text-base text-[#111111] font-black py-3 border border-primary/40 gap-2"
+                    className="hex-cut-btn text-base text-white font-black py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center"
                   >
                     <User size={18} /> My Dashboard ({userTier.toUpperCase()})
                   </Link>
                 ) : (
                   <Link
                     to="/login"
-                    className="hex-cut-btn light-btn text-base text-[#111111] font-bold py-3 border border-primary/40 gap-2"
+                    className="hex-cut-btn text-base text-white font-bold py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center"
                   >
                     <User size={18} /> Login to Account
                   </Link>
                 )}
                 <Link
                   to="/ordernow"
-                  className="hex-cut-btn text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5"
+                  className="hex-cut-btn bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5"
                 >
                   Get a Quote <ArrowRight size={15} />
                 </Link>
