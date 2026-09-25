@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { MagneticButton } from "../components/MagneticButton";
 import { HexProcessInfographic } from "../components/HexProcessInfographic";
+import { Suspended3DCarousel } from "../components/Suspended3DCarousel";
 import { 
   Shield, 
   Clock, 
@@ -22,24 +22,6 @@ import {
 import { usePageSEO } from "../hooks/usePageSEO";
 
 const STORAGE_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides";
-
-const defaultTopMarqueeSlides = [
-  `${STORAGE_BASE}/accenture_slide-1.jpg`,
-  `${STORAGE_BASE}/nike_slide-1.jpg`,
-  `${STORAGE_BASE}/volvo_slide-1.jpg`,
-  `${STORAGE_BASE}/intel_slide-1.jpg`,
-  `${STORAGE_BASE}/hsbc_slide-1.jpg`,
-  `${STORAGE_BASE}/tag_slide-1.jpg`,
-];
-
-const defaultBottomMarqueeSlides = [
-  `${STORAGE_BASE}/hsbc_slide-1.jpg`,
-  `${STORAGE_BASE}/intel_slide-1.jpg`,
-  `${STORAGE_BASE}/volvo_slide-1.jpg`,
-  `${STORAGE_BASE}/nike_slide-1.jpg`,
-  `${STORAGE_BASE}/tag_slide-1.jpg`,
-  `${STORAGE_BASE}/accenture_slide-1.jpg`,
-];
 
 const defaultWorkedCompanies = [
   { name: "Nike", category: "Global Strategy" },
@@ -67,8 +49,6 @@ export default function Services() {
     return initialParam && validServices.includes(initialParam) ? initialParam : "redesign";
   });
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
-  const [topMarqueeSlides, setTopMarqueeSlides] = useState<string[]>(defaultTopMarqueeSlides);
-  const [bottomMarqueeSlides, setBottomMarqueeSlides] = useState<string[]>(defaultBottomMarqueeSlides);
   const [workedCompanies, setWorkedCompanies] = useState<{ name: string; category: string }[]>(defaultWorkedCompanies);
 
   useEffect(() => {
@@ -99,47 +79,6 @@ export default function Services() {
       .then(({ data }) => {
         if (data?.value?.companies && Array.isArray(data.value.companies) && data.value.companies.length > 0) {
           setWorkedCompanies(data.value.companies);
-        }
-      });
-
-    // 3. Fetch custom marquee configuration or dynamically pull from portfolio examples
-    supabase
-      .from("site_config")
-      .select("value")
-      .eq("key", "services_marquee_cms")
-      .single()
-      .then(({ data }) => {
-        if (data?.value && (data.value.topSlides?.length > 0 || data.value.bottomSlides?.length > 0)) {
-          if (Array.isArray(data.value.topSlides) && data.value.topSlides.length > 0) {
-            setTopMarqueeSlides(data.value.topSlides);
-          }
-          if (Array.isArray(data.value.bottomSlides) && data.value.bottomSlides.length > 0) {
-            setBottomMarqueeSlides(data.value.bottomSlides);
-          }
-        } else {
-          // Dynamic fallback to portfolio examples
-          supabase
-            .from("site_config")
-            .select("value")
-            .eq("key", "portfolio_cms")
-            .single()
-            .then(({ data: pData }) => {
-              if (pData?.value?.caseStudies && Array.isArray(pData.value.caseStudies)) {
-                const allSlides: string[] = [];
-                pData.value.caseStudies.forEach((cs: any) => {
-                  if (Array.isArray(cs.slides) && cs.slides.length > 0) {
-                    allSlides.push(...cs.slides);
-                  } else if (cs.imageUrl) {
-                    allSlides.push(cs.imageUrl);
-                  }
-                });
-                if (allSlides.length >= 4) {
-                  const mid = Math.ceil(allSlides.length / 2);
-                  setTopMarqueeSlides(allSlides.slice(0, mid));
-                  setBottomMarqueeSlides(allSlides.slice(mid));
-                }
-              }
-            });
         }
       });
   }, []);
@@ -291,105 +230,14 @@ export default function Services() {
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden">
       
-      {/* 1. HERO SECTION WITH DUAL MOVING SLIDE MARQUEES */}
-      <section className="relative bg-[#FFF9E8] pt-28 pb-16 border-b border-primary/20 large-hex-grid overflow-hidden">
-        
+      {/* 1. HERO SECTION WITH 3D SUSPENDED PERSPECTIVE CAROUSEL (Pinterest Reference) */}
+      <section className="relative bg-[#FFF9E8] pt-24 sm:pt-28 pb-16 border-b border-primary/20 large-hex-grid overflow-hidden">
         {/* Soft Golden Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FCBF14]/12 rounded-full blur-[150px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#FCBF14]/12 rounded-full blur-[160px] pointer-events-none" />
 
-        {/* TOP MARQUEE (Moving Left) */}
-        <div className="w-full overflow-hidden mb-10 opacity-90">
-          <motion.div
-            animate={{ x: [0, -1200] }}
-            transition={{ repeat: Infinity, duration: 28, ease: "linear" }}
-            className="flex items-center gap-5 w-max"
-          >
-            {[...topMarqueeSlides, ...topMarqueeSlides, ...topMarqueeSlides].map((img, i) => (
-              <div
-                key={`top-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-[#111111]/5 border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
-              >
-                <img
-                  src={img}
-                  alt="Presentation Slide"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
-                  loading="lazy"
-                  onError={(e) => {
-                    const fallback = defaultTopMarqueeSlides[i % defaultTopMarqueeSlides.length];
-                    if (e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
-                />
-              </div>
-            ))}
-          </motion.div>
+        <div className="w-[92%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 z-10 relative">
+          <Suspended3DCarousel />
         </div>
-
-        {/* CENTER HERO CONTENT */}
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 text-center z-10 relative">
-          <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
-            SlideBee Design Studio
-          </span>
-
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-[#111111] leading-[1.12] mb-4 tracking-tight">
-            World-Class Presentation Design <br />
-            <span className="text-primary-amber">On Demand.</span>
-          </h1>
-
-          <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-xl mx-auto mb-8 leading-relaxed">
-            From emergency 24-hour pitch deck redesigns to complete enterprise master template systems — we make your ideas unforgettable.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
-            <MagneticButton>
-              <Link
-                to="/ordernow"
-                className="hex-cut-btn text-[#111111] font-black px-8 py-3.5 text-xs sm:text-sm gap-2"
-              >
-                Request Custom Design <ArrowRight size={16} />
-              </Link>
-            </MagneticButton>
-            <MagneticButton>
-              <a
-                href="#services-grid"
-                className="hex-cut-btn light-btn text-[#111111] font-extrabold px-8 py-3.5 text-xs sm:text-sm"
-              >
-                Explore Offerings
-              </a>
-            </MagneticButton>
-          </div>
-        </div>
-
-        {/* BOTTOM MARQUEE (Moving Right) */}
-        <div className="w-full overflow-hidden mt-10 opacity-90">
-          <motion.div
-            animate={{ x: [-1200, 0] }}
-            transition={{ repeat: Infinity, duration: 28, ease: "linear" }}
-            className="flex items-center gap-5 w-max"
-          >
-            {[...bottomMarqueeSlides, ...bottomMarqueeSlides, ...bottomMarqueeSlides].map((img, i) => (
-              <div
-                key={`bot-${i}`}
-                className="hex-card w-56 sm:w-72 aspect-[16/10] bg-[#111111]/5 border-2 border-primary/40 overflow-hidden shadow-md shrink-0 hover:border-primary transition-all group"
-              >
-                <img
-                  src={img}
-                  alt="Presentation Slide"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
-                  loading="lazy"
-                  onError={(e) => {
-                    const fallback = defaultBottomMarqueeSlides[i % defaultBottomMarqueeSlides.length];
-                    if (e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
-                />
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
       </section>
 
       {/* 1.5 PREVIOUS WORKED COMPANIES BRAND MARQUEE */}

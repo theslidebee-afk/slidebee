@@ -737,15 +737,25 @@ export default function TemplateDetail() {
               </div>
 
               {/* Technical Specifications */}
-              <div className="pt-4 border-t border-[#111111]/8 text-[11px] space-y-1.5 text-[#726F6D]">
-                <div className="flex justify-between">
-                  <span>Deliverable Format:</span>
-                  <strong className="text-[#111111]">Master PowerPoint Presentation (.pptx)</strong>
+              <div className="pt-4 border-t border-[#111111]/8 text-[11px] space-y-2 text-[#726F6D]">
+                <div className="flex justify-between items-center">
+                  <span>Deliverable Formats:</span>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-primary/25 text-[#111111] border border-primary/40">
+                      PPTX Vector
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#111111]/10 text-[#111111] border border-[#111111]/15">
+                      JPEG HD Slides
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#111111]/10 text-[#111111] border border-[#111111]/15">
+                      MP4 Motion Deck
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center py-0.5">
                   <span>Supported Software:</span>
                   <div className="flex flex-wrap gap-1 justify-end">
-                    {(template.formats && template.formats.length > 0 ? template.formats : ["PowerPoint"]).map((fmt, i) => (
+                    {(template.formats && template.formats.length > 0 ? template.formats : ["PowerPoint", "Google Slides", "Keynote"]).map((fmt, i) => (
                       <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#111111]/5 text-[#111111] border border-[#111111]/10">
                         {fmt}
                       </span>

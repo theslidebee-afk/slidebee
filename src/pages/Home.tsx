@@ -248,55 +248,103 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
-      {/* 1. TOP SPLIT PROMOTION BANNERS (From Client Mockup)                      */}
+      {/* 1. TOP SPLIT PROMOTION BANNERS (From Client Reference Mockup)             */}
       {/* ========================================================================= */}
       <section className="pt-24 sm:pt-28 pb-4">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
-            <div className="bg-[#FCBF14] text-[#111111] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
-              <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
-                  <Zap className="w-6 h-6 text-[#111111] fill-[#111111]" />
+            <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+              
+              {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
+              <div className="absolute -bottom-10 -left-10 w-64 h-64 pointer-events-none opacity-40">
+                <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+                  <path d="M0 120 C 60 80, 120 160, 200 110 L 200 200 L 0 200 Z" fill="#F09B0A" />
+                </svg>
+              </div>
+
+              {/* Organic Fluid Texture Wave 2 (Bottom Right) */}
+              <div className="absolute -bottom-8 -right-8 w-60 h-60 pointer-events-none opacity-30">
+                <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+                  <path d="M0 140 C 70 110, 130 180, 200 130 L 200 200 L 0 200 Z" fill="#E08B00" />
+                </svg>
+              </div>
+
+              <div className="flex items-center gap-4 sm:gap-5 relative z-10">
+                {/* White Circle Badge with Radiating Spark Lines */}
+                <div className="relative shrink-0">
+                  {/* Radiating Spark Lines \|/ */}
+                  <svg className="absolute -top-3.5 -right-2.5 w-7 h-7 pointer-events-none" viewBox="0 0 30 30" fill="none">
+                    <path d="M15 4V11" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+                    <path d="M6 8L11 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+                    <path d="M24 8L19 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+                  </svg>
+
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FFFDF5] shadow-[0_8px_25px_rgba(0,0,0,0.08)] flex items-center justify-center">
+                    <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-[#111111] fill-[#111111]" />
+                  </div>
                 </div>
+
                 <div>
-                  <h3 className="text-base sm:text-lg font-heading font-black text-[#111111] leading-tight">
-                    Create Presentations That Make an Impact
+                  <h3 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-[#111111] leading-tight">
+                    Create Presentations<br className="hidden sm:inline" /> That Make an Impact
                   </h3>
-                  <p className="text-xs sm:text-sm text-[#111111]/85 font-medium mt-0.5">
+                  <p className="text-xs sm:text-sm lg:text-base text-[#111111]/85 font-medium mt-1">
                     Turn your ideas into amazing slides.
                   </p>
                 </div>
               </div>
+
               <Link
                 to="/ordernow"
-                className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 py-2.5 flex items-center gap-1.5 transition-all shadow shrink-0 self-stretch sm:self-auto justify-center"
+                className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
               >
-                Get Started <ArrowRight size={14} />
+                <span>Get Started</span>
+                <ArrowRight size={16} className="text-[#FCBF14]" />
               </Link>
             </div>
 
             {/* Banner 2: Black - Get Unlimited Downloads */}
-            <div className="bg-[#111111] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
-              <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-                <div className="w-12 h-12 rounded-full bg-[#FCBF14] flex items-center justify-center shadow-sm shrink-0">
-                  <InfinityIcon className="w-6 h-6 text-[#111111] stroke-[2.5]" />
+            <div className="bg-[#0D0D0D] text-white rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+              
+              {/* Organic Flowing Contour Texture 1 (Top Left) */}
+              <div className="absolute -top-12 -left-12 w-72 h-72 pointer-events-none opacity-50">
+                <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+                  <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#1C1C1C" />
+                  <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#242424" />
+                </svg>
+              </div>
+
+              {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
+              <div className="absolute -bottom-10 -right-10 w-64 h-64 pointer-events-none opacity-40">
+                <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+                  <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#1F1F1F" />
+                </svg>
+              </div>
+
+              <div className="flex items-center gap-4 sm:gap-5 relative z-10">
+                {/* Yellow Circle Badge with Infinity Icon */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FCBF14] shadow-[0_8px_30px_rgba(252,191,20,0.35)] flex items-center justify-center shrink-0">
+                  <InfinityIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#111111] stroke-[2.8]" />
                 </div>
+
                 <div>
-                  <h3 className="text-base sm:text-lg font-heading font-black text-white leading-tight">
+                  <h3 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-white leading-tight">
                     Get Unlimited Downloads
                   </h3>
-                  <p className="text-xs sm:text-sm text-white/70 font-medium mt-0.5">
+                  <p className="text-xs sm:text-sm lg:text-base text-[#A0A0A0] font-medium mt-1">
                     Access all templates. No limits.
                   </p>
                 </div>
               </div>
+
               <button
                 onClick={scrollToTemplates}
-                className="hex-pill bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] text-xs sm:text-sm font-black px-5 py-2.5 flex items-center gap-1.5 transition-all shadow shrink-0 self-stretch sm:self-auto justify-center cursor-pointer"
+                className="hex-pill bg-[#FCBF14] hover:bg-[#e0a810] text-[#111111] text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/20 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
               >
-                Explore Now <ArrowRight size={14} />
+                <span>Explore Now</span>
+                <ArrowRight size={16} />
               </button>
             </div>
 
@@ -305,37 +353,54 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. HERO MAIN SECTION (Ideas Deserve Better Slides + MacBook Mockup)       */}
+      {/* 2. HERO MAIN SECTION (Video Background + Central Frosted Glass Card)       */}
       {/* ========================================================================= */}
-      <section className="pt-8 sm:pt-12 pb-16 overflow-hidden">
+      <section className="pt-6 sm:pt-8 pb-16 overflow-hidden">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          
+          {/* Main Hero Container with 3D Isometric Cubes Video Background */}
+          <div className="relative rounded-[32px] sm:rounded-[44px] overflow-hidden min-h-[520px] sm:min-h-[580px] lg:min-h-[640px] flex items-center justify-center p-6 sm:p-10 lg:p-14 border-2 border-primary/40 shadow-2xl">
             
-            {/* Left Column: Bold Headline & Action Triggers */}
-            <div className="lg:col-span-6 flex flex-col justify-center text-left">
+            {/* Background Video: 3D Isometric Animated Cubes */}
+            <video
+              src="/hero_section.mp4"
+              poster="/hero_section_1.jpeg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+            />
+
+            {/* Subtle Warm Amber Wash Overlay */}
+            <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
+
+            {/* Central Translucent Frosted Glass Card (Matching hero section_1.jpeg) */}
+            <div className="relative z-10 w-full max-w-4xl mx-auto bg-[#FFFDF5]/75 sm:bg-[#FFFDF5]/85 backdrop-blur-2xl border-2 border-white/90 rounded-[28px] sm:rounded-[36px] p-8 sm:p-12 lg:p-14 text-center shadow-[0_25px_70px_rgba(0,0,0,0.14)] flex flex-col items-center justify-center">
               
               {/* Eyebrow */}
               <div className="mb-4">
-                <span className="text-xs sm:text-sm font-extrabold uppercase tracking-widest text-[#726F6D]">
+                <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-sm">
                   PRESENTATIONS FOR A BRIGHTER TOMORROW
                 </span>
               </div>
 
               {/* Bold Display Headline */}
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.04] tracking-tight mb-5">
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl">
                 Ideas Deserve<br />
-                Better Slides<span className="text-[#FCBF14]">.</span>
+                Better Slides<span className="text-primary-amber">.</span>
               </h1>
 
               {/* Subtitle */}
-              <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mb-8">
+              <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-2xl mx-auto mb-8">
                 At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
               </p>
 
               {/* Trust Indicators Row */}
-              <div className="flex flex-wrap items-center gap-6 sm:gap-8 pt-4 border-t border-[#111111]/10">
+              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-6 border-t border-[#111111]/10 w-full">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-[#FCBF14] fill-[#FCBF14]" />
+                  <Zap className="w-5 h-5 text-primary-amber fill-[#FCBF14]" />
                   <span className="text-xs sm:text-sm font-bold text-[#111111]">
                     Professional Quality
                   </span>
@@ -347,7 +412,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-[#FCBF14]" />
+                  <Gift className="w-5 h-5 text-primary-amber" />
                   <span className="text-xs sm:text-sm font-bold text-[#111111]">
                     Save Time. Present Better.
                   </span>
@@ -356,102 +421,18 @@ export default function Home() {
 
             </div>
 
-            {/* Right Column: Fluid Yellow Backdrop + Modern MacBook Slide Display */}
-            <div className="lg:col-span-6 relative flex flex-col items-center justify-center">
-              
-              {/* Fluid Yellow Organic Backdrop Shape */}
-              <div className="absolute w-[90%] sm:w-[500px] h-[360px] sm:h-[420px] bg-[#FCBF14] rounded-[45%_55%_65%_35%/50%_45%_55%_50%] -rotate-6 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-95 filter blur-[0.5px] -z-0" />
-
-              {/* Little Sunburst Rays Top Right */}
-              <div className="absolute top-2 right-8 sm:right-16 z-10 hidden sm:block">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <path d="M20 5V13" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M9.5 9.5L15 15" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M30.5 9.5L25 15" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" />
-                </svg>
-              </div>
-
-              {/* Realistic MacBook Mockup Frame */}
-              <div className="relative z-10 w-full max-w-[560px] mx-auto select-none">
-                {/* Laptop Screen Bezel */}
-                <div className="bg-[#1e1e1e] p-2.5 sm:p-3.5 rounded-t-2xl border-t-2 border-x-2 border-white/20 shadow-2xl">
-                  {/* Camera Dot */}
-                  <div className="w-2 h-2 rounded-full bg-[#111111] mx-auto mb-2 border border-white/10" />
-
-                  {/* High-Impact Slide Preview Inside Screen */}
-                  <div className="relative aspect-[16/10] bg-[#141414] rounded-lg overflow-hidden border border-white/10 flex flex-col justify-between p-5 sm:p-7 text-white">
-                    
-                    {/* Slide Top Navigation / Brand */}
-                    <div className="flex items-center justify-between z-10">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-                        <span className="font-heading font-black text-xs sm:text-sm tracking-wider text-white">
-                          Slidebee
-                        </span>
-                      </div>
-                      <span className="text-[10px] sm:text-xs text-white/60 italic font-medium">
-                        Ideas move people.
-                      </span>
-                    </div>
-
-                    {/* Dramatic Typography & Mountain Fluid Artwork */}
-                    <div className="relative z-10 my-auto">
-                      <p className="text-white text-sm sm:text-base font-extrabold tracking-wide">
-                        From Ideas to
-                      </p>
-                      <h2 className="text-3xl sm:text-5xl font-heading font-black text-[#FCBF14] tracking-tight leading-none mt-1 mb-3">
-                        Impact
-                      </h2>
-                      <div className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-white/80">
-                        <span>Clear</span>
-                        <span>•</span>
-                        <span>Engaging</span>
-                        <span>•</span>
-                        <span>Memorable</span>
-                      </div>
-                    </div>
-
-                    {/* Background Slide Graphic (Mountain + Golden Wave Silhouette) */}
-                    <div className="absolute right-0 bottom-0 w-3/5 h-4/5 pointer-events-none opacity-90 overflow-hidden">
-                      <svg viewBox="0 0 300 240" fill="none" className="w-full h-full object-cover">
-                        <polygon points="120,240 200,60 280,240" fill="#262626" />
-                        <polygon points="180,240 230,100 300,240" fill="#333333" />
-                        <polygon points="140,240 190,120 250,240" fill="#1c1c1c" />
-                        <path d="M40 240 C 100 180, 160 210, 240 140 C 270 120, 290 130, 300 120 L 300 240 Z" fill="#FCBF14" fillOpacity="0.85" />
-                      </svg>
-                    </div>
-
-                    {/* Deliverable Watermark */}
-                    <div className="relative z-10 flex items-center justify-between text-[9px] text-white/50 border-t border-white/10 pt-2">
-                      <span>Executive Keynote System</span>
-                      <span>PowerPoint (.pptx)</span>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Laptop Chassis Base */}
-                <div className="bg-[#2c2c2c] h-3.5 sm:h-4 rounded-b-xl relative shadow-2xl border-b border-white/10">
-                  {/* Laptop Center Opening Groove */}
-                  <div className="w-14 sm:w-16 h-1.5 bg-[#1a1a1a] rounded-b-md mx-auto" />
-                </div>
-                {/* Laptop Shadow on Table */}
-                <div className="w-[90%] h-4 bg-black/25 blur-md rounded-full mx-auto -mt-1" />
-              </div>
-
-              {/* Playful Handwritten Note with Golden Underline */}
-              <div className="mt-4 sm:mt-6 text-center sm:text-right w-full max-w-[560px] pr-4">
-                <span className="inline-block font-heading font-black italic text-base sm:text-xl text-[#111111] tracking-tight relative">
-                  Better Presentations Brighter Ideas
-                  <svg className="absolute -bottom-1 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
-                    <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
-                  </svg>
-                </span>
-              </div>
-
-            </div>
-
           </div>
+
+          {/* Playful Note Beneath Hero Stage */}
+          <div className="mt-4 text-center">
+            <span className="inline-block font-heading font-black italic text-base sm:text-xl text-[#111111] tracking-tight relative">
+              Better Presentations Brighter Ideas
+              <svg className="absolute -bottom-1 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
+              </svg>
+            </span>
+          </div>
+
         </div>
       </section>
 
