@@ -20,7 +20,7 @@ interface SlideItem {
   code?: string;
 }
 
-const defaultSlides: SlideItem[] = [
+const defaultUpperSlides: SlideItem[] = [
   {
     id: "deck-volvo",
     title: "Executive Strategic Keynote",
@@ -54,6 +54,17 @@ const defaultSlides: SlideItem[] = [
     code: "SLD-314",
   },
   {
+    id: "deck-cvs",
+    title: "Enterprise Healthcare Analysis",
+    category: "Healthcare",
+    image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg",
+    client: "CVS Health Transformation",
+    code: "SLD-306",
+  },
+];
+
+const defaultLowerSlides: SlideItem[] = [
+  {
     id: "deck-hsbc",
     title: "Financial KPI & Capital Markets",
     category: "Finance",
@@ -70,14 +81,6 @@ const defaultSlides: SlideItem[] = [
     code: "SLD-307",
   },
   {
-    id: "deck-cvs",
-    title: "Enterprise Healthcare Analysis",
-    category: "Healthcare",
-    image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg",
-    client: "CVS Health Transformation",
-    code: "SLD-306",
-  },
-  {
     id: "deck-tag",
     title: "Creative Production & RFP Deck",
     category: "Sales & RFP",
@@ -85,31 +88,57 @@ const defaultSlides: SlideItem[] = [
     client: "Williams Lea Tag",
     code: "SLD-317",
   },
+  {
+    id: "deck-british-american",
+    title: "Global Market Expansion Strategy",
+    category: "Strategy",
+    image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/british_american_slide-1.jpg",
+    client: "British American Markets",
+    code: "SLD-312",
+  },
+  {
+    id: "deck-company-profile",
+    title: "Corporate Credentials & Profile",
+    category: "Business",
+    image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/volvo_slide-2.jpg",
+    client: "Enterprise Credentials",
+    code: "SLD-315",
+  },
 ];
 
 export function Suspended3DCarousel() {
   const { templates } = useStudioStore();
-  const [slides, setSlides] = useState<SlideItem[]>(defaultSlides);
-  const [activeIndex, setActiveIndex] = useState<number>(1);
+  const [upperSlides, setUpperSlides] = useState<SlideItem[]>(defaultUpperSlides);
+  const [lowerSlides, setLowerSlides] = useState<SlideItem[]>(defaultLowerSlides);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const dragStartX = useRef<number | null>(null);
 
   // Sync with live store templates if available
   useEffect(() => {
-    if (templates && templates.length >= 4) {
-      const mapped = templates.slice(0, 10).map((t, idx) => ({
-        id: t.id || `tpl-${idx}`,
+    if (templates && templates.length >= 8) {
+      const upperMapped = templates.slice(0, 5).map((t, idx) => ({
+        id: t.id || `tpl-up-${idx}`,
         title: t.title,
-        category: t.category || "Presentation",
-        image: t.image_url || defaultSlides[idx % defaultSlides.length].image,
-        client: t.code || defaultSlides[idx % defaultSlides.length].client,
+        category: t.category || "Keynote",
+        image: t.image_url || defaultUpperSlides[idx % defaultUpperSlides.length].image,
+        client: t.code || defaultUpperSlides[idx % defaultUpperSlides.length].client,
         code: t.code,
       }));
-      setSlides(mapped);
+      const lowerMapped = templates.slice(5, 10).map((t, idx) => ({
+        id: t.id || `tpl-low-${idx}`,
+        title: t.title,
+        category: t.category || "Strategy",
+        image: t.image_url || defaultLowerSlides[idx % defaultLowerSlides.length].image,
+        client: t.code || defaultLowerSlides[idx % defaultLowerSlides.length].client,
+        code: t.code,
+      }));
+      setUpperSlides(upperMapped);
+      setLowerSlides(lowerMapped);
     }
   }, [templates]);
 
-  const total = slides.length;
+  const total = upperSlides.length;
 
   const nextSlide = () => {
     setActiveIndex((prev) => (prev + 1) % total);
@@ -145,14 +174,118 @@ export function Suspended3DCarousel() {
     dragStartX.current = null;
   };
 
+  // Helper to render an individual 3D curved slide card
+  const renderSlideCard = (
+    slide: SlideItem,
+    index: number,
+    tier: "upper" | "lower",
+    effectiveIndex: number
+  ) => {
+    const offset = ((index - effectiveIndex + total + Math.floor(total / 2)) % total) - Math.floor(total / 2);
+    const isVisible = Math.abs(offset) <= 2;
+    if (!isVisible) return null;
+
+    const absOffset = Math.abs(offset);
+    const rotateY = -offset * (absOffset >= 2 ? 16 : 12);
+    const isSmall = typeof window !== "undefined" && window.innerWidth < 640;
+    const translateX = offset * (isSmall ? 150 : 220);
+
+    // Center is recessed; outer cards sweep forward toward the camera
+    const translateZ = Math.pow(absOffset, 1.35) * 40 - 35;
+
+    // Dual-tier elevation: upper tier curves gently up, lower tier curves down
+    const baseY = tier === "upper" ? (isSmall ? -80 : -110) : (isSmall ? 80 : 110);
+    const arcDelta = Math.pow(absOffset, 1.2) * 7;
+    const translateY = tier === "upper" ? baseY - arcDelta : baseY + arcDelta;
+
+    const scale = 0.92 + absOffset * 0.03;
+    const opacity = Math.max(0.68, 1 - absOffset * 0.14);
+    const zIndex = 40 - Math.round(absOffset * 5);
+    const isCenter = offset === 0;
+
+    return (
+      <div
+        key={`${tier}-${slide.id}`}
+        onClick={() => setActiveIndex(index)}
+        data-bee-state="card"
+        className={`absolute w-[180px] sm:w-[240px] md:w-[280px] lg:w-[310px] aspect-[16/10] rounded-[20px] sm:rounded-[26px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-[0_15px_40px_rgba(0,0,0,0.28)] ${
+          isCenter
+            ? "ring-3 sm:ring-4 ring-[#FCBF14] ring-offset-2 sm:ring-offset-4 ring-offset-[#FFF9E8] shadow-[0_22px_55px_rgba(252,191,20,0.25)]"
+            : "hover:brightness-105"
+        }`}
+        style={{
+          transform: `translate3d(${translateX}px, ${translateY}px, ${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+          opacity,
+          zIndex,
+          transformStyle: "preserve-3d",
+        }}
+      >
+        {/* Slide Preview Cover Image */}
+        <img
+          src={slide.image}
+          alt={slide.title}
+          className="w-full h-full object-cover select-none pointer-events-none"
+          loading="lazy"
+          onError={(e) => {
+            const fallbackList = tier === "upper" ? defaultUpperSlides : defaultLowerSlides;
+            const fallback = fallbackList[index % fallbackList.length].image;
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+        />
+
+        {/* Dark Gradient Overlay & Slide Meta */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-between p-3.5 sm:p-4 text-white">
+          <div className="flex items-center justify-between">
+            <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full border border-[#FCBF14]/30">
+              {slide.category}
+            </span>
+            {slide.code && (
+              <span className="text-[9px] sm:text-[10px] text-white/70 font-mono font-bold">
+                {slide.code}
+              </span>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-xs sm:text-sm font-heading font-black text-white leading-tight drop-shadow-md line-clamp-1">
+              {slide.title}
+            </h3>
+            {slide.client && (
+              <p className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 mt-0.5">
+                {slide.client}
+              </p>
+            )}
+            {isCenter && (
+              <div className="mt-2 pt-1.5 border-t border-white/20 flex items-center justify-between">
+                <span className="text-[9px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
+                  Executive Master Deck
+                </span>
+                <Link
+                  to={slide.code ? `/template/${slide.code}` : "/#templates"}
+                  className="inline-flex items-center gap-1 text-[10px] text-white hover:text-[#FCBF14] font-bold"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span>View Deck</span>
+                  <ExternalLink size={11} />
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
-      className="relative w-full py-12 sm:py-16 overflow-hidden"
+      className="relative w-full py-10 sm:py-14 overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 1. Header Section (Matching Pinterest Reference) */}
-      <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12 relative z-10">
+      {/* 1. Header Section */}
+      <div className="max-w-3xl mx-auto text-center px-4 mb-6 sm:mb-10 relative z-10">
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-black text-[#111111] tracking-tight leading-[1.08] mb-4">
           Supercharge Your Workflow
         </h2>
@@ -168,132 +301,42 @@ export function Suspended3DCarousel() {
         </Link>
       </div>
 
-      {/* 2. 3D Suspended Curved Perspective Carousel Container */}
+      {/* 2. Two-Lined 3D Suspended Perspective Carousel Container */}
       <div
-        className="relative w-full h-[380px] sm:h-[460px] md:h-[500px] lg:h-[540px] flex items-center justify-center select-none"
-        style={{ perspective: "1500px" }}
+        className="relative w-full h-[520px] sm:h-[620px] md:h-[680px] lg:h-[720px] flex items-center justify-center select-none"
+        style={{ perspective: "1600px" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleTouchStart}
         onMouseUp={handleTouchEnd}
       >
-        {/* Suspended Stage Floor Shadow - Creates the Hovering Sensation */}
-        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[85%] max-w-[1100px] h-12 bg-black/15 blur-2xl rounded-full pointer-events-none" />
+        {/* Suspended Stage Floor Shadow */}
+        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[1200px] h-14 bg-black/15 blur-3xl rounded-full pointer-events-none" />
 
         {/* Left & Right Atmospheric Edge Vignette Fades */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-36 bg-gradient-to-r from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-36 bg-gradient-to-l from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-r from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-l from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
 
         <div
           className="relative w-full h-full flex items-center justify-center animate-float-suspended"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {slides.map((slide, index) => {
-            // Calculate circular offset relative to activeIndex
-            let offset = ((index - activeIndex + total + Math.floor(total / 2)) % total) - Math.floor(total / 2);
+          {/* Top Line (Upper Tier Cards) */}
+          {upperSlides.map((slide, index) =>
+            renderSlideCard(slide, index, "upper", activeIndex)
+          )}
 
-            // Hide cards positioned too far around the ring
-            const isVisible = Math.abs(offset) <= 3;
-            if (!isVisible) return null;
-
-            // Concave Amphitheater 3D Arc calculation (Matching Pinterest Reference):
-            // Outer cards wrap forward toward the viewer and rotate inward facing the center.
-            const absOffset = Math.abs(offset);
-            const rotateY = -offset * (absOffset >= 2 ? 18 : 13);
-            const translateX = offset * (window.innerWidth < 640 ? 150 : 210);
-            // Center is slightly recessed, outer cards step forward into space
-            const translateZ = (Math.pow(absOffset, 1.4) * 45) - 40;
-            // Slight vertical elevation curve matching the panoramic ribbon
-            const translateY = -(Math.pow(absOffset, 1.2) * 8);
-            // Scale increases slightly as cards swing forward
-            const scale = 0.92 + (absOffset * 0.035);
-            // Smooth falloff for outer cards
-            const opacity = Math.max(0.65, 1 - absOffset * 0.12);
-            // zIndex ensures proper 3D stacking order
-            const zIndex = 40 - Math.round(absOffset * 5);
-
-            const isCenter = offset === 0;
-
-            return (
-              <div
-                key={slide.id}
-                onClick={() => setActiveIndex(index)}
-                data-bee-state="card"
-                className={`absolute w-[200px] sm:w-[260px] md:w-[300px] lg:w-[340px] aspect-[4/5] rounded-[24px] sm:rounded-[32px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${
-                  isCenter
-                    ? "ring-4 ring-[#FCBF14] ring-offset-4 ring-offset-[#FFF9E8] shadow-[0_25px_60px_rgba(252,191,20,0.25)]"
-                    : "hover:brightness-105"
-                }`}
-                style={{
-                  transform: `translate3d(${translateX}px, ${translateY}px, ${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-                  opacity,
-                  zIndex,
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                {/* Slide Preview Cover Image */}
-                <img
-                  src={slide.image}
-                  alt={slide.title}
-                  className="w-full h-full object-cover select-none pointer-events-none"
-                  loading="lazy"
-                  onError={(e) => {
-                    const fallback = defaultSlides[index % defaultSlides.length].image;
-                    if (e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
-                />
-
-                {/* Dark Gradient Overlay & Slide Meta */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-between p-5 text-white">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-[#111111]/80 backdrop-blur-md text-[#FCBF14] text-[10px] sm:text-xs font-black px-3 py-1 rounded-full border border-[#FCBF14]/30">
-                      {slide.category}
-                    </span>
-                    {slide.code && (
-                      <span className="text-[10px] text-white/70 font-mono font-bold">
-                        {slide.code}
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm sm:text-base lg:text-lg font-heading font-black text-white leading-tight drop-shadow-md">
-                      {slide.title}
-                    </h3>
-                    {slide.client && (
-                      <p className="text-[11px] sm:text-xs text-white/80 font-medium mt-1">
-                        {slide.client}
-                      </p>
-                    )}
-                    {isCenter && (
-                      <div className="mt-3 pt-2 border-t border-white/20 flex items-center justify-between">
-                        <span className="text-[10px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
-                          Executive Master Deck
-                        </span>
-                        <Link
-                          to={slide.code ? `/template/${slide.code}` : "/#templates"}
-                          className="inline-flex items-center gap-1 text-[11px] text-white hover:text-[#FCBF14] font-bold"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span>View Deck</span>
-                          <ExternalLink size={12} />
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {/* Bottom Line (Lower Tier Cards - Offset by 1 for Dynamic Stagger) */}
+          {lowerSlides.map((slide, index) =>
+            renderSlideCard(slide, index, "lower", (activeIndex + 1) % total)
+          )}
         </div>
 
         {/* Navigation Arrows */}
         <button
           onClick={prevSlide}
           aria-label="Previous Slide"
-          className="absolute left-4 sm:left-12 lg:left-24 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          className="absolute left-3 sm:left-8 lg:left-16 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
         >
           <ChevronLeft size={22} />
         </button>
@@ -301,7 +344,7 @@ export function Suspended3DCarousel() {
         <button
           onClick={nextSlide}
           aria-label="Next Slide"
-          className="absolute right-4 sm:right-12 lg:right-24 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          className="absolute right-3 sm:right-8 lg:right-16 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
         >
           <ChevronRight size={22} />
         </button>
@@ -309,7 +352,7 @@ export function Suspended3DCarousel() {
 
       {/* Pagination Dots */}
       <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6">
-        {slides.map((_, i) => (
+        {upperSlides.map((_, i) => (
           <button
             key={i}
             onClick={() => setActiveIndex(i)}
@@ -323,16 +366,16 @@ export function Suspended3DCarousel() {
         ))}
       </div>
 
-      {/* 3. Three Feature Columns Beneath the Carousel (Matching Pinterest Reference) */}
-      <div className="max-w-[1580px] w-[90%] mx-auto mt-14 sm:mt-20">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 text-center">
+      {/* 3. Three Feature Columns Beneath the Carousel */}
+      <div className="max-w-[1580px] w-[90%] mx-auto mt-12 sm:mt-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center">
           
           {/* Column 1: Presentation Redesign */}
-          <div className="flex flex-col items-center p-6 bg-white/70 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
-            <div className="w-13 h-13 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center p-6 bg-white/75 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-3">
               <Paintbrush className="w-6 h-6 text-[#111111]" />
             </div>
-            <h4 className="text-lg sm:text-xl font-heading font-black text-[#111111] mb-2">
+            <h4 className="text-base sm:text-lg font-heading font-black text-[#111111] mb-2">
               Presentation Redesign
             </h4>
             <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed max-w-xs">
@@ -341,11 +384,11 @@ export function Suspended3DCarousel() {
           </div>
 
           {/* Column 2: Pitch Deck & Storyboarding */}
-          <div className="flex flex-col items-center p-6 bg-white/70 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
-            <div className="w-13 h-13 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center p-6 bg-white/75 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-3">
               <TrendingUp className="w-6 h-6 text-[#111111]" />
             </div>
-            <h4 className="text-lg sm:text-xl font-heading font-black text-[#111111] mb-2">
+            <h4 className="text-base sm:text-lg font-heading font-black text-[#111111] mb-2">
               Pitch Deck & Storyboarding
             </h4>
             <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed max-w-xs">
@@ -354,11 +397,11 @@ export function Suspended3DCarousel() {
           </div>
 
           {/* Column 3: Data Visualization & Analytics */}
-          <div className="flex flex-col items-center p-6 bg-white/70 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
-            <div className="w-13 h-13 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center p-6 bg-white/75 backdrop-blur-sm rounded-3xl border border-primary/25 hover:border-primary transition-all shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-[#FCBF14]/20 border border-[#FCBF14]/40 flex items-center justify-center mb-3">
               <BarChart3 className="w-6 h-6 text-[#111111]" />
             </div>
-            <h4 className="text-lg sm:text-xl font-heading font-black text-[#111111] mb-2">
+            <h4 className="text-base sm:text-lg font-heading font-black text-[#111111] mb-2">
               Data Visualization
             </h4>
             <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed max-w-xs">
