@@ -7,8 +7,6 @@ import {
   ArrowRight,
   Search,
   Crown,
-  Download,
-  Heart,
   Eye,
   Star,
   FileText,
@@ -18,11 +16,9 @@ import {
   BarChart3,
   LayoutGrid,
   Flame,
-  ChevronRight,
   Users,
   Gift
 } from "lucide-react";
-import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore } from "../modules/StudioStoreClient";
 import { MagneticButton } from "../components/MagneticButton";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -45,33 +41,104 @@ export default function Home() {
 
   const heroCardY = useTransform(scrollYProgress, [0, 0.6], [0, -25]);
 
-  // Helper to extract up to 6 inner preview slide thumbnails for SlideEgg-style showcase cards
+  // Real executive slide sets for rich preview variety matching SlideEgg showcase
+  const portfolioSlideSets = [
+    [
+      "/portfolio/case_study_a_1.png",
+      "/portfolio/case_study_a_2.png",
+      "/portfolio/case_study_a_3.png",
+      "/portfolio/case_study_a_4.png",
+      "/portfolio/case_study_a_5.png",
+      "/portfolio/case_study_a_6.png",
+      "/portfolio/case_study_a_7.png",
+      "/portfolio/case_study_a_8.png",
+      "/portfolio/case_study_a_9.png",
+    ],
+    [
+      "/portfolio/global_brands_1.png",
+      "/portfolio/global_brands_2.png",
+      "/portfolio/global_brands_3.png",
+      "/portfolio/global_brands_4.png",
+      "/portfolio/global_brands_5.png",
+      "/portfolio/global_brands_6.png",
+      "/portfolio/global_brands_7.png",
+      "/portfolio/global_brands_8.png",
+      "/portfolio/global_brands_9.png",
+    ],
+    [
+      "/portfolio/nike_hsbc_cvs_1.png",
+      "/portfolio/nike_hsbc_cvs_2.png",
+      "/portfolio/nike_hsbc_cvs_3.png",
+      "/portfolio/nike_hsbc_cvs_4.png",
+      "/portfolio/nike_hsbc_cvs_5.png",
+      "/portfolio/nike_hsbc_cvs_6.png",
+      "/portfolio/nike_hsbc_cvs_7.png",
+      "/portfolio/nike_hsbc_cvs_8.png",
+      "/portfolio/nike_hsbc_cvs_9.png",
+    ],
+    [
+      "/portfolio/levis_yuengling_1.png",
+      "/portfolio/levis_yuengling_2.png",
+      "/portfolio/levis_yuengling_3.png",
+      "/portfolio/levis_yuengling_4.png",
+      "/portfolio/levis_yuengling_5.png",
+      "/portfolio/levis_yuengling_6.png",
+      "/portfolio/levis_yuengling_7.png",
+      "/portfolio/levis_yuengling_8.png",
+      "/portfolio/levis_yuengling_9.png",
+    ],
+  ];
+
+  // Helper to extract inner preview slide thumbnails for SlideEgg-style showcase cards
   const getPreviewSlides = (template: any, count = 6) => {
-    const slides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
-    if (slides.length >= count) {
-      return slides.slice(0, count);
+    const rawSlides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
+    if (rawSlides.length >= count) {
+      return rawSlides.slice(0, count);
     }
-    const fallback = template?.thumbnail_url || template?.image_url || "/portfolio/case_study_a_1.png";
-    if (slides.length > 0) {
-      const list = [...slides];
-      while (list.length < count) {
-        list.push(list[list.length % slides.length]);
+    const idSeed = String(template?.id || template?.title || "deck")
+      .split("")
+      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const chosenSet = portfolioSlideSets[idSeed % portfolioSlideSets.length];
+
+    if (rawSlides.length > 0) {
+      const merged = [...rawSlides];
+      for (let i = 0; i < chosenSet.length && merged.length < count; i++) {
+        if (!merged.includes(chosenSet[i])) {
+          merged.push(chosenSet[i]);
+        }
       }
-      return list.slice(0, count);
+      return merged.slice(0, count);
     }
-    return Array(count).fill(fallback);
+    return chosenSet.slice(0, count);
   };
 
-  // Authentication & Pro Membership State
-  const [isProUser, setIsProUser] = useState<boolean>(false);
-  const [userTier, setUserTier] = useState<string>("free");
+  // Determine dynamic mini-slide counts (0, 3, 6, 9) for magnet masonry variation
+  const getMiniSlideCount = (template: any) => {
+    const category = (template?.category || "").toLowerCase();
+    const title = (template?.title || "").toLowerCase();
+    if (
+      category.includes("infographic") ||
+      title.includes("infographic") ||
+      category.includes("diagram") ||
+      title.includes("diagram")
+    ) {
+      const idSeed = String(template?.id || "").charCodeAt(0) || 0;
+      return idSeed % 2 === 0 ? 0 : 3;
+    }
+    const idSeed = String(template?.id || template?.title || "deck")
+      .split("")
+      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const mod = idSeed % 3;
+    if (mod === 0) return 9;
+    if (mod === 1) return 6;
+    return 6;
+  };
 
   // Catalog State
   const { templates: allTemplates, loading } = useStudioStore();
-  const { formatPrice } = useCurrency();
 
   // Filtering & Continuous Scroll State
-  const [visibleCount, setVisibleCount] = useState<number>(12);
+  const [visibleCount, setVisibleCount] = useState<number>(24);
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
@@ -113,63 +180,7 @@ export default function Home() {
     }
   }, []);
 
-  // Check User Pro Status
   useEffect(() => {
-    const checkProStatus = async () => {
-      let email = "";
-      const local = localStorage.getItem("slidebee_client_user");
-      if (local) {
-        try {
-          const u = JSON.parse(local);
-          if (u?.email) email = u.email;
-          if (u?.tier) {
-            setUserTier(u.tier);
-            if (["monthly", "yearly", "lifetime"].includes(u.tier)) {
-              setIsProUser(true);
-              return;
-            }
-          }
-        } catch (e) {}
-      }
-      if (!email) {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.email) email = data.user.email;
-      }
-      if (email) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("tier")
-          .eq("email", email.toLowerCase().trim())
-          .maybeSingle();
-
-        if (profile?.tier) {
-          setUserTier(profile.tier);
-          if (["monthly", "yearly", "lifetime"].includes(profile.tier)) {
-            setIsProUser(true);
-            return;
-          }
-        }
-
-        const { data: sub } = await supabase
-          .from("subscriptions")
-          .select("status, current_period_end")
-          .eq("user_email", email.toLowerCase().trim())
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (
-          sub &&
-          sub.status === "active" &&
-          (!sub.current_period_end || new Date(sub.current_period_end) > new Date())
-        ) {
-          setIsProUser(true);
-        }
-      }
-    };
-    checkProStatus();
-
-    // Fetch site config comparison data
     // Fetch dynamic template categories
     supabase
       .from("site_config")
@@ -230,26 +241,31 @@ export default function Home() {
     }
   };
 
-  // Curate Trending Templates (Admin curated picks or top downloaded decks)
-  const trendingTemplates = useMemo(() => {
-    if (curatedTrendingIds.length > 0) {
-      const matched = curatedTrendingIds
-        .map((id) => allTemplates.find((t) => String(t.id) === id || String((t as any).slug) === id || String((t as any).code) === id))
-        .filter(Boolean) as typeof allTemplates;
-      if (matched.length > 0) return matched;
-    }
-    return [...allTemplates]
-      .sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
-      .slice(0, 4);
-  }, [allTemplates, curatedTrendingIds]);
+  // Dynamic category pills combined from site_config and allTemplates
+  const allCategoryPills = useMemo(() => {
+    const set = new Set<string>(categoriesList);
+    allTemplates.forEach((t) => {
+      if (t.category && t.category.trim()) {
+        set.add(t.category.trim());
+      }
+    });
+    return Array.from(set);
+  }, [categoriesList, allTemplates]);
 
-  // Filter Catalog for Continuous Scrolling Feed
+  // Filter & Sort Catalog for Continuous Scrolling Feed
   const filteredCatalog = useMemo(() => {
-    return allTemplates.filter((item) => {
-      // 1. Sidebar Category match
+    const list = allTemplates.filter((item) => {
+      // 1. Sidebar / Top Category match
       let matchesSidebarCategory = true;
       if (activeSidebarCategory === "trending") {
-        matchesSidebarCategory = (item.downloads || 0) >= 1000 || item.is_featured;
+        if (curatedTrendingIds.length > 0) {
+          matchesSidebarCategory =
+            curatedTrendingIds.includes(String(item.id)) ||
+            curatedTrendingIds.includes(String((item as any).slug)) ||
+            curatedTrendingIds.includes(String((item as any).code));
+        } else {
+          matchesSidebarCategory = (item.downloads || 0) >= 1000 || !!item.is_featured;
+        }
       } else if (activeSidebarCategory !== "all") {
         matchesSidebarCategory =
           item.category?.toLowerCase() === activeSidebarCategory.toLowerCase();
@@ -270,7 +286,28 @@ export default function Home() {
 
       return matchesSidebarCategory && matchesSearch && matchesTier;
     });
-  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter]);
+
+    // When on "all", prioritize curated trending templates at the top
+    if (activeSidebarCategory === "all" && curatedTrendingIds.length > 0) {
+      return [...list].sort((a, b) => {
+        const aTrending =
+          curatedTrendingIds.includes(String(a.id)) ||
+          curatedTrendingIds.includes(String((a as any).slug)) ||
+          curatedTrendingIds.includes(String((a as any).code))
+            ? 1
+            : 0;
+        const bTrending =
+          curatedTrendingIds.includes(String(b.id)) ||
+          curatedTrendingIds.includes(String((b as any).slug)) ||
+          curatedTrendingIds.includes(String((b as any).code))
+            ? 1
+            : 0;
+        return bTrending - aTrending;
+      });
+    }
+
+    return list;
+  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter, curatedTrendingIds]);
 
   const displayedContinuousTemplates = useMemo(() => {
     return filteredCatalog.slice(0, visibleCount);
@@ -279,7 +316,7 @@ export default function Home() {
   const hasMoreTemplates = visibleCount < filteredCatalog.length;
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 8);
+    setVisibleCount((prev) => prev + 18);
   };
 
   const freeCount = useMemo(() => allTemplates.filter((t) => !t.is_premium).length, [allTemplates]);
@@ -311,117 +348,87 @@ export default function Home() {
 
   const testimonials = (customTestimonials && customTestimonials.length > 0) ? customTestimonials : defaultTestimonials;
 
-  // Full Showcase Card Renderer matching SlideEgg reference mockup
+  // Minimalist SlideEgg-style Showcase Card with Swallowtail Ribbons
   const renderShowcaseCard = (template: any) => {
-    const previewSlides = getPreviewSlides(template, 6);
+    const miniCount = getMiniSlideCount(template);
+    const previewSlides = miniCount > 0 ? getPreviewSlides(template, miniCount) : [];
 
     return (
       <div
         key={template.id}
         onClick={() => navigate(`/template/${template.id}`)}
         data-bee-state="card"
-        className="group bg-white border border-[#111111]/10 hover:border-primary/80 rounded-2xl p-3 sm:p-3.5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer relative"
+        className="group flex flex-col cursor-pointer transition-all duration-300"
       >
-        {/* Top Visual Showcase Area */}
-        <div className="space-y-2">
-          {/* Main Cover Slide Preview */}
-          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-gray-50 border border-[#111111]/8">
+        {/* Main Card Canvas with Subtle Border & Soft Shadow */}
+        <div className="relative bg-[#FAFAFA] group-hover:bg-white border border-[#111111]/10 group-hover:border-[#FCBF14] rounded-2xl p-2 sm:p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] group-hover:shadow-xl transition-all duration-300 overflow-hidden">
+          
+          {/* Swallowtail Ribbon Tag */}
+          {!template.is_premium ? (
+            <div
+              style={{
+                clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
+              }}
+              className="absolute top-2 left-0 bg-[#2563EB] text-white text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none"
+            >
+              Free
+            </div>
+          ) : (
+            <div
+              style={{
+                clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
+              }}
+              className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none"
+            >
+              Premium
+            </div>
+          )}
+
+          {/* Main Top Slide Cover Preview */}
+          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-xs">
             <img
-              src={template.image_url || previewSlides[0]}
+              src={template.image_url || template.thumbnail_url || previewSlides[0] || "/portfolio/case_study_a_1.png"}
               alt={template.title}
               className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
               loading="lazy"
             />
 
-            {/* Corner Ribbon / Tag */}
-            {!template.is_premium ? (
-              <div className="absolute top-0 left-0 bg-[#2563EB] text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-tl-xl rounded-br-lg shadow-sm z-10 tracking-wider">
-                Free
-              </div>
-            ) : (
-              <div className="absolute top-2 left-2 bg-[#111111]/90 backdrop-blur-md text-[#FCBF14] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-white/10 shadow-sm z-10 flex items-center gap-1">
-                <Crown size={10} className="fill-[#FCBF14]" /> PRO
-              </div>
-            )}
-
-            {/* Quick Action Buttons on Top Right */}
-            <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-90 group-hover:opacity-100 transition-opacity">
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/template/${template.id}`);
-                }}
-                className="w-7 h-7 rounded-full bg-white/95 text-[#111111] hover:text-red-500 shadow-sm flex items-center justify-center transition-colors"
-                title="Save to favorites"
-              >
-                <Heart size={13} />
-              </span>
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/template/${template.id}`);
-                }}
-                className="w-7 h-7 rounded-full bg-white/95 text-[#111111] hover:text-primary-amber shadow-sm flex items-center justify-center transition-colors"
-                title={!template.is_premium ? "Free download" : "View PRO template"}
-              >
-                <Download size={13} />
-              </span>
-            </div>
-
-            {/* Subtle Hover Overlay */}
-            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-15 pointer-events-none">
-              <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-3.5 py-1.5 shadow-md flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
-                <Eye size={12} /> View Deck
+            {/* Subtle Hover Lens Overlay */}
+            <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+              <span className="bg-[#111111]/90 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-extrabold px-3 py-1 rounded-full shadow-md flex items-center gap-1 scale-95 group-hover:scale-100 transition-transform">
+                <Eye size={12} className="text-[#FCBF14]" /> View Deck
               </span>
             </div>
           </div>
 
-          {/* Multi-Slide Grid Thumbnail Previews (Matching SlideEgg layout) */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {previewSlides.map((slideUrl: string, idx: number) => (
-              <div
-                key={idx}
-                className="relative aspect-video rounded-md overflow-hidden bg-gray-50 border border-[#111111]/8 group-hover:border-primary/40 transition-colors"
-              >
-                <img
-                  src={slideUrl}
-                  alt={`${template.title} slide ${idx + 1}`}
-                  className="w-full h-full object-cover object-center"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
+          {/* Multi-Slide Grid Mini Previews (Matching SlideEgg 3-column subgrid) */}
+          {miniCount > 0 && previewSlides.length > 0 && (
+            <div className="grid grid-cols-3 gap-1 sm:gap-1.5 mt-1.5">
+              {previewSlides.map((slideUrl: string, idx: number) => (
+                <div
+                  key={idx}
+                  className="relative aspect-video rounded-[5px] overflow-hidden bg-white border border-[#111111]/6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                >
+                  <img
+                    src={slideUrl}
+                    alt={`${template.title} slide ${idx + 1}`}
+                    className="w-full h-full object-cover object-center"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
 
-        {/* Bottom Details Area */}
-        <div className="pt-3 flex flex-col justify-between flex-grow">
-          <div>
-            <h3 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug">
-              {template.title}
-            </h3>
-            <p className="text-[11px] text-[#726F6D] font-medium mt-1">
-              PowerPoint Presentation & Google Slides
-            </p>
-          </div>
-
-          <div className="pt-2.5 mt-2 border-t border-[#111111]/6 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#726F6D]">
-              {template.slides_count || 30}+ Slides
-            </span>
-            <div className="text-xs font-black text-[#111111]">
-              {!template.is_premium ? (
-                <span className="text-blue-600 font-extrabold">Free Download</span>
-              ) : isProUser ? (
-                <span className="text-amber-600 font-extrabold flex items-center gap-1">
-                  <Crown size={11} className="fill-[#FCBF14]" /> Included
-                </span>
-              ) : (
-                formatPrice(template.price_inr)
-              )}
-            </div>
-          </div>
+        {/* Minimalist Title Below Card */}
+        <div className="mt-2 px-1">
+          <h3 className="font-heading font-extrabold text-xs sm:text-[13px] text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug">
+            {template.title}
+          </h3>
         </div>
+
       </div>
     );
   };
@@ -623,303 +630,230 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (Solid Crisp Full Opacity)               */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
       {/* ========================================================================= */}
       <section
         id="templates"
         className="scroll-mt-20 relative z-30 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
       >
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
           
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Top Catalog Header & Filter Navigation Bar */}
+          <div className="mb-8 sm:mb-10 space-y-4 sm:space-y-5">
             
-            {/* ------------------------------------------------------------- */}
-            {/* LEFT COLUMN: Dark Category & Filter Sidebar (From Mockup)    */}
-            {/* ------------------------------------------------------------- */}
-            <div className="lg:col-span-3 lg:sticky lg:top-24">
-              <div className="bg-[#181818] border border-white/10 rounded-2xl p-5 text-white shadow-xl flex flex-col justify-between">
-                
-                <div>
-                  {/* Sidebar Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#FCBF14] flex items-center gap-1.5">
-                      <LayoutGrid size={14} /> Catalog Filter
-                    </span>
-                    <span className="text-[10px] font-extrabold bg-white/10 text-white/80 px-2 py-0.5 rounded-full">
-                      {userTier !== "free" ? `${userTier.toUpperCase()} VIP` : `${allTemplates.length} Decks`}
-                    </span>
-                  </div>
-
-                  {/* Navigation Categories Strip (Dynamic) */}
-                  <div className="flex flex-col gap-1.5 mb-6">
-                    
-                    {/* All templates */}
-                    <button
-                      onClick={() => {
-                        setActiveSidebarCategory("all");
-                        setVisibleCount(12);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                        activeSidebarCategory === "all"
-                          ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                          : "text-white/80 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Sparkles size={16} className={activeSidebarCategory === "all" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>All Templates</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-white/50">{allTemplates.length}</span>
-                    </button>
-
-                    {/* Trending templates */}
-                    <button
-                      onClick={() => {
-                        setActiveSidebarCategory("trending");
-                        setVisibleCount(12);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                        activeSidebarCategory === "trending"
-                          ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                          : "text-white/80 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Flame size={16} className={activeSidebarCategory === "trending" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Trending</span>
-                      </div>
-                      <ChevronRight size={14} className={activeSidebarCategory === "trending" ? "text-[#FCBF14]" : "opacity-0"} />
-                    </button>
-
-                    {/* Dynamic categories from database & templates */}
-                    {categoriesList.map((cat) => {
-                      const count = allTemplates.filter((t: any) => t.category?.toLowerCase() === cat.toLowerCase()).length;
-                      const isCatActive = activeSidebarCategory.toLowerCase() === cat.toLowerCase();
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => {
-                            setActiveSidebarCategory(cat);
-                            setVisibleCount(12);
-                          }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                            isCatActive
-                              ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                              : "text-white/80 hover:text-white hover:bg-white/5"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <LayoutGrid size={15} className={isCatActive ? "text-[#FCBF14]" : "text-white/60"} />
-                            <span className="truncate max-w-[155px]">{cat}</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-white/50">{count}</span>
-                        </button>
-                      );
-                    })}
-
-                  </div>
-
-                  {/* Tier Filter Buttons */}
-                  <div className="pt-4 border-t border-white/10 mb-4">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-white/60 block mb-2">
-                      Access Tier
-                    </span>
-                    <div className="flex flex-col gap-1.5">
-                      <button
-                        onClick={() => setTierFilter("all")}
-                        className={`w-full px-3 py-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
-                          tierFilter === "all"
-                            ? "bg-[#FCBF14] text-[#111111] font-black"
-                            : "bg-white/5 text-white/70 hover:bg-white/10"
-                        }`}
-                      >
-                        <span>All Tiers</span>
-                        <span>{allTemplates.length}</span>
-                      </button>
-                      <button
-                        onClick={() => setTierFilter("free")}
-                        className={`w-full px-3 py-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
-                          tierFilter === "free"
-                            ? "bg-emerald-600 text-white font-black"
-                            : "bg-white/5 text-white/70 hover:bg-white/10"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          Free Library (3/day)
-                        </span>
-                        <span>{freeCount}</span>
-                      </button>
-                      <button
-                        onClick={() => setTierFilter("premium")}
-                        className={`w-full px-3 py-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
-                          tierFilter === "premium"
-                            ? "bg-[#FCBF14] text-[#111111] font-black"
-                            : "bg-white/5 text-white/70 hover:bg-white/10"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Crown size={12} className={tierFilter === "premium" ? "text-[#111111]" : "text-[#FCBF14]"} />
-                          Premium Decks
-                        </span>
-                        <span>{premiumCount}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Format Deliverable Card */}
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10 mb-4">
-                    <span className="text-[10px] font-black uppercase text-[#FCBF14] block mb-1">
-                      Deliverable Format
-                    </span>
-                    <div className="flex items-center gap-2 text-xs font-bold text-white">
-                      <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-                      Master PowerPoint (.pptx)
-                    </div>
-                  </div>
-
+            {/* Row 1: Section Heading & Summary */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="hex-pill inline-flex items-center gap-1.5 bg-white border border-[#111111]/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-700 shadow-xs">
+                    <Sparkles size={12} className="text-[#FCBF14]" /> Continuous Catalog
+                  </span>
+                  <span className="text-xs font-bold text-[#726F6D]">
+                    Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
+                  </span>
                 </div>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-black text-[#111111] tracking-tight">
+                  Explore Executive Presentation Templates
+                </h2>
+              </div>
 
-                {/* Sidebar Bottom Flourish */}
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between text-white/50 text-[11px] font-medium">
-                  <span>Great presentations start here.</span>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M4 12C8 6 16 18 20 12" stroke="#FCBF14" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+              {/* Master Format Deliverable Badge */}
+              <div className="flex items-center gap-2 self-start md:self-auto">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-2 rounded-xl border border-[#111111]/10 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
+                  <span>Master PowerPoint (.pptx) & Google Slides</span>
                 </div>
-
               </div>
             </div>
 
-            {/* ------------------------------------------------------------- */}
-            {/* RIGHT COLUMN: Trending, Leading & Endless Continuous Catalog */}
-            {/* ------------------------------------------------------------- */}
-            <div className="lg:col-span-9 space-y-12">
+            {/* Row 2: Search Bar & Tier Toggles Strip */}
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-[#111111]/10 p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
               
-              {/* SECTION A: TRENDING TEMPLATES */}
-              <div>
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 gap-2">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
-                      <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111]">
-                        Trending Templates
-                      </h2>
-                    </div>
-                    <p className="text-xs sm:text-sm text-[#726F6D] font-medium">
-                      Most downloaded by executive leaders and startup founders this month.
-                    </p>
-                  </div>
-                  <span className="text-xs font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full shrink-0">
-                    High Demand
-                  </span>
-                </div>
-
-                {/* 4 Trending Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                  {trendingTemplates.map((template) => renderShowcaseCard(template))}
-                </div>
-              </div>
-
-              {/* SECTION B: CONTINUOUS ALL TEMPLATES CATALOG */}
-              <div className="pt-4 border-t-2 border-primary/20">
-                
-                {/* Search & Dynamic Filter Header Bar */}
-                <div className="bg-white/85 backdrop-blur-md rounded-2xl border-2 border-primary/30 p-4 sm:p-5 mb-8 shadow-sm">
-                  <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                    
-                    {/* Live Search */}
-                    <div className="relative w-full md:w-96">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
-                      <input
-                        type="text"
-                        placeholder="Search all pitch decks, frameworks..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          setVisibleCount(12);
-                        }}
-                        className="w-full bg-[#FFF9E8]/70 border border-primary/40 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/60 focus:outline-none focus:border-primary transition-all font-medium"
-                      />
-                      {searchQuery && (
-                        <button
-                          onClick={() => setSearchQuery("")}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#726F6D] hover:text-[#111111] text-xs font-bold"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Filter Status Badge */}
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-                      <span className="text-xs font-extrabold text-[#726F6D]">
-                        Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
-                      </span>
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#111111] bg-[#FFF9E8] px-3 py-1.5 rounded-lg border border-primary/30">
-                        <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-                        PowerPoint (.pptx)
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Templates Grid */}
-                {loading ? (
-                  <div className="py-20 text-center">
-                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-xs font-extrabold text-[#726F6D] uppercase tracking-wider">
-                      Loading Continuous Catalog...
-                    </p>
-                  </div>
-                ) : filteredCatalog.length === 0 ? (
-                  <div className="bg-white border-2 border-primary/30 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm">
-                    <FileText size={40} className="mx-auto text-primary-amber mb-3" />
-                    <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-2">
-                      No Templates Found
-                    </h3>
-                    <p className="text-xs text-[#726F6D] mb-6 font-medium">
-                      No templates match "{searchQuery}" under the current filters.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setActiveSidebarCategory("all");
-                        setTierFilter("all");
-                        setVisibleCount(12);
-                      }}
-                      className="hex-pill bg-primary text-[#111111] font-black px-6 py-2.5 text-xs cursor-pointer"
-                    >
-                      Reset All Filters
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {displayedContinuousTemplates.map((item) => renderShowcaseCard(item))}
-                    </div>
-
-                    {/* Continuous / Endless Load More Button */}
-                    {hasMoreTemplates && (
-                      <div className="text-center pt-10">
-                        <button
-                          onClick={handleLoadMore}
-                          className="hex-pill bg-white hover:bg-primary/10 border-2 border-primary text-[#111111] font-black text-sm px-8 py-3.5 shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 cursor-pointer hover:scale-102"
-                        >
-                          <span>Load More Templates ({filteredCatalog.length - visibleCount} Remaining)</span>
-                          <ArrowRight size={15} />
-                        </button>
-                      </div>
-                    )}
-                  </>
+              {/* Live Search Input */}
+              <div className="relative flex-1 max-w-lg">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
+                <input
+                  type="text"
+                  placeholder="Search templates, pitch decks, business frameworks..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setVisibleCount(24);
+                  }}
+                  className="w-full bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] focus:bg-white border border-[#111111]/12 focus:border-[#FCBF14] rounded-xl pl-10 pr-16 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all font-medium"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#726F6D] hover:text-[#111111] cursor-pointer"
+                  >
+                    Clear
+                  </button>
                 )}
-
               </div>
 
+              {/* Access Tier Filter Pills */}
+              <div className="flex items-center bg-[#F4EEDC] p-1 rounded-xl border border-[#111111]/8 self-start md:self-auto">
+                <button
+                  onClick={() => {
+                    setTierFilter("all");
+                    setVisibleCount(24);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tierFilter === "all"
+                      ? "bg-[#111111] text-white shadow-xs font-black"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  All ({allTemplates.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setTierFilter("free");
+                    setVisibleCount(24);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    tierFilter === "free"
+                      ? "bg-[#2563EB] text-white shadow-xs font-black"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-300" />
+                  Free ({freeCount})
+                </button>
+                <button
+                  onClick={() => {
+                    setTierFilter("premium");
+                    setVisibleCount(24);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    tierFilter === "premium"
+                      ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
+                      : "text-[#726F6D] hover:text-[#111111]"
+                  }`}
+                >
+                  <Crown size={12} className={tierFilter === "premium" ? "text-[#111111] fill-[#111111]" : "text-amber-600"} />
+                  Premium ({premiumCount})
+                </button>
+              </div>
+
+            </div>
+
+            {/* Row 3: Horizontal Scrollable Category Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+              {/* All Templates */}
+              <button
+                onClick={() => {
+                  setActiveSidebarCategory("all");
+                  setVisibleCount(24);
+                }}
+                className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSidebarCategory === "all"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
+                    : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
+                }`}
+              >
+                <Sparkles size={13} className={activeSidebarCategory === "all" ? "text-[#FCBF14]" : "text-[#726F6D]"} />
+                <span>All Templates</span>
+                <span className="text-[10px] font-mono opacity-60">({allTemplates.length})</span>
+              </button>
+
+              {/* Trending */}
+              <button
+                onClick={() => {
+                  setActiveSidebarCategory("trending");
+                  setVisibleCount(24);
+                }}
+                className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSidebarCategory === "trending"
+                    ? "bg-[#FCBF14] text-[#111111] shadow-md scale-102"
+                    : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
+                }`}
+              >
+                <Flame size={13} className={activeSidebarCategory === "trending" ? "text-[#111111] fill-[#111111]" : "text-amber-500 fill-amber-500"} />
+                <span>Trending</span>
+              </button>
+
+              {/* Dynamic categories */}
+              {allCategoryPills.map((cat) => {
+                const isCatActive = activeSidebarCategory.toLowerCase() === cat.toLowerCase();
+                const count = allTemplates.filter((t: any) => t.category?.toLowerCase() === cat.toLowerCase()).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setActiveSidebarCategory(cat);
+                      setVisibleCount(24);
+                    }}
+                    className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isCatActive
+                        ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
+                        : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
+                    }`}
+                  >
+                    <span>{cat}</span>
+                    {count > 0 && <span className="text-[10px] font-mono opacity-60">({count})</span>}
+                  </button>
+                );
+              })}
             </div>
 
           </div>
+
+          {/* Catalog Content (6-Column Magnet Masonry or Loading / Empty States) */}
+          {loading ? (
+            <div className="py-24 text-center">
+              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs font-extrabold text-[#726F6D] uppercase tracking-wider">
+                Loading Continuous Catalog...
+              </p>
+            </div>
+          ) : filteredCatalog.length === 0 ? (
+            <div className="bg-white border-2 border-primary/30 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm">
+              <FileText size={40} className="mx-auto text-primary-amber mb-3" />
+              <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-2">
+                No Templates Found
+              </h3>
+              <p className="text-xs text-[#726F6D] mb-6 font-medium">
+                No templates match "{searchQuery}" under the current filters.
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveSidebarCategory("all");
+                  setTierFilter("all");
+                  setVisibleCount(24);
+                }}
+                className="hex-pill bg-primary text-[#111111] font-black px-6 py-2.5 text-xs cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* 6-Column Magnet Masonry Layout */}
+              <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3.5 sm:gap-4">
+                {displayedContinuousTemplates.map((item) => (
+                  <div key={item.id} className="break-inside-avoid mb-4 sm:mb-5">
+                    {renderShowcaseCard(item)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Continuous / Endless Load More Button */}
+              {hasMoreTemplates && (
+                <div className="text-center pt-10 sm:pt-12">
+                  <button
+                    onClick={handleLoadMore}
+                    className="hex-pill bg-white hover:bg-primary/10 border-2 border-primary text-[#111111] font-black text-xs sm:text-sm px-8 py-3.5 shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 cursor-pointer hover:scale-102"
+                  >
+                    <span>Load More Templates ({filteredCatalog.length - visibleCount} Remaining)</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
 
         </div>
       </section>
