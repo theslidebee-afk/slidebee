@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -7,8 +7,8 @@ import { Suspended3DCarousel } from "../components/Suspended3DCarousel";
 import { 
   Sliders, 
   Paintbrush, 
-  PenTool,
-  Sparkles,
+  PenTool, 
+  Sparkles, 
   BarChart3, 
   LayoutGrid, 
   Palette,
@@ -29,15 +29,13 @@ export default function Services() {
 
   const [sliderPosition, setSliderPosition] = useState(50);
   const [selectedService, setSelectedService] = useState<string>(() => {
-    const validServices = ["redesign", "handwritten", "cleanup", "data", "template", "graphic"];
     const initialParam = new URLSearchParams(window.location.hash.split("?")[1] || window.location.search).get("service");
-    return initialParam && validServices.includes(initialParam) ? initialParam : "redesign";
+    return initialParam || "redesign";
   });
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const validServices = ["redesign", "handwritten", "cleanup", "data", "template", "graphic"];
-    if (serviceParam && validServices.includes(serviceParam)) {
+    if (serviceParam) {
       setSelectedService(serviceParam);
       setSliderPosition(50);
     }
@@ -55,7 +53,7 @@ export default function Services() {
       });
   }, []);
 
-  // 6 Services with detailed comparisons
+  // 6 Core Services with default comparisons
   const servicesData = {
     redesign: {
       id: "redesign",
@@ -131,13 +129,38 @@ export default function Services() {
     }
   };
 
-  const defaultService = (servicesData as any)[selectedService] || servicesData.redesign;
-  const customOverride = customServices[selectedService] || {};
-  const activeServiceData = {
-    ...defaultService,
-    ...customOverride,
-    icon: defaultService.icon
-  };
+  // Merge default services with any configured or added services from services_cms
+  const mergedServices = useMemo(() => {
+    const base: Record<string, any> = { ...servicesData };
+    if (customServices && typeof customServices === "object") {
+      Object.keys(customServices).forEach((key) => {
+        if (base[key]) {
+          base[key] = {
+            ...base[key],
+            ...customServices[key],
+            icon: base[key].icon
+          };
+        } else {
+          const item = customServices[key];
+          base[key] = {
+            id: key,
+            title: item.title || "Custom Capability",
+            tagline: item.tagline || "Bespoke executive presentation design",
+            icon: <Sparkles className="w-5 h-5" />,
+            beforeImg: item.beforeImg || `${STORAGE_BASE}/hsbc_slide-2.jpg`,
+            afterImg: item.afterImg || `${STORAGE_BASE}/accenture_slide-1.jpg`,
+            beforeTitle: item.beforeTitle || "Draft / Before",
+            afterTitle: item.afterTitle || "SlideBee Redesign / After",
+            turnaround: item.turnaround || "24h – 48h",
+            idealFor: item.idealFor || "Venture pitches, corporate decks"
+          };
+        }
+      });
+    }
+    return base;
+  }, [customServices]);
+
+  const activeServiceData = mergedServices[selectedService] || Object.values(mergedServices)[0] || servicesData.redesign;
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden">
@@ -147,7 +170,8 @@ export default function Services() {
         {/* Soft Golden Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#FCBF14]/12 rounded-full blur-[160px] pointer-events-none" />
 
-        <div className="w-[92%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 z-10 relative">
+        {/* Edge-to-edge Suspended Carousel Container */}
+        <div className="w-full z-10 relative">
           <Suspended3DCarousel />
         </div>
       </section>
@@ -168,15 +192,15 @@ export default function Services() {
             </p>
           </div>
 
-          {/* 6 Service Selector Modern Rounded Cards */}
+          {/* Service Selector Modern Rounded Cards (Defaults + Admin Added) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-10 max-w-5xl mx-auto">
-            {Object.values(servicesData).map((svc) => {
-              const isSelected = selectedService === svc.id;
+            {Object.values(mergedServices).map((svc: any) => {
+              const isSelected = activeServiceData?.id === svc.id;
               return (
                 <button
                   key={svc.id}
                   onClick={() => {
-                    setSelectedService(svc.id as any);
+                    setSelectedService(svc.id);
                     setSliderPosition(50);
                   }}
                   className={`p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer border ${

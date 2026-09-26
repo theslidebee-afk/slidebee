@@ -1,12 +1,53 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
+import { supabase } from "../lib/supabase";
+
+const DEFAULT_ABOUT_CONFIG = {
+  teamEyebrow: "OUR TEAM",
+  teamHeading: "A Specialized\nPresentation\nDesign Team.",
+  teamSubtitle: "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries.",
+  teamCtaText: "Meet Our Work",
+  teamCtaLink: "/examples",
+  teamImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80",
+  teamNote: "Different\nPerspectives\nBetter Slides",
+
+  visionEyebrow: "OUR VISION",
+  visionHeading: "A Global Destination\nfor Better Presentations.",
+  visionSubtitle: "We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively.",
+  visionNote: "Clear Ideas\nCreate Bigger\nOpportunities",
+
+  ctaEyebrow: "LET'S CREATE BETTER PRESENTATIONS",
+  ctaHeading: "Your Ideas. Our Design.",
+  ctaSubtitle: "Choose your way to create better presentations with Slidebee.",
+  ctaPrimaryText: "Explore Templates",
+  ctaPrimaryLink: "/",
+  ctaSecondaryText: "Get a Custom Presentation",
+  ctaSecondaryLink: "/ordernow",
+};
 
 export default function About() {
+  const [cfg, setCfg] = useState(DEFAULT_ABOUT_CONFIG);
+
   usePageSEO({
     title: "About Us | A Specialized Presentation Design Team | SlideBee",
     description: "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals. We are a global destination for better presentations.",
   });
+
+  useEffect(() => {
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "about_cms")
+      .single()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === "object") {
+          setCfg((prev) => ({ ...prev, ...data.value }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-24 sm:pt-28 pb-0">
@@ -20,26 +61,24 @@ export default function About() {
           {/* Left Text Column */}
           <div className="lg:col-span-6 space-y-6">
             <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
-              OUR TEAM
+              {cfg.teamEyebrow || "OUR TEAM"}
             </span>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight">
-              A Specialized<br />
-              Presentation<br />
-              <span className="text-[#FCBF14]">Design Team.</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line">
+              {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
             </h1>
 
             <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-lg">
-              Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries.
+              {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
             </p>
 
             <div className="pt-2">
               <Link
-                to="/examples"
+                to={cfg.teamCtaLink || "/examples"}
                 data-bee-state="hover"
                 className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-sm hover:scale-105 active:scale-95 transition-all"
               >
-                <span>Meet Our Work</span>
+                <span>{cfg.teamCtaText || "Meet Our Work"}</span>
                 <ArrowRight size={17} className="stroke-[2.5]" />
               </Link>
             </div>
@@ -53,7 +92,7 @@ export default function About() {
               {/* Stepped Organic Silhouette Team Image Container */}
               <div className="relative rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5] aspect-[4/3.3]">
                 <img
-                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80"
+                  src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80"}
                   alt="SlideBee Presentation Design Team"
                   className="w-full h-full object-cover grayscale contrast-110 brightness-95"
                   loading="lazy"
@@ -73,7 +112,7 @@ export default function About() {
                 {/* Tilted Sticky Note */}
                 <div className="bg-[#FFD028] text-[#111111] px-5 py-4 sm:px-6 sm:py-5 rounded-lg shadow-[0_12px_30px_rgba(0,0,0,0.18)] rotate-[-4deg] hover:rotate-0 transition-transform duration-300 border border-[#E5AC0E]/30">
                   <p className="font-heading font-extrabold text-sm sm:text-base leading-snug tracking-tight text-center whitespace-pre-line">
-                    {"Different\nPerspectives\nBetter Slides"}
+                    {cfg.teamNote || "Different\nPerspectives\nBetter Slides"}
                   </p>
                 </div>
 
@@ -95,16 +134,15 @@ export default function About() {
           {/* Left Text Column */}
           <div className="lg:col-span-7 space-y-6">
             <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
-              OUR VISION
+              {cfg.visionEyebrow || "OUR VISION"}
             </span>
 
-            <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight">
-              A Global Destination<br />
-              for <span className="text-[#FCBF14]">Better Presentations.</span>
+            <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line">
+              {cfg.visionHeading || "A Global Destination\nfor Better Presentations."}
             </h2>
 
             <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-xl">
-              We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively.
+              {cfg.visionSubtitle || "We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively."}
             </p>
           </div>
 
@@ -160,10 +198,8 @@ export default function About() {
 
               {/* Hand-Drawn Styled Text Note beside Trail */}
               <div className="absolute left-6 bottom-4">
-                <p className="font-heading font-black italic text-base sm:text-lg text-[#111111] leading-tight">
-                  Clear Ideas<br />
-                  Create Bigger<br />
-                  Opportunities
+                <p className="font-heading font-black italic text-base sm:text-lg text-[#111111] leading-tight whitespace-pre-line">
+                  {cfg.visionNote || "Clear Ideas\nCreate Bigger\nOpportunities"}
                 </p>
                 {/* Yellow Hand-Drawn Underline under Opportunities */}
                 <svg className="w-24 h-3 mt-1 text-[#FCBF14]" viewBox="0 0 100 12" fill="none">
@@ -204,35 +240,35 @@ export default function About() {
         <div className="relative z-10 w-[90%] max-w-[850px] mx-auto space-y-6">
           
           <span className="text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#111111]/80 block">
-            LET'S CREATE BETTER PRESENTATIONS
+            {cfg.ctaEyebrow || "LET'S CREATE BETTER PRESENTATIONS"}
           </span>
 
           <h2 className="text-4xl sm:text-6xl lg:text-[68px] font-heading font-black text-[#111111] leading-[1.05] tracking-tight">
-            Your Ideas. Our Design.
+            {cfg.ctaHeading || "Your Ideas. Our Design."}
           </h2>
 
           <p className="text-base sm:text-xl text-[#111111]/90 font-medium max-w-xl mx-auto">
-            Choose your way to create better presentations with Slidebee.
+            {cfg.ctaSubtitle || "Choose your way to create better presentations with Slidebee."}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             
             {/* Button 1: Dark - Explore Templates */}
             <Link
-              to="/"
+              to={cfg.ctaPrimaryLink || "/"}
               data-bee-state="hover"
               className="w-full sm:w-auto inline-flex items-center justify-center bg-[#111111] hover:bg-black text-white font-bold text-sm sm:text-base px-9 py-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Explore Templates</span>
+              <span>{cfg.ctaPrimaryText || "Explore Templates"}</span>
             </Link>
 
             {/* Button 2: Light - Get a Custom Presentation */}
             <Link
-              to="/ordernow"
+              to={cfg.ctaSecondaryLink || "/ordernow"}
               data-bee-state="quote"
               className="w-full sm:w-auto inline-flex items-center justify-center bg-white hover:bg-[#FFFDF5] text-[#111111] font-bold text-sm sm:text-base px-9 py-4 rounded-full shadow-md border border-black/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Get a Custom Presentation</span>
+              <span>{cfg.ctaSecondaryText || "Get a Custom Presentation"}</span>
             </Link>
 
           </div>

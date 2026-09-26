@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
-  ArrowRight,
   Paintbrush,
   TrendingUp,
   BarChart3
 } from "lucide-react";
 import { useStudioStore } from "../modules/StudioStoreClient";
+import { supabase } from "../lib/supabase";
 
 interface SlideItem {
   id: string;
@@ -108,52 +107,71 @@ export function Suspended3DCarousel() {
   const [upperSlides, setUpperSlides] = useState<SlideItem[]>(defaultUpperSlides);
   const [lowerSlides, setLowerSlides] = useState<SlideItem[]>(defaultLowerSlides);
 
-  // Sync with store templates if available
+  // Fetch custom slides if configured via Admin Services Carousel selector
   useEffect(() => {
-    if (templates && templates.length >= 8) {
-      const upperMapped = templates.slice(0, 5).map((t, idx) => ({
-        id: t.id || `tpl-up-${idx}`,
-        title: t.title,
-        category: t.category || "Keynote",
-        image: t.image_url || defaultUpperSlides[idx % defaultUpperSlides.length].image,
-        client: t.code || defaultUpperSlides[idx % defaultUpperSlides.length].client,
-        code: t.code,
-      }));
-      const lowerMapped = templates.slice(5, 10).map((t, idx) => ({
-        id: t.id || `tpl-low-${idx}`,
-        title: t.title,
-        category: t.category || "Strategy",
-        image: t.image_url || defaultLowerSlides[idx % defaultLowerSlides.length].image,
-        client: t.code || defaultLowerSlides[idx % defaultLowerSlides.length].client,
-        code: t.code,
-      }));
-      setUpperSlides(upperMapped);
-      setLowerSlides(lowerMapped);
-    }
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "services_carousel_slides")
+      .single()
+      .then(({ data }) => {
+        if (data?.value?.upperSlides && Array.isArray(data.value.upperSlides) && data.value.upperSlides.length > 0) {
+          setUpperSlides(data.value.upperSlides);
+        } else if (templates && templates.length >= 8) {
+          const upperMapped = templates.slice(0, 5).map((t, idx) => ({
+            id: t.id || `tpl-up-${idx}`,
+            title: t.title,
+            category: t.category || "Keynote",
+            image: t.image_url || defaultUpperSlides[idx % defaultUpperSlides.length].image,
+            client: t.code || defaultUpperSlides[idx % defaultUpperSlides.length].client,
+            code: t.code,
+          }));
+          setUpperSlides(upperMapped);
+        }
+
+        if (data?.value?.lowerSlides && Array.isArray(data.value.lowerSlides) && data.value.lowerSlides.length > 0) {
+          setLowerSlides(data.value.lowerSlides);
+        } else if (templates && templates.length >= 8) {
+          const lowerMapped = templates.slice(5, 10).map((t, idx) => ({
+            id: t.id || `tpl-low-${idx}`,
+            title: t.title,
+            category: t.category || "Strategy",
+            image: t.image_url || defaultLowerSlides[idx % defaultLowerSlides.length].image,
+            client: t.code || defaultLowerSlides[idx % defaultLowerSlides.length].client,
+            code: t.code,
+          }));
+          setLowerSlides(lowerMapped);
+        }
+      })
+      .catch(() => {});
   }, [templates]);
 
-  // Render a clean slide card displaying exclusively the slide preview image
-  const renderCard = (slide: SlideItem, uniqueKey: string) => (
-    <div
-      key={uniqueKey}
-      data-bee-state="card"
-      className="shrink-0 w-[240px] sm:w-[280px] md:w-[320px] aspect-[16/10] rounded-2xl overflow-hidden relative border border-primary/25 hover:border-primary/80 bg-white transition-all duration-300 shadow-sm hover:shadow-xl group"
-    >
-      {/* Slide Cover Image */}
-      <img
-        src={slide.image}
-        alt={slide.title}
-        className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform duration-500"
-        loading="lazy"
-        onError={(e) => {
-          const fallback = defaultUpperSlides[0].image;
-          if (e.currentTarget.src !== fallback) {
-            e.currentTarget.src = fallback;
-          }
-        }}
-      />
-    </div>
-  );
+  // Render a clean slide card displaying exclusively the slide preview image (scaled down slightly)
+  const renderCard = (slide: SlideItem | string | any, uniqueKey: string) => {
+    const imageUrl = typeof slide === "string" ? slide : (slide?.image || slide?.thumbnail_url || defaultUpperSlides[0].image);
+    const titleText = typeof slide === "string" ? "Slide Deck" : (slide?.title || "Slide Deck");
+    return (
+      <div
+        key={uniqueKey}
+        data-bee-state="card"
+        className="shrink-0 w-[205px] sm:w-[245px] md:w-[275px] aspect-[16/10] rounded-2xl overflow-hidden relative border border-primary/25 hover:border-primary/80 bg-white transition-all duration-300 shadow-sm hover:shadow-xl group"
+      >
+        {/* Slide Cover Image */}
+        <img
+          src={imageUrl}
+          alt={titleText}
+          className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+          onError={(e) => {
+            const fallback = defaultUpperSlides[0].image;
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+        />
+      </div>
+    );
+  };
 
   // Duplicated arrays for seamless infinite looping
   const upperTrack = [...upperSlides, ...upperSlides, ...upperSlides, ...upperSlides];
@@ -162,21 +180,14 @@ export function Suspended3DCarousel() {
   return (
     <div className="relative w-full py-8 sm:py-12 overflow-hidden">
       
-      {/* 1. Header Section */}
+      {/* 1. Header Section (without Get Started for Free button) */}
       <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12 relative z-10">
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-black text-[#111111] tracking-tight leading-[1.08] mb-4">
           Supercharge Your Workflow
         </h2>
-        <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mx-auto mb-6">
+        <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mx-auto">
           All-in-one presentation studio to storyboard, design, and deliver board-ready decks with speed and precision.
         </p>
-        <Link
-          to="/ordernow"
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black text-xs sm:text-sm px-8 py-3.5 rounded-full shadow-lg shadow-[#FCBF14]/25 hover:scale-105 transition-all"
-        >
-          <span>Get Started for Free</span>
-          <ArrowRight size={15} className="text-[#111111]" />
-        </Link>
       </div>
 
       {/* 2. Continuous Two-Row Auto-Scrolling Marquee */}

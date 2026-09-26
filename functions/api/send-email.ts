@@ -14,9 +14,17 @@ const ALLOWED_ORIGINS = [
   "http://localhost:4173",
 ];
 
+function isOriginAllowed(origin: string): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith(".pages.dev")) return true;
+  if (origin.endsWith(".theslidebee.com")) return true;
+  return false;
+}
+
 function getCorsHeaders(request: Request) {
   const origin = request.headers.get("Origin") || "";
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",

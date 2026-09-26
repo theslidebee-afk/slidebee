@@ -15,6 +15,7 @@ import {
   Search,
   Image as ImageIcon,
   Sliders,
+  Sparkles,
   Save,
   CheckCircle2,
   HardDrive,
@@ -356,8 +357,6 @@ export default function Admin() {
   const [replacingSlideKey, setReplacingSlideKey] = useState<string | null>(null);
   const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
-  const [newWorkedCompanyName, setNewWorkedCompanyName] = useState("");
-  const [newWorkedCompanyCategory, setNewWorkedCompanyCategory] = useState("");
 
   // Sync activeTab with URL sub-paths
   useEffect(() => {
@@ -2129,50 +2128,6 @@ SlideBee Design Studio`
     }
   };
 
-  // Upload Custom Image for Services / Hero Marquee to Cloudflare R2
-  const handleUploadMarqueeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingMarquee(true);
-
-    try {
-      const r2Res = await uploadToR2(file, { folder: "marquee", fileName: file.name });
-      if (!r2Res.success || !r2Res.publicUrl) throw new Error(r2Res.error || "Upload failed");
-      const imgUrl = r2Res.publicUrl;
-
-      if (activeMarqueeTarget === "hero") {
-        const current = siteConfigs["hero"]?.marqueeSlides || [];
-        setSiteConfigs({
-          ...siteConfigs,
-          hero: { ...siteConfigs["hero"], marqueeSlides: [...current, imgUrl] }
-        });
-      } else if (activeMarqueeTarget === "services_top") {
-        const current = siteConfigs["services_marquee_cms"]?.topSlides || [];
-        setSiteConfigs({
-          ...siteConfigs,
-          services_marquee_cms: {
-            ...(siteConfigs["services_marquee_cms"] || {}),
-            topSlides: [...current, imgUrl]
-          }
-        });
-      } else {
-        const current = siteConfigs["services_marquee_cms"]?.bottomSlides || [];
-        setSiteConfigs({
-          ...siteConfigs,
-          services_marquee_cms: {
-            ...(siteConfigs["services_marquee_cms"] || {}),
-            bottomSlides: [...current, imgUrl]
-          }
-        });
-      }
-    } catch (err: any) {
-      alert("Failed to upload marquee image to Cloudflare R2: " + (err.message || err));
-    } finally {
-      setIsUploadingMarquee(false);
-      e.target.value = "";
-    }
-  };
-
 
   // Delete an object from Cloudflare R2
   const handleDeleteR2Object = async (key: string) => {
@@ -3638,13 +3593,12 @@ SlideBee Design Studio`
             {/* Site Customization Sub-Navigation Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
               {[
-                { id: "home", label: "Homepage Header & Features", icon: Home },
-                { id: "marquee", label: "Hero Marquee", icon: Layers },
-                { id: "testimonials", label: "Client Testimonials", icon: MessageSquare },
-                { id: "services", label: "Services & Before/After", icon: Settings },
+                { id: "home", label: "Homepage", icon: Home },
+                { id: "services", label: "Services Page", icon: Settings },
                 { id: "portfolio", label: "Portfolio & Case Studies", icon: ImageIcon },
-                { id: "blog", label: "Blog & Insights", icon: FileText },
-                { id: "about", label: "About & Story", icon: Building2 },
+                { id: "testimonials", label: "Client Testimonials", icon: MessageSquare },
+                { id: "blog", label: "Blog & Playbook", icon: FileText },
+                { id: "about", label: "About Page", icon: Building2 },
                 { id: "contact", label: "Contact & Channels", icon: Phone },
                 { id: "footer", label: "Footer Links", icon: Compass },
               ].map((subTab) => {
@@ -3672,21 +3626,19 @@ SlideBee Design Studio`
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Homepage Hero Customizer
+                      Homepage Hero Stage (Center Frosted Card)
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Update the hero headlines and call-to-action buttons.
+                      Update the headline, supporting subtitle, and badge text displayed on the central translucent card in the hero stage.
                     </p>
                   </div>
                   <button
                     onClick={() => {
                       const current = siteConfigs["hero"] || {};
-                      const badge = current.badge || current.badgeText || "";
-                      const title = current.title || current.headline || "";
-                      const subtitle = current.subtitle || current.subheadline || "";
-                      const ctaPrimary = current.ctaPrimary || current.ctaText || "";
-                      const ctaSecondary = current.ctaSecondary || current.secondaryCtaText || "";
-                      const guarantee = current.guarantee || "";
+                      const badge = current.badge || current.badgeText || "PRESENTATIONS FOR A BRIGHTER TOMORROW";
+                      const title = current.title || current.headline || "Ideas Deserve\nBetter Slides.";
+                      const subtitle = current.subtitle || current.subheadline || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.";
+                      const guarantee = current.guarantee || "24–48hr turnaround · Venture-grade polish";
                       const synchronizedHero = {
                         ...current,
                         badge,
@@ -3695,10 +3647,6 @@ SlideBee Design Studio`
                         headline: title,
                         subtitle,
                         subheadline: subtitle,
-                        ctaPrimary,
-                        ctaText: ctaPrimary,
-                        ctaSecondary,
-                        secondaryCtaText: ctaSecondary,
                         guarantee
                       };
                       handleSaveConfig("hero", synchronizedHero);
@@ -3706,14 +3654,14 @@ SlideBee Design Studio`
                     disabled={configSaving}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
                   >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save Homepage"}
+                    <Save size={14} /> {configSaving ? "Saving..." : "Save Hero Card"}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Hero Badge Text
+                      Hero Badge / Eyebrow Text
                     </label>
                     <input
                       type="text"
@@ -3723,7 +3671,7 @@ SlideBee Design Studio`
                         hero: { ...(siteConfigs["hero"] || {}), badge: e.target.value, badgeText: e.target.value }
                       })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                      placeholder="e.g. SLIDEBEE PRESENTATION ATELIER"
+                      placeholder="e.g. PRESENTATIONS FOR A BRIGHTER TOMORROW"
                     />
                   </div>
 
@@ -3746,18 +3694,19 @@ SlideBee Design Studio`
 
                 <div>
                   <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Main Hero Headline (Title)
+                    Central Card Display Headline (Title)
                   </label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={siteConfigs["hero"]?.title || siteConfigs["hero"]?.headline || ""}
                     onChange={(e) => setSiteConfigs({
                       ...siteConfigs,
                       hero: { ...(siteConfigs["hero"] || {}), title: e.target.value, headline: e.target.value }
                     })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                    placeholder="e.g. Decks That Win Deals & Capital"
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-bold text-[#111111]"
+                    placeholder={"e.g. Ideas Deserve\nBetter Slides."}
                   />
+                  <p className="text-[10px] text-[#726F6D] mt-1">Use a line break to split the headline across lines.</p>
                 </div>
 
                 <div>
@@ -3772,46 +3721,15 @@ SlideBee Design Studio`
                       hero: { ...(siteConfigs["hero"] || {}), subtitle: e.target.value, subheadline: e.target.value }
                     })}
                     className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-medium text-[#111111]"
-                    placeholder="Description paragraph appearing below the headline..."
+                    placeholder="At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Primary CTA Button Label
-                    </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["hero"]?.ctaPrimary || siteConfigs["hero"]?.ctaText || ""}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), ctaPrimary: e.target.value, ctaText: e.target.value }
-                      })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Secondary CTA Button Label
-                    </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["hero"]?.ctaSecondary || siteConfigs["hero"]?.secondaryCtaText || ""}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), ctaSecondary: e.target.value, secondaryCtaText: e.target.value }
-                      })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                    />
-                  </div>
-                </div>
-
-                {/* FEATURED TEMPLATES PICKER ON HOMEPAGE (R2 STOREFRONT CARDS) */}
+                {/* TRENDING TEMPLATES SELECTION ON HOMEPAGE (R2 STOREFRONT CARDS) */}
                 <div className="pt-6 border-t border-[#111111]/8 space-y-4">
                   {(() => {
-                    const getFeaturedIds = (): string[] => {
-                      const raw = siteConfigs["featured_templates"];
+                    const getTrendingIds = (): string[] => {
+                      const raw = siteConfigs["trending_templates"] || siteConfigs["featured_templates"];
                       if (!raw) return templates.slice(0, 8).map(t => String(t.id));
                       if (Array.isArray(raw)) return raw.map(String);
                       if (Array.isArray(raw.ids)) return raw.ids.map(String);
@@ -3825,7 +3743,7 @@ SlideBee Design Studio`
                       return templates.slice(0, 8).map(t => String(t.id));
                     };
 
-                    const selectedIds = getFeaturedIds();
+                    const selectedIds = getTrendingIds();
 
                     return (
                       <>
@@ -3833,23 +3751,26 @@ SlideBee Design Studio`
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                                Featured Templates on Homepage
+                                Trending Templates Selection on Homepage
                               </h4>
                               <span className="hex-pill-sm bg-primary text-[#111111] font-black text-[10px] px-2.5 py-0.5">
-                                {selectedIds.length} Selected
+                                {selectedIds.length} Curated for Trending Row
                               </span>
                             </div>
                             <p className="text-xs text-[#726F6D]">
-                              Curate which Cloudflare R2 presentation decks appear in the storefront showcase on the landing page. Clicking a card toggles its feature status.
+                              Curate which Cloudflare R2 presentation decks appear in the Trending row on the landing page. Clicking a card toggles it in/out of Trending.
                             </p>
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleSaveConfig("featured_templates", { ids: selectedIds })}
+                            onClick={async () => {
+                              await handleSaveConfig("trending_templates", { ids: selectedIds });
+                              await handleSaveConfig("featured_templates", { ids: selectedIds });
+                            }}
                             disabled={configSaving}
                             className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs shadow flex items-center gap-1.5 shrink-0 cursor-pointer"
                           >
-                            <Save size={13} /> {configSaving ? "Saving..." : "Save Featured Picks"}
+                            <Save size={13} /> {configSaving ? "Saving..." : "Save Trending Decks"}
                           </button>
                         </div>
 
@@ -3861,7 +3782,7 @@ SlideBee Design Studio`
                               (tmpl.code && id === String(tmpl.code))
                             );
 
-                            const toggleFeature = () => {
+                            const toggleTrending = () => {
                               let updated: string[];
                               if (isSelected) {
                                 updated = selectedIds.filter(id => 
@@ -3874,6 +3795,7 @@ SlideBee Design Studio`
                               }
                               setSiteConfigs({
                                 ...siteConfigs,
+                                trending_templates: { ids: updated },
                                 featured_templates: { ids: updated }
                               });
                             };
@@ -3885,7 +3807,7 @@ SlideBee Design Studio`
                             return (
                               <div
                                 key={tmpl.id}
-                                onClick={toggleFeature}
+                                onClick={toggleTrending}
                                 className={`hex-card rounded-2xl overflow-hidden border-2 transition-all cursor-pointer flex flex-col justify-between group ${
                                   isSelected
                                     ? "bg-[#FFF9E8]/90 border-primary shadow-md ring-2 ring-primary/40"
@@ -3913,7 +3835,7 @@ SlideBee Design Studio`
                                           : "bg-[#111111]/80 text-white border border-white/10"
                                       }`}>
                                         {isSelected ? <Check size={10} strokeWidth={3} /> : <Plus size={10} strokeWidth={3} />}
-                                        {isSelected ? "Featured" : "Click to Feature"}
+                                        {isSelected ? "In Trending" : "+ Add to Trending"}
                                       </span>
                                     </div>
                                     <div className="absolute bottom-2 left-2">
@@ -3943,7 +3865,7 @@ SlideBee Design Studio`
                                       ? "bg-primary text-[#111111]" 
                                       : "bg-[#111111]/5 text-[#726F6D] group-hover:bg-primary/20 group-hover:text-[#111111]"
                                   }`}>
-                                    {isSelected ? "Selected for Homepage" : "Select to Feature"}
+                                    {isSelected ? "Selected for Homepage Trending" : "Select for Trending"}
                                   </div>
                                 </div>
                               </div>
@@ -4124,352 +4046,6 @@ SlideBee Design Studio`
               </div>
             )}
 
-            {/* SUB-TAB: MARQUEE CMS */}
-            {activeCmsSubTab === "marquee" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Services & Hero Marquee Customizer
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Select slides from existing presentation examples or upload custom images to feature in the gliding marquees.
-                    </p>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (siteConfigs["services_marquee_cms"]) {
-                        await handleSaveConfig("services_marquee_cms", siteConfigs["services_marquee_cms"]);
-                      }
-                      if (siteConfigs["hero"]) {
-                        await handleSaveConfig("hero", siteConfigs["hero"]);
-                      }
-                    }}
-                    disabled={configSaving}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
-                  >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save Marquees"}
-                  </button>
-                </div>
-
-                {/* 1. Target Selector Tabs */}
-                <div>
-                  <label className="text-xs font-extrabold text-[#111111] block mb-2">
-                    Select Marquee to Configure:
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {[
-                      { 
-                        id: "services_top", 
-                        label: "Services Page — Top Marquee", 
-                        count: (siteConfigs["services_marquee_cms"]?.topSlides || []).length 
-                      },
-                      { 
-                        id: "services_bottom", 
-                        label: "Services Page — Bottom Marquee", 
-                        count: (siteConfigs["services_marquee_cms"]?.bottomSlides || []).length 
-                      },
-                      { 
-                        id: "hero", 
-                        label: "Homepage Hero Marquee", 
-                        count: (siteConfigs["hero"]?.marqueeSlides || []).length 
-                      },
-                    ].map((target) => (
-                      <button
-                        key={target.id}
-                        type="button"
-                        onClick={() => setActiveMarqueeTarget(target.id as any)}
-                        className={`hex-pill px-4 py-2 text-xs font-black transition-all border ${
-                          activeMarqueeTarget === target.id
-                            ? "bg-[#111111] text-[#FCBF14] border-primary shadow-md scale-105"
-                            : "bg-white text-[#111111] border-primary/30 hover:border-primary hover:bg-[#FFF9E8]"
-                        }`}
-                      >
-                        {target.label} ({target.count})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Active Slides in Selected Marquee */}
-                {(() => {
-                  const getActiveList = (): string[] => {
-                    if (activeMarqueeTarget === "hero") return siteConfigs["hero"]?.marqueeSlides || [];
-                    if (activeMarqueeTarget === "services_top") return siteConfigs["services_marquee_cms"]?.topSlides || [];
-                    return siteConfigs["services_marquee_cms"]?.bottomSlides || [];
-                  };
-
-                  const updateActiveList = (newList: string[]) => {
-                    if (activeMarqueeTarget === "hero") {
-                      setSiteConfigs({
-                        ...siteConfigs,
-                        hero: { ...siteConfigs["hero"], marqueeSlides: newList }
-                      });
-                    } else if (activeMarqueeTarget === "services_top") {
-                      setSiteConfigs({
-                        ...siteConfigs,
-                        services_marquee_cms: {
-                          ...(siteConfigs["services_marquee_cms"] || {}),
-                          topSlides: newList
-                        }
-                      });
-                    } else {
-                      setSiteConfigs({
-                        ...siteConfigs,
-                        services_marquee_cms: {
-                          ...(siteConfigs["services_marquee_cms"] || {}),
-                          bottomSlides: newList
-                        }
-                      });
-                    }
-                  };
-
-                  const activeSlides = getActiveList();
-
-                  return (
-                    <div className="space-y-4 pt-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                            Currently Active Slides ({activeSlides.length})
-                          </h4>
-                          <p className="text-[11px] text-[#726F6D]">
-                            These slides glide continuously on the page.
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <label className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm">
-                            <UploadCloud size={14} />
-                            <span>{isUploadingMarquee ? "Uploading..." : "Upload New Image"}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleUploadMarqueeImage}
-                              disabled={isUploadingMarquee}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Visual Slides Grid */}
-                      {activeSlides.length === 0 ? (
-                        <div className="p-6 text-center border-2 border-dashed border-primary/30 rounded-xl bg-[#FFF9E8]/50">
-                          <p className="text-xs font-bold text-[#726F6D]">No slides in this marquee yet. Select from examples below or upload an image.</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                          {activeSlides.map((slideUrl: string, idx: number) => (
-                            <div key={idx} className="hex-card bg-white border border-primary/40 rounded-lg overflow-hidden shadow-sm relative group flex flex-col">
-                              <div className="aspect-[16/10] bg-[#FFF9E8] overflow-hidden relative">
-                                <img src={slideUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                                <button
-                                  type="button"
-                                  onClick={() => updateActiveList(activeSlides.filter((_: any, i: number) => i !== idx))}
-                                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity shadow"
-                                  title="Remove from marquee"
-                                >
-                                  <X size={12} />
-                                </button>
-                              </div>
-                              <div className="p-1.5 text-[10px] font-bold text-[#111111] truncate bg-white">
-                                #{idx + 1}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Manual Image URL Adder */}
-                      <div className="flex items-center gap-2 pt-2">
-                        <input
-                          type="text"
-                          placeholder="Or paste any custom image URL to add..."
-                          value={marqueeManualUrl}
-                          onChange={(e) => setMarqueeManualUrl(e.target.value)}
-                          className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (marqueeManualUrl.trim()) {
-                              updateActiveList([...activeSlides, marqueeManualUrl.trim()]);
-                              setMarqueeManualUrl("");
-                            }
-                          }}
-                          className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs"
-                        >
-                          + Add URL
-                        </button>
-                      </div>
-
-                      {/* 3. Mapped Selection from Portfolio Examples */}
-                      <div className="pt-6 border-t border-[#111111]/10 space-y-4">
-                        <div>
-                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-                            <Layers size={14} className="text-primary-amber" />
-                            Select Directly from Example Decks (Mapped to Portfolio)
-                          </h4>
-                          <p className="text-[11px] text-[#726F6D]">
-                            Click on any presentation slide to toggle it in/out of the currently selected marquee ({activeMarqueeTarget.replace("_", " ")}).
-                          </p>
-                        </div>
-
-                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                          {(siteConfigs["portfolio_cms"]?.caseStudies || []).map((cs: any) => {
-                            const csSlides: string[] = Array.isArray(cs.slides) && cs.slides.length > 0
-                              ? cs.slides
-                              : (cs.imageUrl ? [cs.imageUrl] : []);
-
-                            return (
-                              <div key={cs.id} className="bg-[#FFF9E8]/70 border border-primary/30 p-3.5 rounded-xl space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[10px] font-black px-2.5 py-0.5">
-                                      {cs.client}
-                                    </span>
-                                    <span className="text-xs font-extrabold text-[#111111]">
-                                      {cs.title}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-[#726F6D]">
-                                    {cs.category} • {csSlides.length} slides
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                                  {csSlides.map((slideUrl: string, sIdx: number) => {
-                                    const isSelected = activeSlides.includes(slideUrl);
-
-                                    return (
-                                      <div
-                                        key={sIdx}
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            updateActiveList(activeSlides.filter((s: string) => s !== slideUrl));
-                                          } else {
-                                            updateActiveList([...activeSlides, slideUrl]);
-                                          }
-                                        }}
-                                        className={`hex-card rounded-lg overflow-hidden border-2 cursor-pointer transition-all p-1 group ${
-                                          isSelected
-                                            ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
-                                            : "border-primary/30 bg-white hover:border-primary"
-                                        }`}
-                                      >
-                                        <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden mb-1 relative">
-                                          <img src={slideUrl} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                          {isSelected && (
-                                            <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
-                                              <Check size={12} />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center justify-between text-[10px] px-1">
-                                          <span className="font-extrabold text-[#111111]">
-                                            Slide {sIdx + 1}
-                                          </span>
-                                          <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
-                                            {isSelected ? "Active" : "+ Add"}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 4. Mapped Selection from Storefront Templates (Cover & Interior Slides) */}
-                      <div className="pt-6 border-t border-[#111111]/10 space-y-4">
-                        <div>
-                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-                            <Layers size={14} className="text-primary-amber" />
-                            Select Directly from Storefront Templates (Cover & Slide Previews)
-                          </h4>
-                          <p className="text-[11px] text-[#726F6D]">
-                            Click any presentation template cover or interior preview slide to toggle it in/out of the {activeMarqueeTarget.replace("_", " ")} marquee.
-                          </p>
-                        </div>
-
-                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                          {templates.map((tpl: any) => {
-                            const tplSlides: string[] = Array.isArray(tpl.slides) && tpl.slides.length > 0
-                              ? tpl.slides
-                              : [tpl.thumbnail_url || tpl.image_url || "/portfolio/case_study_a_1.png"];
-
-                            return (
-                              <div key={tpl.id} className="bg-[#FFF9E8]/70 border border-primary/30 p-3.5 rounded-xl space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2.5 py-0.5">
-                                      {tpl.code || "SLD"}
-                                    </span>
-                                    <span className="text-xs font-extrabold text-[#111111]">
-                                      {tpl.title}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-[#726F6D]">
-                                    {tpl.category} • {tplSlides.length} slide{tplSlides.length > 1 ? "s" : ""}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-                                  {tplSlides.map((slideUrl: string, sIdx: number) => {
-                                    const isSelected = activeSlides.includes(slideUrl);
-
-                                    return (
-                                      <div
-                                        key={sIdx}
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            updateActiveList(activeSlides.filter((s: string) => s !== slideUrl));
-                                          } else {
-                                            updateActiveList([...activeSlides, slideUrl]);
-                                          }
-                                        }}
-                                        className={`hex-card rounded-lg overflow-hidden border-2 cursor-pointer transition-all p-1 group ${
-                                          isSelected
-                                            ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
-                                            : "border-primary/30 bg-white hover:border-primary"
-                                        }`}
-                                      >
-                                        <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden mb-1 relative">
-                                          <img src={slideUrl} alt={`Slide ${sIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                          {isSelected && (
-                                            <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
-                                              <Check size={12} />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center justify-between text-[10px] px-1">
-                                          <span className="font-extrabold text-[#111111]">
-                                            {sIdx === 0 ? "Cover" : `Slide ${sIdx + 1}`}
-                                          </span>
-                                          <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
-                                            {isSelected ? "Active" : "+ Add"}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })()}
-
-              </div>
-            )}
 
             {/* SUB-TAB: TESTIMONIALS CMS */}
             {activeCmsSubTab === "testimonials" && (
@@ -4654,348 +4230,755 @@ SlideBee Design Studio`
               </div>
             )}
 
-            {/* SUB-TAB 2: SERVICES & BEFORE/AFTER CMS */}
-            {activeCmsSubTab === "services" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Services & Before / After Slider Customizer
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Update the 6 service tiers, turnaround times, and before/after comparison decks
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleSaveConfig("services_cms", siteConfigs["services_cms"])}
-                    disabled={configSaving}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow"
-                  >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save All Services"}
-                  </button>
-                </div>
+            {/* SUB-TAB 2: SERVICES PAGE CMS (SUSPENDED 3D CAROUSEL + BEFORE/AFTER CAPABILITIES) */}
+            {activeCmsSubTab === "services" && (() => {
+              const DEFAULT_SERVICES_CMS: Record<string, any> = {
+                redesign: {
+                  id: "redesign",
+                  title: "Redesign and Visual Enhancement",
+                  tagline: "We uplift your slides with creativity",
+                  turnaround: "24h – 48h",
+                  idealFor: "Corporate decks, weekly business reviews, conference presentations",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/hsbc_slide-2.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
+                  beforeTitle: "Raw Draft / Before",
+                  afterTitle: "SlideBee Redesign / After"
+                },
+                handwritten: {
+                  id: "handwritten",
+                  title: "Handwritten Conversions",
+                  tagline: "Deciphering handwritten text to marvelous-looking presentations",
+                  turnaround: "24h – 48h",
+                  idealFor: "Whiteboard concepts, handwritten brainstorms, napkin sketches",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/british_american_slide-3.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg",
+                  beforeTitle: "Handwritten Notes / Sketches",
+                  afterTitle: "Marvelous Presentation / After"
+                },
+                cleanup: {
+                  id: "cleanup",
+                  title: "Quick Scrub and Clean Up",
+                  tagline: "Fixing presentation as swiftly as a kite",
+                  turnaround: "12h – 24h Rush",
+                  idealFor: "Emergency board meetings, rapid cleanup, formatting alignment",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-3.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/volvo_slide-1.jpg",
+                  beforeTitle: "Rough Draft & Misalignments",
+                  afterTitle: "Cleaned & Aligned Presentation"
+                },
+                data: {
+                  id: "data",
+                  title: "Data Visualization",
+                  tagline: "Blending numbers with our marvelous design",
+                  turnaround: "24h – 48h",
+                  idealFor: "Financial reports, quarterly investor reviews, SaaS metrics",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/tag_slide-3.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/intel_slide-1.jpg",
+                  beforeTitle: "Raw Spreadsheet Data",
+                  afterTitle: "Marvelous Visual Dashboard"
+                },
+                template: {
+                  id: "template",
+                  title: "Template Creation",
+                  tagline: "Highly stylized presentation templates",
+                  turnaround: "2 – 4 Days",
+                  idealFor: "Company brand systems, sales organizations, agency templates",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/hsbc_slide-4.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/levis_slide-1.jpg",
+                  beforeTitle: "Standard Plain Template",
+                  afterTitle: "Highly Stylized Master System"
+                },
+                graphic: {
+                  id: "graphic",
+                  title: "Graphic Design",
+                  tagline: "Designing your visual story",
+                  turnaround: "24h – 48h",
+                  idealFor: "Custom infographics, product storyboards, marketing collateral",
+                  beforeImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/intel_slide-3.jpg",
+                  afterImg: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/tag_slide-1.jpg",
+                  beforeTitle: "Text-Heavy Concept",
+                  afterTitle: "Designed Visual Story"
+                }
+              };
 
+              const DEFAULT_CAROUSEL_UPPER = [
+                {
+                  id: "deck-volvo",
+                  title: "Executive Strategic Keynote",
+                  category: "Keynote",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/volvo_slide-1.jpg",
+                  code: "SLD-318",
+                },
+                {
+                  id: "deck-accenture",
+                  title: "Series A Investor Pitch Deck",
+                  category: "Fundraising",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
+                  code: "SLD-301",
+                },
+                {
+                  id: "deck-nike",
+                  title: "Global Brand Strategy",
+                  category: "Branding",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg",
+                  code: "SLD-310",
+                },
+                {
+                  id: "deck-levis",
+                  title: "Retail Expansion Showcase",
+                  category: "Commercial",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/levis_slide-1.jpg",
+                  code: "SLD-314",
+                },
+                {
+                  id: "deck-cvs",
+                  title: "Enterprise Healthcare Analysis",
+                  category: "Healthcare",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg",
+                  code: "SLD-306",
+                },
+              ];
+
+              const DEFAULT_CAROUSEL_LOWER = [
+                {
+                  id: "deck-hsbc",
+                  title: "Financial KPI & Capital Markets",
+                  category: "Finance",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/hsbc_slide-1.jpg",
+                  code: "SLD-304",
+                },
+                {
+                  id: "deck-intel",
+                  title: "DeepTech & Semiconductor Briefing",
+                  category: "Technology",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/intel_slide-1.jpg",
+                  code: "SLD-307",
+                },
+                {
+                  id: "deck-tag",
+                  title: "Creative Production & RFP Deck",
+                  category: "Sales & RFP",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/tag_slide-1.jpg",
+                  code: "SLD-317",
+                },
+                {
+                  id: "deck-british-american",
+                  title: "Global Market Expansion Strategy",
+                  category: "Strategy",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/british_american_slide-1.jpg",
+                  code: "SLD-312",
+                },
+                {
+                  id: "deck-company-profile",
+                  title: "Corporate Credentials & Profile",
+                  category: "Business",
+                  image: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/volvo_slide-2.jpg",
+                  code: "SLD-315",
+                },
+              ];
+
+              const currentCarouselConfig = siteConfigs["services_carousel_slides"] || {};
+              const currentUpperSlides: any[] = Array.isArray(currentCarouselConfig.upperSlides) && currentCarouselConfig.upperSlides.length > 0
+                ? currentCarouselConfig.upperSlides
+                : DEFAULT_CAROUSEL_UPPER;
+              const currentLowerSlides: any[] = Array.isArray(currentCarouselConfig.lowerSlides) && currentCarouselConfig.lowerSlides.length > 0
+                ? currentCarouselConfig.lowerSlides
+                : DEFAULT_CAROUSEL_LOWER;
+
+              const isUpperTrack = activeMarqueeTarget !== "services_bottom";
+              const activeCarouselList = isUpperTrack ? currentUpperSlides : currentLowerSlides;
+
+              const updateCarouselTrack = (updatedList: any[]) => {
+                const nextConfig = {
+                  ...currentCarouselConfig,
+                  upperSlides: isUpperTrack ? updatedList : currentUpperSlides,
+                  lowerSlides: isUpperTrack ? currentLowerSlides : updatedList,
+                };
+                setSiteConfigs({
+                  ...siteConfigs,
+                  services_carousel_slides: nextConfig,
+                });
+              };
+
+              const currentServicesMap: Record<string, any> = siteConfigs["services_cms"] && Object.keys(siteConfigs["services_cms"]).length > 0
+                ? siteConfigs["services_cms"]
+                : DEFAULT_SERVICES_CMS;
+
+              return (
                 <div className="space-y-8">
-                  {Object.keys(siteConfigs["services_cms"] || {}).map((serviceKey) => {
-                    const svc = siteConfigs["services_cms"][serviceKey];
-                    return (
-                      <div key={serviceKey} className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/10 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-3">
-                          <span className="text-xs font-black uppercase tracking-wider text-primary-amber">
-                            Service: {svc.title}
-                          </span>
-                          <span className="text-[11px] font-bold text-[#726F6D]">
-                            ID: {serviceKey}
-                          </span>
-                        </div>
+                  
+                  {/* SECTION 1: SUSPENDED 3D CAROUSEL MARQUEE SLIDE SELECTION */}
+                  <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                      <div>
+                        <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                          <Layers size={16} className="text-primary-amber" />
+                          Suspended 3D Carousel Slide Selection (/services)
+                        </h3>
+                        <p className="text-xs text-[#726F6D]">
+                          Curate the upper and lower auto-scrolling slide tracks for the suspended perspective carousel on the Services page. Select template covers or upload custom slide images to R2.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleSaveConfig("services_carousel_slides", {
+                          upperSlides: currentUpperSlides,
+                          lowerSlides: currentLowerSlides,
+                        })}
+                        disabled={configSaving}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow shrink-0"
+                      >
+                        <Save size={14} /> {configSaving ? "Saving..." : "Save Carousel Slides"}
+                      </button>
+                    </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div>
-                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                              Service Title
-                            </label>
-                            <input
-                              type="text"
-                              value={svc.title || ""}
-                              onChange={(e) => setSiteConfigs({
-                                ...siteConfigs,
-                                services_cms: {
-                                  ...siteConfigs["services_cms"],
-                                  [serviceKey]: { ...svc, title: e.target.value }
-                                }
-                              })}
-                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
-                            />
-                          </div>
+                    {/* Track Selection Switcher */}
+                    <div>
+                      <label className="text-xs font-extrabold text-[#111111] block mb-2">
+                        Active Carousel Track:
+                      </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveMarqueeTarget("services_top")}
+                          className={`hex-pill px-4 py-2 text-xs font-black transition-all border ${
+                            isUpperTrack
+                              ? "bg-[#111111] text-[#FCBF14] border-primary shadow-md scale-105"
+                              : "bg-white text-[#111111] border-primary/30 hover:border-primary hover:bg-[#FFF9E8]"
+                          }`}
+                        >
+                          Upper Track (Right Gliding) · {currentUpperSlides.length} Slides
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveMarqueeTarget("services_bottom")}
+                          className={`hex-pill px-4 py-2 text-xs font-black transition-all border ${
+                            !isUpperTrack
+                              ? "bg-[#111111] text-[#FCBF14] border-primary shadow-md scale-105"
+                              : "bg-white text-[#111111] border-primary/30 hover:border-primary hover:bg-[#FFF9E8]"
+                          }`}
+                        >
+                          Lower Track (Left Gliding) · {currentLowerSlides.length} Slides
+                        </button>
+                      </div>
+                    </div>
 
-                          <div>
-                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                              Turnaround Time Badge
-                            </label>
-                            <input
-                              type="text"
-                              value={svc.turnaround || ""}
-                              onChange={(e) => setSiteConfigs({
-                                ...siteConfigs,
-                                services_cms: {
-                                  ...siteConfigs["services_cms"],
-                                  [serviceKey]: { ...svc, turnaround: e.target.value }
-                                }
-                              })}
-                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                              Ideal For Audience
-                            </label>
-                            <input
-                              type="text"
-                              value={svc.idealFor || ""}
-                              onChange={(e) => setSiteConfigs({
-                                ...siteConfigs,
-                                services_cms: {
-                                  ...siteConfigs["services_cms"],
-                                  [serviceKey]: { ...svc, idealFor: e.target.value }
-                                }
-                              })}
-                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
-                            />
-                          </div>
-                        </div>
-
+                    {/* Currently Active Slides in Track */}
+                    <div className="space-y-4 pt-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <label className="text-[11px] font-bold text-[#111111] block mb-1">
-                            Service Description / Tagline
-                          </label>
-                          <input
-                            type="text"
-                            value={svc.tagline || ""}
-                            onChange={(e) => setSiteConfigs({
-                              ...siteConfigs,
-                              services_cms: {
-                                ...siteConfigs["services_cms"],
-                                [serviceKey]: { ...svc, tagline: e.target.value }
-                              }
-                            })}
-                            className="w-full bg-white border border-[#111111]/12 rounded-xl px-3 py-1.5 text-xs font-medium text-[#111111]"
-                          />
+                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                            Currently Active in {isUpperTrack ? "Upper" : "Lower"} Track ({activeCarouselList.length})
+                          </h4>
+                          <p className="text-[11px] text-[#726F6D]">
+                            These slides scroll continuously across the screen in the 3D suspended view.
+                          </p>
                         </div>
 
-                        {/* Before / After Images */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#111111]/6">
-                          <div className="bg-white p-3 rounded-xl border border-red-200">
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[11px] font-extrabold text-red-700 block">
-                                Raw Draft (Before Image)
-                              </label>
-                              <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> {uploadingFieldKey === `svc_before_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingFieldKey === `svc_before_${serviceKey}`}
-                                  className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
-                                    setSiteConfigs({
-                                      ...siteConfigs,
-                                      services_cms: {
-                                        ...siteConfigs["services_cms"],
-                                        [serviceKey]: { ...svc, beforeImg: r2Url }
-                                      }
-                                    });
-                                  }, "before_after", `svc_before_${serviceKey}`)}
-                                />
-                              </label>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              {svc.beforeImg && (
-                                <img
-                                  src={svc.beforeImg}
-                                  alt="Before Preview"
-                                  className="w-12 h-8 object-cover rounded border border-red-200 flex-shrink-0"
-                                />
-                              )}
-                              <input
-                                type="text"
-                                value={svc.beforeImg || ""}
-                                onChange={(e) => setSiteConfigs({
-                                  ...siteConfigs,
-                                  services_cms: {
-                                    ...siteConfigs["services_cms"],
-                                    [serviceKey]: { ...svc, beforeImg: e.target.value }
-                                  }
-                                })}
-                                placeholder="R2 CDN URL or upload"
-                                className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
-                              />
-                            </div>
-                            <div className="text-[10px] text-gray-500 truncate">
-                              Label: {svc.beforeTitle}
-                            </div>
-                          </div>
-
-                          <div className="bg-white p-3 rounded-xl border border-green-200">
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[11px] font-extrabold text-green-700 block">
-                                SlideBee Polish (After Image)
-                              </label>
-                              <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> {uploadingFieldKey === `svc_after_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingFieldKey === `svc_after_${serviceKey}`}
-                                  className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, (r2Url) => {
-                                    setSiteConfigs({
-                                      ...siteConfigs,
-                                      services_cms: {
-                                        ...siteConfigs["services_cms"],
-                                        [serviceKey]: { ...svc, afterImg: r2Url }
-                                      }
-                                    });
-                                  }, "before_after", `svc_after_${serviceKey}`)}
-                                />
-                              </label>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              {svc.afterImg && (
-                                <img
-                                  src={svc.afterImg}
-                                  alt="After Preview"
-                                  className="w-12 h-8 object-cover rounded border border-green-200 flex-shrink-0"
-                                />
-                              )}
-                              <input
-                                type="text"
-                                value={svc.afterImg || ""}
-                                onChange={(e) => setSiteConfigs({
-                                  ...siteConfigs,
-                                  services_cms: {
-                                    ...siteConfigs["services_cms"],
-                                    [serviceKey]: { ...svc, afterImg: e.target.value }
-                                  }
-                                })}
-                                placeholder="R2 CDN URL or upload"
-                                className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
-                              />
-                            </div>
-                            <div className="text-[10px] text-gray-500 truncate">
-                              Label: {svc.afterTitle}
-                            </div>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <label className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm">
+                            <UploadCloud size={14} />
+                            <span>{isUploadingMarquee ? "Uploading to R2..." : "Upload Slide Image to R2"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={isUploadingMarquee}
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setIsUploadingMarquee(true);
+                                try {
+                                  const r2Res = await uploadToR2(file, { folder: "carousel", fileName: file.name });
+                                  if (!r2Res.success || !r2Res.publicUrl) throw new Error(r2Res.error || "Upload failed");
+                                  const newSlide = {
+                                    id: `cust-${Date.now()}`,
+                                    title: file.name.replace(/\.[^/.]+$/, ""),
+                                    category: "Custom Slide",
+                                    image: r2Res.publicUrl,
+                                    code: "CUSTOM",
+                                  };
+                                  updateCarouselTrack([...activeCarouselList, newSlide]);
+                                } catch (err: any) {
+                                  alert("Failed to upload slide to Cloudflare R2: " + (err.message || err));
+                                } finally {
+                                  setIsUploadingMarquee(false);
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+                          </label>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
 
-                {/* PREVIOUS WORKED COMPANIES MARQUEE CUSTOMIZER */}
-                <div className="pt-6 border-t border-[#111111]/8 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/10">
-                    <div>
-                      <h4 className="text-sm font-heading font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-                        <Award size={15} className="text-primary-amber" />
-                        Previous Worked Companies Brand Marquee (/services)
-                      </h4>
-                      <p className="text-xs text-[#726F6D]">
-                        Manage the continuous scrolling brand marquee of enterprise clients and partners.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const caseStudies = siteConfigs["portfolio_cms"]?.caseStudies || [];
-                          const existingNames = new Set((siteConfigs["worked_companies"]?.companies || []).map((c: any) => c.name.toLowerCase()));
-                          const newCompanies = [...(siteConfigs["worked_companies"]?.companies || [])];
-                          
-                          caseStudies.forEach((cs: any) => {
-                            const rawClient = cs.client || cs.title.split(" ")[0];
-                            if (rawClient && !existingNames.has(rawClient.toLowerCase())) {
-                              existingNames.add(rawClient.toLowerCase());
-                              newCompanies.push({
-                                name: rawClient,
-                                category: cs.category || "Enterprise Partner"
-                              });
-                            }
-                          });
-                          
-                          setSiteConfigs({
-                            ...siteConfigs,
-                            worked_companies: { companies: newCompanies }
-                          });
-                        }}
-                        className="hex-pill bg-white hover:bg-primary/10 text-[#111111] border border-primary/40 font-black px-3.5 py-1.5 text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-                      >
-                        <RefreshCw size={13} className="text-primary-amber" /> Sync from Portfolio Case Studies
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveConfig("worked_companies", siteConfigs["worked_companies"] || { companies: [] })}
-                        disabled={configSaving}
-                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow cursor-pointer"
-                      >
-                        <Save size={13} /> {configSaving ? "Saving..." : "Save Companies"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Current Companies Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {(siteConfigs["worked_companies"]?.companies || []).map((comp: any, cIdx: number) => (
-                      <div key={cIdx} className="hex-card bg-white p-3 rounded-xl border border-primary/30 flex items-center justify-between shadow-xs">
-                        <div>
-                          <div className="font-heading font-extrabold text-xs text-[#111111]">
-                            {comp.name}
-                          </div>
-                          <div className="text-[10px] text-[#726F6D] font-medium">
-                            {comp.category || "Enterprise Partner"}
-                          </div>
+                      {/* Active Slides Cards */}
+                      {activeCarouselList.length === 0 ? (
+                        <div className="p-6 text-center border-2 border-dashed border-primary/30 rounded-xl bg-[#FFF9E8]/50">
+                          <p className="text-xs font-bold text-[#726F6D]">No slides in this track yet. Select from template covers below or upload an image.</p>
                         </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {activeCarouselList.map((item: any, idx: number) => {
+                            const slideImg = typeof item === "string" ? item : (item?.image || item?.thumbnail_url || "");
+                            const slideTitle = typeof item === "string" ? `Slide ${idx + 1}` : (item?.title || `Slide ${idx + 1}`);
+                            const slideCode = typeof item === "object" ? (item?.code || item?.category || "") : "";
+
+                            return (
+                              <div key={idx} className="hex-card bg-white border border-primary/40 rounded-xl overflow-hidden shadow-sm relative group flex flex-col justify-between">
+                                <div className="aspect-[16/10] bg-[#FFF9E8] overflow-hidden relative">
+                                  <img src={slideImg} alt={slideTitle} className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateCarouselTrack(activeCarouselList.filter((_: any, i: number) => i !== idx))}
+                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity shadow cursor-pointer"
+                                    title="Remove from track"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                  {slideCode && (
+                                    <div className="absolute bottom-1 left-1">
+                                      <span className="hex-pill-sm bg-[#111111]/85 text-primary text-[8px] font-black px-1.5 py-0.5">
+                                        {slideCode}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="p-2 text-[10px] font-bold text-[#111111] truncate bg-white">
+                                  {slideTitle}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Manual Image URL Adder */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Or paste any direct R2 / CDN image URL to add..."
+                          value={marqueeManualUrl}
+                          onChange={(e) => setMarqueeManualUrl(e.target.value)}
+                          className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-mono"
+                        />
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = (siteConfigs["worked_companies"]?.companies || []).filter((_: any, i: number) => i !== cIdx);
-                            setSiteConfigs({
-                              ...siteConfigs,
-                              worked_companies: { companies: updated }
-                            });
+                            if (marqueeManualUrl.trim()) {
+                              const newSlide = {
+                                id: `cust-${Date.now()}`,
+                                title: "Custom Slide",
+                                category: "Custom",
+                                image: marqueeManualUrl.trim(),
+                                code: "CUSTOM",
+                              };
+                              updateCarouselTrack([...activeCarouselList, newSlide]);
+                              setMarqueeManualUrl("");
+                            }
                           }}
-                          className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
-                          title="Remove company"
+                          className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs cursor-pointer shadow-sm"
                         >
-                          <X size={14} />
+                          + Add URL
                         </button>
                       </div>
-                    ))}
+
+                      {/* Template Cover Images Picker */}
+                      <div className="pt-6 border-t border-[#111111]/10 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
+                              <Sparkles size={14} className="text-primary-amber" />
+                              Select Directly from Storefront Template Cover Images
+                            </h4>
+                            <p className="text-[11px] text-[#726F6D]">
+                              Click any template cover below to toggle it into or out of the {isUpperTrack ? "Upper Track" : "Lower Track"}.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-[380px] overflow-y-auto p-2 bg-[#FFF9E8]/50 rounded-2xl border border-primary/25">
+                          {templates.map((tpl: any) => {
+                            const coverImg = normalizeR2Url(
+                              tpl.image_url || tpl.thumbnail_url || tpl.image || "/portfolio/case_study_a_1.png"
+                            );
+                            const isSelected = activeCarouselList.some((item: any) => {
+                              const itemImg = typeof item === "string" ? item : item?.image;
+                              return itemImg === coverImg || (item?.id && item.id === `tpl-${tpl.id}`);
+                            });
+
+                            const toggleTemplateCover = () => {
+                              if (isSelected) {
+                                updateCarouselTrack(
+                                  activeCarouselList.filter((item: any) => {
+                                    const itemImg = typeof item === "string" ? item : item?.image;
+                                    return itemImg !== coverImg && item?.id !== `tpl-${tpl.id}`;
+                                  })
+                                );
+                              } else {
+                                const newSlide = {
+                                  id: `tpl-${tpl.id}`,
+                                  title: tpl.title,
+                                  category: tpl.category || "Keynote",
+                                  image: coverImg,
+                                  code: tpl.code || `SLD-${String(tpl.id).slice(0, 4)}`,
+                                };
+                                updateCarouselTrack([...activeCarouselList, newSlide]);
+                              }
+                            };
+
+                            return (
+                              <div
+                                key={tpl.id}
+                                onClick={toggleTemplateCover}
+                                className={`hex-card rounded-xl overflow-hidden border-2 cursor-pointer transition-all p-1 group flex flex-col justify-between ${
+                                  isSelected
+                                    ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
+                                    : "border-primary/30 bg-white hover:border-primary"
+                                }`}
+                              >
+                                <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden relative">
+                                  <img
+                                    src={coverImg}
+                                    alt={tpl.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    loading="lazy"
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
+                                      <Check size={12} />
+                                    </div>
+                                  )}
+                                  <div className="absolute bottom-1 left-1">
+                                    <span className="hex-pill-sm bg-[#111111]/85 text-primary text-[8px] font-black px-1.5 py-0.5">
+                                      {tpl.code || "SLD"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="p-1 text-[10px] font-extrabold text-[#111111] truncate">
+                                  {tpl.title}
+                                </div>
+                                <div className="px-1 pb-0.5 flex items-center justify-between text-[9px] text-[#726F6D]">
+                                  <span>{tpl.category}</span>
+                                  <span className={`font-black ${isSelected ? "text-green-700" : "text-primary-amber"}`}>
+                                    {isSelected ? "Active" : "+ Add"}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
 
-                  {/* Add New Company Form */}
-                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-[#111111]/8">
-                    <input
-                      type="text"
-                      placeholder="Company Name (e.g. Goldman Sachs)"
-                      value={newWorkedCompanyName}
-                      onChange={(e) => setNewWorkedCompanyName(e.target.value)}
-                      className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-medium"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Industry Category (e.g. Investment Banking)"
-                      value={newWorkedCompanyCategory}
-                      onChange={(e) => setNewWorkedCompanyCategory(e.target.value)}
-                      className="flex-1 bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newWorkedCompanyName.trim()) {
-                          const updated = [
-                            ...(siteConfigs["worked_companies"]?.companies || []),
-                            {
-                              name: newWorkedCompanyName.trim(),
-                              category: newWorkedCompanyCategory.trim() || "Enterprise Client"
-                            }
-                          ];
-                          setSiteConfigs({
-                            ...siteConfigs,
-                            worked_companies: { companies: updated }
-                          });
-                          setNewWorkedCompanyName("");
-                          setNewWorkedCompanyCategory("");
-                        }
-                      }}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs whitespace-nowrap cursor-pointer shadow-sm"
-                    >
-                      + Add Company
-                    </button>
+                  {/* SECTION 2: 6 CORE CAPABILITIES & INTERACTIVE BEFORE/AFTER SHOWCASE */}
+                  <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                      <div>
+                        <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
+                          <Sliders size={16} className="text-primary-amber" />
+                          Core Capabilities & Interactive Before / After Showcases (/services)
+                        </h3>
+                        <p className="text-xs text-[#726F6D]">
+                          Configure service deliverables, turnaround badges, and upload interactive before-and-after comparison slides to Cloudflare R2.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKey = `service_${Date.now()}`;
+                            const newService = {
+                              id: newKey,
+                              title: "New Presentation Service",
+                              tagline: "High-impact presentation design tailored to your strategic goals.",
+                              turnaround: "24h – 48h",
+                              idealFor: "Founders, executives, and enterprise teams",
+                              beforeImg: "",
+                              afterImg: "",
+                              beforeTitle: "Raw Draft / Before",
+                              afterTitle: "SlideBee Redesign / After"
+                            };
+                            setSiteConfigs({
+                              ...siteConfigs,
+                              services_cms: {
+                                ...currentServicesMap,
+                                [newKey]: newService
+                              }
+                            });
+                          }}
+                          className="hex-pill bg-white hover:bg-primary/10 text-[#111111] border border-primary/40 font-black px-4 py-2.5 text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <Plus size={14} className="text-primary-amber" /> + Add New Service
+                        </button>
+                        <button
+                          onClick={() => handleSaveConfig("services_cms", siteConfigs["services_cms"] || currentServicesMap)}
+                          disabled={configSaving}
+                          className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow cursor-pointer"
+                        >
+                          <Save size={14} /> {configSaving ? "Saving..." : "Save All Services"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Services Cards List */}
+                    <div className="space-y-6">
+                      {Object.keys(currentServicesMap).map((serviceKey) => {
+                        const svc = currentServicesMap[serviceKey] || {};
+                        const isCustom = !["redesign", "handwritten", "cleanup", "data", "template", "graphic"].includes(serviceKey);
+
+                        return (
+                          <div key={serviceKey} className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/10 space-y-4 shadow-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#111111]/8 pb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="hex-pill-sm bg-[#111111] text-[#FCBF14] text-[10px] font-black px-2.5 py-0.5">
+                                  {isCustom ? "Custom Service" : "Core Capability"}
+                                </span>
+                                <span className="text-xs font-black uppercase tracking-wider text-primary-amber">
+                                  {svc.title || "Untitled Service"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[11px] font-mono text-[#726F6D]">
+                                  key: {serviceKey}
+                                </span>
+                                {isCustom && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = { ...currentServicesMap };
+                                      delete updated[serviceKey];
+                                      setSiteConfigs({
+                                        ...siteConfigs,
+                                        services_cms: updated
+                                      });
+                                    }}
+                                    className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Trash2 size={13} /> Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div>
+                                <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                                  Service Title
+                                </label>
+                                <input
+                                  type="text"
+                                  value={svc.title || ""}
+                                  onChange={(e) => setSiteConfigs({
+                                    ...siteConfigs,
+                                    services_cms: {
+                                      ...currentServicesMap,
+                                      [serviceKey]: { ...svc, title: e.target.value }
+                                    }
+                                  })}
+                                  className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                                  Turnaround Time Badge
+                                </label>
+                                <input
+                                  type="text"
+                                  value={svc.turnaround || ""}
+                                  onChange={(e) => setSiteConfigs({
+                                    ...siteConfigs,
+                                    services_cms: {
+                                      ...currentServicesMap,
+                                      [serviceKey]: { ...svc, turnaround: e.target.value }
+                                    }
+                                  })}
+                                  placeholder="e.g. 24h – 48h"
+                                  className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                                  Best Suited For Audience
+                                </label>
+                                <input
+                                  type="text"
+                                  value={svc.idealFor || ""}
+                                  onChange={(e) => setSiteConfigs({
+                                    ...siteConfigs,
+                                    services_cms: {
+                                      ...currentServicesMap,
+                                      [serviceKey]: { ...svc, idealFor: e.target.value }
+                                    }
+                                  })}
+                                  placeholder="e.g. Corporate decks, executive briefings"
+                                  className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                                Service Description / Tagline
+                              </label>
+                              <input
+                                type="text"
+                                value={svc.tagline || ""}
+                                onChange={(e) => setSiteConfigs({
+                                  ...siteConfigs,
+                                  services_cms: {
+                                    ...currentServicesMap,
+                                    [serviceKey]: { ...svc, tagline: e.target.value }
+                                  }
+                                })}
+                                placeholder="Short description explaining the transformation..."
+                                className="w-full bg-white border border-[#111111]/12 rounded-xl px-3 py-1.5 text-xs font-medium text-[#111111]"
+                              />
+                            </div>
+
+                            {/* Before & After Image Comparison Uploader */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#111111]/6">
+                              {/* Before Image */}
+                              <div className="bg-white p-3 rounded-xl border border-red-200">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <label className="text-[11px] font-extrabold text-red-700 block">
+                                    Raw Draft (Before Image)
+                                  </label>
+                                  <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                    <UploadCloud size={11} /> {uploadingFieldKey === `svc_before_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={uploadingFieldKey === `svc_before_${serviceKey}`}
+                                      className="hidden"
+                                      onChange={(e) => handleImageFileUpload(e, (r2Url) => {
+                                        setSiteConfigs({
+                                          ...siteConfigs,
+                                          services_cms: {
+                                            ...currentServicesMap,
+                                            [serviceKey]: { ...svc, beforeImg: r2Url }
+                                          }
+                                        });
+                                      }, "before_after", `svc_before_${serviceKey}`)}
+                                    />
+                                  </label>
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {svc.beforeImg && (
+                                    <img
+                                      src={svc.beforeImg}
+                                      alt="Before Preview"
+                                      className="w-14 h-9 object-cover rounded border border-red-200 flex-shrink-0"
+                                    />
+                                  )}
+                                  <input
+                                    type="text"
+                                    value={svc.beforeImg || ""}
+                                    onChange={(e) => setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...currentServicesMap,
+                                        [serviceKey]: { ...svc, beforeImg: e.target.value }
+                                      }
+                                    })}
+                                    placeholder="R2 CDN URL or upload"
+                                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-gray-500 block mb-0.5">Before Label</label>
+                                  <input
+                                    type="text"
+                                    value={svc.beforeTitle || ""}
+                                    onChange={(e) => setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...currentServicesMap,
+                                        [serviceKey]: { ...svc, beforeTitle: e.target.value }
+                                      }
+                                    })}
+                                    placeholder="Raw Draft / Before"
+                                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2 py-0.5 text-[10px] font-bold"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* After Image */}
+                              <div className="bg-white p-3 rounded-xl border border-green-200">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <label className="text-[11px] font-extrabold text-green-700 block">
+                                    SlideBee Polish (After Image)
+                                  </label>
+                                  <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                    <UploadCloud size={11} /> {uploadingFieldKey === `svc_after_${serviceKey}` ? "Uploading to R2..." : "Upload to R2"}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={uploadingFieldKey === `svc_after_${serviceKey}`}
+                                      className="hidden"
+                                      onChange={(e) => handleImageFileUpload(e, (r2Url) => {
+                                        setSiteConfigs({
+                                          ...siteConfigs,
+                                          services_cms: {
+                                            ...currentServicesMap,
+                                            [serviceKey]: { ...svc, afterImg: r2Url }
+                                          }
+                                        });
+                                      }, "before_after", `svc_after_${serviceKey}`)}
+                                    />
+                                  </label>
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {svc.afterImg && (
+                                    <img
+                                      src={svc.afterImg}
+                                      alt="After Preview"
+                                      className="w-14 h-9 object-cover rounded border border-green-200 flex-shrink-0"
+                                    />
+                                  )}
+                                  <input
+                                    type="text"
+                                    value={svc.afterImg || ""}
+                                    onChange={(e) => setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...currentServicesMap,
+                                        [serviceKey]: { ...svc, afterImg: e.target.value }
+                                      }
+                                    })}
+                                    placeholder="R2 CDN URL or upload"
+                                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1 text-[11px] font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-gray-500 block mb-0.5">After Label</label>
+                                  <input
+                                    type="text"
+                                    value={svc.afterTitle || ""}
+                                    onChange={(e) => setSiteConfigs({
+                                      ...siteConfigs,
+                                      services_cms: {
+                                        ...currentServicesMap,
+                                        [serviceKey]: { ...svc, afterTitle: e.target.value }
+                                      }
+                                    })}
+                                    placeholder="SlideBee Redesign / After"
+                                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2 py-0.5 text-[10px] font-bold"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
+
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* SUB-TAB 3: PORTFOLIO & CASE STUDIES CMS */}
             {activeCmsSubTab === "portfolio" && (() => {
@@ -5696,10 +5679,10 @@ SlideBee Design Studio`
                 <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      About Page Story & Mission Customizer
+                      About Page Story & Vision Customizer (/about)
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Update brand story, mission, and company background (/about)
+                      Update the team spotlight, company vision, and bottom call-to-action sections on the About page.
                     </p>
                   </div>
                   <button
@@ -5711,83 +5694,344 @@ SlideBee Design Studio`
                   </button>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    About Page Main Headline
-                  </label>
-                  <input
-                    type="text"
-                    value={siteConfigs["about_cms"]?.headline || "We Turn Complex Business Ideas into Unforgettable Visuals."}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      about_cms: { ...siteConfigs["about_cms"], headline: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                    placeholder="e.g. We Turn Complex Business Ideas into Unforgettable Visuals."
-                  />
-                </div>
+                {/* 1. OUR TEAM SECTION */}
+                <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-primary/30 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[#111111]/8 pb-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
+                    <h4 className="font-heading font-extrabold text-xs text-[#111111] uppercase tracking-wider">
+                      Section 1: Our Team Spotlight
+                    </h4>
+                  </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    About Page Subheadline
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={siteConfigs["about_cms"]?.subheadline || "SlideBee is a dedicated presentation design studio engineered for high-growth startups, C-suite executives, and forward-thinking enterprises."}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      about_cms: { ...siteConfigs["about_cms"], subheadline: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
-                    placeholder="Supporting mission description paragraph..."
-                  />
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                        Eyebrow Label
+                      </label>
+                      <input
+                        type="text"
+                        value={siteConfigs["about_cms"]?.teamEyebrow ?? "OUR TEAM"}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), teamEyebrow: e.target.value }
+                        })}
+                        placeholder="OUR TEAM"
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Story Section Heading
-                  </label>
-                  <input
-                    type="text"
-                    value={siteConfigs["about_cms"]?.storyHeading || "Most Great Ideas Get Lost in Bad PowerPoint Slides."}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      about_cms: { ...siteConfigs["about_cms"], storyHeading: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                  />
-                </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                        CTA Button Label & Link
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.teamCtaText ?? "Meet Our Work"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), teamCtaText: e.target.value }
+                          })}
+                          placeholder="Meet Our Work"
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                        />
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.teamCtaLink ?? "/examples"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), teamCtaLink: e.target.value }
+                          })}
+                          placeholder="/examples"
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-medium text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Story Paragraph 1
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Main Team Heading (Supports Line Breaks)
                     </label>
                     <textarea
                       rows={3}
-                      value={siteConfigs["about_cms"]?.storyParagraph1 || ""}
+                      value={siteConfigs["about_cms"]?.teamHeading ?? "A Specialized\nPresentation\nDesign Team."}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        about_cms: { ...siteConfigs["about_cms"], storyParagraph1: e.target.value }
+                        about_cms: { ...(siteConfigs["about_cms"] || {}), teamHeading: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                      className="w-full bg-white border border-[#111111]/12 rounded-xl p-2.5 text-xs font-bold text-[#111111]"
                     />
                   </div>
+
                   <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Story Paragraph 2
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Team Subtitle Paragraph
                     </label>
                     <textarea
-                      rows={3}
-                      value={siteConfigs["about_cms"]?.storyParagraph2 || ""}
+                      rows={2}
+                      value={siteConfigs["about_cms"]?.teamSubtitle ?? "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        about_cms: { ...siteConfigs["about_cms"], storyParagraph2: e.target.value }
+                        about_cms: { ...(siteConfigs["about_cms"] || {}), teamSubtitle: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-xl p-3 text-xs font-medium text-[#111111]"
+                      className="w-full bg-white border border-[#111111]/12 rounded-xl p-2.5 text-xs font-medium text-[#111111]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#111111]/6">
+                    {/* Team Photo with R2 Uploader */}
+                    <div className="bg-white p-3 rounded-xl border border-primary/25 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-extrabold text-[#111111] block">
+                          Team Photo (Cloudflare R2)
+                        </label>
+                        <label className="cursor-pointer text-[9px] font-bold text-[#111111] bg-primary hover:bg-primary-dark px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
+                          <UploadCloud size={11} /> {uploadingFieldKey === "about_team_image" ? "Uploading..." : "Upload to R2"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingFieldKey === "about_team_image"}
+                            className="hidden"
+                            onChange={(e) => handleImageFileUpload(e, (r2Url) => {
+                              setSiteConfigs({
+                                ...siteConfigs,
+                                about_cms: {
+                                  ...(siteConfigs["about_cms"] || {}),
+                                  teamImage: r2Url
+                                }
+                              });
+                            }, "about", "about_team_image")}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {siteConfigs["about_cms"]?.teamImage && (
+                          <img
+                            src={siteConfigs["about_cms"]?.teamImage}
+                            alt="Team Preview"
+                            className="w-14 h-10 object-cover rounded border border-primary/30 flex-shrink-0"
+                          />
+                        )}
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.teamImage ?? "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), teamImage: e.target.value }
+                          })}
+                          placeholder="Image URL or upload"
+                          className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded px-2.5 py-1.5 text-[11px] font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Yellow Sticky Note Text */}
+                    <div className="bg-white p-3 rounded-xl border border-primary/25 space-y-1">
+                      <label className="text-[11px] font-extrabold text-[#111111] block">
+                        Yellow Sticky Note Text (Supports Line Breaks)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={siteConfigs["about_cms"]?.teamNote ?? "Different\nPerspectives\nBetter Slides"}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), teamNote: e.target.value }
+                        })}
+                        placeholder={"Different\nPerspectives\nBetter Slides"}
+                        className="w-full bg-[#FFFDF5] border border-primary/30 rounded-lg p-2 text-xs font-bold text-[#111111]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. OUR VISION SECTION */}
+                <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-primary/30 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[#111111]/8 pb-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
+                    <h4 className="font-heading font-extrabold text-xs text-[#111111] uppercase tracking-wider">
+                      Section 2: Our Vision
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                        Vision Eyebrow Label
+                      </label>
+                      <input
+                        type="text"
+                        value={siteConfigs["about_cms"]?.visionEyebrow ?? "OUR VISION"}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), visionEyebrow: e.target.value }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                        Vision Sticky Note / Badge Text
+                      </label>
+                      <input
+                        type="text"
+                        value={siteConfigs["about_cms"]?.visionNote ?? "Clear Ideas Create Bigger Opportunities"}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), visionNote: e.target.value }
+                        })}
+                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Vision Heading (Supports Line Breaks)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={siteConfigs["about_cms"]?.visionHeading ?? "A Global Destination\nfor Better Presentations."}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...(siteConfigs["about_cms"] || {}), visionHeading: e.target.value }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 rounded-xl p-2.5 text-xs font-bold text-[#111111]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[#111111] block mb-1">
+                      Vision Subtitle Paragraph
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={siteConfigs["about_cms"]?.visionSubtitle ?? "We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively."}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...(siteConfigs["about_cms"] || {}), visionSubtitle: e.target.value }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 rounded-xl p-2.5 text-xs font-medium text-[#111111]"
                     />
                   </div>
                 </div>
+
+                {/* 3. BOTTOM CALL TO ACTION SECTION */}
+                <div className="bg-[#111111] text-white p-5 rounded-2xl border border-white/10 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
+                    <h4 className="font-heading font-extrabold text-xs text-[#FCBF14] uppercase tracking-wider">
+                      Section 3: Bottom Call to Action
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-300 block mb-1">
+                        CTA Eyebrow Label
+                      </label>
+                      <input
+                        type="text"
+                        value={siteConfigs["about_cms"]?.ctaEyebrow ?? "LET'S CREATE BETTER PRESENTATIONS"}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), ctaEyebrow: e.target.value }
+                        })}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-300 block mb-1">
+                        CTA Main Heading
+                      </label>
+                      <input
+                        type="text"
+                        value={siteConfigs["about_cms"]?.ctaHeading ?? "Your Ideas. Our Design."}
+                        onChange={(e) => setSiteConfigs({
+                          ...siteConfigs,
+                          about_cms: { ...(siteConfigs["about_cms"] || {}), ctaHeading: e.target.value }
+                        })}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-300 block mb-1">
+                      CTA Subtitle Description
+                    </label>
+                    <input
+                      type="text"
+                      value={siteConfigs["about_cms"]?.ctaSubtitle ?? "Choose your way to create better presentations with Slidebee."}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        about_cms: { ...(siteConfigs["about_cms"] || {}), ctaSubtitle: e.target.value }
+                      })}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-white placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#FCBF14] block mb-1">
+                        Primary Button (Label & Link)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.ctaPrimaryText ?? "Explore Templates"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), ctaPrimaryText: e.target.value }
+                          })}
+                          placeholder="Explore Templates"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                        />
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.ctaPrimaryLink ?? "/"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), ctaPrimaryLink: e.target.value }
+                          })}
+                          placeholder="/"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-white placeholder:text-gray-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-300 block mb-1">
+                        Secondary Button (Label & Link)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.ctaSecondaryText ?? "Get a Custom Presentation"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), ctaSecondaryText: e.target.value }
+                          })}
+                          placeholder="Get a Custom Presentation"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                        />
+                        <input
+                          type="text"
+                          value={siteConfigs["about_cms"]?.ctaSecondaryLink ?? "/ordernow"}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            about_cms: { ...(siteConfigs["about_cms"] || {}), ctaSecondaryLink: e.target.value }
+                          })}
+                          placeholder="/ordernow"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-white placeholder:text-gray-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
 
@@ -5906,20 +6150,6 @@ SlideBee Design Studio`
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Studio Physical Address
-                  </label>
-                  <input
-                    type="text"
-                    value={siteConfigs["contact_cms"]?.address || "123 Design Avenue, Suite 400, New York, NY 10001"}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      contact_cms: { ...siteConfigs["contact_cms"], address: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
-                  />
-                </div>
               </div>
             )}
 
@@ -8173,6 +8403,25 @@ SlideBee Design Studio`
                       />
                     </label>
 
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] font-bold text-[#726F6D] shrink-0">Or R2 URL:</span>
+                      <input
+                        type="url"
+                        placeholder="https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/..."
+                        value={newPptUrl}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setNewPptUrl(val);
+                          if (val && !newPptFilename) {
+                            const name = val.split("/").pop() || "presentation.pptx";
+                            setNewPptFilename(name);
+                            setNewPptSize("R2 CDN File");
+                          }
+                        }}
+                        className="flex-1 bg-[#FFF9E8] border border-[#111111]/15 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
+                      />
+                    </div>
+
                     {newPptFilename ? (
                       <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-xs font-bold flex items-center justify-between">
                         <div className="truncate flex items-center gap-1.5">
@@ -8193,7 +8442,7 @@ SlideBee Design Studio`
                       </div>
                     ) : (
                       <span className="text-[10px] text-[#726F6D] block text-center">
-                        Master presentation (.pptx) uploaded directly to Cloudflare R2.
+                        Master presentation (.pptx) uploaded directly to Cloudflare R2 or paste URL above.
                       </span>
                     )}
                   </div>
@@ -8292,6 +8541,17 @@ SlideBee Design Studio`
                       </label>
                     </div>
 
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] font-bold text-[#726F6D] shrink-0">Or R2 URL:</span>
+                      <input
+                        type="url"
+                        placeholder="https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/..."
+                        value={newThumbnail}
+                        onChange={(e) => setNewThumbnail(e.target.value.trim())}
+                        className="flex-1 bg-white border border-[#111111]/15 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
+                      />
+                    </div>
+
                     {newThumbnail ? (
                       <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-[#111111]/8">
                         <div className="w-20 h-14 bg-[#111111] rounded overflow-hidden shrink-0 border border-primary/30">
@@ -8311,7 +8571,7 @@ SlideBee Design Studio`
                       </div>
                     ) : (
                       <div className="p-3 border-2 border-dashed border-[#111111]/15 rounded-lg text-center bg-white/60">
-                        <p className="text-[11px] text-[#726F6D]">No cover selected. Click "Upload Cover" to set catalog cover image.</p>
+                        <p className="text-[11px] text-[#726F6D]">No cover selected. Click "Upload Cover" or paste R2 URL above.</p>
                       </div>
                     )}
                   </div>

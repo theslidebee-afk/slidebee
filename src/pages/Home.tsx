@@ -85,6 +85,12 @@ export default function Home() {
     "Strategy"
   ]);
   const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
+  const [heroConfig, setHeroConfig] = useState<any>({
+    badge: "PRESENTATIONS FOR A BRIGHTER TOMORROW",
+    title: "Ideas Deserve\nBetter Slides.",
+    subtitle: "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.",
+  });
+  const [curatedTrendingIds, setCuratedTrendingIds] = useState<string[]>([]);
   const [homeBanner1, setHomeBanner1] = useState<any>({
     title: "Create Presentations That Make an Impact",
     subtitle: "Turn your ideas into amazing slides.",
@@ -188,19 +194,29 @@ export default function Home() {
         }
       });
 
-    // Fetch dynamic promotional banners
+    // Fetch dynamic hero, promotional banners, and curated trending templates
     supabase
       .from("site_config")
       .select("*")
-      .in("key", ["home_banner_1", "home_banner_2"])
+      .in("key", ["hero", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
       .then(({ data }) => {
         if (data && Array.isArray(data)) {
           data.forEach((row: any) => {
+            if (row.key === "hero" && row.value) {
+              setHeroConfig((prev: any) => ({ ...prev, ...row.value }));
+            }
             if (row.key === "home_banner_1" && row.value) {
               setHomeBanner1((prev: any) => ({ ...prev, ...row.value }));
             }
             if (row.key === "home_banner_2" && row.value) {
               setHomeBanner2((prev: any) => ({ ...prev, ...row.value }));
+            }
+            if ((row.key === "trending_templates" || row.key === "featured_templates") && row.value) {
+              const raw = row.value;
+              const ids = Array.isArray(raw) ? raw : (Array.isArray(raw?.ids) ? raw.ids : []);
+              if (Array.isArray(ids) && ids.length > 0) {
+                setCuratedTrendingIds(ids.map(String));
+              }
             }
           });
         }
@@ -214,28 +230,18 @@ export default function Home() {
     }
   };
 
-  // Curate Trending Templates (Top downloaded decks)
+  // Curate Trending Templates (Admin curated picks or top downloaded decks)
   const trendingTemplates = useMemo(() => {
+    if (curatedTrendingIds.length > 0) {
+      const matched = curatedTrendingIds
+        .map((id) => allTemplates.find((t) => String(t.id) === id || String((t as any).slug) === id || String((t as any).code) === id))
+        .filter(Boolean) as typeof allTemplates;
+      if (matched.length > 0) return matched;
+    }
     return [...allTemplates]
       .sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
       .slice(0, 4);
-  }, [allTemplates]);
-
-  // Curate Leading Templates (Handpicked executive master decks)
-  const leadingTemplates = useMemo(() => {
-    return allTemplates.filter((t) => {
-      const titleLower = t.title.toLowerCase();
-      return (
-        titleLower.includes("profile") ||
-        titleLower.includes("rfp") ||
-        titleLower.includes("retail") ||
-        titleLower.includes("expansion") ||
-        titleLower.includes("strategy") ||
-        titleLower.includes("series a") ||
-        titleLower.includes("growth")
-      );
-    }).slice(0, 4);
-  }, [allTemplates]);
+  }, [allTemplates, curatedTrendingIds]);
 
   // Filter Catalog for Continuous Scrolling Feed
   const filteredCatalog = useMemo(() => {
@@ -565,19 +571,18 @@ export default function Home() {
             {/* Eyebrow */}
             <div className="mb-4">
               <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
-                PRESENTATIONS FOR A BRIGHTER TOMORROW
+                {heroConfig.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
               </span>
             </div>
 
             {/* Bold Display Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl">
-              Ideas Deserve<br />
-              Better Slides<span className="text-primary-amber">.</span>
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl whitespace-pre-line">
+              {heroConfig.title || "Ideas Deserve\nBetter Slides."}
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-2xl mx-auto mb-8">
-              At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
+            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-2xl mx-auto mb-8 whitespace-pre-line">
+              {heroConfig.subtitle || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."}
             </p>
 
             {/* Trust Indicators Row */}
@@ -816,32 +821,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* SECTION B: LEADING TEMPLATES */}
-              <div>
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 gap-2">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Crown className="w-5 h-5 text-[#FCBF14] fill-[#FCBF14]" />
-                      <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111]">
-                        Leading Templates
-                      </h2>
-                    </div>
-                    <p className="text-xs sm:text-sm text-[#726F6D] font-medium">
-                      Curated master frameworks engineered for boardrooms and investor pitches.
-                    </p>
-                  </div>
-                  <span className="text-xs font-extrabold text-primary-amber bg-primary/15 border border-primary/30 px-3 py-1 rounded-full shrink-0">
-                    Editor's Pick
-                  </span>
-                </div>
-
-                {/* 4 Leading Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                  {leadingTemplates.map((template) => renderShowcaseCard(template))}
-                </div>
-              </div>
-
-              {/* SECTION C: CONTINUOUS ALL TEMPLATES CATALOG */}
+              {/* SECTION B: CONTINUOUS ALL TEMPLATES CATALOG */}
               <div className="pt-4 border-t-2 border-primary/20">
                 
                 {/* Search & Dynamic Filter Header Bar */}

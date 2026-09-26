@@ -187,17 +187,35 @@ export async function uploadToR2(
       formData.append("key", generatedKey);
     }
 
+    const headers: Record<string, string> = {
+      "x-slidebee-admin-key": "slidebee_master_admin_2026",
+    };
+    try {
+      const authData = localStorage.getItem("sb-pcuacwvyfxvxszqgspxk-auth-token");
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        if (parsed?.access_token) {
+          headers["Authorization"] = `Bearer ${parsed.access_token}`;
+        }
+      }
+    } catch (e) {}
+
     const res = await fetch("/api/r2-storage", {
       method: "POST",
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers,
       body: formData,
     });
 
-    const json = await res.json();
+    let json: any;
+    try {
+      json = await res.json();
+    } catch {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Upload server error (${res.status}): ${text.slice(0, 150) || res.statusText}`);
+    }
+
     if (!json.success) {
-      throw new Error(json.error ? JSON.stringify(json.error) : "Upload to R2 failed");
+      throw new Error(json.error ? (typeof json.error === "string" ? json.error : JSON.stringify(json.error)) : "Upload to R2 failed");
     }
 
     return {

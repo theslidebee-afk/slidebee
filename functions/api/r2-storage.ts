@@ -23,9 +23,17 @@ const ALLOWED_ORIGINS = [
 
 const ALLOWED_EXTENSIONS = new Set(["pptx", "ppt", "png", "jpg", "jpeg", "webp", "pdf", "svg"]);
 
+function isOriginAllowed(origin: string): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith(".pages.dev")) return true;
+  if (origin.endsWith(".theslidebee.com")) return true;
+  return false;
+}
+
 function getCorsHeaders(request: Request) {
   const origin = request.headers.get("Origin") || "";
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -399,15 +407,19 @@ export async function onRequestPost(context: any) {
     }
 
     // 2. Enforce 10.00 GB hard bucket ceiling
-    const { totalBytes } = await getStorageTelemetry(env);
-    if (totalBytes + fileSize > HARD_STORAGE_CAP_BYTES) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Zero-Cost Safety Cap: R2 storage limit of 10.00 GB reached (current usage: ${(totalBytes / (1024 * 1024 * 1024)).toFixed(3)} GB). Upload blocked to guarantee zero-cost billing.`,
-        }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    try {
+      const telemetry = await getStorageTelemetry(env);
+      if (telemetry && telemetry.totalBytes + fileSize > HARD_STORAGE_CAP_BYTES) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `Zero-Cost Safety Cap: R2 storage limit of 10.00 GB reached (current usage: ${(telemetry.totalBytes / (1024 * 1024 * 1024)).toFixed(3)} GB). Upload blocked to guarantee zero-cost billing.`,
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch (telemetryErr) {
+      console.warn("Storage telemetry check skipped:", telemetryErr);
     }
 
     // 3. Perform upload
