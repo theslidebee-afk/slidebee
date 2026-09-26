@@ -286,46 +286,45 @@ export default function Home() {
         {/* Central Stage Container */}
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
           
-          {/* Top Split Promotion Banners (Now covered by video background) */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-12 sm:mb-16">
+          {/* Top Split Promotion Banners (Tighter proportions) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
-            <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+            <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px]">
               
               {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
-              <div className="absolute -bottom-10 -left-10 w-64 h-64 pointer-events-none opacity-40">
+              <div className="absolute -bottom-10 -left-10 w-52 h-52 pointer-events-none opacity-35">
                 <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
                   <path d="M0 120 C 60 80, 120 160, 200 110 L 200 200 L 0 200 Z" fill="#F09B0A" />
                 </svg>
               </div>
 
               {/* Organic Fluid Texture Wave 2 (Bottom Right) */}
-              <div className="absolute -bottom-8 -right-8 w-60 h-60 pointer-events-none opacity-30">
+              <div className="absolute -bottom-8 -right-8 w-48 h-48 pointer-events-none opacity-25">
                 <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
                   <path d="M0 140 C 70 110, 130 180, 200 130 L 200 200 L 0 200 Z" fill="#E08B00" />
                 </svg>
               </div>
 
-              <div className="flex items-center gap-4 sm:gap-5 relative z-10">
+              <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
                 {/* White Circle Badge with Radiating Spark Lines */}
                 <div className="relative shrink-0">
-                  {/* Radiating Spark Lines \|/ */}
-                  <svg className="absolute -top-3.5 -right-2.5 w-7 h-7 pointer-events-none" viewBox="0 0 30 30" fill="none">
+                  <svg className="absolute -top-2 -right-2 w-5 h-5 pointer-events-none" viewBox="0 0 30 30" fill="none">
                     <path d="M15 4V11" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
                     <path d="M6 8L11 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
                     <path d="M24 8L19 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
                   </svg>
 
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FFFDF5] shadow-[0_8px_25px_rgba(0,0,0,0.08)] flex items-center justify-center">
-                    <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-[#111111] fill-[#111111]" />
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FFFDF5] shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center">
+                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] fill-[#111111]" />
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-[#111111] leading-tight">
+                  <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-[#111111] leading-tight">
                     Create Presentations<br className="hidden sm:inline" /> That Make an Impact
                   </h3>
-                  <p className="text-xs sm:text-sm lg:text-base text-[#111111]/85 font-medium mt-1">
+                  <p className="text-xs sm:text-sm text-[#111111]/85 font-medium mt-0.5">
                     Turn your ideas into amazing slides.
                   </p>
                 </div>
@@ -334,18 +333,18 @@ export default function Home() {
               <Link
                 to="/ordernow"
                 data-bee-state="quote"
-                className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
+                className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
               >
                 <span>Get Started</span>
-                <ArrowRight size={16} className="text-[#FCBF14]" />
+                <ArrowRight size={15} className="text-[#FCBF14]" />
               </Link>
             </div>
 
             {/* Banner 2: Black - Get Unlimited Downloads */}
-            <div className="bg-[#0D0D0D]/95 backdrop-blur-md text-white rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+            <div className="bg-[#0D0D0D]/95 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.30)] border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px]">
               
               {/* Organic Flowing Contour Texture 1 (Top Left) */}
-              <div className="absolute -top-12 -left-12 w-72 h-72 pointer-events-none opacity-50">
+              <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-40">
                 <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
                   <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#1C1C1C" />
                   <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#242424" />
@@ -353,23 +352,23 @@ export default function Home() {
               </div>
 
               {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
-              <div className="absolute -bottom-10 -right-10 w-64 h-64 pointer-events-none opacity-40">
+              <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-30">
                 <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
                   <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#1F1F1F" />
                 </svg>
               </div>
 
-              <div className="flex items-center gap-4 sm:gap-5 relative z-10">
+              <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
                 {/* Yellow Circle Badge with Infinity Icon */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FCBF14] shadow-[0_8px_30px_rgba(252,191,20,0.35)] flex items-center justify-center shrink-0">
-                  <InfinityIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#111111] stroke-[2.8]" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FCBF14] shadow-[0_6px_22px_rgba(252,191,20,0.35)] flex items-center justify-center shrink-0">
+                  <InfinityIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] stroke-[2.8]" />
                 </div>
 
                 <div>
-                  <h3 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-white leading-tight">
+                  <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
                     Get Unlimited Downloads
                   </h3>
-                  <p className="text-xs sm:text-sm lg:text-base text-[#A0A0A0] font-medium mt-1">
+                  <p className="text-xs sm:text-sm text-[#A0A0A0] font-medium mt-0.5">
                     Access all templates. No limits.
                   </p>
                 </div>
@@ -377,10 +376,10 @@ export default function Home() {
 
               <button
                 onClick={scrollToTemplates}
-                className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
+                className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
               >
                 <span>Explore Now</span>
-                <ArrowRight size={16} />
+                <ArrowRight size={15} />
               </button>
             </div>
 

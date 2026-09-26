@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
   Paintbrush,
   TrendingUp,
   BarChart3,
@@ -110,9 +108,6 @@ export function Suspended3DCarousel() {
   const { templates } = useStudioStore();
   const [upperSlides, setUpperSlides] = useState<SlideItem[]>(defaultUpperSlides);
   const [lowerSlides, setLowerSlides] = useState<SlideItem[]>(defaultLowerSlides);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [isHovered, setIsHovered] = useState<boolean>(false);
-  const touchStartX = useRef<number | null>(null);
 
   // Sync with store templates if available
   useEffect(() => {
@@ -138,58 +133,18 @@ export function Suspended3DCarousel() {
     }
   }, [templates]);
 
-  const total = upperSlides.length;
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % total);
-  };
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + total) % total);
-  };
-
-  // Autoplay rotation every 5s when not hovered
-  useEffect(() => {
-    if (isHovered) return;
-    const interval = setInterval(() => {
-      handleNext();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isHovered, total]);
-
-  const onTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    touchStartX.current = clientX;
-  };
-
-  const onTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
-    if (touchStartX.current === null) return;
-    const clientX = "changedTouches" in e ? e.changedTouches[0].clientX : e.clientX;
-    const diff = clientX - touchStartX.current;
-    if (diff > 45) {
-      handlePrev();
-    } else if (diff < -45) {
-      handleNext();
-    }
-    touchStartX.current = null;
-  };
-
-  // Render a uniform slide card with flat styling
-  const renderCard = (slide: SlideItem, isHighlight: boolean) => (
+  // Render a uniform slide card with compact dimensions
+  const renderCard = (slide: SlideItem, uniqueKey: string) => (
     <div
-      key={slide.id}
+      key={uniqueKey}
       data-bee-state="card"
-      className={`shrink-0 w-[260px] sm:w-[320px] md:w-[360px] aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden relative border transition-all duration-300 shadow-md hover:shadow-xl ${
-        isHighlight
-          ? "border-primary ring-2 ring-primary/40 shadow-primary/20 scale-[1.02]"
-          : "border-primary/25 hover:border-primary/60 bg-white"
-      }`}
+      className="shrink-0 w-[220px] sm:w-[260px] md:w-[270px] aspect-[16/10] rounded-2xl overflow-hidden relative border border-primary/30 hover:border-primary/80 bg-white transition-all duration-300 shadow-md hover:shadow-xl group"
     >
       {/* Slide Cover Image */}
       <img
         src={slide.image}
         alt={slide.title}
-        className="w-full h-full object-cover select-none pointer-events-none"
+        className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform duration-500"
         loading="lazy"
         onError={(e) => {
           const fallback = defaultUpperSlides[0].image;
@@ -200,38 +155,38 @@ export function Suspended3DCarousel() {
       />
 
       {/* Gradient Overlay & Meta Details */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-between p-3.5 sm:p-5 text-white">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent flex flex-col justify-between p-3 sm:p-4 text-white">
         <div className="flex items-center justify-between">
-          <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[10px] font-black px-3 py-1 rounded-full border border-[#FCBF14]/30 uppercase tracking-wider">
+          <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[9px] font-black px-2.5 py-0.5 rounded-full border border-[#FCBF14]/30 uppercase tracking-wider">
             {slide.category}
           </span>
           {slide.code && (
-            <span className="text-[10px] text-white/80 font-mono font-bold bg-white/10 px-2 py-0.5 rounded">
+            <span className="text-[9px] text-white/80 font-mono font-bold bg-white/10 px-1.5 py-0.5 rounded">
               {slide.code}
             </span>
           )}
         </div>
 
         <div>
-          <h3 className="text-xs sm:text-sm font-heading font-black text-white leading-snug line-clamp-1 drop-shadow-sm">
+          <h3 className="text-xs sm:text-[13px] font-heading font-black text-white leading-snug line-clamp-1 drop-shadow-sm">
             {slide.title}
           </h3>
           {slide.client && (
-            <p className="text-[10px] sm:text-xs text-white/80 font-medium line-clamp-1 mt-0.5">
+            <p className="text-[10px] text-white/75 font-medium line-clamp-1 mt-0.5">
               {slide.client}
             </p>
           )}
 
-          <div className="mt-2.5 pt-2 border-t border-white/20 flex items-center justify-between">
-            <span className="text-[10px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
-              SlideBee Master Deck
+          <div className="mt-2 pt-1.5 border-t border-white/20 flex items-center justify-between">
+            <span className="text-[9px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
+              SlideBee Deck
             </span>
             <Link
               to={slide.code ? `/template/${slide.code}` : "/#templates"}
-              className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-white hover:text-[#FCBF14] font-bold transition-colors"
+              className="inline-flex items-center gap-1 text-[10px] text-white hover:text-[#FCBF14] font-bold transition-colors"
             >
-              <span>View Deck</span>
-              <ExternalLink size={12} />
+              <span>View</span>
+              <ExternalLink size={10} />
             </Link>
           </div>
         </div>
@@ -239,16 +194,13 @@ export function Suspended3DCarousel() {
     </div>
   );
 
-  // Triple the array for seamless infinite wrap
-  const upperTrack = [...upperSlides, ...upperSlides, ...upperSlides];
-  const lowerTrack = [...lowerSlides, ...lowerSlides, ...lowerSlides];
+  // Duplicated arrays for seamless infinite looping
+  const upperTrack = [...upperSlides, ...upperSlides, ...upperSlides, ...upperSlides];
+  const lowerTrack = [...lowerSlides, ...lowerSlides, ...lowerSlides, ...lowerSlides];
 
   return (
-    <div
-      className="relative w-full py-8 sm:py-12 overflow-hidden"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="relative w-full py-8 sm:py-12 overflow-hidden">
+      
       {/* 1. Header Section */}
       <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12 relative z-10">
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-black text-[#111111] tracking-tight leading-[1.08] mb-4">
@@ -266,79 +218,36 @@ export function Suspended3DCarousel() {
         </Link>
       </div>
 
-      {/* 2. Simplified Two-Lined Flat Sliding Carousel */}
-      <div
-        className="relative w-full overflow-hidden select-none py-4"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onMouseDown={onTouchStart}
-        onMouseUp={onTouchEnd}
-      >
-        {/* Left & Right Soft Vignette Fades */}
-        <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-28 bg-gradient-to-r from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-28 bg-gradient-to-l from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
+      {/* 2. Continuous Two-Row Auto-Scrolling Marquee */}
+      <div className="relative w-full overflow-hidden select-none py-2 pause-on-hover">
+        
+        {/* Soft Left and Right Vignette Fades */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
 
         {/* Carousel Tracks Container */}
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-5">
           
-          {/* Row 1: Upper Slide Cards */}
-          <div
-            className="flex gap-4 sm:gap-6 transition-transform duration-700 ease-in-out px-4"
-            style={{
-              transform: `translateX(calc(-${(currentIndex + total) * 100}% / 3.5))`,
-            }}
-          >
-            {upperTrack.map((slide, index) =>
-              renderCard(slide, (index % total) === currentIndex)
-            )}
+          {/* Row 1: Upper Slide Cards - Continuous Slide Right */}
+          <div className="overflow-hidden w-full flex">
+            <div className="animate-marquee-right flex gap-4 sm:gap-5 px-2">
+              {upperTrack.map((slide, index) =>
+                renderCard(slide, `upper-${slide.id}-${index}`)
+              )}
+            </div>
           </div>
 
-          {/* Row 2: Lower Slide Cards (offset by 1 card for visual balance) */}
-          <div
-            className="flex gap-4 sm:gap-6 transition-transform duration-700 ease-in-out px-4"
-            style={{
-              transform: `translateX(calc(-${((currentIndex + 1) + total) * 100}% / 3.5))`,
-            }}
-          >
-            {lowerTrack.map((slide, index) =>
-              renderCard(slide, (index % total) === ((currentIndex + 1) % total))
-            )}
+          {/* Row 2: Lower Slide Cards - Continuous Slide Left */}
+          <div className="overflow-hidden w-full flex">
+            <div className="animate-marquee-left flex gap-4 sm:gap-5 px-2">
+              {lowerTrack.map((slide, index) =>
+                renderCard(slide, `lower-${slide.id}-${index}`)
+              )}
+            </div>
           </div>
 
         </div>
 
-        {/* Navigation Arrows */}
-        <button
-          onClick={handlePrev}
-          aria-label="Previous Slide"
-          className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-[#111111] shadow-xl border border-primary/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
-        >
-          <ChevronLeft size={22} />
-        </button>
-
-        <button
-          onClick={handleNext}
-          aria-label="Next Slide"
-          className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-[#111111] shadow-xl border border-primary/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
-        >
-          <ChevronRight size={22} />
-        </button>
-      </div>
-
-      {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-2 mt-6">
-        {upperSlides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrentIndex(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className={`transition-all duration-300 rounded-full cursor-pointer ${
-              i === currentIndex
-                ? "w-8 h-2.5 bg-[#FCBF14]"
-                : "w-2.5 h-2.5 bg-[#111111]/20 hover:bg-[#111111]/40"
-            }`}
-          />
-        ))}
       </div>
 
       {/* 3. Three Feature Columns Beneath the Carousel */}

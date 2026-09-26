@@ -146,6 +146,7 @@ export default function Navbar() {
     { name: "Services", path: "/services" },
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/examples" },
+    { name: "Blog", path: "/blog" },
     { name: "About", path: "/about" },
     { name: "Contact", path: "/contact" },
   ];
@@ -161,7 +162,15 @@ export default function Navbar() {
           window.scrollTo({ top: 750, behavior: "smooth" });
         }
       } else {
-        navigate("/#templates");
+        navigate("/");
+        setTimeout(() => {
+          const el = document.getElementById("templates");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
+          } else {
+            window.scrollTo({ top: 750, behavior: "smooth" });
+          }
+        }, 120);
       }
     }
   };
@@ -177,7 +186,13 @@ export default function Navbar() {
     >
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/home" className="z-50 flex items-center">
+        <Link
+          to="/"
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="z-50 flex items-center cursor-pointer"
+        >
           <SlideBeeLogo variant="dark" size="md" />
         </Link>
 

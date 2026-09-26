@@ -50,15 +50,7 @@ export async function registerActiveSession(email: string): Promise<string> {
   localStorage.setItem(SESSION_STORAGE_ID_KEY, newSessionId);
   const deviceLabel = generateDeviceLabel();
 
-  // 1. Invalidate other refresh tokens at Supabase server level
-  try {
-    // @ts-ignore - scope is supported in modern Supabase GoTrue
-    await supabase.auth.signOut({ scope: "others" }).catch(() => {});
-  } catch (err) {
-    console.warn("Server-side token revocation notice:", err);
-  }
-
-  // 2. Update user_metadata as native fallback
+  // 1. Update user_metadata as native fallback
   try {
     await supabase.auth.updateUser({
       data: {
@@ -71,7 +63,7 @@ export async function registerActiveSession(email: string): Promise<string> {
     console.warn("User metadata session sync notice:", err);
   }
 
-  // 3. Register with backend Cloudflare session guard
+  // 2. Register with backend Cloudflare session guard
   try {
     await fetch("/api/session-guard", {
       method: "POST",
@@ -95,7 +87,7 @@ export async function registerActiveSession(email: string): Promise<string> {
  */
 export async function verifyActiveSession(email: string): Promise<{ valid: boolean; newDevice?: string }> {
   const localId = localStorage.getItem(SESSION_STORAGE_ID_KEY) || "";
-  if (!email) return { valid: true };
+  if (!email || !localId) return { valid: true };
 
   // 1. Primary check via backend Cloudflare session guard
   try {
@@ -110,13 +102,16 @@ export async function verifyActiveSession(email: string): Promise<{ valid: boole
     });
 
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.valid === false) {
-        return { valid: false, newDevice: data.newDevice || "another device" };
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data && data.valid === false) {
+          return { valid: false, newDevice: data.newDevice || "another device" };
+        }
       }
     }
   } catch (err) {
-    // Fallback to user metadata check below
+    // Preserve active session on network/transient failures
   }
 
   // 2. Fallback check via GoTrue user metadata

@@ -275,12 +275,12 @@ export const CustomBeeCursor: React.FC = () => {
             : isPerched
             ? 0.92
             : isCard
-            ? 1.28
+            ? 1.25
             : isQuote
-            ? 1.22
+            ? 1.2
             : isHover
-            ? 1.16
-            : 1.05,
+            ? 1.15
+            : 1.0,
           rotate: isPerched ? 0 : tiltAngle,
         }}
         transition={{
@@ -288,35 +288,22 @@ export const CustomBeeCursor: React.FC = () => {
           stiffness: 420,
           damping: 28,
         }}
-        // The bee head hotspot is positioned directly at the pointer coordinates
-        className="absolute -translate-x-[58px] -translate-y-[6px] pointer-events-none cursor-none flex items-center justify-center"
+        // Bee head hotspot positioned right at cursor point
+        className="absolute -translate-x-[20px] -translate-y-[8px] pointer-events-none cursor-none flex items-center justify-center"
       >
-        <div
-          className={isPerched ? "animate-bee-hover" : ""}
-        >
-          {/* Main Minimalist Bee & Heart Trail Graphic Container */}
+        <div className={isPerched ? "animate-bee-hover" : ""}>
+          {/* Minimalist Bee Graphic (Compact, centered, no heart trail line) */}
           <div className="relative flex items-center justify-center">
-            
             <svg
-              width="68"
-              height="50"
-              viewBox="20 140 520 380"
+              width="44"
+              height="38"
+              viewBox="-110 -75 220 190"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)] overflow-visible"
+              className="filter drop-shadow-[0_2px_5px_rgba(0,0,0,0.30)] overflow-visible"
             >
-              {/* Heart-shaped flight path trail connecting seamlessly to stinger */}
-              <path
-                d="M 45 498 C 120 492 195 460 245 425 C 290 380 290 285 240 262 C 205 245 186 280 196 322 C 200 326 205 315 198 300 C 185 260 140 260 120 305 C 100 350 140 405 245 425 C 310 445 360 410 392 327"
-                stroke="#1E1E1E"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-
-              {/* Minimalist Bee Group (rotated ~35 deg toward top-right) */}
-              <g transform="translate(452, 240) rotate(35)">
+              {/* Minimalist Bee Group (Tilted ~22 deg naturally for cursor pointing) */}
+              <g transform="rotate(22)">
                 {/* Left Wing */}
                 <path
                   d="M -16 -4 C -82 -32 -118 8 -88 44 C -64 68 -24 38 -12 14 Z"
@@ -413,9 +400,9 @@ export const CustomBeeCursor: React.FC = () => {
               {isHover && (
                 <g className="animate-in fade-in duration-200">
                   <path
-                    d="M 485 170 L 488 178 L 496 181 L 488 184 L 485 192 L 482 184 L 474 181 L 482 178 Z"
+                    d="M 28 -40 L 31 -32 L 39 -29 L 31 -26 L 28 -18 L 25 -26 L 17 -29 L 25 -32 Z"
                     fill="#FCBF14"
-                    className="animate-bee-sparkle origin-[485px_181px]"
+                    className="animate-bee-sparkle origin-[28px_-29px]"
                   />
                 </g>
               )}

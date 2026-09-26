@@ -649,7 +649,10 @@ function edgeDevPlugin(): Plugin {
             }
 
             if (action === "login") {
-              const isAdmin = ["admin@theslidebee.com", "admin@slidebee.com"].includes(cleanEmail);
+              const isAdmin =
+                ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
+                cleanEmail.startsWith("admin@") ||
+                cleanEmail.startsWith("superadmin@");
               const role = isAdmin ? "admin" : "client";
               const userId = "usr-" + Math.random().toString(36).substring(2, 10);
               const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
@@ -691,7 +694,10 @@ function edgeDevPlugin(): Plugin {
             }
 
             if (action === "signup") {
-              const isAdmin = ["admin@theslidebee.com", "admin@slidebee.com"].includes(cleanEmail);
+              const isAdmin =
+                ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
+                cleanEmail.startsWith("admin@") ||
+                cleanEmail.startsWith("superadmin@");
               const role = isAdmin ? "admin" : "client";
               const userId = "usr-" + Math.random().toString(36).substring(2, 10);
               const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
@@ -736,6 +742,48 @@ function edgeDevPlugin(): Plugin {
           } catch (e: any) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: { message: e.message || String(e) } }));
+          }
+        });
+      });
+
+      // Session Guard Middleware (Matches Cloudflare Pages Function /api/session-guard)
+      server.middlewares.use("/api/session-guard", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-slidebee-app-token");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "VERIFY", email, sessionId, deviceInfo = "Browser" } = body;
+            const cleanEmail = String(email || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              return res.end(JSON.stringify({ success: true, valid: true }));
+            }
+
+            if (action === "REGISTER") {
+              return res.end(JSON.stringify({
+                success: true,
+                activeSession: { sessionId, deviceInfo, registeredAt: new Date().toISOString() }
+              }));
+            }
+
+            return res.end(JSON.stringify({ success: true, valid: true }));
+          } catch (err: any) {
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            return res.end(JSON.stringify({ success: true, valid: true }));
           }
         });
       });
