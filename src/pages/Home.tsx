@@ -369,7 +369,7 @@ export default function Home() {
               style={{
                 clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
               }}
-              className="absolute top-2 left-0 bg-[#2563EB] text-white text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none"
+              className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading"
             >
               Free
             </div>
@@ -378,9 +378,9 @@ export default function Home() {
               style={{
                 clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
               }}
-              className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none"
+              className="absolute top-2 left-0 bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading flex items-center gap-1"
             >
-              Premium
+              <Crown size={10} className="fill-[#FCBF14]" /> PRO
             </div>
           )}
 
@@ -714,11 +714,11 @@ export default function Home() {
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "free"
-                      ? "bg-[#2563EB] text-white shadow-xs font-black"
+                      ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
                       : "text-[#726F6D] hover:text-[#111111]"
                   }`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-300" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
                   Free ({freeCount})
                 </button>
                 <button
