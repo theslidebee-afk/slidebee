@@ -7,16 +7,16 @@ import {
   ArrowRight,
   Search,
   Crown,
+  Download,
+  Heart,
   Eye,
   Star,
   FileText,
-  PieChart,
   TrendingUp,
   Sparkles,
   Paintbrush,
   BarChart3,
   LayoutGrid,
-  Monitor,
   Flame,
   ChevronRight,
   Users,
@@ -37,35 +37,29 @@ export default function Home() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Scroll-linked transforms for smooth fade away of hero and pop-in/scale of templates
+  // Parallax scroll-linked transforms without opacity dimming
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
 
-  const heroFade = useTransform(scrollYProgress, [0, 0.5, 0.85], [1, 0.6, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 0.85], [1, 0.96]);
-  const heroCardY = useTransform(scrollYProgress, [0, 0.6], [0, -35]);
-  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const templateOpacity = useTransform(scrollYProgress, [0.15, 0.55], [0.85, 1]);
-  const templateScale = useTransform(scrollYProgress, [0.15, 0.55], [0.96, 1]);
-  const templateY = useTransform(scrollYProgress, [0.15, 0.55], [28, 0]);
+  const heroCardY = useTransform(scrollYProgress, [0, 0.6], [0, -25]);
 
-  // Helper to extract 3 inner preview slide thumbnails for full showcase cards
-  const getPreviewSlides = (template: any) => {
+  // Helper to extract up to 6 inner preview slide thumbnails for SlideEgg-style showcase cards
+  const getPreviewSlides = (template: any, count = 6) => {
     const slides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
-    if (slides.length >= 3) {
-      return slides.slice(0, 3);
+    if (slides.length >= count) {
+      return slides.slice(0, count);
     }
+    const fallback = template?.thumbnail_url || template?.image_url || "/portfolio/case_study_a_1.png";
     if (slides.length > 0) {
       const list = [...slides];
-      while (list.length < 3) {
-        list.push(list[0] || template.image_url || "/portfolio/case_study_a_1.png");
+      while (list.length < count) {
+        list.push(list[list.length % slides.length]);
       }
-      return list.slice(0, 3);
+      return list.slice(0, count);
     }
-    const fallback = template?.image_url || "/portfolio/case_study_a_1.png";
-    return [fallback, fallback, fallback];
+    return Array(count).fill(fallback);
   };
 
   // Authentication & Pro Membership State
@@ -81,6 +75,15 @@ export default function Home() {
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
+  const [categoriesList, setCategoriesList] = useState<string[]>([
+    "Pitch Decks",
+    "Business",
+    "Infographics",
+    "Marketing",
+    "Corporate",
+    "Finance",
+    "Strategy"
+  ]);
   const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
   const [homeBanner1, setHomeBanner1] = useState<any>({
     title: "Create Presentations That Make an Impact",
@@ -161,6 +164,18 @@ export default function Home() {
     checkProStatus();
 
     // Fetch site config comparison data
+    // Fetch dynamic template categories
+    supabase
+      .from("site_config")
+      .select("*")
+      .eq("key", "template_categories")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
+          setCategoriesList(data.value);
+        }
+      });
+
     // Fetch testimonials configuration
     supabase
       .from("site_config")
@@ -229,25 +244,9 @@ export default function Home() {
       let matchesSidebarCategory = true;
       if (activeSidebarCategory === "trending") {
         matchesSidebarCategory = (item.downloads || 0) >= 1000 || item.is_featured;
-      } else if (activeSidebarCategory === "infographic") {
-        matchesSidebarCategory =
-          item.category.toLowerCase().includes("info") ||
-          item.title.toLowerCase().includes("kpi") ||
-          item.title.toLowerCase().includes("dashboard") ||
-          item.title.toLowerCase().includes("roadmap");
-      } else if (activeSidebarCategory === "pitch_deck") {
-        matchesSidebarCategory =
-          item.category.toLowerCase().includes("pitch") ||
-          item.title.toLowerCase().includes("deck") ||
-          item.title.toLowerCase().includes("pitch");
-      } else if (activeSidebarCategory === "planner") {
-        matchesSidebarCategory =
-          item.title.toLowerCase().includes("plan") ||
-          item.title.toLowerCase().includes("framework") ||
-          item.category.toLowerCase().includes("strategy");
       } else if (activeSidebarCategory !== "all") {
         matchesSidebarCategory =
-          item.category.toLowerCase() === activeSidebarCategory.toLowerCase();
+          item.category?.toLowerCase() === activeSidebarCategory.toLowerCase();
       }
 
       // 2. Search Query match
@@ -306,113 +305,114 @@ export default function Home() {
 
   const testimonials = (customTestimonials && customTestimonials.length > 0) ? customTestimonials : defaultTestimonials;
 
-  // Full Showcase Card Renderer (Cover Image, Inner Slides Thumbnail Grid, Title at bottom)
+  // Full Showcase Card Renderer matching SlideEgg reference mockup
   const renderShowcaseCard = (template: any) => {
-    const previewSlides = getPreviewSlides(template);
+    const previewSlides = getPreviewSlides(template, 6);
 
     return (
       <div
         key={template.id}
         onClick={() => navigate(`/template/${template.id}`)}
         data-bee-state="card"
-        className="hex-card group bg-white border-2 border-primary/25 hover:border-primary rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
+        className="group bg-white border border-[#111111]/10 hover:border-primary/80 rounded-2xl p-3 sm:p-3.5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer relative"
       >
-        {/* 1. TOP: Large Prominent Cover Image */}
-        <div className="p-3 sm:p-3.5 bg-[#FFFDF5] border-b border-[#111111]/8">
-          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#1E1E1E]/5 shadow-xs border border-[#111111]/10">
+        {/* Top Visual Showcase Area */}
+        <div className="space-y-2">
+          {/* Main Cover Slide Preview */}
+          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-gray-50 border border-[#111111]/8">
             <img
               src={template.image_url || previewSlides[0]}
               alt={template.title}
-              className="w-full h-full object-cover object-center group-hover:scale-[1.03] transition-transform duration-500"
+              className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
               loading="lazy"
             />
-            {/* Badges on Cover */}
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/95 backdrop-blur-md text-[#111111] px-2.5 py-1 rounded-full shadow-xs border border-[#111111]/10">
-                {template.category}
+
+            {/* Corner Ribbon / Tag */}
+            {!template.is_premium ? (
+              <div className="absolute top-0 left-0 bg-[#2563EB] text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-tl-xl rounded-br-lg shadow-sm z-10 tracking-wider">
+                Free
+              </div>
+            ) : (
+              <div className="absolute top-2 left-2 bg-[#111111]/90 backdrop-blur-md text-[#FCBF14] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-white/10 shadow-sm z-10 flex items-center gap-1">
+                <Crown size={10} className="fill-[#FCBF14]" /> PRO
+              </div>
+            )}
+
+            {/* Quick Action Buttons on Top Right */}
+            <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-90 group-hover:opacity-100 transition-opacity">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/template/${template.id}`);
+                }}
+                className="w-7 h-7 rounded-full bg-white/95 text-[#111111] hover:text-red-500 shadow-sm flex items-center justify-center transition-colors"
+                title="Save to favorites"
+              >
+                <Heart size={13} />
+              </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/template/${template.id}`);
+                }}
+                className="w-7 h-7 rounded-full bg-white/95 text-[#111111] hover:text-primary-amber shadow-sm flex items-center justify-center transition-colors"
+                title="Quick download"
+              >
+                <Download size={13} />
               </span>
             </div>
-            <div className="absolute top-2.5 right-2.5 z-10">
-              {!template.is_premium ? (
-                <span className="text-[9px] font-black bg-emerald-600 text-white px-2.5 py-1 rounded-full shadow-xs uppercase tracking-wider">
-                  FREE DECK
-                </span>
-              ) : (
-                <span className="text-[9px] font-black bg-[#111111]/90 backdrop-blur-md text-[#FCBF14] px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 uppercase tracking-wider border border-white/10">
-                  <Crown size={9} className="fill-[#FCBF14]" /> PRO
-                </span>
-              )}
-            </div>
 
-            {/* Hover Overlay */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-              <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-4 py-2 shadow-lg flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
-                <Eye size={13} /> View Full Showcase
+            {/* Subtle Hover Overlay */}
+            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-15 pointer-events-none">
+              <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-3.5 py-1.5 shadow-md flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
+                <Eye size={12} /> View Deck
               </span>
             </div>
           </div>
 
-          {/* 2. MIDDLE: Grid of smaller preview thumbnails showing inner slides directly below cover */}
-          <div className="mt-2.5 grid grid-cols-3 gap-1.5 sm:gap-2">
+          {/* Multi-Slide Grid Thumbnail Previews (Matching SlideEgg layout) */}
+          <div className="grid grid-cols-3 gap-1.5">
             {previewSlides.map((slideUrl: string, idx: number) => (
               <div
                 key={idx}
-                className="relative aspect-video rounded-md overflow-hidden bg-[#1E1E1E]/5 border border-[#111111]/10 shadow-2xs group-hover:border-primary/40 transition-colors"
+                className="relative aspect-video rounded-md overflow-hidden bg-gray-50 border border-[#111111]/8 group-hover:border-primary/40 transition-colors"
               >
                 <img
                   src={slideUrl}
-                  alt={`${template.title} slide ${idx + 2}`}
+                  alt={`${template.title} slide ${idx + 1}`}
                   className="w-full h-full object-cover object-center"
                   loading="lazy"
                 />
-                <div className="absolute bottom-0.5 right-1 text-[8px] font-black text-white/80 bg-black/60 px-1 rounded-xs">
-                  #{idx + 2}
-                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 3. BOTTOM: Title, details, slide count, and price/format */}
-        <div className="p-4 flex flex-col justify-between flex-grow bg-white">
+        {/* Bottom Details Area */}
+        <div className="pt-3 flex flex-col justify-between flex-grow">
           <div>
-            <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-1 mb-1">
+            <h3 className="font-heading font-extrabold text-xs sm:text-sm text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug">
               {template.title}
             </h3>
-            <p className="text-[11px] text-[#726F6D] line-clamp-1 font-medium mb-3">
-              {template.description || "Executive presentation deck layout."}
+            <p className="text-[11px] text-[#726F6D] font-medium mt-1">
+              PowerPoint Presentation & Google Slides
             </p>
           </div>
 
-          <div>
-            <div className="pt-2.5 border-t border-[#111111]/8 flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#726F6D]">
-                <div className="w-4 h-4 rounded bg-orange-600 text-white font-black text-[9px] flex items-center justify-center shrink-0">
-                  P
-                </div>
-                <span>{template.slides_count || 30}+ Slides</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#111111]">
-                {!template.is_premium ? (
-                  <span className="text-emerald-700 font-black">Free</span>
-                ) : isProUser ? (
-                  <span className="text-amber-600 flex items-center gap-1">
-                    <Crown size={11} className="fill-[#FCBF14]" /> Included
-                  </span>
-                ) : (
-                  formatPrice(template.price_inr)
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#111111] bg-[#FFF9E8] px-2.5 py-1 rounded-full border border-primary/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FCBF14]" />
-                PowerPoint (.pptx)
-              </div>
-              <span className="text-xs font-black text-[#111111] flex items-center gap-1 group-hover:text-amber-600 transition-colors">
-                Explore <ArrowRight size={13} className="text-[#FCBF14] group-hover:translate-x-0.5 transition-transform" />
-              </span>
+          <div className="pt-2.5 mt-2 border-t border-[#111111]/6 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#726F6D]">
+              {template.slides_count || 30}+ Slides
+            </span>
+            <div className="text-xs font-black text-[#111111]">
+              {!template.is_premium ? (
+                <span className="text-blue-600 font-extrabold">Free Download</span>
+              ) : isProUser ? (
+                <span className="text-amber-600 font-extrabold flex items-center gap-1">
+                  <Crown size={11} className="fill-[#FCBF14]" /> Included
+                </span>
+              ) : (
+                formatPrice(template.price_inr)
+              )}
             </div>
           </div>
         </div>
@@ -425,9 +425,8 @@ export default function Home() {
       
       {/* ========================================================================= */}
       {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
-      <motion.section
+      <section
         ref={heroRef}
-        style={{ opacity: heroFade, scale: heroScale }}
         className="relative w-full min-h-screen lg:min-h-[105vh] pt-24 sm:pt-28 pb-20 sm:pb-28 overflow-hidden flex flex-col items-center justify-center bg-[#111111]"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
@@ -441,9 +440,8 @@ export default function Home() {
             playsInline
             className="w-full h-full min-w-full min-h-full object-cover object-center select-none"
           />
-          {/* Ambient Warm Golden Overlay & Contrast Vignette */}
-          <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/20 pointer-events-none" />
+          {/* Crisp, clean overlay without heavy darkening or opacity haze */}
+          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
         </div>
 
         {/* Central Stage Container */}
@@ -560,7 +558,7 @@ export default function Home() {
           
           {/* Central Translucent Frosted Glass Card with Dissolving Parallax */}
           <motion.div
-            style={{ y: heroCardY, opacity: heroCardOpacity }}
+            style={{ y: heroCardY }}
             className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all"
           >
             
@@ -617,14 +615,13 @@ export default function Home() {
           </div>
 
         </div>
-      </motion.section>
+      </section>
 
       {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (Smooth Pop-in / Scale Transition)        */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION (Solid Crisp Full Opacity)               */}
       {/* ========================================================================= */}
-      <motion.section
+      <section
         id="templates"
-        style={{ opacity: templateOpacity, scale: templateScale, y: templateY }}
         className="scroll-mt-20 relative z-30 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
       >
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -648,10 +645,10 @@ export default function Home() {
                     </span>
                   </div>
 
-                  {/* Navigation Categories Strip */}
+                  {/* Navigation Categories Strip (Dynamic) */}
                   <div className="flex flex-col gap-1.5 mb-6">
                     
-                    {/* 1. Latest templates */}
+                    {/* All templates */}
                     <button
                       onClick={() => {
                         setActiveSidebarCategory("all");
@@ -665,12 +662,12 @@ export default function Home() {
                     >
                       <div className="flex items-center gap-2.5">
                         <Sparkles size={16} className={activeSidebarCategory === "all" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Latest templates</span>
+                        <span>All Templates</span>
                       </div>
-                      <ChevronRight size={14} className={activeSidebarCategory === "all" ? "text-[#FCBF14]" : "opacity-0"} />
+                      <span className="text-[10px] font-mono text-white/50">{allTemplates.length}</span>
                     </button>
 
-                    {/* 2. Trending templates */}
+                    {/* Trending templates */}
                     <button
                       onClick={() => {
                         setActiveSidebarCategory("trending");
@@ -684,67 +681,36 @@ export default function Home() {
                     >
                       <div className="flex items-center gap-2.5">
                         <Flame size={16} className={activeSidebarCategory === "trending" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Trending templates</span>
+                        <span>Trending</span>
                       </div>
                       <ChevronRight size={14} className={activeSidebarCategory === "trending" ? "text-[#FCBF14]" : "opacity-0"} />
                     </button>
 
-                    {/* 3. Infographic templates */}
-                    <button
-                      onClick={() => {
-                        setActiveSidebarCategory("infographic");
-                        setVisibleCount(12);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                        activeSidebarCategory === "infographic"
-                          ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                          : "text-white/80 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <PieChart size={16} className={activeSidebarCategory === "infographic" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Infographic templates</span>
-                      </div>
-                      <ChevronRight size={14} className={activeSidebarCategory === "infographic" ? "text-[#FCBF14]" : "opacity-0"} />
-                    </button>
-
-                    {/* 4. Pitch deck templates */}
-                    <button
-                      onClick={() => {
-                        setActiveSidebarCategory("pitch_deck");
-                        setVisibleCount(12);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                        activeSidebarCategory === "pitch_deck"
-                          ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                          : "text-white/80 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Monitor size={16} className={activeSidebarCategory === "pitch_deck" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Pitch deck templates</span>
-                      </div>
-                      <ChevronRight size={14} className={activeSidebarCategory === "pitch_deck" ? "text-[#FCBF14]" : "opacity-0"} />
-                    </button>
-
-                    {/* 5. Word doc planner */}
-                    <button
-                      onClick={() => {
-                        setActiveSidebarCategory("planner");
-                        setVisibleCount(12);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
-                        activeSidebarCategory === "planner"
-                          ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
-                          : "text-white/80 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <FileText size={16} className={activeSidebarCategory === "planner" ? "text-[#FCBF14]" : "text-white/60"} />
-                        <span>Word doc planner</span>
-                      </div>
-                      <ChevronRight size={14} className={activeSidebarCategory === "planner" ? "text-[#FCBF14]" : "opacity-0"} />
-                    </button>
+                    {/* Dynamic categories from database & templates */}
+                    {categoriesList.map((cat) => {
+                      const count = allTemplates.filter((t: any) => t.category?.toLowerCase() === cat.toLowerCase()).length;
+                      const isCatActive = activeSidebarCategory.toLowerCase() === cat.toLowerCase();
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setActiveSidebarCategory(cat);
+                            setVisibleCount(12);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all text-left cursor-pointer ${
+                            isCatActive
+                              ? "bg-[#242424] text-[#FCBF14] shadow border-l-4 border-[#FCBF14]"
+                              : "text-white/80 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <LayoutGrid size={15} className={isCatActive ? "text-[#FCBF14]" : "text-white/60"} />
+                            <span className="truncate max-w-[155px]">{cat}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-white/50">{count}</span>
+                        </button>
+                      );
+                    })}
 
                   </div>
 
@@ -976,7 +942,7 @@ export default function Home() {
           </div>
 
         </div>
-      </motion.section>
+      </section>
 
       {/* ========================================================================= */}
       {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP                                */}

@@ -182,9 +182,6 @@ export function Suspended3DCarousel() {
       {/* 2. Continuous Two-Row Auto-Scrolling Marquee */}
       <div className="relative w-full overflow-hidden select-none py-2 pause-on-hover">
         
-        {/* Soft Left and Right Vignette Fades */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
 
         {/* Carousel Tracks Container */}
         <div className="space-y-4 sm:space-y-5">

@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 import { useSessionEnforcer } from "./hooks/useSessionEnforcer";
 import Navbar from "./components/Navbar";
@@ -31,6 +31,20 @@ import { CurrencyProvider } from "./context/CurrencyContext";
 import { BeeCursorProvider } from "./context/BeeCursorContext";
 import { CustomBeeCursor } from "./components/CustomBeeCursor";
 
+function PublicLayout() {
+  return (
+    <>
+      <Navbar />
+      <main className="flex-grow">
+        <Outlet />
+      </main>
+      <Footer />
+      <StickyMobileCTA />
+      <CookieBanner />
+    </>
+  );
+}
+
 function App() {
   return (
     <CurrencyProvider>
@@ -47,48 +61,35 @@ function App() {
             {/* 2. Coming Soon (available via explicit URL) */}
             <Route path="/coming-soon" element={<ComingSoon />} />
 
-            {/* 3. Full Platform Pages (with Navbar & Footer) */}
-            <Route
-              path="/*"
-              element={
-                <>
-                  <Navbar />
-                  <main className="flex-grow">
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/home" element={<Home />} />
-                      <Route path="/templates" element={<Navigate to="/#templates" replace />} />
-                      <Route path="/templates/:id" element={<TemplateDetail />} />
-                      <Route path="/template/:id" element={<TemplateDetail />} />
-                      <Route path="/services" element={<Services />} />
-                      <Route path="/ordernow" element={<OrderNow />} />
-                      <Route path="/order" element={<OrderNow />} />
-                      <Route path="/examples" element={<Examples />} />
-                      <Route path="/portfolio" element={<Examples />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/pricing" element={<Pricing />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/account" element={<Login />} />
-                      <Route path="/reset-password" element={<Login />} />
-                      <Route path="/blog" element={<Blog />} />
-                      <Route path="/blog/:id" element={<BlogDetail />} />
-                      <Route path="/media/blog" element={<Blog />} />
-                      <Route path="/media/blog/:id" element={<BlogDetail />} />
-                      <Route path="/videos" element={<Navigate to="/blog" replace />} />
-                      <Route path="/media/videos" element={<Navigate to="/blog" replace />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/terms" element={<Terms />} />
-                      <Route path="/thank-you" element={<ThankYou />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
-                  <Footer />
-                  <StickyMobileCTA />
-                  <CookieBanner />
-                </>
-              }
-            />
+            {/* 3. Full Platform Pages with Public Layout */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/templates" element={<Navigate to="/#templates" replace />} />
+              <Route path="/templates/:id" element={<TemplateDetail />} />
+              <Route path="/template/:id" element={<TemplateDetail />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/ordernow" element={<OrderNow />} />
+              <Route path="/order" element={<OrderNow />} />
+              <Route path="/examples" element={<Examples />} />
+              <Route path="/portfolio" element={<Examples />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/account" element={<Login />} />
+              <Route path="/reset-password" element={<Login />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogDetail />} />
+              <Route path="/media/blog" element={<Blog />} />
+              <Route path="/media/blog/:id" element={<BlogDetail />} />
+              <Route path="/videos" element={<Navigate to="/blog" replace />} />
+              <Route path="/media/videos" element={<Navigate to="/blog" replace />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Routes>
         </div>
       </Router>

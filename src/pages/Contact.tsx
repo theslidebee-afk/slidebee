@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { 
   Mail, 
   MessageSquare, 
-  Clock, 
   Send, 
   CheckCircle2, 
   ShieldCheck,
-  Phone,
-  MapPin
+  Phone
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { sendContactNotificationEmail } from "../lib/email";
@@ -172,36 +170,17 @@ export default function Contact() {
                   </a>
                 )}
 
-                <div className="flex items-start gap-3.5 p-3.5 hex-card bg-[#FFF9E8] border border-primary/30">
-                  <div className="hex-pure w-10 h-10 bg-primary/20 text-primary-amber flex items-center justify-center shrink-0 mt-0.5">
-                    <MapPin size={18} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-extrabold text-[#111111]">
-                      Studio Locations
-                    </div>
-                    <div className="text-xs text-[#726F6D] font-medium leading-relaxed">
-                      {contactConfig.address || "SlideBee Design Studio, Bengaluru, Karnataka 560001, India"}
-                    </div>
-                    <div className="text-[11px] text-[#FCBF14] font-bold mt-0.5">
-                      Global Delivery Hubs: Singapore & San Francisco
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Studio Hours & Response Guarantee */}
+            {/* Client NDA & Confidentiality Guarantee */}
             <div className="hex-card-dark bg-[#111111] border-2 border-primary text-white p-6 shadow-xl">
               <div className="flex items-center gap-2 text-primary text-xs font-black uppercase tracking-wider mb-2">
-                <Clock size={15} /> Studio Availability
+                <ShieldCheck size={16} className="text-primary" /> Mutual NDA & Confidentiality
               </div>
-              <p className="text-xs text-gray-300 font-medium leading-relaxed mb-4">
-                Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.
+              <p className="text-xs text-gray-300 font-medium leading-relaxed">
+                All client presentations, briefs, and commercial assets are protected under strict non-disclosure terms with enterprise-grade data privacy.
               </p>
-              <div className="flex items-center gap-2 text-[11px] text-gray-400 border-t border-primary/30 pt-3">
-                <ShieldCheck size={14} className="text-primary" /> Strict NDA & data confidentiality protected
-              </div>
             </div>
 
           </div>

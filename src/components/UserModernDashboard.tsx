@@ -65,6 +65,8 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<"overview" | "purchased" | "custom" | "marketplace" | "ledger">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(17);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(true);
 
   const clientName =
     userProfile?.full_name ||
@@ -122,15 +124,84 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
     }
   ];
 
-  const deliverablesToDisplay = purchasedItems.length > 0
-    ? purchasedItems.slice(0, 4).map((p, i) => ({
-        id: p.id || `purchased-${i}`,
-        title: p.title || p.template_title || p.template_name || `SlideDeck #${i + 1}`,
-        subtitle: `${p.slide_count || 24} slides, PPTX, ${p.file_size || "18 MB"}`,
-        downloadUrl: p.download_url || "#",
-        thumbnailBg: i % 2 === 0 ? "bg-[#181818]" : "bg-[#F3F4F6]"
-      }))
+  // Custom project deliverables uploaded by studio admin
+  const customOrderDeliverables = userOrders
+    .filter((o) => Boolean(o.deliverable_url))
+    .map((o, i) => ({
+      id: o.id || `custom-deliverable-${i}`,
+      title: o.deliverable_name || o.project_title || o.service_type || "Custom Master Presentation",
+      subtitle: `${o.slide_count || "Custom"} slides, Final PPTX Master, Delivered`,
+      downloadUrl: o.deliverable_url,
+      thumbnailBg: "bg-[#181818]",
+      isCustomProject: true
+    }));
+
+  const allPurchasedDeliverables = [
+    ...customOrderDeliverables,
+    ...purchasedItems.map((p, i) => ({
+      id: p.id || `purchased-${i}`,
+      title: p.title || p.template_title || p.template_name || `SlideDeck #${i + 1}`,
+      subtitle: `${p.slide_count || 24} slides, PPTX, ${p.file_size || "18 MB"}`,
+      downloadUrl: p.download_url || "#",
+      thumbnailBg: (i + customOrderDeliverables.length) % 2 === 0 ? "bg-[#181818]" : "bg-[#F3F4F6]",
+      isCustomProject: false
+    }))
+  ];
+
+  const deliverablesToDisplay = allPurchasedDeliverables.length > 0
+    ? allPurchasedDeliverables.slice(0, 4)
     : defaultDeliverables;
+
+  // Dynamic user notifications
+  const notifications: Array<{
+    id: string;
+    category: string;
+    title: string;
+    description: string;
+    time: string;
+    tab?: "overview" | "purchased" | "custom" | "marketplace" | "ledger";
+  }> = [];
+
+  const masterDeliverableOrder = userOrders.find((o) => Boolean(o.deliverable_url));
+  if (masterDeliverableOrder) {
+    notifications.push({
+      id: "deliverable-ready",
+      category: "Master Ready",
+      title: "Final Master (.pptx) Available",
+      description: `Studio deliverable for "${masterDeliverableOrder.project_title || masterDeliverableOrder.service_type || 'Custom Order'}" is ready for download.`,
+      time: "Just now",
+      tab: "custom"
+    });
+  }
+
+  if (activeOrder) {
+    notifications.push({
+      id: "order-milestone",
+      category: "Project Status",
+      title: `${activeProjectTitle}: ${activeMilestone}`,
+      description: `Your presentation brief is currently in the ${activeMilestone} milestone.`,
+      time: "Active",
+      tab: "custom"
+    });
+  }
+
+  notifications.push({
+    id: "quota-status",
+    category: "Quota",
+    title: `${quotaRemaining} / ${quotaTotal} Downloads Available`,
+    description: `Your ${userTier.toUpperCase()} membership cycle has ${quotaRemaining} template downloads ready.`,
+    time: "Cycle active",
+    tab: "ledger"
+  });
+
+  notifications.push({
+    id: "catalog-update",
+    category: "Studio Update",
+    title: "New Executive Decks Added",
+    description: "Explore the latest 16:9 master templates in the marketplace.",
+    time: "This week",
+    tab: "marketplace"
+  });
 
   // Calendar dates (September 2026 - 31 days)
   // Day 17 is active (charcoal circle), Day 15 has gold milestone dot
@@ -186,7 +257,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
         {/* ======================================================================= */}
         {/* COLUMN 1: LEFT SIDEBAR NAVIGATION                                       */}
         {/* ======================================================================= */}
-        <div className="w-full xl:w-64 border-b xl:border-b-0 xl:border-r border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-white">
+        <div className="w-full xl:w-72 border-b xl:border-b-0 xl:border-r border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-white">
           
           <div className="space-y-8">
             {/* SlideBee Logo */}
@@ -285,7 +356,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <CreditCard size={18} className={activeTab === "ledger" ? "text-primary-amber" : "text-[#726F6D]"} />
-                  <span>Credit Ledger</span>
+                  <span>Subscription & Quota</span>
                 </div>
                 <span className="text-[10px] uppercase font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
                   {userTier}
@@ -592,38 +663,45 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 </Link>
               </div>
 
-              {deliverablesToDisplay.length === 0 ? (
+              {allPurchasedDeliverables.length === 0 ? (
                 <div className="text-center py-16 px-4 border border-dashed border-gray-200 rounded-3xl">
                   <FileText size={32} className="mx-auto text-gray-300 mb-3" />
-                  <p className="text-sm font-bold text-[#111111]">No purchases recorded yet</p>
+                  <p className="text-sm font-bold text-[#111111]">No purchases or deliverables recorded yet</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {deliverablesToDisplay.map((item) => (
+                  {allPurchasedDeliverables.map((item) => (
                     <div
                       key={item.id}
                       className="bg-white border border-gray-200 rounded-3xl p-5 shadow-2xs flex flex-col justify-between space-y-4"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl ${item.thumbnailBg} flex items-center justify-center shrink-0`}>
-                          <FileText size={20} className={item.thumbnailBg.includes("181818") ? "text-amber-400" : "text-[#111111]"} />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl ${item.thumbnailBg} flex items-center justify-center shrink-0`}>
+                            <FileText size={20} className={item.thumbnailBg.includes("181818") ? "text-amber-400" : "text-[#111111]"} />
+                          </div>
+                          <div>
+                            <h4 className="font-heading font-black text-sm text-[#111111]">
+                              {item.title}
+                            </h4>
+                            <p className="text-xs text-[#726F6D]">
+                              {item.subtitle}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-heading font-black text-sm text-[#111111]">
-                            {item.title}
-                          </h4>
-                          <p className="text-xs text-[#726F6D]">
-                            {item.subtitle}
-                          </p>
-                        </div>
+                        {item.isCustomProject && (
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-[#FCBF14] px-2 py-0.5 rounded-full shrink-0">
+                            Custom Master
+                          </span>
+                        )}
                       </div>
                       <a
                         href={item.downloadUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black py-2.5 flex items-center justify-center gap-2 shadow-xs"
+                        className="w-full hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black py-2.5 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                       >
-                        <Download size={14} /> Download Presentation Files
+                        <Download size={14} /> Download Presentation Files (.pptx)
                       </a>
                     </div>
                   ))}
@@ -652,41 +730,152 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 </Link>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber bg-primary/20 px-2 py-0.5 rounded">
-                      Active Studio Order
-                    </span>
-                    <h3 className="font-heading font-black text-base text-[#111111] mt-1">
-                      {activeProjectTitle}
+              {userOrders.length === 0 ? (
+                <div className="bg-white border border-gray-200 rounded-3xl p-10 text-center space-y-4 shadow-2xs">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FFF9E8] border border-primary/30 text-[#111111] flex items-center justify-center mx-auto">
+                    <Briefcase size={26} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-1">
+                    <h3 className="font-heading font-black text-base text-[#111111]">
+                      No custom projects commissioned yet
                     </h3>
+                    <p className="text-xs text-[#726F6D]">
+                      Have a high-stakes investor pitch deck or keynote? Submit your brief to our bespoke presentation studio.
+                    </p>
                   </div>
-                  <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
-                    {activeMilestone}
-                  </span>
-                </div>
-                <div className="py-4">
-                  <div className="flex justify-between text-xs font-bold text-[#111111] mb-2">
-                    <span>Milestone Progress</span>
-                    <span>75% Polished</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="bg-primary h-full rounded-full" style={{ width: "75%" }} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-[#726F6D]">Turnaround: 48 hours standard</span>
-                  <a
-                    href={`https://wa.me/${studioWhatsapp}?text=Inquiring%20about%20my%20brief%20${encodeURIComponent(activeProjectTitle)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hex-pill bg-[#111111] hover:bg-black text-white text-xs font-bold px-4 py-2 flex items-center gap-1.5"
+                  <Link
+                    to="/services"
+                    className="inline-flex items-center gap-2 hex-pill bg-primary hover:bg-primary/90 text-[#111111] font-black text-xs px-6 py-2.5 shadow-sm"
                   >
-                    <MessageCircle size={13} /> Chat with Lead Designer
-                  </a>
+                    Commission Presentation Deck <ArrowRight size={13} />
+                  </Link>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-5">
+                  {userOrders.map((order, idx) => {
+                    const title = order.project_title || order.service_type || `Custom Presentation #${idx + 1}`;
+                    const isDelivered = order.status === "completed" || order.status === "delivered";
+                    const milestoneText = isDelivered
+                      ? "Completed & Delivered"
+                      : order.status === "draft_1"
+                      ? "Draft 1 (Blueprint)"
+                      : order.status === "draft_2"
+                      ? "Draft 2 (Design Alignment)"
+                      : order.status === "polish"
+                      ? "Final Polish"
+                      : "In Review";
+                    const progressPercent = isDelivered
+                      ? 100
+                      : order.status === "draft_1"
+                      ? 35
+                      : order.status === "draft_2"
+                      ? 70
+                      : 85;
+
+                    return (
+                      <div
+                        key={order.id || idx}
+                        className="bg-white border border-gray-200 rounded-3xl p-6 shadow-2xs space-y-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber bg-primary/20 px-2 py-0.5 rounded">
+                                {order.service_type || "Custom Presentation"}
+                              </span>
+                              {order.rush_delivery && (
+                                <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                                  Rush 24h
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-heading font-black text-base text-[#111111] mt-1.5">
+                              {title}
+                            </h3>
+                            <p className="text-xs text-[#726F6D]">
+                              Brief submitted: {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Active cycle"}
+                              {order.slide_count ? ` • ${order.slide_count} slides` : ""}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-xs font-bold px-3 py-1 rounded-full self-start sm:self-auto ${
+                              isDelivered
+                                ? "text-emerald-800 bg-emerald-100"
+                                : "text-amber-800 bg-amber-100"
+                            }`}
+                          >
+                            {milestoneText}
+                          </span>
+                        </div>
+
+                        {/* Progress Stepper */}
+                        <div className="py-2">
+                          <div className="flex justify-between text-xs font-bold text-[#111111] mb-2">
+                            <span>Milestone Progress</span>
+                            <span>{progressPercent}% Polished</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-primary h-full rounded-full transition-all duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Master Deliverable Download Box (If Admin Attached Deliverable) */}
+                        {order.deliverable_url ? (
+                          <div className="bg-[#FEF5DC] border border-[#FCBF14]/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-[#FCBF14] text-[#111111] flex items-center justify-center font-bold shrink-0">
+                                <Download size={20} />
+                              </div>
+                              <div>
+                                <h5 className="font-heading font-black text-sm text-[#111111]">
+                                  {order.deliverable_name || "Final Master Presentation (.pptx)"}
+                                </h5>
+                                <p className="text-xs text-[#726F6D]">
+                                  Studio delivery verified • Full commercial license included
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href={order.deliverable_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full sm:w-auto hex-pill bg-[#111111] hover:bg-black text-white text-xs font-black px-5 py-2.5 flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer"
+                            >
+                              <Download size={14} /> Download Final Master (.pptx)
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+                            <span className="text-xs text-[#726F6D]">
+                              Final master deliverables will appear here upon studio milestone completion.
+                            </span>
+                            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                              In Production
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 text-xs">
+                          <span className="text-[#726F6D]">
+                            Need changes? Request rapid turnaround with your dedicated studio team.
+                          </span>
+                          <a
+                            href={`https://wa.me/${studioWhatsapp}?text=Inquiring%20about%20my%20brief%20${encodeURIComponent(title)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hex-pill bg-[#111111] hover:bg-black text-white font-bold px-4 py-2 flex items-center justify-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                          >
+                            <MessageCircle size={13} /> Chat with Lead Designer
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -796,16 +985,71 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 <HelpCircle size={16} />
               </button>
 
-              {/* Notification Bell with Red Badge Dot */}
+              {/* Notification Bell with Interactive Popover */}
               <div className="relative">
                 <button
                   type="button"
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-[#111111] transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsNotificationsOpen((prev) => !prev);
+                    setUnreadNotifications(false);
+                  }}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                    isNotificationsOpen ? "bg-[#FCBF14] text-[#111111]" : "bg-gray-100 hover:bg-gray-200 text-[#111111]"
+                  }`}
                   title="Notifications"
                 >
                   <Bell size={16} />
                 </button>
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
+                {unreadNotifications && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
+                )}
+
+                {/* Notification Dropdown Popover */}
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 top-12 w-80 sm:w-88 bg-white border border-[#111111]/10 rounded-3xl shadow-2xl p-4 z-50 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <span className="font-heading font-black text-xs text-[#111111]">Notifications</span>
+                        <span className="text-[10px] bg-primary/20 text-[#111111] px-1.5 py-0.5 rounded-full font-bold">
+                          {notifications.length}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="text-gray-400 hover:text-[#111111] text-xs font-bold cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            if (n.tab) setActiveTab(n.tab);
+                            setIsNotificationsOpen(false);
+                          }}
+                          className="p-3 rounded-2xl bg-gray-50 hover:bg-[#FFF9EC] border border-gray-100 hover:border-primary/40 transition-all cursor-pointer space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                              {n.category}
+                            </span>
+                            <span className="text-[10px] text-gray-400">{n.time}</span>
+                          </div>
+                          <p className="text-xs font-bold text-[#111111] leading-snug">
+                            {n.title}
+                          </p>
+                          <p className="text-[11px] text-[#726F6D]">
+                            {n.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* User Profile Avatar with Chevron */}
@@ -894,20 +1138,20 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">
-                  Active
+                  {activeOrder?.status === "completed" || activeOrder?.status === "delivered" ? "Delivered" : "Active Brief"}
                 </span>
                 <h4 className="font-heading font-black text-sm sm:text-base text-[#111111]">
-                  Enterprise Growth Pitch
+                  {activeProjectTitle}
                 </h4>
                 <p className="text-xs text-[#726F6D]">
-                  Luxury executive presentation design studio
+                  {activeOrder?.service_type || "Executive presentation design studio"}
                 </p>
               </div>
 
               {/* Clock Timer */}
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#111111]">
                 <Clock size={13} className="text-[#111111]" />
-                <span>4h • 30 mins</span>
+                <span>{activeOrder?.rush_delivery ? "Rush 24h Turnaround" : "48h Standard Delivery"}</span>
               </div>
 
               {/* Dual Action Buttons */}
@@ -915,21 +1159,27 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const waUrl = `https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20requesting%20revision%20for%20Enterprise%20Growth%20Pitch`;
+                    const waUrl = `https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20requesting%20revision%20for%20${encodeURIComponent(activeProjectTitle)}`;
                     window.open(waUrl, "_blank");
                   }}
                   className="w-full bg-[#151515] hover:bg-black text-white font-bold text-xs py-2.5 rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Request Revision
+                  Request Revision / Chat
                 </button>
-                <a
-                  href="https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/downloads/enterprise_growth.pptx"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-[#F5B921] hover:bg-[#E0A71B] text-[#111111] font-black text-xs py-2.5 rounded-xl transition-all shadow-xs cursor-pointer text-center"
-                >
-                  Download Master Deck
-                </a>
+                {activeOrder?.deliverable_url ? (
+                  <a
+                    href={activeOrder.deliverable_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-[#F5B921] hover:bg-[#E0A71B] text-[#111111] font-black text-xs py-2.5 rounded-xl transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-1.5"
+                  >
+                    <Download size={13} /> Download Final Master (.pptx)
+                  </a>
+                ) : (
+                  <div className="w-full bg-white/80 text-[#726F6D] border border-dashed border-[#ECCF87] font-bold text-[11px] py-2.5 rounded-xl text-center">
+                    Milestone: {activeMilestone}
+                  </div>
+                )}
               </div>
 
             </div>

@@ -50,43 +50,5 @@ export default function ScrollToTop() {
     return () => cancelAnimationFrame(frameId);
   }, [pathname, search, hash]);
 
-  // Handle same-page quick link clicks
-  useEffect(() => {
-    const handleLinkClick = (event: MouseEvent) => {
-      const anchor = (event.target as HTMLElement).closest("a");
-      if (!anchor) return;
-
-      const href = anchor.getAttribute("href");
-      if (!href) return;
-
-      // Extract path from hash router URLs (e.g., "#/services" or "#/pricing")
-      const currentHash = window.location.hash.replace(/^#/, "");
-      const [currentRoute] = currentHash.split("?");
-
-      let targetRoute = href;
-      if (targetRoute.startsWith("#/")) {
-        targetRoute = targetRoute.slice(1);
-      } else if (targetRoute.startsWith("#") && targetRoute.length > 1) {
-        // In-page anchor hash
-        return;
-      }
-
-      const [targetCleanRoute] = targetRoute.split("?");
-
-      // Normalize root paths
-      const normalizedCurrent = currentRoute === "" || currentRoute === "/home" ? "/" : currentRoute;
-      const normalizedTarget = targetCleanRoute === "" || targetCleanRoute === "/home" ? "/" : targetCleanRoute;
-
-      if (normalizedCurrent === normalizedTarget && !href.includes("#services-grid") && !href.includes("#marketplace")) {
-        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-        document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-        document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-      }
-    };
-
-    document.addEventListener("click", handleLinkClick);
-    return () => document.removeEventListener("click", handleLinkClick);
-  }, []);
-
   return null;
 }

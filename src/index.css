@@ -295,13 +295,13 @@
 .animate-marquee-left {
   display: flex;
   width: max-content;
-  animation: marqueeLeft 40s linear infinite;
+  animation: marqueeLeft 65s linear infinite;
 }
 
 .animate-marquee-right {
   display: flex;
   width: max-content;
-  animation: marqueeRight 40s linear infinite;
+  animation: marqueeRight 65s linear infinite;
 }
 
 .pause-on-hover:hover .animate-marquee-left,

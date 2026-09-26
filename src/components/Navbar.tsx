@@ -145,7 +145,7 @@ export default function Navbar() {
     { name: "Templates", path: "/#templates", isHash: true },
     { name: "Services", path: "/services" },
     { name: "Pricing", path: "/pricing" },
-    { name: "Portfolio", path: "/examples" },
+    { name: "Portfolio", path: "/portfolio" },
     { name: "Blog", path: "/blog" },
     { name: "About", path: "/about" },
     { name: "Contact", path: "/contact" },
@@ -214,12 +214,36 @@ export default function Navbar() {
           {navLinks.map((link) => {
             const isActive = link.isHash 
               ? location.hash === "#templates"
-              : location.pathname === link.path;
+              : (location.pathname === link.path || (link.path === "/portfolio" && location.pathname === "/examples"));
+            
+            if (link.isHash) {
+              return (
+                <button
+                  key={link.name}
+                  type="button"
+                  onClick={(e) => handleNavClick(e, link)}
+                  className={clsx(
+                    "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer bg-transparent border-none",
+                    isActive
+                      ? "text-[#FCBF14]"
+                      : "text-white/85 hover:text-[#FCBF14]"
+                  )}
+                >
+                  {link.name}
+                  {isActive && (
+                    <motion.div
+                      layoutId="navbar-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#FCBF14] rounded-full"
+                    />
+                  )}
+                </button>
+              );
+            }
+
             return (
-              <a
+              <Link
                 key={link.name}
-                href={`#${link.path}`}
-                onClick={(e) => handleNavClick(e, link)}
+                to={link.path}
                 className={clsx(
                   "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer",
                   isActive
@@ -234,7 +258,7 @@ export default function Navbar() {
                     className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#FCBF14] rounded-full"
                   />
                 )}
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -320,19 +344,33 @@ export default function Navbar() {
             className="fixed inset-0 bg-[#111111]/98 backdrop-blur-xl z-40 md:hidden flex flex-col justify-center px-8 pt-20 pb-12"
           >
             <nav className="flex flex-col gap-6 text-center">
-              {navLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={`#${link.path}`}
-                  onClick={(e) => {
-                    setIsMobileMenuOpen(false);
-                    handleNavClick(e, link);
-                  }}
-                  className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer"
-                >
-                  {link.name}
-                </a>
-              ))}
+              {navLinks.map((link) => {
+                if (link.isHash) {
+                  return (
+                    <button
+                      key={link.name}
+                      type="button"
+                      onClick={(e) => {
+                        setIsMobileMenuOpen(false);
+                        handleNavClick(e, link);
+                      }}
+                      className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer bg-transparent border-none"
+                    >
+                      {link.name}
+                    </button>
+                  );
+                }
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer"
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
               <div className="pt-6 border-t border-white/10 flex flex-col gap-4">
                 {isAdmin ? (
                   <>

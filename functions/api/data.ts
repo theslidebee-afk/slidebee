@@ -47,7 +47,7 @@ const VALID_TABLE_COLUMNS: Record<string, string[]> = {
   orders: [
     "id", "created_at", "order_reference", "service_type", "slide_count", "timeline",
     "formats", "style_preference", "drive_url", "project_brief", "full_name", "email",
-    "company", "phone", "payment_id", "status"
+    "company", "phone", "payment_id", "status", "deliverable_url", "deliverable_name"
   ],
   subscriptions: [
     "id", "created_at", "updated_at", "user_id", "user_email", "plan_name", "amount_usd",

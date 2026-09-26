@@ -52,7 +52,8 @@ import {
   UserX,
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LayoutGrid
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -173,6 +174,19 @@ export default function Admin() {
   const [newTitle, setNewTitle] = useState("");
   const [newCode, setNewCode] = useState(`SLD-${Math.floor(100 + Math.random() * 900)}`);
   const [newCategory, setNewCategory] = useState("Pitch Decks");
+  const [categoriesList, setCategoriesList] = useState<string[]>([
+    "Pitch Decks",
+    "Business",
+    "Infographics",
+    "Marketing",
+    "Corporate",
+    "Finance",
+    "Strategy"
+  ]);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [orderDeliverableUrl, setOrderDeliverableUrl] = useState("");
+  const [orderDeliverableName, setOrderDeliverableName] = useState("");
+  const [isSavingDeliverable, setIsSavingDeliverable] = useState(false);
   const [newPriceINR, setNewPriceINR] = useState<number | string>(499);
   const [newPriceUSD, setNewPriceUSD] = useState<number | string>(9);
   const [newSlideCount, setNewSlideCount] = useState<number | string>(25);
@@ -496,6 +510,14 @@ export default function Admin() {
           configMap[c.key] = c.value;
         });
         setSiteConfigs(configMap);
+        if (configMap["template_categories"] && Array.isArray(configMap["template_categories"]) && configMap["template_categories"].length > 0) {
+          setCategoriesList(configMap["template_categories"]);
+        } else {
+          const unique: string[] = Array.from(new Set<string>((templatesRes.data || []).map((t: any) => String(t.category || "")).filter(Boolean)));
+          if (unique.length > 0) {
+            setCategoriesList(Array.from(new Set<string>(["Pitch Decks", "Business", "Infographics", "Marketing", "Corporate", "Finance", "Strategy", ...unique])));
+          }
+        }
         if (configMap["show_template_metrics"]) {
           setTemplateMetricsSettings({
             show_stars: Boolean(configMap["show_template_metrics"].show_stars),
@@ -1521,7 +1543,50 @@ support@theslidebee.com`
     }
   };
 
-  // Delete Template from Supabase
+  // Category Management Handlers
+  const handleAddNewCategory = async () => {
+    const clean = newCategoryInput.trim();
+    if (!clean) return;
+    if (categoriesList.some(c => c.toLowerCase() === clean.toLowerCase())) {
+      alert(`Category "${clean}" already exists.`);
+      return;
+    }
+    const updated = [...categoriesList, clean];
+    setCategoriesList(updated);
+    setNewCategoryInput("");
+    try {
+      await supabase.from("site_config").upsert({
+        key: "template_categories",
+        value: updated,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+      setProActionFeedback({ type: "success", message: `New category "${clean}" published across website.` });
+      setTimeout(() => setProActionFeedback(null), 4000);
+    } catch (err: any) {
+      console.error("Failed to add category:", err);
+      alert(`Failed to add category: ${err?.message || err}`);
+    }
+  };
+
+  const handleDeleteCategory = async (catToDelete: string) => {
+    if (!confirm(`Are you sure you want to remove category "${catToDelete}"?`)) return;
+    const updated = categoriesList.filter(c => c.toLowerCase() !== catToDelete.toLowerCase());
+    setCategoriesList(updated);
+    try {
+      await supabase.from("site_config").upsert({
+        key: "template_categories",
+        value: updated,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+      setProActionFeedback({ type: "success", message: `Category "${catToDelete}" removed.` });
+      setTimeout(() => setProActionFeedback(null), 4000);
+    } catch (err: any) {
+      console.error("Failed to delete category:", err);
+      alert(`Failed to delete category: ${err?.message || err}`);
+    }
+  };
+
+  // Quick Delete Single Template
   const handleDeleteTemplate = async (tplId: string | number, tplTitle: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete template "${tplTitle}"? This will remove it from the online store.`)) {
       return;
@@ -3064,7 +3129,11 @@ SlideBee Design Studio`
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedOrderForModal(ord)}
+                                  onClick={() => {
+                                  setSelectedOrderForModal(ord);
+                                  setOrderDeliverableUrl(ord.deliverable_url || "");
+                                  setOrderDeliverableName(ord.deliverable_name || "");
+                                }}
                                   className="hex-pill-sm bg-[#111111] text-white hover:text-primary font-bold px-3 py-1.5 inline-flex items-center gap-1 text-[11px] transition-colors shadow-sm"
                                 >
                                   Inspect Brief
@@ -3175,6 +3244,72 @@ SlideBee Design Studio`
                   <Download size={13} />
                   <span>Downloads Count: {templateMetricsSettings.show_downloads ? "Visible on Site" : "Hidden from Clients"}</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Category Management Hub */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-primary/40 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-heading font-extrabold text-sm text-[#111111] flex items-center gap-2">
+                    <LayoutGrid size={16} className="text-primary-amber" />
+                    Marketplace Category Manager & Taxonomy
+                  </h4>
+                  <p className="text-xs text-[#726F6D]">
+                    Create and manage presentation categories. Categories added here instantly appear across the entire storefront, navbar filters, and template creation modals.
+                  </p>
+                </div>
+                
+                {/* Add Category Input */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="New category name..."
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddNewCategory();
+                      }
+                    }}
+                    className="bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNewCategory}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+                  >
+                    <Plus size={13} /> Add Category
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Categories Pills */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#111111]/8">
+                <span className="text-[11px] font-bold text-[#726F6D]">Active Categories:</span>
+                {categoriesList.map((cat) => {
+                  const deckCount = templates.filter(t => t.category?.toLowerCase() === cat.toLowerCase()).length;
+                  return (
+                    <div
+                      key={cat}
+                      className="bg-[#FFF9E8] border border-primary/30 rounded-lg px-2.5 py-1 text-xs font-bold text-[#111111] flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <span>{cat}</span>
+                      <span className="text-[10px] font-mono text-[#726F6D] bg-white px-1.5 rounded-full border border-[#111111]/5">
+                        {deckCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat)}
+                        className="text-gray-400 hover:text-red-600 transition-colors ml-0.5 cursor-pointer"
+                        title={`Remove "${cat}" category`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -8303,14 +8438,9 @@ SlideBee Design Studio`
                       onChange={(e) => setNewCategory(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
                     >
-                      <option value="Pitch Decks">Pitch Decks</option>
-                      <option value="Business">Business</option>
-                      <option value="Strategy">Strategy</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Infographics">Infographics</option>
-                      <option value="Timelines">Timelines</option>
-                      <option value="Education">Education</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -8805,14 +8935,9 @@ SlideBee Design Studio`
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary cursor-pointer"
                     >
-                      <option value="Pitch Decks">Pitch Decks</option>
-                      <option value="Business">Business</option>
-                      <option value="Strategy">Strategy</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Infographics">Infographics</option>
-                      <option value="Timelines">Timelines</option>
-                      <option value="Education">Education</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -9125,6 +9250,109 @@ SlideBee Design Studio`
                     </a>
                   </div>
                 )}
+              </div>
+
+              {/* FINAL MASTER PRESENTATION DELIVERABLE (.PPTX) */}
+              <div className="bg-[#FFFDF5] border-2 border-primary/40 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-primary-amber" />
+                    <h4 className="font-heading font-extrabold text-xs text-[#111111]">
+                      Final Master Presentation Deliverable (.pptx)
+                    </h4>
+                  </div>
+                  {selectedOrderForModal.deliverable_url && (
+                    <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 border border-emerald-300">
+                      Deliverable Uploaded
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#726F6D]">
+                  Attach the finalized PowerPoint master deck for this design commission. The client can immediately download it from their User Dashboard.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
+                      Deliverable Download URL:
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://pub-....r2.dev/decks/client_final.pptx or Drive link"
+                      value={orderDeliverableUrl}
+                      onChange={(e) => setOrderDeliverableUrl(e.target.value)}
+                      className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-mono focus:border-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
+                      Deliverable File Name:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Acme_Corp_Master_Deck_Final.pptx"
+                      value={orderDeliverableName}
+                      onChange={(e) => setOrderDeliverableName(e.target.value)}
+                      className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-primary/20">
+                  <div className="text-[11px] text-[#726F6D]">
+                    {selectedOrderForModal.deliverable_url && (
+                      <a
+                        href={selectedOrderForModal.deliverable_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary-amber font-bold underline inline-flex items-center gap-1"
+                      >
+                        <Download size={11} /> Test Current Deliverable Link
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSavingDeliverable || !orderDeliverableUrl.trim()}
+                    onClick={async () => {
+                      setIsSavingDeliverable(true);
+                      try {
+                        const { error } = await supabase
+                          .from("orders")
+                          .update({
+                            deliverable_url: orderDeliverableUrl.trim(),
+                            deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
+                            status: "completed",
+                          })
+                          .eq("id", selectedOrderForModal.id);
+                        if (error) throw error;
+                        setOrders(orders.map(o => o.id === selectedOrderForModal.id ? {
+                          ...o,
+                          deliverable_url: orderDeliverableUrl.trim(),
+                          deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
+                          status: "completed"
+                        } : o));
+                        setSelectedOrderForModal({
+                          ...selectedOrderForModal,
+                          deliverable_url: orderDeliverableUrl.trim(),
+                          deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
+                          status: "completed"
+                        });
+                        setProActionFeedback({ type: "success", message: "Final deliverable saved & order marked completed! Available in client dashboard." });
+                        setTimeout(() => setProActionFeedback(null), 5000);
+                      } catch (err: any) {
+                        console.error("Failed to save deliverable:", err);
+                        alert(`Failed to save deliverable: ${err?.message || err}`);
+                      } finally {
+                        setIsSavingDeliverable(false);
+                      }
+                    }}
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    <Save size={13} />
+                    {isSavingDeliverable ? "Saving..." : "Save Deliverable & Mark Completed"}
+                  </button>
+                </div>
               </div>
 
               {/* IN-APP STUDIO EMAIL COMPOSER */}

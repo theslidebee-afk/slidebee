@@ -22,6 +22,7 @@ import {
 import { useCurrency } from "../context/CurrencyContext";
 import { supabase } from "../lib/supabase";
 import { normalizeR2Url } from "../lib/r2";
+import { sendTemplatePurchaseReceiptEmail } from "../lib/email";
 import { useTemplateCheckout, type StoreTemplate } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -340,7 +341,47 @@ export default function TemplateDetail() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setCreditNotice("Free template download initiated! Enjoy your presentation deck.");
+
+    // Send confirmation receipt with download link to client email
+    sendTemplatePurchaseReceiptEmail({
+      clientEmail: client.email,
+      clientName: client.name || client.email.split("@")[0],
+      templateTitle: template?.title || "SlideBee Presentation Template",
+      templateCode: template?.code || template?.id || "SLIDEBEE-FREE",
+      downloadUrl: deliverable.startsWith("http") ? deliverable : `https://theslidebee.com${deliverable}`,
+      amountPaid: 0,
+      currency: "INR"
+    }).catch((err) => console.warn("Free template receipt email notice:", err));
+
+    // Persist to user's purchased items in profile
+    if (template) {
+      const newItem = {
+        id: template.id,
+        code: template.code || template.id,
+        title: template.title,
+        template_title: template.title,
+        download_url: deliverable,
+        date: new Date().toISOString(),
+        type: "free",
+        slide_count: (template as any).slide_count || 24,
+        file_size: (template as any).file_size || "18 MB"
+      };
+      const updatedPurchases = [
+        ...clientPurchases.filter((p: any) => String(p.id) !== String(template.id)),
+        newItem
+      ];
+      setClientPurchases(updatedPurchases);
+      try {
+        await supabase
+          .from("profiles")
+          .update({ purchased_items: updatedPurchases })
+          .eq("email", client.email);
+      } catch (err) {
+        console.warn("Failed to persist free download to profile:", err);
+      }
+    }
+
+    setCreditNotice("Free template download initiated! A copy with download links has been dispatched to your email and added to your dashboard.");
   };
 
   // Standard Instant Purchase via Razorpay (Requires Login)
