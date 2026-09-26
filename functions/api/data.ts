@@ -31,6 +31,61 @@ const JSON_COLUMNS: Record<string, string[]> = {
   assets: ["metadata"],
 };
 
+const VALID_TABLE_COLUMNS: Record<string, string[]> = {
+  templates: [
+    "id", "slug", "code", "title", "category", "price_inr", "price_usd", "original_price_inr",
+    "image_url", "thumbnail_url", "slides_count", "rating", "downloads", "formats", "slides",
+    "description", "features", "download_url", "file_name", "file_size", "is_credit_eligible",
+    "is_featured", "is_published", "created_at", "is_premium"
+  ],
+  profiles: [
+    "id", "email", "full_name", "company", "phone", "role", "credits_total", "credits_used",
+    "credits_balance", "purchased_items", "usage_history", "last_sign_in_at", "created_at",
+    "updated_at", "tier", "tier_expires_at", "downloads_today", "last_download_date",
+    "downloads_this_month", "month_cycle_start", "is_bot_flagged"
+  ],
+  orders: [
+    "id", "created_at", "order_reference", "service_type", "slide_count", "timeline",
+    "formats", "style_preference", "drive_url", "project_brief", "full_name", "email",
+    "company", "phone", "payment_id", "status"
+  ],
+  subscriptions: [
+    "id", "created_at", "updated_at", "user_id", "user_email", "plan_name", "amount_usd",
+    "amount_inr", "slides_used", "slides_limit", "current_period_end", "status",
+    "razorpay_subscription_id"
+  ],
+  site_config: ["id", "key", "value", "updated_at"],
+  waitlist: ["id", "created_at", "email", "source"],
+  auth_logs: ["id", "created_at", "user_email", "event", "metadata"],
+  assets: ["id", "key", "title", "category", "url", "alt_text", "metadata", "created_at"],
+  download_logs: [
+    "id", "user_email", "template_id", "template_title", "tier", "is_premium",
+    "download_url", "ip_address", "user_agent", "downloaded_at"
+  ],
+  users: ["id", "email", "password_hash", "salt", "role", "created_at", "updated_at"],
+  sessions: ["id", "user_id", "email", "role", "device_info", "ip_address", "created_at", "expires_at"]
+};
+
+function sanitizeRow(table: string, row: any): any {
+  if (!row || typeof row !== "object") return row;
+  const validCols = VALID_TABLE_COLUMNS[table];
+  const cleaned: Record<string, any> = {};
+
+  // Normalize known field aliases
+  if (table === "templates") {
+    if (row.slide_count !== undefined && row.slides_count === undefined) {
+      row.slides_count = row.slide_count;
+    }
+  }
+
+  for (const [key, val] of Object.entries(row)) {
+    if (!validCols || validCols.includes(key)) {
+      cleaned[key] = val;
+    }
+  }
+  return cleaned;
+}
+
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
   "https://www.theslidebee.com",
@@ -285,7 +340,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
       for (const rawRow of rows) {
         const rowId = rawRow.id || crypto.randomUUID();
-        const rowWithId = { ...rawRow, id: rowId };
+        const rowWithId = sanitizeRow(table, { ...rawRow, id: rowId });
         const keys = Object.keys(rowWithId);
         const placeholders = keys.map(() => "?").join(", ");
         const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`;
@@ -304,16 +359,17 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     // 4. Update Action
     if (action === "update") {
-      const keys = Object.keys(values || {});
+      const sanitizedValues = sanitizeRow(table, values || {});
+      const keys = Object.keys(sanitizedValues);
       if (keys.length === 0) {
-        return new Response(JSON.stringify({ data: null, error: { message: "No update values provided." } }), {
+        return new Response(JSON.stringify({ data: null, error: { message: "No valid update values provided." } }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const setClauses = keys.map((k) => `${k} = ?`).join(", ");
-      const params = keys.map((k) => stringifyValue(values[k]));
+      const params = keys.map((k) => stringifyValue(sanitizedValues[k]));
       const whereClauses: string[] = [];
 
       for (const filter of filters) {
@@ -330,7 +386,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
 
       await env.DB.prepare(sql).bind(...params).run();
-      return new Response(JSON.stringify({ data: values, error: null }), {
+      return new Response(JSON.stringify({ data: sanitizedValues, error: null }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -341,9 +397,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const rows = Array.isArray(values) ? values : [values];
       const conflictCol = table === "site_config" ? "key" : (table === "profiles" ? "email" : "id");
 
-      for (const row of rows) {
-        const rowId = row.id || crypto.randomUUID();
-        const rowWithId = { ...row, id: rowId };
+      for (const rawRow of rows) {
+        const rowId = rawRow.id || crypto.randomUUID();
+        const rowWithId = sanitizeRow(table, { ...rawRow, id: rowId });
         const keys = Object.keys(rowWithId);
         const placeholders = keys.map(() => "?").join(", ");
         const updateClauses = keys.filter((k) => k !== conflictCol && k !== "id").map((k) => `${k} = excluded.${k}`).join(", ");

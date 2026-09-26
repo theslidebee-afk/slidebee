@@ -42,76 +42,6 @@ interface UserModernDashboardProps {
 }
 
 // Minimalist Presentation Easel Whiteboard SVG Icon (matching reference mockup)
-const PresentationEaselIcon: React.FC<{ className?: string }> = ({ className = "w-10 h-10" }) => (
-  <svg
-    viewBox="0 0 64 64"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    {/* Top hanging peg */}
-    <path d="M32 9V13" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
-    
-    {/* Whiteboard Frame */}
-    <rect
-      x="12"
-      y="13"
-      width="40"
-      height="28"
-      rx="3"
-      stroke="#C9982E"
-      strokeWidth="2.2"
-      fill="#FFFBF2"
-    />
-    
-    {/* Pie Chart on left of whiteboard */}
-    <circle cx="23" cy="27" r="6.5" stroke="#C9982E" strokeWidth="1.8" fill="none" />
-    <path d="M23 20.5V27H29.5" stroke="#C9982E" strokeWidth="1.8" strokeLinecap="round" />
-    
-    {/* Horizontal Bar Chart lines on right */}
-    <path d="M35 23H44" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
-    <path d="M35 27.5H41" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
-    <path d="M35 32H45" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
-    
-    {/* Bottom marker ledge */}
-    <path d="M9 41H55" stroke="#C9982E" strokeWidth="2.5" strokeLinecap="round" />
-    
-    {/* Easel Tripod legs */}
-    <path d="M20 43L13 57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M32 43V57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M44 43L51 57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
-  </svg>
-);
-
-// Regular pointy-top hexagon path generator
-const Hexagon: React.FC<{
-  cx: number;
-  cy: number;
-  r: number;
-  stroke?: string;
-  strokeWidth?: number;
-  fill?: string;
-}> = ({ cx, cy, r, stroke = "#E3B244", strokeWidth = 1.6, fill = "none" }) => {
-  const w = (r * Math.sqrt(3)) / 2;
-  const h = r / 2;
-  const points = [
-    `${cx},${cy - r}`,
-    `${cx + w},${cy - h}`,
-    `${cx + w},${cy + h}`,
-    `${cx},${cy + r}`,
-    `${cx - w},${cy + h}`,
-    `${cx - w},${cy - h}`,
-  ].join(" ");
-
-  return (
-    <polygon
-      points={points}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      fill={fill}
-    />
-  );
-};
 
 export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   currentUser,
@@ -241,100 +171,17 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   ];
 
   return (
-    <div className="relative min-h-screen bg-[#FFF8E7] text-[#111111] overflow-hidden flex justify-center items-start pt-20 sm:pt-24 pb-16 px-3 sm:px-6 lg:px-8">
-      
-      {/* ========================================================================= */}
-      {/* VECTOR BACKGROUND ARTWORK (Exact match to uploaded reference mockup)       */}
-      {/* ========================================================================= */}
-      
-      {/* 1. Bottom-Right Organic Golden Curve Swoop */}
-      <svg
-        className="absolute -bottom-12 -right-12 w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] xl:w-[950px] xl:h-[950px] pointer-events-none select-none z-0"
-        viewBox="0 0 950 950"
-        fill="none"
-      >
-        <defs>
-          <radialGradient
-            id="honeyBottomRightGradient"
-            cx="85%"
-            cy="85%"
-            r="80%"
-            fx="85%"
-            fy="85%"
-          >
-            <stop offset="0%" stopColor="#DF9608" />
-            <stop offset="30%" stopColor="#E9A814" />
-            <stop offset="65%" stopColor="#F5BF26" />
-            <stop offset="90%" stopColor="#FAE08C" />
-            <stop offset="100%" stopColor="#FFF8E7" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <path
-          d="M 950 200 C 720 300 450 520 380 950 L 950 950 Z"
-          fill="url(#honeyBottomRightGradient)"
-        />
-      </svg>
-
-      {/* 2. Top-Left Soft Golden Wave / Arc */}
-      <svg
-        className="absolute -top-24 -left-24 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] pointer-events-none select-none z-0"
-        viewBox="0 0 600 600"
-        fill="none"
-      >
-        <defs>
-          <radialGradient
-            id="honeyTopLeftGradient"
-            cx="15%"
-            cy="15%"
-            r="80%"
-            fx="15%"
-            fy="15%"
-          >
-            <stop offset="0%" stopColor="#FDE69D" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="#FEF1C9" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="#FFF8E7" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="150" cy="150" r="420" fill="url(#honeyTopLeftGradient)" />
-      </svg>
-
-      {/* 3. Top-Right Honeycomb Hexagons with Whiteboard Easel Icon */}
-      <div className="absolute top-4 right-4 sm:top-8 sm:right-8 w-[240px] h-[240px] pointer-events-none select-none z-0 hidden md:block">
-        <svg viewBox="0 0 240 240" fill="none" className="w-full h-full">
-          {/* Interlocking Hexagons */}
-          {/* Hex 1 (Main center containing easel) */}
-          <Hexagon cx={155} cy={85} r={55} stroke="#E5B548" strokeWidth={1.8} />
-          {/* Hex 2 (Right neighbor) */}
-          <Hexagon cx={235} cy={135} r={55} stroke="#E5B548" strokeWidth={1.8} />
-          {/* Hex 3 (Left-down neighbor) */}
-          <Hexagon cx={105} cy={170} r={55} stroke="#E5B548" strokeWidth={1.8} />
-        </svg>
-        {/* Easel icon inside Hex 1 */}
-        <div className="absolute top-[52px] left-[122px] transform -translate-x-1/2 -translate-y-1/2">
-          <PresentationEaselIcon className="w-14 h-14" />
-        </div>
-      </div>
-
-      {/* 4. Bottom-Left Honeycomb Hexagons with Whiteboard Easel Icon */}
-      <div className="absolute bottom-4 left-4 sm:bottom-10 sm:left-8 w-[260px] h-[260px] pointer-events-none select-none z-0 hidden md:block">
-        <svg viewBox="0 0 260 260" fill="none" className="w-full h-full">
-          {/* Hex 1 (Center bottom containing easel) */}
-          <Hexagon cx={85} cy={175} r={60} stroke="#E5B548" strokeWidth={1.8} />
-          {/* Hex 2 (Up-right neighbor) */}
-          <Hexagon cx={140} cy={80} r={60} stroke="#E5B548" strokeWidth={1.8} />
-          {/* Hex 3 (Far left partial) */}
-          <Hexagon cx={30} cy={80} r={60} stroke="#E5B548" strokeWidth={1.8} />
-        </svg>
-        {/* Easel icon inside Hex 1 */}
-        <div className="absolute bottom-[52px] left-[52px] transform -translate-x-1/2 -translate-y-1/2">
-          <PresentationEaselIcon className="w-14 h-14" />
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-[#FFF8E7] text-[#111111] overflow-hidden flex justify-center items-start pt-16 sm:pt-20 pb-16 px-3 sm:px-6 lg:px-8">
+      {/* Background Graphic matching user reference mockup */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/dashboard-bg.jpg')" }}
+      />
 
       {/* ========================================================================= */}
       {/* MAIN FLOATING DASHBOARD CONTAINER                                         */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full max-w-[1560px] bg-white rounded-[32px] sm:rounded-[44px] shadow-[0_25px_80px_rgba(215,160,25,0.13),0_10px_30px_rgba(0,0,0,0.05)] border border-[#ECCF87]/35 overflow-hidden flex flex-col xl:flex-row min-h-[850px]">
+      <div className="relative z-10 w-full max-w-[1560px] bg-white rounded-[32px] sm:rounded-[44px] shadow-[0_25px_80px_rgba(215,160,25,0.18),0_10px_30px_rgba(0,0,0,0.06)] border border-[#ECCF87]/40 overflow-hidden flex flex-col xl:flex-row min-h-[850px]">
         
         {/* ======================================================================= */}
         {/* COLUMN 1: LEFT SIDEBAR NAVIGATION                                       */}

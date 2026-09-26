@@ -30,7 +30,7 @@ export interface NewTemplatePayload {
  * - createSingleTemplate(payload): Creates single template in database
  * - bulkImportTemplates(templatesArray): Inserts array of parsed templates
  * - deleteTemplate(id): Deletes template from database
- * - toggleCreditEligibility(id, isEligible): Toggles free starter credit library membership
+ * - toggleCreditEligibility(id, isEligible): Toggles free community deck library membership
  * - refetch(): Re-reads templates from Supabase
  */
 export function useAdminTemplates() {

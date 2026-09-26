@@ -61,7 +61,6 @@ import {
   sendProGrantedEmail, 
   sendProExpiringSoonEmail,
   sendProExpiredEmail,
-  sendCreditsAdjustedEmail, 
   sendAccountDeletionEmail 
 } from "../lib/email";
 import SlideBeeLogo from "../components/SlideBeeLogo";
@@ -198,21 +197,8 @@ export default function Admin() {
 
   // User & Subscription Ledger States
   const [clientFilter, setClientFilter] = useState<"all" | "pro" | "free">("all");
-  const [isGrantProModalOpen, setIsGrantProModalOpen] = useState(false);
-  const [grantProTargetEmail, setGrantProTargetEmail] = useState("");
-  const [grantProCredits, setGrantProCredits] = useState<number>(15);
-  const [grantProDurationMonths, setGrantProDurationMonths] = useState<number>(1);
-  const [grantProReason, setGrantProReason] = useState<string>("VIP Client Partnership");
   const [isProcessingProAction, setIsProcessingProAction] = useState(false);
   const [proActionFeedback, setProActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  // Option B In-Browser Email State for Pro Gifting
-  const [grantProSendEmail, setGrantProSendEmail] = useState(true);
-  const [grantProEmailSender, setGrantProEmailSender] = useState("design@theslidebee.com");
-  const [grantProEmailSubject, setGrantProEmailSubject] = useState("VIP Pro Membership Activated — SlideBee Design Studio");
-  const [grantProEmailMessage, setGrantProEmailMessage] = useState(
-    "We are pleased to grant your account complimentary SlideBee Pro Studio Membership. Your account now has unrestricted access to download up to 15 master presentation decks per month from our marketplace catalog completely free of charge, along with our VIP WhatsApp Studio hotline and 15% custom design discount."
-  );
 
   // Revoke Pro Modal & In-Browser Mail State
   const [isRevokeProModalOpen, setIsRevokeProModalOpen] = useState(false);
@@ -232,23 +218,23 @@ export default function Admin() {
     "We are writing to inform you that your SlideBee Pro Studio Membership has concluded and your account has safely transitioned to our standard Free Tier. All templates you previously downloaded remain in your account forever with perpetual commercial rights."
   );
 
-  // Option C Adjust Slide Credits Modal & Mail State
-  const [isAdjustCreditsModalOpen, setIsAdjustCreditsModalOpen] = useState(false);
-  const [adjustCreditsTargetClient, setAdjustCreditsTargetClient] = useState<{
+
+
+  // Manage Client Subscription Tier Modal State (4 Tiers: Free, Monthly, Yearly, Lifetime)
+  const [isManageTierModalOpen, setIsManageTierModalOpen] = useState(false);
+  const [manageTierTargetClient, setManageTierTargetClient] = useState<{
     id: string;
     email: string;
     name?: string;
-    currentBalance: number;
-    currentTotal: number;
+    currentTier: "free" | "monthly" | "yearly" | "lifetime";
+    tierExpiresAt?: string | null;
   } | null>(null);
-  const [adjustCreditsDelta, setAdjustCreditsDelta] = useState<number>(25);
-  const [adjustCreditsReason, setAdjustCreditsReason] = useState<string>("VIP Studio Bonus Allocation");
-  const [adjustCreditsSendEmail, setAdjustCreditsSendEmail] = useState(true);
-  const [adjustCreditsEmailSender, setAdjustCreditsEmailSender] = useState("design@theslidebee.com");
-  const [adjustCreditsEmailSubject, setAdjustCreditsEmailSubject] = useState("Slide Credits Updated — SlideBee Studio");
-  const [adjustCreditsEmailMessage, setAdjustCreditsEmailMessage] = useState(
-    "We have credited your SlideBee account with additional slide download credits. You can redeem these immediately across any master presentation templates in our catalog."
-  );
+  const [manageTierSelectedTier, setManageTierSelectedTier] = useState<"free" | "monthly" | "yearly" | "lifetime">("monthly");
+  const [manageTierDurationMonths, setManageTierDurationMonths] = useState<number>(1);
+  const [manageTierSendEmail, setManageTierSendEmail] = useState<boolean>(true);
+  const [manageTierEmailSender, setManageTierEmailSender] = useState<string>("design@theslidebee.com");
+  const [manageTierEmailSubject, setManageTierEmailSubject] = useState<string>("Your SlideBee Membership Tier Has Been Updated");
+  const [manageTierEmailMessage, setManageTierEmailMessage] = useState<string>("");
 
   // Account Deletion with In-Browser Mail Edition & Reason State
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
@@ -581,110 +567,6 @@ export default function Admin() {
   };
 
   // User & Subscription Ledger Management Handlers
-  const handleGrantFreePro = async (
-    targetEmail: string, 
-    customCredits = 15, 
-    durationMonths = 1, 
-    reason = "VIP Client Partnership",
-    emailOptions?: {
-      sendEmail?: boolean;
-      sender?: string;
-      subject?: string;
-      message?: string;
-    }
-  ) => {
-    if (!targetEmail || !targetEmail.includes("@")) {
-      alert("Please provide a valid client email address.");
-      return;
-    }
-    setIsProcessingProAction(true);
-    try {
-      const cleanEmail = targetEmail.trim().toLowerCase();
-      const existingProfile = profiles.find((p) => p.email?.toLowerCase() === cleanEmail);
-      const existingSub = subscriptions.find((s) => s.user_email?.toLowerCase() === cleanEmail);
-
-      const periodEnd = durationMonths >= 999
-        ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString()
-        : new Date(Date.now() + durationMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
-
-      const subPayload = {
-        user_id: existingProfile?.id || null,
-        user_email: cleanEmail,
-        plan_name: reason ? `Pro Studio Membership (${reason})` : "Pro Studio Membership (Complimentary)",
-        amount_usd: 0,
-        amount_inr: 0,
-        slides_used: 0,
-        slides_limit: customCredits,
-        current_period_end: periodEnd,
-        status: "active",
-        updated_at: new Date().toISOString(),
-      };
-
-      if (existingSub?.id) {
-        const { error: subErr } = await supabase.from("subscriptions").update(subPayload).eq("id", existingSub.id);
-        if (subErr) throw subErr;
-      } else {
-        const { error: subErr } = await supabase.from("subscriptions").insert([subPayload]);
-        if (subErr) throw subErr;
-      }
-
-      if (existingProfile?.id) {
-        const updatedBalance = Math.max(Number(existingProfile.credits_balance || 0), customCredits);
-        const updatedTotal = Math.max(Number(existingProfile.credits_total || 0), customCredits);
-        await supabase.from("profiles").update({
-          credits_balance: updatedBalance,
-          credits_total: updatedTotal,
-          updated_at: new Date().toISOString(),
-        }).eq("id", existingProfile.id);
-      } else {
-        await supabase.from("profiles").upsert({
-          email: cleanEmail,
-          full_name: cleanEmail.split("@")[0],
-          role: "client",
-          credits_total: customCredits,
-          credits_used: 0,
-          credits_balance: customCredits,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "email" });
-      }
-
-      // Dispatch customized email notice if enabled
-      let emailNotice = "";
-      if (emailOptions?.sendEmail !== false) {
-        try {
-          const emailRes = await sendProGrantedEmail({
-            clientEmail: cleanEmail,
-            clientName: existingProfile?.full_name || cleanEmail.split("@")[0],
-            slideQuota: customCredits,
-            durationMonths,
-            partnershipReason: reason,
-            customMessage: emailOptions?.message,
-            senderEmail: emailOptions?.sender || "design@theslidebee.com",
-            subject: emailOptions?.subject,
-          });
-          if (emailRes.success) {
-            emailNotice = " Official email dispatch sent to client.";
-          }
-        } catch (mailErr) {
-          console.warn("Failed to dispatch Pro grant email:", mailErr);
-        }
-      }
-
-      setProActionFeedback({
-        type: "success",
-        message: `Complimentary Pro Membership granted to ${cleanEmail}! Added ${customCredits} monthly template downloads quota and unlocked VIP WhatsApp Studio line.${emailNotice}`,
-      });
-      setTimeout(() => setProActionFeedback(null), 6000);
-      setIsGrantProModalOpen(false);
-      setGrantProTargetEmail("");
-      await fetchDashboardData();
-    } catch (err: any) {
-      console.error("Failed to grant free Pro:", err);
-      alert(`Failed to grant Pro membership: ${err?.message || err}`);
-    } finally {
-      setIsProcessingProAction(false);
-    }
-  };
 
   const handleOpenRevokeProModal = (sub: any) => {
     const cleanEmail = (sub.user_email || "").trim().toLowerCase();
@@ -857,102 +739,126 @@ export default function Admin() {
     }
   };
 
-  // Option C: Open Adjust Credits Modal
-  const handleOpenAdjustCreditsModal = (profile: any) => {
-    const currentBal = Number(profile.credits_balance ?? 5);
-    const currentTot = Number(profile.credits_total ?? 5);
-    const clientName = profile.full_name || profile.email?.split("@")[0] || "Client";
-    setAdjustCreditsTargetClient({
+
+  // Manage Subscription Tier: Open Dedicated Modal
+  const handleOpenManageTierModal = (profile: any) => {
+    const clientName = profile.full_name || profile.email?.split("@")[0] || "Valued Client";
+    const currentTier: "free" | "monthly" | "yearly" | "lifetime" = (profile.tier && ["free", "monthly", "yearly", "lifetime"].includes(profile.tier)) ? profile.tier : "free";
+    setManageTierTargetClient({
       id: profile.id,
       email: profile.email,
       name: clientName,
-      currentBalance: currentBal,
-      currentTotal: currentTot,
+      currentTier,
+      tierExpiresAt: profile.tier_expires_at,
     });
-    setAdjustCreditsDelta(25);
-    setAdjustCreditsReason("VIP Studio Bonus Allocation");
-    setAdjustCreditsSendEmail(true);
-    setAdjustCreditsEmailSender("design@theslidebee.com");
-    setAdjustCreditsEmailSubject(`Slide Credits Updated (+25 Added) — SlideBee Studio`);
-    setAdjustCreditsEmailMessage(
-      `Hello ${clientName},\n\nWe have credited your SlideBee account with 25 complimentary slide download credits. You can redeem these immediately to download any master presentation decks in our catalog.`
+    setManageTierSelectedTier(currentTier === "free" ? "monthly" : currentTier);
+    setManageTierDurationMonths(currentTier === "lifetime" ? 0 : currentTier === "yearly" ? 12 : 1);
+    setManageTierSendEmail(true);
+    setManageTierEmailSender("design@theslidebee.com");
+    setManageTierEmailSubject(`Your SlideBee Membership Tier Has Been Updated — SlideBee Studio`);
+    setManageTierEmailMessage(
+      `Hello ${clientName},\n\nYour SlideBee account access has been updated. You now have full access to our curated presentation template catalog with your upgraded subscription tier.\n\nLog in anytime to explore and download master decks: https://theslidebee.com/login`
     );
-    setIsAdjustCreditsModalOpen(true);
+    setIsManageTierModalOpen(true);
   };
 
-  // Option C: Execute Credit Adjustment with In-Browser Mail Dispatch
-  const handleExecuteAdjustCredits = async () => {
-    if (!adjustCreditsTargetClient) return;
+  // Manage Subscription Tier: Execute Save & Dispatch Email
+  const handleExecuteSaveTier = async () => {
+    if (!manageTierTargetClient) return;
     setIsProcessingProAction(true);
     try {
-      const clientId = adjustCreditsTargetClient.id;
-      const clientEmail = adjustCreditsTargetClient.email;
-      const deltaCredits = adjustCreditsDelta;
+      const clientEmail = manageTierTargetClient.email.trim().toLowerCase();
+      const newTier = manageTierSelectedTier;
+      let expiresAt: string | null = null;
 
-      const profile = profiles.find((p) => p.id === clientId || p.email?.toLowerCase() === clientEmail.toLowerCase());
-      const currentBal = Number(profile?.credits_balance ?? adjustCreditsTargetClient.currentBalance) || 0;
-      const currentTot = Number(profile?.credits_total ?? adjustCreditsTargetClient.currentTotal) || 5;
-      const newBal = Math.max(0, currentBal + deltaCredits);
-      const newTot = Math.max(newBal, currentTot + (deltaCredits > 0 ? deltaCredits : 0));
+      if (newTier === "monthly") {
+        expiresAt = new Date(Date.now() + (manageTierDurationMonths || 1) * 30 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (newTier === "yearly") {
+        expiresAt = new Date(Date.now() + (manageTierDurationMonths || 12) * 30 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (newTier === "lifetime") {
+        expiresAt = null;
+      } else {
+        expiresAt = null;
+      }
 
-      const { error } = await supabase.from("profiles").update({
-        credits_balance: newBal,
-        credits_total: newTot,
+      // 1. Update profiles table in D1
+      const profilePatch: any = {
+        tier: newTier,
+        tier_expires_at: expiresAt,
         updated_at: new Date().toISOString(),
-      }).eq("id", clientId);
+      };
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update(profilePatch)
+        .eq("email", clientEmail);
+      if (profileErr) throw profileErr;
 
-      if (error) throw error;
+      // 2. Synchronize subscriptions table in D1
+      const existingSub = subscriptions.find((s) => s.user_email?.toLowerCase() === clientEmail);
+      if (newTier === "free") {
+        if (existingSub?.id) {
+          await supabase.from("subscriptions").update({
+            status: "canceled",
+            updated_at: new Date().toISOString(),
+          }).eq("id", existingSub.id);
+        }
+      } else {
+        const tierLabels: Record<string, string> = {
+          monthly: "Monthly VIP Pass",
+          yearly: "Yearly VIP Pass",
+          lifetime: "Lifetime VIP All-Access",
+        };
+        const subPayload = {
+          user_email: clientEmail,
+          plan_name: tierLabels[newTier] || "Pro Studio Pass",
+          amount_usd: 0,
+          amount_inr: 0,
+          slides_used: 0,
+          slides_limit: newTier === "monthly" ? 30 : newTier === "yearly" ? 360 : 9999,
+          current_period_end: expiresAt,
+          status: "active",
+          updated_at: new Date().toISOString(),
+        };
+        if (existingSub?.id) {
+          await supabase.from("subscriptions").update(subPayload).eq("id", existingSub.id);
+        } else {
+          await supabase.from("subscriptions").insert([subPayload]);
+        }
+      }
 
+      // 3. Dispatch optional email notification
       let emailNotice = "";
-      if (adjustCreditsSendEmail) {
+      if (manageTierSendEmail) {
         try {
-          const emailRes = await sendCreditsAdjustedEmail({
+          const emailRes = await sendProGrantedEmail({
             clientEmail,
-            clientName: adjustCreditsTargetClient.name,
-            creditsAdded: deltaCredits,
-            newBalance: newBal,
-            reason: adjustCreditsReason,
-            customMessage: adjustCreditsEmailMessage,
-            senderEmail: adjustCreditsEmailSender,
-            subject: adjustCreditsEmailSubject,
+            clientName: manageTierTargetClient.name,
+            slideQuota: newTier === "free" ? 3 : newTier === "monthly" ? 30 : newTier === "yearly" ? 360 : 9999,
+            durationMonths: manageTierDurationMonths,
+            partnershipReason: `${newTier.toUpperCase()} Tier Access`,
+            customMessage: manageTierEmailMessage,
+            senderEmail: manageTierEmailSender || "design@theslidebee.com",
+            subject: manageTierEmailSubject || "Your SlideBee Access Tier Has Been Updated",
           });
-          if (emailRes.success) {
-            emailNotice = " Official email dispatch sent to client.";
-          }
-        } catch (mailErr) {
-          console.warn("Failed to dispatch credit update email:", mailErr);
+          if (emailRes.success) emailNotice = " Confirmation email dispatched to client.";
+        } catch (e) {
+          console.warn("Notice email dispatch error:", e);
         }
       }
 
       setProActionFeedback({
         type: "success",
-        message: `${deltaCredits > 0 ? `Added +${deltaCredits}` : `Adjusted ${deltaCredits}`} credits for ${clientEmail}. New balance: ${newBal} credits.${emailNotice}`,
+        message: `Successfully set ${clientEmail} to ${newTier.toUpperCase()} Tier!${emailNotice}`,
       });
       setTimeout(() => setProActionFeedback(null), 5000);
-      setIsAdjustCreditsModalOpen(false);
-      setAdjustCreditsTargetClient(null);
+      setIsManageTierModalOpen(false);
+      setManageTierTargetClient(null);
       await fetchDashboardData();
     } catch (err: any) {
-      console.error("Failed to adjust credits:", err);
-      alert(`Failed to update credits: ${err?.message || err}`);
+      console.error("Failed to update client tier:", err);
+      alert(`Failed to update tier: ${err?.message || err}`);
     } finally {
       setIsProcessingProAction(false);
-    }
-  };
-
-  // Direct quick credit adder
-  const handleAdjustCredits = async (clientId: string, clientEmail: string, deltaCredits: number) => {
-    const profile = profiles.find((p) => p.id === clientId || p.email?.toLowerCase() === clientEmail.toLowerCase());
-    handleOpenAdjustCreditsModal({
-      id: clientId,
-      email: clientEmail,
-      full_name: profile?.full_name,
-      credits_balance: profile?.credits_balance,
-      credits_total: profile?.credits_total,
-    });
-    if (deltaCredits) {
-      setAdjustCreditsDelta(deltaCredits);
-      setAdjustCreditsEmailSubject(`Slide Credits Updated (+${deltaCredits} Added) — SlideBee Studio`);
     }
   };
 
@@ -1460,20 +1366,22 @@ support@theslidebee.com`
       price_inr: Number(newPriceINR),
       price_usd: Number(newPriceUSD),
       original_price_inr: Number(newPriceINR) * 2,
-      slide_count: effectiveSlideCount,
       slides_count: effectiveSlideCount,
       thumbnail_url: newThumbnail,
       image_url: newThumbnail,
       slides: effectiveSlides,
       download_url: newPptUrl,
+      file_name: newPptFilename || "Master_Presentation.pptx",
+      file_size: newPptSize || "4.5 MB",
       formats: newFormats.length > 0 ? newFormats : ["PowerPoint"],
       features: [
         `${effectiveSlideCount}+ High-Impact Slides`,
         "16:9 Widescreen Layout",
         "Fully Editable Vector Elements"
       ],
-      is_credit_eligible: Boolean(newIsCreditEligible),
-      is_published: true
+      is_credit_eligible: newIsCreditEligible ? 1 : 0,
+      is_premium: Number(newPriceINR) > 0 ? 1 : 0,
+      is_published: 1
     };
 
     const { data, error } = await supabase
@@ -1571,7 +1479,6 @@ support@theslidebee.com`
       price_inr: Number(editingTemplate.price_inr),
       price_usd: Number(editingTemplate.price_usd),
       original_price_inr: Number(editingTemplate.price_inr) * 2,
-      slide_count: effectiveSlideCount,
       slides_count: effectiveSlideCount,
       thumbnail_url: editingTemplate.thumbnail_url,
       image_url: editingTemplate.thumbnail_url,
@@ -1580,8 +1487,9 @@ support@theslidebee.com`
       formats: editingTemplate.formats,
       description: editingTemplate.description,
       features: editingTemplate.features,
-      is_published: Boolean(editingTemplate.is_published),
-      is_credit_eligible: Boolean(editingTemplate.is_credit_eligible)
+      is_published: editingTemplate.is_published ? 1 : 0,
+      is_premium: Number(editingTemplate.price_inr) > 0 ? 1 : 0,
+      is_credit_eligible: editingTemplate.is_credit_eligible ? 1 : 0
     };
 
     try {
@@ -2881,14 +2789,16 @@ SlideBee Design Studio`
               <button
                 type="button"
                 onClick={() => {
-                  setGrantProTargetEmail("");
-                  setGrantProCredits(15);
-                  setGrantProDurationMonths(1);
-                  setIsGrantProModalOpen(true);
+                  handleOpenManageTierModal({
+                    id: "",
+                    email: "",
+                    full_name: "New Client",
+                    tier: "monthly"
+                  });
                 }}
                 className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
               >
-                <Gift size={13} /> Grant Pro Access
+                <Gift size={13} /> Grant Subscription Tier
               </button>
             </div>
           )}
@@ -3317,7 +3227,7 @@ SlideBee Design Studio`
                     }`}
                   >
                     <Coins size={12} />
-                    <span>5 Free Credits ({templates.filter(t => t.is_credit_eligible).length})</span>
+                    <span>Free Community Decks ({templates.filter(t => t.is_credit_eligible).length})</span>
                   </button>
                 </div>
 
@@ -3527,9 +3437,9 @@ SlideBee Design Studio`
                       </button>
                     </div>
 
-                    {/* Free Starter Credits Tag & Toggle */}
+                    {/* Free Community Template Tag & Toggle */}
                     <div className="flex items-center justify-between pt-2 border-t border-[#111111]/8 text-[11px] font-bold">
-                      <span className="text-[10px] font-extrabold text-[#726F6D]">5 Free Credits Tag:</span>
+                      <span className="text-[10px] font-extrabold text-[#726F6D]">Free Community Deck Tag:</span>
                       <button
                         type="button"
                         onClick={async () => {
@@ -3909,281 +3819,170 @@ SlideBee Design Studio`
                   })()}
                 </div>
 
-                {/* BEFORE & AFTER SLIDER CUSTOMIZER */}
-                <div className="pt-6 border-t border-[#111111]/8 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                {/* TOP SPLIT PROMOTIONAL BANNERS CUSTOMIZER */}
+                <div className="pt-6 border-t border-[#111111]/8 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#111111]/8">
                     <div>
                       <h4 className="text-sm font-heading font-extrabold text-[#111111]">
-                        Homepage Before & After Comparison Decks
+                        Homepage Top Split Promotional Banners
                       </h4>
                       <p className="text-xs text-[#726F6D]">
-                        Configure the slide images, titles, and critique descriptions for the comparison slider.
+                        Configure the headline, subtitle, and CTA button text for the two prominent banners atop the homepage.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => {
-                        const merged = {
-                          sales: {
-                            title: "Q2 Sales Performance",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-                            afterImg: "/portfolio/case_study_a_1.png",
-                            beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
-                            afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways.",
-                            ...(siteConfigs["home_before_after"]?.sales || {})
-                          },
-                          executive: {
-                            title: "Executive Strategic Keynote",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-                            afterImg: "/portfolio/case_study_a_14.png",
-                            beforeDesc: "Mismatched brand colors, generic bullet points.",
-                            afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points.",
-                            ...(siteConfigs["home_before_after"]?.executive || {})
-                          },
-                          financial: {
-                            title: "Series A Investment Deck",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-                            afterImg: "/portfolio/global_brands_1.png",
-                            beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
-                            afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones.",
-                            ...(siteConfigs["home_before_after"]?.financial || {})
-                          }
+                        const banner1 = siteConfigs["home_banner_1"] || {
+                          title: "Create Presentations That Make an Impact",
+                          subtitle: "Discover pre-designed and custom templates for every stage of your business",
+                          ctaText: "Learn More",
+                          ctaLink: "/about",
                         };
-                        handleSaveConfig("home_before_after", merged);
+                        const banner2 = siteConfigs["home_banner_2"] || {
+                          title: "Get unlimited downloads",
+                          subtitle: "Access all templates with affordable subscription plans.",
+                          ctaText: "View Plans",
+                          ctaLink: "/pricing",
+                        };
+                        handleSaveConfig("home_banner_1", banner1);
+                        handleSaveConfig("home_banner_2", banner2);
                       }}
                       disabled={configSaving}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow"
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs shadow cursor-pointer"
                     >
-                      Save Before & After Decks
+                      Save Promotional Banners
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(["sales", "executive", "financial"] as const).map((tabKey) => {
-                      const defaultVals = {
-                        sales: {
-                          title: "Q2 Sales Performance",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-                          afterImg: "/portfolio/case_study_a_1.png",
-                          beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
-                          afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways."
-                        },
-                        executive: {
-                          title: "Executive Strategic Keynote",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-                          afterImg: "/portfolio/case_study_a_14.png",
-                          beforeDesc: "Mismatched brand colors, generic bullet points.",
-                          afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points."
-                        },
-                        financial: {
-                          title: "Series A Investment Deck",
-                          beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-                          afterImg: "/portfolio/global_brands_1.png",
-                          beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
-                          afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones."
-                        }
-                      }[tabKey];
-
-                      const currentComp = {
-                        ...defaultVals,
-                        ...(siteConfigs["home_before_after"]?.[tabKey] || {})
-                      };
-
-                      const saveTabUpdate = async (updatedFields: Partial<typeof currentComp>) => {
-                        const allTabs = {
-                          sales: {
-                            title: "Q2 Sales Performance",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_8.png",
-                            afterImg: "/portfolio/case_study_a_1.png",
-                            beforeDesc: "Dense unformatted text, standard table layout, no visual hierarchy.",
-                            afterDesc: "High-contrast KPI cards, structured revenue bar chart, clear key takeaways.",
-                            ...(siteConfigs["home_before_after"]?.sales || {})
-                          },
-                          executive: {
-                            title: "Executive Strategic Keynote",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_1.png",
-                            afterImg: "/portfolio/case_study_a_14.png",
-                            beforeDesc: "Mismatched brand colors, generic bullet points.",
-                            afterDesc: "Ex-McKinsey strategic alignment, bespoke typography, focal points.",
-                            ...(siteConfigs["home_before_after"]?.executive || {})
-                          },
-                          financial: {
-                            title: "Series A Investment Deck",
-                            beforeImg: "/portfolio/nike_hsbc_cvs_10.png",
-                            afterImg: "/portfolio/global_brands_1.png",
-                            beforeDesc: "Complex raw spreadsheets and unpolished diagrams.",
-                            afterDesc: "Investor-ready cap tables, burn rate charts, and traction milestones.",
-                            ...(siteConfigs["home_before_after"]?.financial || {})
-                          }
-                        };
-                        const nextCfg = {
-                          ...allTabs,
-                          [tabKey]: { ...currentComp, ...updatedFields }
-                        };
-                        setSiteConfigs((prev) => ({ ...prev, home_before_after: nextCfg }));
-                        await handleSaveConfig("home_before_after", nextCfg);
-                      };
-
-                      return (
-                        <div key={tabKey} className="bg-[#FFF9E8] p-4 rounded-2xl border border-[#111111]/10 space-y-3">
-                          <div className="flex items-center justify-between border-b border-[#111111]/8 pb-2">
-                            <span className="text-xs font-black uppercase text-primary-amber">
-                              Tab: {tabKey.toUpperCase()}
-                            </span>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-[#111111] block mb-1">
-                              Deck Title
-                            </label>
-                            <input
-                              type="text"
-                              value={currentComp.title}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setSiteConfigs((prev) => ({
-                                  ...prev,
-                                  home_before_after: {
-                                    ...(prev["home_before_after"] || {}),
-                                    [tabKey]: { ...currentComp, title: nextVal }
-                                  }
-                                }));
-                              }}
-                              onBlur={(e) => saveTabUpdate({ title: e.target.value })}
-                              className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-bold text-[#111111]"
-                            />
-                          </div>
-
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[10px] font-extrabold text-red-700">
-                                Before Image (Raw Draft)
-                              </label>
-                              <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> {uploadingFieldKey === `home_before_${tabKey}` ? "Uploading to R2..." : "Upload to R2"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingFieldKey === `home_before_${tabKey}`}
-                                  className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, async (r2Url) => {
-                                    await saveTabUpdate({ beforeImg: r2Url });
-                                  }, "before_after", `home_before_${tabKey}`)}
-                                />
-                              </label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {currentComp.beforeImg && (
-                                <img src={normalizeR2Url(currentComp.beforeImg)} alt="Before" className="w-10 h-7 object-cover rounded border border-red-300 flex-shrink-0" />
-                              )}
-                              <input
-                                type="text"
-                                value={currentComp.beforeImg}
-                                onChange={(e) => {
-                                  const nextVal = e.target.value;
-                                  setSiteConfigs((prev) => ({
-                                    ...prev,
-                                    home_before_after: {
-                                      ...(prev["home_before_after"] || {}),
-                                      [tabKey]: { ...currentComp, beforeImg: nextVal }
-                                    }
-                                  }));
-                                }}
-                                onBlur={(e) => saveTabUpdate({ beforeImg: e.target.value })}
-                                placeholder="R2 CDN URL or upload file"
-                                className="w-full bg-white border border-red-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[10px] font-extrabold text-green-700">
-                                After Image (SlideBee Polish)
-                              </label>
-                              <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
-                                <UploadCloud size={11} /> {uploadingFieldKey === `home_after_${tabKey}` ? "Uploading to R2..." : "Upload to R2"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingFieldKey === `home_after_${tabKey}`}
-                                  className="hidden"
-                                  onChange={(e) => handleImageFileUpload(e, async (r2Url) => {
-                                    await saveTabUpdate({ afterImg: r2Url });
-                                  }, "before_after", `home_after_${tabKey}`)}
-                                />
-                              </label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {currentComp.afterImg && (
-                                <img src={normalizeR2Url(currentComp.afterImg)} alt="After" className="w-10 h-7 object-cover rounded border border-green-300 flex-shrink-0" />
-                              )}
-                              <input
-                                type="text"
-                                value={currentComp.afterImg}
-                                onChange={(e) => {
-                                  const nextVal = e.target.value;
-                                  setSiteConfigs((prev) => ({
-                                    ...prev,
-                                    home_before_after: {
-                                      ...(prev["home_before_after"] || {}),
-                                      [tabKey]: { ...currentComp, afterImg: nextVal }
-                                    }
-                                  }));
-                                }}
-                                onBlur={(e) => saveTabUpdate({ afterImg: e.target.value })}
-                                placeholder="URL or uploaded file"
-                                className="w-full bg-white border border-green-200 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                              Before Description
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={currentComp.beforeDesc}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setSiteConfigs((prev) => ({
-                                  ...prev,
-                                  home_before_after: {
-                                    ...(prev["home_before_after"] || {}),
-                                    [tabKey]: { ...currentComp, beforeDesc: nextVal }
-                                  }
-                                }));
-                              }}
-                              onBlur={(e) => saveTabUpdate({ beforeDesc: e.target.value })}
-                              className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                              After Description
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={currentComp.afterDesc}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setSiteConfigs((prev) => ({
-                                  ...prev,
-                                  home_before_after: {
-                                    ...(prev["home_before_after"] || {}),
-                                    [tabKey]: { ...currentComp, afterDesc: nextVal }
-                                  }
-                                }));
-                              }}
-                              onBlur={(e) => saveTabUpdate({ afterDesc: e.target.value })}
-                              className="w-full bg-white border border-[#111111]/12 rounded p-2 text-[10px] font-medium text-[#111111]"
-                            />
-                          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Banner 1: Impact / Atelier */}
+                    <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-primary/30 space-y-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
+                        <h5 className="font-heading font-extrabold text-xs text-[#111111] uppercase tracking-wider">
+                          Banner 1 (Golden Yellow Banner)
+                        </h5>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#111111] block mb-1">Headline</label>
+                        <input
+                          type="text"
+                          value={siteConfigs["home_banner_1"]?.title || ""}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), title: e.target.value }
+                          })}
+                          placeholder="Create Presentations That Make an Impact"
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#111111] block mb-1">Supporting Description</label>
+                        <textarea
+                          rows={2}
+                          value={siteConfigs["home_banner_1"]?.subtitle || ""}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), subtitle: e.target.value }
+                          })}
+                          placeholder="Discover pre-designed and custom templates for every stage of your business"
+                          className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs font-medium text-[#111111]"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-[#111111] block mb-1">Button Label</label>
+                          <input
+                            type="text"
+                            value={siteConfigs["home_banner_1"]?.ctaText || ""}
+                            onChange={(e) => setSiteConfigs({
+                              ...siteConfigs,
+                              home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), ctaText: e.target.value }
+                            })}
+                            placeholder="Learn More"
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
+                          />
                         </div>
-                      );
-                    })}
+                        <div>
+                          <label className="text-[11px] font-bold text-[#111111] block mb-1">Button Link</label>
+                          <input
+                            type="text"
+                            value={siteConfigs["home_banner_1"]?.ctaLink || ""}
+                            onChange={(e) => setSiteConfigs({
+                              ...siteConfigs,
+                              home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), ctaLink: e.target.value }
+                            })}
+                            placeholder="/about"
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Banner 2: VIP / Unlimited Downloads */}
+                    <div className="bg-[#111111] text-white p-5 rounded-2xl border border-white/10 space-y-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
+                        <h5 className="font-heading font-extrabold text-xs text-[#FCBF14] uppercase tracking-wider">
+                          Banner 2 (Dark Obsidian VIP Banner)
+                        </h5>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-300 block mb-1">Headline</label>
+                        <input
+                          type="text"
+                          value={siteConfigs["home_banner_2"]?.title || ""}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), title: e.target.value }
+                          })}
+                          placeholder="Get unlimited downloads"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-300 block mb-1">Supporting Description</label>
+                        <textarea
+                          rows={2}
+                          value={siteConfigs["home_banner_2"]?.subtitle || ""}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), subtitle: e.target.value }
+                          })}
+                          placeholder="Access all templates with affordable subscription plans."
+                          className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 text-xs font-medium text-white placeholder:text-gray-400"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-300 block mb-1">Button Label</label>
+                          <input
+                            type="text"
+                            value={siteConfigs["home_banner_2"]?.ctaText || ""}
+                            onChange={(e) => setSiteConfigs({
+                              ...siteConfigs,
+                              home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), ctaText: e.target.value }
+                            })}
+                            placeholder="View Plans"
+                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-300 block mb-1">Button Link</label>
+                          <input
+                            type="text"
+                            value={siteConfigs["home_banner_2"]?.ctaLink || ""}
+                            onChange={(e) => setSiteConfigs({
+                              ...siteConfigs,
+                              home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), ctaLink: e.target.value }
+                            })}
+                            placeholder="/pricing"
+                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -6851,7 +6650,7 @@ SlideBee Design Studio`
                       <th className="px-5 py-3">Template / SKU</th>
                       <th className="px-5 py-3">Master PPTX Deliverable</th>
                       <th className="px-5 py-3">Slide Previews</th>
-                      <th className="px-5 py-3">Pricing & Credits</th>
+                      <th className="px-5 py-3">Pricing & Access</th>
                       <th className="px-5 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -6923,7 +6722,7 @@ SlideBee Design Studio`
                               ₹{tpl.price_inr} / ${tpl.price_usd}
                             </div>
                             <span className="text-[10px] text-[#726F6D]">
-                              {tpl.is_credit_eligible ? "Eligible for 5 Credits" : "Standard Direct Purchase"}
+                              {tpl.is_credit_eligible ? "Free Community Tier Deck" : "Premium Master Deck"}
                             </span>
                           </td>
 
@@ -7167,17 +6966,9 @@ SlideBee Design Studio`
           );
           const isSubActive = (s: any) => s.status === "active" && (!s.current_period_end || new Date(s.current_period_end) > new Date());
           const activeSubscriptions = subscriptions.filter(isSubActive);
-          const expiredSubscriptions = subscriptions.filter(
-            (s) => s.status === "active" && s.current_period_end && new Date(s.current_period_end) <= new Date()
-          );
-          const complimentarySubs = activeSubscriptions.filter(
-            (s) => Number(s.amount_usd) === 0 || s.plan_name?.toLowerCase().includes("complimentary")
-          );
           const freeClients = clientProfiles.filter(
             (p) => !activeSubscriptions.some((s) => s.user_email?.toLowerCase() === p.email?.toLowerCase())
           );
-          const totalStarterCredits = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_total) || 5), 0);
-          const activeCreditsBalance = clientProfiles.reduce((acc, p) => acc + (Number(p.credits_balance) || 0), 0);
 
           // Filtering logic
           const filteredProfiles = clientProfiles.filter((p) => {
@@ -7226,44 +7017,45 @@ SlideBee Design Studio`
                     {clientProfiles.length}
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    Registered founders & brand executives
+                    Registered founders & studio clients
                   </span>
                 </div>
 
                 <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Active Pro Members
+                    Monthly & Yearly VIPs
                   </span>
                   <div className="text-3xl font-heading font-black text-amber-600 flex items-center gap-2">
                     {activeSubscriptions.length}
                     <Crown size={20} className="text-amber-500" />
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    {complimentarySubs.length} Complimentary • {expiredSubscriptions.length} Expired
+                    30 monthly / 360 yearly downloads
                   </span>
                 </div>
 
                 <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Free Tier Accounts
+                    Lifetime All-Access
+                  </span>
+                  <div className="text-3xl font-heading font-black text-amber-700 flex items-center gap-2">
+                    {clientProfiles.filter(p => p.tier === "lifetime").length}
+                    <Award size={20} className="text-amber-600" />
+                  </div>
+                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
+                    Unlimited downloads & VIP atelier forever
+                  </span>
+                </div>
+
+                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
+                    Free Community Tier
                   </span>
                   <div className="text-3xl font-heading font-black text-[#111111]">
-                    {freeClients.length}
+                    {clientProfiles.filter(p => !p.tier || p.tier === "free").length}
                   </div>
                   <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    Standard 5-credit starter accounts
-                  </span>
-                </div>
-
-                <div className="hex-card bg-white border border-[#111111]/8 p-5 shadow-sm">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] block mb-1">
-                    Active Credits Balance
-                  </span>
-                  <div className="text-3xl font-heading font-black text-primary-amber">
-                    {activeCreditsBalance}
-                  </div>
-                  <span className="text-[11px] text-[#726F6D] font-medium mt-0.5 block">
-                    Total issued: {totalStarterCredits} credits
+                    3 community deck downloads / day
                   </span>
                 </div>
               </div>
@@ -7287,14 +7079,14 @@ SlideBee Design Studio`
 
                   <button
                     onClick={() => {
-                      setGrantProTargetEmail("");
-                      setGrantProCredits(15);
-                      setGrantProDurationMonths(1);
-                      setIsGrantProModalOpen(true);
+                      setManageTierTargetClient(null);
+                      setManageTierSelectedTier("monthly");
+                      setManageTierDurationMonths(1);
+                      setIsManageTierModalOpen(true);
                     }}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer self-start sm:self-auto"
                   >
-                    <Gift size={14} /> Grant Pro Access to Any Account
+                    <Crown size={14} /> Grant Subscription Tier to Any Account
                   </button>
                 </div>
 
@@ -7304,10 +7096,15 @@ SlideBee Design Studio`
                     <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
                     <p className="text-xs font-medium mt-1">Client retainers and complimentary grants will appear here.</p>
                     <button
-                      onClick={() => setIsGrantProModalOpen(true)}
+                      onClick={() => {
+                        setManageTierTargetClient(null);
+                        setManageTierSelectedTier("monthly");
+                        setManageTierDurationMonths(1);
+                        setIsManageTierModalOpen(true);
+                      }}
                       className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2 text-xs inline-flex items-center gap-1.5 shadow-sm mt-4 cursor-pointer"
                     >
-                      <Gift size={13} /> Grant First Free Pro Access
+                      <Crown size={13} /> Grant First Subscription Tier
                     </button>
                   </div>
                 ) : (
@@ -7444,15 +7241,12 @@ SlideBee Design Studio`
                                         type="button"
                                         disabled={isProcessingProAction}
                                         onClick={() => {
-                                          setGrantProTargetEmail(sub.user_email);
-                                          setGrantProCredits(sub.slides_limit || 15);
-                                          setGrantProDurationMonths(1);
-                                          setIsGrantProModalOpen(true);
+                                          handleOpenManageTierModal(matchedProfile || { email: sub.user_email, full_name: sub.user_email?.split("@")[0], tier: "monthly" });
                                         }}
                                         className="hex-pill-sm bg-primary hover:bg-primary-dark text-[#111111] font-black text-[10px] px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
-                                        title="Reactivate Pro access"
+                                        title="Manage client subscription tier and permissions"
                                       >
-                                        <Gift size={11} /> Reactivate Pro
+                                        <ShieldCheck size={11} /> Manage Tier
                                       </button>
                                     </>
                                   )}
@@ -7490,10 +7284,10 @@ SlideBee Design Studio`
                 <div className="p-6 border-b border-[#111111]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Registered Client Profiles & Credits Ledger ({filteredProfiles.length})
+                      Registered Client Accounts & Subscription Tiers ({filteredProfiles.length})
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      All registered clients with 1-click Pro membership granting, custom slide quota allocation, and VIP WhatsApp permissions
+                      All registered client accounts with 1-click subscription tier management, download quota controls, and VIP access permissions
                     </p>
                   </div>
 
@@ -7535,11 +7329,11 @@ SlideBee Design Studio`
                       <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
                         <th className="p-4">Full Name & Organization</th>
                         <th className="p-4">Work Email</th>
-                        <th className="p-4">Tier & Pro Status</th>
-                        <th className="p-4">Download Credits</th>
+                        <th className="p-4">Subscription Tier</th>
+                        <th className="p-4">Download Quota & Access</th>
                         <th className="p-4">WhatsApp VIP Hotline</th>
                         <th className="p-4">Joined / Last Active</th>
-                        <th className="p-4 text-right">Pro Access Action</th>
+                        <th className="p-4 text-right">Access Management</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
@@ -7573,60 +7367,55 @@ SlideBee Design Studio`
                                 {p.email}
                               </td>
                               <td className="p-4 whitespace-nowrap">
-                                {isPro ? (
+                                {p.tier === "lifetime" ? (
+                                  <span className="hex-pill-sm bg-gradient-to-r from-amber-100 to-yellow-200 text-amber-950 border border-amber-400 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
+                                    <Crown size={11} className="text-amber-700 fill-amber-500" /> Lifetime VIP
+                                  </span>
+                                ) : p.tier === "yearly" ? (
+                                  <span className="hex-pill-sm bg-emerald-50 text-emerald-800 border border-emerald-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
+                                    <Crown size={11} className="text-emerald-600" /> Yearly VIP
+                                  </span>
+                                ) : p.tier === "monthly" || isPro ? (
                                   <span className="hex-pill-sm bg-amber-50 text-amber-800 border border-amber-300 font-black text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
-                                    <Crown size={11} className="text-amber-500" /> Pro Member
+                                    <Crown size={11} className="text-amber-500" /> Monthly VIP
                                   </span>
                                 ) : isExpiredPro ? (
                                   <span className="hex-pill-sm bg-rose-50 text-rose-800 border border-rose-300 font-extrabold text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1.5 shadow-xs">
-                                    <Clock size={11} className="text-rose-500" /> Pro Expired
+                                    <Clock size={11} className="text-rose-500" /> Expired VIP
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-gray-100 text-gray-700 border border-gray-200 font-bold text-[10px] px-2.5 py-0.5">
-                                    Free Tier
+                                    Free User
                                   </span>
                                 )}
                               </td>
                               <td className="p-4 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-black text-[#111111] text-xs">
-                                    {p.credits_balance ?? 5} / {p.credits_total ?? 5}
-                                  </span>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleAdjustCredits(p.id, p.email, 10)}
-                                      className="hex-pill-sm bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] border border-[#111111]/10 px-1.5 py-0.5 font-bold text-[9px] cursor-pointer"
-                                      title="Add +10 Credits"
-                                    >
-                                      +10
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleAdjustCredits(p.id, p.email, 50)}
-                                      className="hex-pill-sm bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] border border-[#111111]/10 px-1.5 py-0.5 font-bold text-[9px] cursor-pointer"
-                                      title="Add +50 Credits"
-                                    >
-                                      +50
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleOpenAdjustCreditsModal(p)}
-                                      className="hex-pill-sm bg-primary/20 hover:bg-primary text-[#111111] border border-primary/40 px-2 py-0.5 font-extrabold text-[9px] cursor-pointer flex items-center gap-1"
-                                      title="Adjust credits and compose email notification"
-                                    >
-                                      <Edit3 size={9} /> Custom
-                                    </button>
+                                {p.tier === "lifetime" ? (
+                                  <div>
+                                    <span className="font-black text-amber-800 text-xs">Unlimited All-Access</span>
+                                    <span className="text-[10px] text-[#726F6D] block">Never expires</span>
                                   </div>
-                                </div>
+                                ) : p.tier === "yearly" ? (
+                                  <div>
+                                    <span className="font-black text-[#111111] text-xs">360 Decks / Year</span>
+                                    <span className="text-[10px] text-emerald-700 font-bold block">30 decks / month</span>
+                                  </div>
+                                ) : p.tier === "monthly" || isPro ? (
+                                  <div>
+                                    <span className="font-black text-[#111111] text-xs">30 Decks / Month</span>
+                                    <span className="text-[10px] text-[#726F6D] block">Priority downloads</span>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span className="font-bold text-[#111111] text-xs">3 Decks / Day</span>
+                                    <span className="text-[10px] text-[#726F6D] block">Community catalog</span>
+                                  </div>
+                                )}
                               </td>
                               <td className="p-4 whitespace-nowrap">
-                                {isPro ? (
+                                {["monthly", "yearly", "lifetime"].includes(p.tier) || isPro ? (
                                   <span className="text-emerald-700 font-extrabold text-[11px] inline-flex items-center gap-1">
-                                    <CheckCircle2 size={12} className="text-emerald-600" /> Unlocked
+                                    <CheckCircle2 size={12} className="text-emerald-600" /> VIP Unlocked
                                   </span>
                                 ) : (
                                   <span className="text-gray-400 font-medium text-[11px]">
@@ -7646,39 +7435,22 @@ SlideBee Design Studio`
                               </td>
                               <td className="p-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
-                                  {isPro ? (
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => handleOpenRevokeProModal(clientSub!)}
-                                      className="hex-pill-sm bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                                      title="Revoke Pro access and compose notice email"
-                                    >
-                                      <UserX size={11} /> Revoke Pro
-                                    </button>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      disabled={isProcessingProAction}
-                                      onClick={() => {
-                                        setGrantProTargetEmail(p.email);
-                                        setGrantProDurationMonths(1);
-                                        setGrantProCredits(15);
-                                        setIsGrantProModalOpen(true);
-                                      }}
-                                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
-                                      title={isExpiredPro ? "Reactivate Pro access for expired subscriber" : "Grant Pro access and customize email notice"}
-                                    >
-                                      <Gift size={12} /> {isExpiredPro ? "Reactivate Pro" : "Grant Free Pro"}
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    disabled={isProcessingProAction}
+                                    onClick={() => handleOpenManageTierModal(p)}
+                                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-[11px] px-3.5 py-1.5 inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
+                                    title="Manage client subscription tier and permissions"
+                                  >
+                                    <ShieldCheck size={12} /> Manage Tier
+                                  </button>
 
                                   <button
                                     type="button"
                                     disabled={isProcessingProAction}
                                     onClick={() => handleOpenDeleteAccountModal(p)}
                                     className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-[10px] px-2 py-1 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                                    title="Delete account and send closure notice"
+                                    title="Delete account and dispatch closure notice"
                                   >
                                     <Trash2 size={11} /> Delete
                                   </button>
@@ -8605,7 +8377,7 @@ SlideBee Design Studio`
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          Free Template Tag (5 Starter Credits)
+                          Free Community Deck Tag (Free Tier Access)
                         </span>
                         {newIsCreditEligible && (
                           <span className="rounded bg-primary text-[#111111] text-[9px] font-black px-2 py-0.5">
@@ -8614,7 +8386,7 @@ SlideBee Design Studio`
                         )}
                       </div>
                       <span className="text-[10px] text-[#726F6D] font-medium">
-                        Eligible for registered users to redeem using starter credits.
+                        Eligible for Free Tier registered users to download using their daily quota.
                       </span>
                     </div>
                   </div>
@@ -9122,11 +8894,11 @@ SlideBee Design Studio`
                   </button>
                 </div>
 
-                {/* Free Starter Credits Library Tag */}
+                {/* Free Community Template Library Tag */}
                 <div className="bg-[#FFF9E8] border border-primary/40 p-3 rounded-xl flex items-center justify-between shadow-xs">
                   <div>
-                    <span className="text-xs font-black text-[#111111] block">5 Free Starter Credits Tag</span>
-                    <span className="text-[10px] text-[#726F6D] font-medium">Allow registered clients to claim this template using their 5 free starter credits</span>
+                    <span className="text-xs font-black text-[#111111] block">Free Community Deck Tag</span>
+                    <span className="text-[10px] text-[#726F6D] font-medium">Allow all registered clients to download this template using their Free Tier daily quota</span>
                   </div>
                   <button
                     type="button"
@@ -9599,9 +9371,9 @@ SlideBee Design Studio`
         )}
       </AnimatePresence>
 
-      {/* MODAL: GRANT COMPLIMENTARY PRO MEMBERSHIP */}
+      {/* MODAL: MANAGE CLIENT SUBSCRIPTION TIER (4 Tiers: Free, Monthly, Yearly, Lifetime) */}
       <AnimatePresence>
-        {isGrantProModalOpen && (
+        {isManageTierModalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
@@ -9612,316 +9384,22 @@ SlideBee Design Studio`
               <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-primary-amber shrink-0">
-                    <Gift size={20} />
+                    <Crown size={20} />
                   </div>
                   <div>
                     <h3 className="font-heading font-black text-base text-[#111111]">
-                      Grant Free Pro Membership
+                      Manage Client Subscription Tier
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Allocate complimentary VIP status, 80-template download quota, and direct WhatsApp studio line
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsGrantProModalOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-[#111111] hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* 2-Column Square Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-                {/* Column 1: Client & Membership Parameters */}
-                <div className="space-y-3.5">
-                  {/* Select from registered profiles */}
-                  <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                      Select Registered Client Profile
-                    </label>
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) setGrantProTargetEmail(e.target.value);
-                      }}
-                      value={grantProTargetEmail}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                    >
-                      <option value="">-- Choose client profile (or type email below) --</option>
-                      {profiles
-                        .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
-                        .map((p) => (
-                          <option key={p.id} value={p.email}>
-                            {p.full_name ? `${p.full_name} (${p.email})` : p.email} {p.company ? `- ${p.company}` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {/* Target Email Input */}
-                  <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                      Client Work Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="e.g. client@enterprise.com"
-                      value={grantProTargetEmail}
-                      onChange={(e) => setGrantProTargetEmail(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                    />
-                    <span className="text-[10px] text-[#726F6D] mt-0.5 block">
-                      Auto-allocates Pro perks if account is not registered yet.
-                    </span>
-                  </div>
-
-                  {/* Template quota and duration */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                        Monthly Template Quota
-                      </label>
-                      <select
-                        value={grantProCredits}
-                        onChange={(e) => setGrantProCredits(Number(e.target.value))}
-                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                      >
-                        <option value={10}>10 Master Decks / Mo (Starter Pro)</option>
-                        <option value={15}>15 Master Decks / Mo (Standard Pro)</option>
-                        <option value={25}>25 Master Decks / Mo (VIP Growth)</option>
-                        <option value={40}>40 Master Decks / Mo (Agency Pass)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                        Duration Period
-                      </label>
-                      <select
-                        value={grantProDurationMonths}
-                        onChange={(e) => setGrantProDurationMonths(Number(e.target.value))}
-                        className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                      >
-                        <option value={1}>1 Month (Default)</option>
-                        <option value={2}>2 Months</option>
-                        <option value={3}>3 Months</option>
-                        <option value={6}>6 Months</option>
-                        <option value={12}>1 Year (12 Mo)</option>
-                        <option value={999}>Lifetime / Never</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Live Expiry Preview Box */}
-                  <div className="bg-amber-50/90 border border-amber-300 rounded-lg p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
-                        Calculated Expiration Date
-                      </span>
-                      <span className="text-xs font-extrabold text-[#111111]">
-                        {grantProDurationMonths >= 999
-                          ? "Lifetime Access (Never Expires)"
-                          : `Active until ${new Date(Date.now() + grantProDurationMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} (${grantProDurationMonths * 30} Days)`}
-                      </span>
-                    </div>
-                    <span className="bg-amber-200/80 text-amber-950 border border-amber-400 rounded text-[10px] font-black px-2 py-0.5">
-                      {grantProDurationMonths >= 999 ? "Indefinite" : `${grantProDurationMonths} Mo`}
-                    </span>
-                  </div>
-
-                  {/* Reason Note */}
-                  <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                      Partnership Note / Justification
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. VIP Strategic Client, Board Member, Early Beta Tester"
-                      value={grantProReason}
-                      onChange={(e) => setGrantProReason(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
-                    />
-                  </div>
-
-                  {/* Perks Preview */}
-                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 space-y-1">
-                    <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider block">
-                      Perks Unlocked Immediately:
-                    </span>
-                    <ul className="text-[11px] text-amber-900 space-y-1">
-                      <li className="flex items-center gap-1.5">
-                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                        <span><strong>{grantProCredits} Master Decks / Month</strong> in Catalog (Free)</span>
-                      </li>
-                      <li className="flex items-center gap-1.5">
-                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                        <span><strong>All Marketplace Templates Unlocked</strong> (Zero checkout)</span>
-                      </li>
-                      <li className="flex items-center gap-1.5">
-                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                        <span><strong>VIP WhatsApp Studio Hotline</strong> in dashboard</span>
-                      </li>
-                      <li className="flex items-center gap-1.5">
-                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                        <span><strong>Pro Member Badge</strong> on client account</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Column 2: In-Browser Email Notice Section */}
-                <div className="flex flex-col h-full justify-between bg-[#FFF9E8]/80 border border-primary/40 rounded-lg p-4 space-y-3">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-primary/20 pb-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={grantProSendEmail}
-                          onChange={(e) => setGrantProSendEmail(e.target.checked)}
-                          className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
-                        />
-                        <span className="text-xs font-black text-[#111111]">
-                          Send In-Browser Email Notice
-                        </span>
-                      </label>
-                      <span className="text-[10px] text-[#726F6D] font-bold bg-white/80 border border-primary/30 rounded px-2 py-0.5">
-                        Resend Dispatch
-                      </span>
-                    </div>
-
-                    {grantProSendEmail ? (
-                      <div className="space-y-2.5">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            From (Studio Sender):
-                          </label>
-                          <select
-                            value={grantProEmailSender}
-                            onChange={(e) => setGrantProEmailSender(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                          >
-                            <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
-                            <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
-                            <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            Email Subject:
-                          </label>
-                          <input
-                            type="text"
-                            value={grantProEmailSubject}
-                            onChange={(e) => setGrantProEmailSubject(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            Custom Note / Message Body:
-                          </label>
-                          <textarea
-                            rows={6}
-                            value={grantProEmailMessage}
-                            onChange={(e) => setGrantProEmailMessage(e.target.value)}
-                            placeholder="Add custom notes or instructions for this client..."
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-none leading-relaxed"
-                          />
-                          <span className="text-[10px] text-[#726F6D] block mt-0.5">
-                            Delivered inside SlideBee's luxury cream HTML layout with VIP badge and access CTA.
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-[#726F6D] border border-dashed border-[#111111]/15 rounded-lg bg-white/40 my-auto">
-                        <Mail size={24} className="mx-auto text-gray-400 mb-2" />
-                        <p className="text-xs font-bold text-[#111111]">Email Notification Disabled</p>
-                        <p className="text-[11px] mt-1">Pro privileges will be provisioned silently without client email dispatch.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white/90 border border-primary/30 rounded-lg p-2 text-[11px] text-[#726F6D]">
-                    <span className="font-extrabold text-[#111111] block mb-0.5">Allocation Summary:</span>
-                    Granting {grantProCredits} decks for {grantProDurationMonths >= 999 ? "lifetime" : `${grantProDurationMonths} month(s)`} to {grantProTargetEmail || "recipient"}.
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer Controls */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
-                <button
-                  type="button"
-                  onClick={() => setIsGrantProModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] hover:bg-black/5 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessingProAction || !grantProTargetEmail}
-                  onClick={() =>
-                    handleGrantFreePro(
-                      grantProTargetEmail,
-                      grantProCredits,
-                      grantProDurationMonths,
-                      grantProReason,
-                      {
-                        sendEmail: grantProSendEmail,
-                        sender: grantProEmailSender,
-                        subject: grantProEmailSubject,
-                        message: grantProEmailMessage,
-                      }
-                    )
-                  }
-                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
-                >
-                  {isProcessingProAction ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Provisioning Pro Access...
-                    </>
-                  ) : (
-                    <>
-                      <Gift size={14} /> Grant Pro Membership Free
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* MODAL: ADJUST SLIDE CREDITS (Option C) */}
-        {isAdjustCreditsModalOpen && adjustCreditsTargetClient && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-[#111111] shrink-0">
-                    <Coins size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-black text-base text-[#111111]">
-                      Adjust Slide Download Credits
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Top-up or modify client slide credits with in-browser email notification
+                      Assign or adjust access tiers (Free, Monthly, Yearly, Lifetime) with optional email dispatch
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setIsAdjustCreditsModalOpen(false);
-                    setAdjustCreditsTargetClient(null);
+                    setIsManageTierModalOpen(false);
+                    setManageTierTargetClient(null);
                   }}
                   className="p-1.5 text-gray-400 hover:text-[#111111] hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
                 >
@@ -9929,165 +9407,223 @@ SlideBee Design Studio`
                 </button>
               </div>
 
-              {/* 2-Column Square Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-                {/* Column 1: Client Info & Credit Adjustment */}
-                <div className="space-y-4">
-                  {/* Target Client Info */}
-                  <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-3.5 flex items-center justify-between">
-                    <div>
-                      <span className="font-extrabold text-xs text-[#111111] block">
-                        {adjustCreditsTargetClient.name || "Client"}
-                      </span>
-                      <span className="text-[11px] text-[#726F6D]">
-                        {adjustCreditsTargetClient.email}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-[#726F6D] font-bold block uppercase">
-                        Current Balance
-                      </span>
-                      <span className="font-heading font-black text-sm text-[#111111]">
-                        {adjustCreditsTargetClient.currentBalance} Credits
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Credit Adjustment Selector */}
-                  <div className="space-y-2.5">
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider">
-                      Quick Amount Selector
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[10, 25, 50, 80].map((amt) => (
-                        <button
-                          key={amt}
-                          type="button"
-                          onClick={() => {
-                            setAdjustCreditsDelta(amt);
-                            setAdjustCreditsEmailSubject(`Slide Credits Updated (+${amt} Added) — SlideBee Studio`);
-                          }}
-                          className={`py-2 rounded-lg text-xs font-black border transition-all cursor-pointer ${
-                            adjustCreditsDelta === amt
-                              ? "bg-[#111111] text-[#FCBF14] border-[#111111] shadow-sm"
-                              : "bg-white text-[#111111] border-[#111111]/15 hover:border-primary"
-                          }`}
-                        >
-                          +{amt}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-xs font-bold text-[#726F6D]">Custom:</span>
-                      <input
-                        type="number"
-                        value={adjustCreditsDelta}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setAdjustCreditsDelta(val);
-                          setAdjustCreditsEmailSubject(`Slide Credits Updated (${val > 0 ? `+${val}` : val} Credits) — SlideBee Studio`);
-                        }}
-                        className="w-24 bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-black focus:border-primary outline-none"
-                      />
-                      <span className="text-xs text-[#726F6D]">
-                        New Balance: <strong className="text-[#111111]">{Math.max(0, adjustCreditsTargetClient.currentBalance + adjustCreditsDelta)}</strong>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Reason */}
+              {/* Target Client Details Banner */}
+              {manageTierTargetClient ? (
+                <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
-                      Adjustment Reason / Program
-                    </label>
-                    <input
-                      type="text"
-                      value={adjustCreditsReason}
-                      onChange={(e) => setAdjustCreditsReason(e.target.value)}
-                      placeholder="e.g. VIP Studio Bonus, Survey Reward"
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-medium focus:border-primary outline-none"
-                    />
+                    <span className="font-extrabold text-sm text-[#111111] block">
+                      {manageTierTargetClient.name}
+                    </span>
+                    <span className="text-xs text-[#726F6D]">
+                      {manageTierTargetClient.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#726F6D] font-bold">Current Tier:</span>
+                    <span className="hex-pill-sm bg-primary/20 text-[#111111] border border-primary/40 font-black text-xs px-2.5 py-0.5 uppercase tracking-wider">
+                      {manageTierTargetClient.currentTier}
+                    </span>
                   </div>
                 </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                    Select Target Client Profile
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const email = e.target.value;
+                      const p = profiles.find((prof) => prof.email?.toLowerCase() === email.toLowerCase());
+                      if (p) {
+                        handleOpenManageTierModal(p);
+                      }
+                    }}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                  >
+                    <option value="">-- Choose client profile --</option>
+                    {profiles
+                      .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
+                      .map((p) => (
+                        <option key={p.id} value={p.email}>
+                          {p.full_name ? `${p.full_name} (${p.email})` : p.email}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
-                {/* Column 2: In-Browser Email Composer */}
-                <div className="flex flex-col h-full justify-between bg-[#FFF9E8]/80 border border-primary/40 rounded-lg p-4 space-y-3">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-primary/20 pb-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
+              {/* 2-Column Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                {/* Column 1: Tier Selection & Duration */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-2">
+                      Select Access Tier
+                    </label>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          id: "free",
+                          title: "Free User",
+                          badge: "Free Starter",
+                          desc: "3 community deck downloads / day. Standard catalog access.",
+                          bg: "hover:bg-gray-50",
+                          activeBg: "bg-gray-100 border-[#111111]",
+                          iconColor: "text-gray-500",
+                        },
+                        {
+                          id: "monthly",
+                          title: "Monthly User",
+                          badge: "Monthly VIP",
+                          desc: "30 premium deck downloads / month. Priority support.",
+                          bg: "hover:bg-amber-50/50",
+                          activeBg: "bg-amber-50 border-amber-500 ring-2 ring-amber-400/30",
+                          iconColor: "text-amber-500",
+                        },
+                        {
+                          id: "yearly",
+                          title: "Yearly User",
+                          badge: "Yearly VIP",
+                          desc: "360 premium deck downloads / year. Consultation call included.",
+                          bg: "hover:bg-emerald-50/50",
+                          activeBg: "bg-emerald-50 border-emerald-600 ring-2 ring-emerald-400/30",
+                          iconColor: "text-emerald-600",
+                        },
+                        {
+                          id: "lifetime",
+                          title: "Lifetime User",
+                          badge: "Lifetime VIP",
+                          desc: "Unlimited master deck downloads forever. Direct VIP WhatsApp hotline.",
+                          bg: "hover:bg-primary/10",
+                          activeBg: "bg-[#FFF9E8] border-primary ring-2 ring-primary/40",
+                          iconColor: "text-[#FCBF14]",
+                        },
+                      ].map((t) => {
+                        const isSelected = manageTierSelectedTier === t.id;
+                        return (
+                          <div
+                            key={t.id}
+                            onClick={() => {
+                              setManageTierSelectedTier(t.id as any);
+                              if (t.id === "lifetime") setManageTierDurationMonths(0);
+                              else if (t.id === "yearly") setManageTierDurationMonths(12);
+                              else if (t.id === "monthly") setManageTierDurationMonths(1);
+                              setManageTierEmailSubject(`Your SlideBee Membership Tier Has Been Updated to ${t.title} — SlideBee Studio`);
+                            }}
+                            className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                              isSelected ? t.activeBg : `border-[#111111]/12 bg-white ${t.bg}`
+                            }`}
+                          >
+                            <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center border ${
+                              isSelected ? "border-[#111111] bg-[#111111] text-white" : "border-gray-300 bg-white"
+                            }`}>
+                              {isSelected ? <Check size={12} strokeWidth={3} /> : null}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-heading font-extrabold text-xs text-[#111111]">
+                                  {t.title}
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-[#726F6D]">
+                                  {t.badge}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#726F6D] mt-0.5 font-medium leading-relaxed">
+                                {t.desc}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Duration Selector (Only for Monthly / Yearly) */}
+                  {manageTierSelectedTier !== "lifetime" && manageTierSelectedTier !== "free" && (
+                    <div>
+                      <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-1">
+                        Active Duration (Months)
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[1, 3, 6, 12].map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setManageTierDurationMonths(m)}
+                            className={`py-2 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                              manageTierDurationMonths === m
+                                ? "bg-[#111111] text-[#FCBF14] border-[#111111] shadow-sm"
+                                : "bg-white text-[#111111] border-[#111111]/15 hover:border-primary"
+                            }`}
+                          >
+                            {m} {m === 1 ? "Mo" : "Mos"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 2: Notification Email Details */}
+                <div className="space-y-4">
+                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-primary/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={adjustCreditsSendEmail}
-                          onChange={(e) => setAdjustCreditsSendEmail(e.target.checked)}
-                          className="w-4 h-4 text-primary rounded accent-[#FCBF14] cursor-pointer"
+                          checked={manageTierSendEmail}
+                          onChange={(e) => setManageTierSendEmail(e.target.checked)}
+                          className="w-4 h-4 accent-[#111111] rounded"
                         />
-                        <span className="text-xs font-black text-[#111111]">
-                          Dispatch Email Notice
-                        </span>
+                        Send Email Notification
                       </label>
-                      <span className="text-[10px] text-[#726F6D] font-bold bg-white/80 border border-primary/30 rounded px-2 py-0.5">
-                        Resend Router
-                      </span>
+                      <span className="text-[10px] text-[#726F6D] font-bold">Via Zoho Mail</span>
                     </div>
 
-                    {adjustCreditsSendEmail && (
-                      <div className="space-y-2.5">
+                    {manageTierSendEmail && (
+                      <div className="space-y-3 pt-2">
                         <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            From (Studio Sender):
-                          </label>
-                          <select
-                            value={adjustCreditsEmailSender}
-                            onChange={(e) => setAdjustCreditsEmailSender(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                          >
-                            <option value="design@theslidebee.com">design@theslidebee.com (Design Studio)</option>
-                            <option value="support@theslidebee.com">support@theslidebee.com (Client Support)</option>
-                            <option value="hello@theslidebee.com">hello@theslidebee.com (General Desk)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            Subject Line:
-                          </label>
+                          <label className="text-[10px] font-bold text-[#726F6D] block mb-0.5">Sender</label>
                           <input
                             type="text"
-                            value={adjustCreditsEmailSubject}
-                            onChange={(e) => setAdjustCreditsEmailSubject(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                            value={manageTierEmailSender}
+                            onChange={(e) => setManageTierEmailSender(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-medium"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-black uppercase text-[#726F6D] mb-1">
-                            Message / Custom Note:
-                          </label>
+                          <label className="text-[10px] font-bold text-[#726F6D] block mb-0.5">Subject</label>
+                          <input
+                            type="text"
+                            value={manageTierEmailSubject}
+                            onChange={(e) => setManageTierEmailSubject(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg px-2.5 py-1.5 text-xs text-[#111111] font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#726F6D] block mb-0.5">Custom Message Body</label>
                           <textarea
                             rows={4}
-                            value={adjustCreditsEmailMessage}
-                            onChange={(e) => setAdjustCreditsEmailMessage(e.target.value)}
-                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium focus:border-primary outline-none resize-none leading-relaxed"
+                            value={manageTierEmailMessage}
+                            onChange={(e) => setManageTierEmailMessage(e.target.value)}
+                            className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs text-[#111111] font-medium leading-relaxed"
                           />
                         </div>
                       </div>
                     )}
                   </div>
-
-                  <div className="bg-white/90 border border-primary/30 rounded-lg p-2 text-[11px] text-[#726F6D]">
-                    Crediting {adjustCreditsDelta > 0 ? `+${adjustCreditsDelta}` : adjustCreditsDelta} downloads to {adjustCreditsTargetClient.email}.
-                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Modal Actions */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#111111]/10">
                 <button
                   type="button"
                   onClick={() => {
-                    setIsAdjustCreditsModalOpen(false);
-                    setAdjustCreditsTargetClient(null);
+                    setIsManageTierModalOpen(false);
+                    setManageTierTargetClient(null);
                   }}
                   className="rounded-lg px-4 py-2 text-xs font-bold text-[#726F6D] hover:text-[#111111] hover:bg-black/5 transition-colors cursor-pointer"
                 >
@@ -10095,17 +9631,17 @@ SlideBee Design Studio`
                 </button>
                 <button
                   type="button"
-                  disabled={isProcessingProAction}
-                  onClick={handleExecuteAdjustCredits}
+                  disabled={isProcessingProAction || !manageTierTargetClient}
+                  onClick={handleExecuteSaveTier}
                   className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-6 py-2.5 shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {isProcessingProAction ? (
                     <>
-                      <Loader2 size={14} className="animate-spin" /> Updating Credits...
+                      <Loader2 size={14} className="animate-spin" /> Updating Tier...
                     </>
                   ) : (
                     <>
-                      <Coins size={14} /> Update Client Credits
+                      <ShieldCheck size={14} /> Update Subscription Tier
                     </>
                   )}
                 </button>
@@ -10113,8 +9649,10 @@ SlideBee Design Studio`
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {/* MODAL: DELETE CLIENT ACCOUNT & IN-BROWSER MAIL EDITION */}
+      {/* MODAL: DELETE CLIENT ACCOUNT & IN-BROWSER MAIL EDITION */}
+      <AnimatePresence>
         {isDeleteAccountModalOpen && deleteAccountTarget && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div
@@ -10165,7 +9703,7 @@ SlideBee Design Studio`
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-red-700">
                       <span>{deleteAccountTarget.email}</span>
-                      <span className="font-bold">{deleteAccountTarget.credits} Credits</span>
+                      <span className="font-bold">{deleteAccountTarget.isPro ? "VIP Tier" : "Free Tier"}</span>
                     </div>
                   </div>
 
@@ -10231,7 +9769,7 @@ support@theslidebee.com`
                       <AlertTriangle size={13} className="text-red-600" /> Irreversible Action
                     </span>
                     <p className="text-[10px] text-red-700 leading-relaxed">
-                      Purging this account will permanently delete the client's profile from the database, wipe all authentication sessions, and cancel remaining presentation credits.
+                      Purging this account will permanently delete the client's profile from the database, wipe all authentication sessions, and cancel any active subscription tier.
                     </p>
                   </div>
                 </div>

@@ -197,7 +197,7 @@ export default function Terms() {
           <section id="licensing" className="hex-card-lg bg-white border-2 border-primary/30 p-6 sm:p-8 shadow-sm">
             <h2 className="text-xl font-heading font-extrabold text-[#111111] mb-3 flex items-center gap-2">
               <CheckCircle size={20} className="text-primary-amber" />
-              2. Commercial Template Licensing & Starter Credits
+              2. Commercial Template Licensing & Subscription Tiers
             </h2>
             <p className="text-[#726F6D] leading-relaxed mb-3">
               All digital presentation templates available in the SlideBee storefront are engineered in native Microsoft PowerPoint (.pptx) and licensed under transparent commercial terms:
@@ -210,9 +210,9 @@ export default function Terms() {
                 </p>
               </div>
               <div className="p-3.5 bg-[#FFF9E8] rounded-xl border border-primary/30">
-                <strong className="text-[#111111] block mb-1">Starter Credits Program:</strong>
+                <strong className="text-[#111111] block mb-1">Subscription Tiers & Free Community Access:</strong>
                 <p className="text-xs text-[#726F6D]">
-                  New registered clients receive 5 Free Starter Credits upon creating an account. Designated templates in our catalog labeled "5 Free Credits" may be redeemed instantly at zero cost, conferring the exact same perpetual commercial license as a direct purchase.
+                  Registered Free Tier clients receive access to 3 free community template downloads daily. Paid subscription tiers (Monthly User with 30 decks/month, Yearly User with 360 decks/year, and Lifetime User with unlimited access forever) confer unrestricted access across all premium master decks in our catalog.
                 </p>
               </div>
               <div className="p-3.5 bg-red-50/70 rounded-xl border border-red-200">

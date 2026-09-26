@@ -61,9 +61,9 @@ export interface ClientAuthResult {
  * - userOrders: Client quote and template purchase orders
  * - loading: Boolean initialization state
  * - signIn(email, password): Signs in client or redirects admin
- * - signUp(email, password, fullName, company): Registers client & grants 5 starter credits
+ * - signUp(email, password, fullName, company): Registers client with Free Tier access
  * - logout(): Global cross-tab logout
- * - redeemCredit(templateId): Atomically redeems 1 free eligible template using starter credits
+ * - redeemCredit(templateId): Atomically claims 1 free community deck using daily quota
  * - refreshClientData(): Re-syncs profile and order ledger
  */
 export function useClientLedger() {
@@ -262,7 +262,7 @@ export function useClientLedger() {
     return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
-  // Sign Up with 5 Free Starter Credits Provisioning via RPC & Anti-Abuse Protection
+  // Sign Up with Free Tier Provisioning & Anti-Abuse Protection
   const signUp = async (
     emailInput: string,
     passwordInput: string,
@@ -345,7 +345,7 @@ export function useClientLedger() {
           p_company: cleanCompany
         });
       } catch (e) {
-        console.warn("Starter credit RPC notice:", e);
+        console.warn("Free tier provisioning RPC notice:", e);
       }
     } else {
       // Free trial already claimed on this device/canonical email: initialize with 0 credits
@@ -382,9 +382,7 @@ export function useClientLedger() {
       company: cleanCompany
     }).catch(err => console.warn("Welcome email notice:", err));
 
-    const welcomeNotice = trialEligible
-      ? "Welcome! Your 5 free starter design credits are active."
-      : "Welcome to SlideBee! Notice: Free starter credits were previously claimed on this device. Your account has been initialized with 0 credits.";
+    const welcomeNotice = "Welcome to SlideBee! Your Free Tier account is active with 3 daily community presentation downloads.";
 
     if (authData?.session?.user || authData?.user) {
       const clientObj = authData.session?.user || authData.user;

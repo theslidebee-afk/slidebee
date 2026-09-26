@@ -20,7 +20,7 @@ export interface CheckoutResult {
  * - purchasedClientEmail: Client email associated with completed transaction
  * - deliverableUrl: Direct Master PowerPoint (.pptx) download link
  * - error: Any failure message
- * - executeCreditRedemption(template, clientEmail): Atomically claims template with starter credits
+ * - executeCreditRedemption(template, clientEmail): Atomically claims eligible template via account entitlement quota
  * - executeRazorpayCheckout(template, currency, clientEmail, clientName): Initiates Razorpay payment
  */
 export function useTemplateCheckout() {

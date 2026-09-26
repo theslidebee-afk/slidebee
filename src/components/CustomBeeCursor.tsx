@@ -1,13 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
 import { useBeeCursor } from "../context/BeeCursorContext";
-
-interface PollenParticle {
-  id: number;
-  x: number;
-  y: number;
-  opacity: number;
-}
 
 interface ClickRipple {
   id: number;
@@ -18,29 +10,19 @@ interface ClickRipple {
 export const CustomBeeCursor: React.FC = () => {
   const { beeState, setBeeState } = useBeeCursor();
 
-  // Mouse coordinates with spring physics
-  const mouseX = useMotionValue(-100);
-  const mouseY = useMotionValue(-100);
-  const springConfig = { damping: 26, stiffness: 360, mass: 0.45 };
-  const smoothX = useSpring(mouseX, springConfig);
-  const smoothY = useSpring(mouseY, springConfig);
-
-  // Flight dynamics & banking
-  const [tiltAngle, setTiltAngle] = useState<number>(0);
-  const [isMovingFast, setIsMovingFast] = useState<boolean>(false);
-  const [isIdle, setIsIdle] = useState<boolean>(false);
-  const [isVisible, setIsVisible] = useState<boolean>(false);
+  // State only for elements that change on interaction, NOT on continuous mousemove
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
-  const [particles, setParticles] = useState<PollenParticle[]>([]);
   const [ripples, setRipples] = useState<ClickRipple[]>([]);
 
-  const lastPos = useRef({ x: -100, y: -100, time: Date.now() });
-  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const particleId = useRef<number>(0);
+  // Direct DOM references for zero-latency, 120fps tracking without React re-renders
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const auraRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isVisibleRef = useRef<boolean>(false);
   const rippleId = useRef<number>(0);
 
-  // Check if device supports fine hover (desktop mouse) and hide system cursor
+  // Check if device supports fine hover (desktop mouse) and activate custom-bee-active
   useEffect(() => {
     if (typeof window !== "undefined") {
       const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
@@ -67,64 +49,48 @@ export const CustomBeeCursor: React.FC = () => {
     }
   }, []);
 
-  // Mouse tracking and click listeners
+  // High-performance pointer tracking via direct DOM transforms (Zero React re-renders on move)
   useEffect(() => {
     if (!isSupported) return;
 
-    const resetIdleTimer = () => {
-      setIsIdle(false);
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => {
-        setIsIdle(true);
-      }, 3500);
+    let targetX = -100;
+    let targetY = -100;
+    let currentX = -100;
+    let currentY = -100;
+    let rafId: number | null = null;
+
+    const renderLoop = () => {
+      // Instant snap for crisp, lag-free cursor feel
+      currentX = targetX;
+      currentY = targetY;
+
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      }
+      if (auraRef.current) {
+        auraRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      }
+      rafId = requestAnimationFrame(renderLoop);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const now = Date.now();
-      const dt = Math.max(1, now - lastPos.current.time);
-      const dx = e.clientX - lastPos.current.x;
-      const dy = e.clientY - lastPos.current.y;
-      const speed = Math.hypot(dx, dy) / dt;
+    rafId = requestAnimationFrame(renderLoop);
 
-      // Update position
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
+    const handlePointerMove = (e: MouseEvent) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
 
-      if (!isVisible) setIsVisible(true);
-
-      // Keep bee cursor positioned straight upright
-      if (Math.abs(dx) > 1.2) {
-        const tilt = Math.max(-4, Math.min(4, (dx / dt) * 3));
-        setTiltAngle(tilt);
-      } else {
-        setTiltAngle(0);
+      if (!isVisibleRef.current) {
+        isVisibleRef.current = true;
+        if (containerRef.current) {
+          containerRef.current.style.opacity = "1";
+        }
       }
-
-      setIsMovingFast(speed > 0.85);
-
-      // Spawn pollen particle on rapid motion
-      if (speed > 1.1 && Math.random() > 0.55) {
-        particleId.current += 1;
-        setParticles((prev) => [
-          ...prev.slice(-5),
-          {
-            id: particleId.current,
-            x: e.clientX - dx * 0.4,
-            y: e.clientY - dy * 0.4,
-            opacity: 0.85,
-          },
-        ]);
-      }
-
-      lastPos.current = { x: e.clientX, y: e.clientY, time: now };
-      resetIdleTimer();
     };
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target) return;
 
-      // Detect specific UI elements
       if (
         target.closest("[data-bee-state='card']") ||
         target.closest(".slide-card") ||
@@ -157,7 +123,7 @@ export const CustomBeeCursor: React.FC = () => {
       setIsMouseDown(true);
       rippleId.current += 1;
       setRipples((prev) => [
-        ...prev.slice(-3),
+        ...prev.slice(-2),
         { id: rippleId.current, x: e.clientX, y: e.clientY },
       ]);
     };
@@ -167,41 +133,36 @@ export const CustomBeeCursor: React.FC = () => {
     };
 
     const handleMouseLeave = () => {
-      setIsVisible(false);
+      isVisibleRef.current = false;
+      if (containerRef.current) {
+        containerRef.current.style.opacity = "0";
+      }
     };
 
     const handleMouseEnter = () => {
-      setIsVisible(true);
+      isVisibleRef.current = true;
+      if (containerRef.current) {
+        containerRef.current.style.opacity = "1";
+      }
     };
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mousemove", handlePointerMove, { passive: true });
     window.addEventListener("mouseover", handleMouseOver, { passive: true });
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mouseenter", handleMouseEnter);
 
-    resetIdleTimer();
-
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("mousemove", handlePointerMove);
       window.removeEventListener("mouseover", handleMouseOver);
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
       document.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("mouseenter", handleMouseEnter);
-      if (idleTimer.current) clearTimeout(idleTimer.current);
     };
-  }, [isSupported, isVisible, mouseX, mouseY, setBeeState]);
-
-  // Clean up pollen particles
-  useEffect(() => {
-    if (particles.length === 0) return;
-    const timer = setTimeout(() => {
-      setParticles((prev) => prev.slice(1));
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [particles]);
+  }, [isSupported, setBeeState]);
 
   // Clean up click ripples
   useEffect(() => {
@@ -212,17 +173,28 @@ export const CustomBeeCursor: React.FC = () => {
     return () => clearTimeout(timer);
   }, [ripples]);
 
-  if (!isSupported || !isVisible || beeState === "hidden") return null;
+  if (!isSupported || beeState === "hidden") return null;
 
-  // Determine active states
   const isCard = beeState === "card";
   const isHover = beeState === "hover";
   const isQuote = beeState === "quote";
-  const isPerched = isIdle && !isMovingFast;
+
+  const scaleClass = isMouseDown
+    ? "scale-90"
+    : isCard
+    ? "scale-125"
+    : isQuote
+    ? "scale-120"
+    : isHover
+    ? "scale-115"
+    : "scale-100";
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden select-none">
-      
+    <div
+      ref={containerRef}
+      style={{ opacity: 0 }}
+      className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden select-none transition-opacity duration-150"
+    >
       {/* 1. Click Ripple Pulses */}
       {ripples.map((r) => (
         <div
@@ -232,28 +204,13 @@ export const CustomBeeCursor: React.FC = () => {
         />
       ))}
 
-      {/* 2. Trailing Pollen Dust Particles */}
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          initial={{ scale: 1, opacity: p.opacity }}
-          animate={{ scale: 0.15, opacity: 0, y: "+=14" }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          style={{ left: p.x, top: p.y }}
-          className="absolute w-2 h-2 rounded-full bg-[#FCBF14] shadow-[0_0_8px_#FCBF14]"
-        />
-      ))}
-
-      {/* 3. Soft Golden Glow Aura */}
-      <motion.div
-        style={{
-          x: smoothX,
-          y: smoothY,
-        }}
-        className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+      {/* 2. Soft Golden Glow Aura */}
+      <div
+        ref={auraRef}
+        className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 pointer-events-none will-change-transform"
       >
         <div
-          className={`rounded-full transition-all duration-300 ${
+          className={`rounded-full transition-all duration-200 ${
             isCard
               ? "w-14 h-14 bg-[#FCBF14]/30 blur-lg"
               : isQuote
@@ -263,48 +220,27 @@ export const CustomBeeCursor: React.FC = () => {
               : "w-6 h-6 bg-[#FCBF14]/15 blur-xs"
           }`}
         />
-      </motion.div>
+      </div>
 
-      {/* 4. The Animated Interactive Bee SVG Cursor */}
-      <motion.div
-        style={{
-          x: smoothX,
-          y: smoothY,
-        }}
-        animate={{
-          scale: isMouseDown
-            ? 0.86
-            : isPerched
-            ? 0.92
-            : isCard
-            ? 1.25
-            : isQuote
-            ? 1.2
-            : isHover
-            ? 1.15
-            : 1.0,
-          rotate: isPerched ? 0 : tiltAngle,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 420,
-          damping: 28,
-        }}
-        // Straight upright bee head hotspot positioned right at cursor point
-        className="absolute -translate-x-1/2 -translate-y-[6px] pointer-events-none cursor-none flex items-center justify-center"
+      {/* 3. The Straight Upright Animated Bee SVG Cursor */}
+      <div
+        ref={cursorRef}
+        className="absolute top-0 left-0 -translate-x-1/2 -translate-y-[6px] pointer-events-none cursor-none flex items-center justify-center will-change-transform"
       >
-        <div className={isPerched ? "animate-bee-hover" : ""}>
-          {/* Minimalist Bee Graphic (Straight upright, compact, centered) */}
+        <div
+          className={`transition-transform duration-150 ease-out ${scaleClass} flex items-center justify-center`}
+        >
+          {/* Minimalist Bee Graphic - Straight upright, centered hotspot */}
           <div className="relative flex items-center justify-center">
             <svg
-              width="42"
-              height="38"
+              width="40"
+              height="36"
               viewBox="-110 -75 220 190"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="filter drop-shadow-[0_2px_5px_rgba(0,0,0,0.30)] overflow-visible"
             >
-              {/* Minimalist Bee Group (Straight upright) */}
+              {/* Minimalist Bee Group (Straight upright, 0 tilt) */}
               <g>
                 {/* Left Wing */}
                 <path
@@ -314,9 +250,7 @@ export const CustomBeeCursor: React.FC = () => {
                   strokeWidth="5"
                   strokeLinejoin="round"
                   className={
-                    isPerched
-                      ? ""
-                      : isHover || isMovingFast
+                    isHover
                       ? "animate-bee-wing-left-fast origin-[0_0]"
                       : "animate-bee-wing-left origin-[0_0]"
                   }
@@ -330,9 +264,7 @@ export const CustomBeeCursor: React.FC = () => {
                   strokeWidth="5"
                   strokeLinejoin="round"
                   className={
-                    isPerched
-                      ? ""
-                      : isHover || isMovingFast
+                    isHover
                       ? "animate-bee-wing-right-fast origin-[0_0]"
                       : "animate-bee-wing-right origin-[0_0]"
                   }
@@ -365,10 +297,7 @@ export const CustomBeeCursor: React.FC = () => {
                 />
 
                 {/* Black Stinger */}
-                <path
-                  d="M -7 87 L 7 87 L 0 106 Z"
-                  fill="#1E1E1E"
-                />
+                <path d="M -7 87 L 7 87 L 0 106 Z" fill="#1E1E1E" />
 
                 {/* Head - Solid Charcoal Semi-Dome */}
                 <path
@@ -409,10 +338,9 @@ export const CustomBeeCursor: React.FC = () => {
                 </g>
               )}
             </svg>
-
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

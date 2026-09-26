@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ShieldCheck, 
   Star, 
-  Coins,
   Layers, 
   CheckCircle2, 
   Check, 
@@ -98,7 +97,6 @@ export default function TemplateDetail() {
     purchasedClientEmail,
     deliverableUrl,
     error: checkoutError,
-    executeCreditRedemption,
     executeProTemplateDownload,
     executeRazorpayCheckout
   } = useTemplateCheckout();
@@ -325,20 +323,24 @@ export default function TemplateDetail() {
     }
   };
 
-  // Redeem with Starter Credits
-  const handleRedeemWithCredits = async () => {
+  // Free Community Deck Download for Registered Users
+  const handleDirectFreeDownload = async () => {
     setCreditNotice(null);
     const client = getClientInfo();
     if (!client) {
-      // Direct user to login/signup where they get 5 starter credits
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
       return;
     }
 
-    const result = await executeCreditRedemption(template, client.email);
-    if (!result.success && result.message) {
-      setCreditNotice(result.message);
-    }
+    const deliverable = template?.download_url || template?.image_url || "/portfolio/case_study_a_1.png";
+    const link = document.createElement("a");
+    link.href = deliverable;
+    link.download = template?.file_name || `${(template as any)?.slug || "slidebee-template"}.pptx`;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setCreditNotice("Free template download initiated! Enjoy your presentation deck.");
   };
 
   // Standard Instant Purchase via Razorpay (Requires Login)
@@ -430,9 +432,9 @@ export default function TemplateDetail() {
                 Slide {activeSlideIdx + 1} of {slides.length}
               </div>
 
-              {template.is_credit_eligible && (
-                <div className="hex-pill-sm absolute top-3 right-3 bg-primary text-[#111111] font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-[#111111]/20">
-                  <Coins size={11} /> 5 Free Credits Tag
+              {(!template.is_premium || template.is_credit_eligible) && (
+                <div className="hex-pill-sm absolute top-3 right-3 bg-emerald-600 text-white font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-emerald-700">
+                  <Download size={11} /> Free Library Deck
                 </div>
               )}
             </div>
@@ -623,36 +625,39 @@ export default function TemplateDetail() {
                   </div>
                 ) : (
                   <>
-                    {/* Free Starter Credit Claim Button if Template is Credit Eligible */}
-                    {template.is_credit_eligible ? (
-                      <div className="p-4 bg-[#FFFDF5] border-2 border-primary rounded-2xl space-y-2.5 shadow-sm">
+                    {/* Free Community Library Deck (Included in Free Account) */}
+                    {!template.is_premium || template.is_credit_eligible ? (
+                      <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-2.5 shadow-sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                            <Coins size={15} className="text-primary-amber" />
-                            <span>Design Credits Eligible Deck</span>
+                            <Download size={15} className="text-emerald-600" />
+                            <span>Free Community Library Deck</span>
                           </div>
-                          <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2 py-0.5 border border-primary/40">
-                            Cost: 5 Credits
+                          <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
+                            Included in Free Tier
                           </span>
                         </div>
                         <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                          New clients receive 5 starter credits upon registration. You can use your entire 5 credits to claim this complete presentation master deck for free (1 free deck with 5 credits).
+                          Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment required.
                         </p>
                         <button
                           type="button"
                           disabled={isProcessing}
-                          onClick={handleRedeemWithCredits}
-                          className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+                          onClick={handleDirectFreeDownload}
+                          className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
                         >
-                          <Coins size={15} />
-                          {isProcessing ? "Redeeming Credits..." : "Claim Deck (Cost: 5 Starter Credits)"}
+                          <Download size={15} />
+                          {isProcessing ? "Preparing Download..." : "Download Free (PowerPoint .pptx)"}
                         </button>
                       </div>
                     ) : (
-                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-[#726F6D] font-medium flex items-center justify-between gap-2">
-                        <span>Premium Master Deck (Not in Free Credits Library)</span>
-                        <Link to="/templates?freeCredits=true" className="text-primary-amber font-bold underline shrink-0">
-                          View Free Library
+                      <div className="p-3 bg-[#FFFDF5] border border-primary/30 rounded-xl text-[11px] text-[#726F6D] font-medium flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1.5 font-bold text-[#111111]">
+                          <Crown size={12} className="text-[#FCBF14] fill-[#FCBF14]" />
+                          Premium Master Deck
+                        </span>
+                        <Link to="/pricing" className="text-primary-amber font-black hover:underline shrink-0">
+                          Upgrade to Pro
                         </Link>
                       </div>
                     )}
@@ -763,9 +768,9 @@ export default function TemplateDetail() {
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span>Free Credits Library:</span>
-                  <strong className={template.is_credit_eligible ? "text-emerald-600 font-bold" : "text-[#111111]"}>
-                    {template.is_credit_eligible ? "Eligible (Costs 5 Credits / Deck)" : "No (Premium Collection)"}
+                  <span>Library Tier:</span>
+                  <strong className={!template.is_premium || template.is_credit_eligible ? "text-emerald-600 font-bold" : "text-[#111111]"}>
+                    {!template.is_premium || template.is_credit_eligible ? "Free Community Tier (3 Daily Downloads)" : "Pro Master Collection"}
                   </strong>
                 </div>
                 <div className="flex justify-between">
@@ -833,9 +838,9 @@ export default function TemplateDetail() {
                         <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
                           {sim.category}
                         </span>
-                        {sim.is_credit_eligible && (
-                          <span className="bg-primary/20 text-[#111111] border border-primary/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Coins size={9} /> Free Tag
+                        {(!sim.is_premium || sim.is_credit_eligible) && (
+                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Download size={9} /> Free Deck
                           </span>
                         )}
                       </div>

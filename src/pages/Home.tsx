@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Search,
   Crown,
-  Download,
   Eye,
   Star,
   FileText,
@@ -38,31 +37,63 @@ export default function Home() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Scroll-linked transforms for overlapping 3D video transition
+  // Scroll-linked transforms for smooth fade away of hero and pop-in/scale of templates
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
 
-  const videoOpacity = useTransform(scrollYProgress, [0, 0.75, 1], [1, 0.85, 0.2]);
-  const videoScale = useTransform(scrollYProgress, [0, 1], [1.02, 1.08]);
-  const heroCardY = useTransform(scrollYProgress, [0, 0.7], [0, -35]);
-  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const heroFade = useTransform(scrollYProgress, [0, 0.5, 0.85], [1, 0.6, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.85], [1, 0.96]);
+  const heroCardY = useTransform(scrollYProgress, [0, 0.6], [0, -35]);
+  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const templateOpacity = useTransform(scrollYProgress, [0.15, 0.55], [0.85, 1]);
+  const templateScale = useTransform(scrollYProgress, [0.15, 0.55], [0.96, 1]);
+  const templateY = useTransform(scrollYProgress, [0.15, 0.55], [28, 0]);
+
+  // Helper to extract 3 inner preview slide thumbnails for full showcase cards
+  const getPreviewSlides = (template: any) => {
+    const slides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
+    if (slides.length >= 3) {
+      return slides.slice(0, 3);
+    }
+    if (slides.length > 0) {
+      const list = [...slides];
+      while (list.length < 3) {
+        list.push(list[0] || template.image_url || "/portfolio/case_study_a_1.png");
+      }
+      return list.slice(0, 3);
+    }
+    const fallback = template?.image_url || "/portfolio/case_study_a_1.png";
+    return [fallback, fallback, fallback];
+  };
 
   // Authentication & Pro Membership State
   const [isProUser, setIsProUser] = useState<boolean>(false);
   const [userTier, setUserTier] = useState<string>("free");
 
   // Catalog State
-  const { templates: allTemplates, loading, showStars } = useStudioStore();
+  const { templates: allTemplates, loading } = useStudioStore();
   const { formatPrice } = useCurrency();
 
   // Filtering & Continuous Scroll State
+  const [visibleCount, setVisibleCount] = useState<number>(12);
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
-  const [visibleCount, setVisibleCount] = useState<number>(12);
   const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
+  const [homeBanner1, setHomeBanner1] = useState<any>({
+    title: "Create Presentations That Make an Impact",
+    subtitle: "Turn your ideas into amazing slides.",
+    ctaText: "Get Started",
+    ctaLink: "/ordernow",
+  });
+  const [homeBanner2, setHomeBanner2] = useState<any>({
+    title: "Get Unlimited Downloads",
+    subtitle: "Access all templates. No limits.",
+    ctaText: "Explore Now",
+    ctaLink: "#templates",
+  });
 
   // Quick jump on hash change or mount
   useEffect(() => {
@@ -139,6 +170,24 @@ export default function Home() {
       .then(({ data }) => {
         if (data?.value && Array.isArray(data.value)) {
           setCustomTestimonials(data.value);
+        }
+      });
+
+    // Fetch dynamic promotional banners
+    supabase
+      .from("site_config")
+      .select("*")
+      .in("key", ["home_banner_1", "home_banner_2"])
+      .then(({ data }) => {
+        if (data && Array.isArray(data)) {
+          data.forEach((row: any) => {
+            if (row.key === "home_banner_1" && row.value) {
+              setHomeBanner1((prev: any) => ({ ...prev, ...row.value }));
+            }
+            if (row.key === "home_banner_2" && row.value) {
+              setHomeBanner2((prev: any) => ({ ...prev, ...row.value }));
+            }
+          });
         }
       });
   }, []);
@@ -257,18 +306,132 @@ export default function Home() {
 
   const testimonials = (customTestimonials && customTestimonials.length > 0) ? customTestimonials : defaultTestimonials;
 
+  // Full Showcase Card Renderer (Cover Image, Inner Slides Thumbnail Grid, Title at bottom)
+  const renderShowcaseCard = (template: any) => {
+    const previewSlides = getPreviewSlides(template);
+
+    return (
+      <div
+        key={template.id}
+        onClick={() => navigate(`/template/${template.id}`)}
+        data-bee-state="card"
+        className="hex-card group bg-white border-2 border-primary/25 hover:border-primary rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
+      >
+        {/* 1. TOP: Large Prominent Cover Image */}
+        <div className="p-3 sm:p-3.5 bg-[#FFFDF5] border-b border-[#111111]/8">
+          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#1E1E1E]/5 shadow-xs border border-[#111111]/10">
+            <img
+              src={template.image_url || previewSlides[0]}
+              alt={template.title}
+              className="w-full h-full object-cover object-center group-hover:scale-[1.03] transition-transform duration-500"
+              loading="lazy"
+            />
+            {/* Badges on Cover */}
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/95 backdrop-blur-md text-[#111111] px-2.5 py-1 rounded-full shadow-xs border border-[#111111]/10">
+                {template.category}
+              </span>
+            </div>
+            <div className="absolute top-2.5 right-2.5 z-10">
+              {!template.is_premium ? (
+                <span className="text-[9px] font-black bg-emerald-600 text-white px-2.5 py-1 rounded-full shadow-xs uppercase tracking-wider">
+                  FREE DECK
+                </span>
+              ) : (
+                <span className="text-[9px] font-black bg-[#111111]/90 backdrop-blur-md text-[#FCBF14] px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 uppercase tracking-wider border border-white/10">
+                  <Crown size={9} className="fill-[#FCBF14]" /> PRO
+                </span>
+              )}
+            </div>
+
+            {/* Hover Overlay */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+              <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-4 py-2 shadow-lg flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
+                <Eye size={13} /> View Full Showcase
+              </span>
+            </div>
+          </div>
+
+          {/* 2. MIDDLE: Grid of smaller preview thumbnails showing inner slides directly below cover */}
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5 sm:gap-2">
+            {previewSlides.map((slideUrl: string, idx: number) => (
+              <div
+                key={idx}
+                className="relative aspect-video rounded-md overflow-hidden bg-[#1E1E1E]/5 border border-[#111111]/10 shadow-2xs group-hover:border-primary/40 transition-colors"
+              >
+                <img
+                  src={slideUrl}
+                  alt={`${template.title} slide ${idx + 2}`}
+                  className="w-full h-full object-cover object-center"
+                  loading="lazy"
+                />
+                <div className="absolute bottom-0.5 right-1 text-[8px] font-black text-white/80 bg-black/60 px-1 rounded-xs">
+                  #{idx + 2}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. BOTTOM: Title, details, slide count, and price/format */}
+        <div className="p-4 flex flex-col justify-between flex-grow bg-white">
+          <div>
+            <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-1 mb-1">
+              {template.title}
+            </h3>
+            <p className="text-[11px] text-[#726F6D] line-clamp-1 font-medium mb-3">
+              {template.description || "Executive presentation deck layout."}
+            </p>
+          </div>
+
+          <div>
+            <div className="pt-2.5 border-t border-[#111111]/8 flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#726F6D]">
+                <div className="w-4 h-4 rounded bg-orange-600 text-white font-black text-[9px] flex items-center justify-center shrink-0">
+                  P
+                </div>
+                <span>{template.slides_count || 30}+ Slides</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#111111]">
+                {!template.is_premium ? (
+                  <span className="text-emerald-700 font-black">Free</span>
+                ) : isProUser ? (
+                  <span className="text-amber-600 flex items-center gap-1">
+                    <Crown size={11} className="fill-[#FCBF14]" /> Included
+                  </span>
+                ) : (
+                  formatPrice(template.price_inr)
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#111111] bg-[#FFF9E8] px-2.5 py-1 rounded-full border border-primary/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FCBF14]" />
+                PowerPoint (.pptx)
+              </div>
+              <span className="text-xs font-black text-[#111111] flex items-center gap-1 group-hover:text-amber-600 transition-colors">
+                Explore <ArrowRight size={13} className="text-[#FCBF14] group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
       {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
-      {/* ========================================================================= */}
-      <section ref={heroRef} className="relative w-full min-h-screen lg:min-h-[105vh] pt-24 sm:pt-28 pb-32 sm:pb-44 lg:pb-52 overflow-hidden flex flex-col items-center justify-center bg-[#111111]">
+      <motion.section
+        ref={heroRef}
+        style={{ opacity: heroFade, scale: heroScale }}
+        className="relative w-full min-h-screen lg:min-h-[105vh] pt-24 sm:pt-28 pb-20 sm:pb-28 overflow-hidden flex flex-col items-center justify-center bg-[#111111]"
+      >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
-        <motion.div
-          style={{ opacity: videoOpacity, scale: videoScale }}
-          className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
-        >
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           <video
             src="/hero_section.mp4"
             poster="/hero_section_1.jpeg"
@@ -281,7 +444,7 @@ export default function Home() {
           {/* Ambient Warm Golden Overlay & Contrast Vignette */}
           <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/20 pointer-events-none" />
-        </motion.div>
+        </div>
 
         {/* Central Stage Container */}
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
@@ -322,20 +485,20 @@ export default function Home() {
 
                 <div>
                   <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-[#111111] leading-tight">
-                    Create Presentations<br className="hidden sm:inline" /> That Make an Impact
+                    {homeBanner1.title || "Create Presentations That Make an Impact"}
                   </h3>
                   <p className="text-xs sm:text-sm text-[#111111]/85 font-medium mt-0.5">
-                    Turn your ideas into amazing slides.
+                    {homeBanner1.subtitle || "Turn your ideas into amazing slides."}
                   </p>
                 </div>
               </div>
 
               <Link
-                to="/ordernow"
+                to={homeBanner1.ctaLink || "/ordernow"}
                 data-bee-state="quote"
                 className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
               >
-                <span>Get Started</span>
+                <span>{homeBanner1.ctaText || "Get Started"}</span>
                 <ArrowRight size={15} className="text-[#FCBF14]" />
               </Link>
             </div>
@@ -366,21 +529,31 @@ export default function Home() {
 
                 <div>
                   <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
-                    Get Unlimited Downloads
+                    {homeBanner2.title || "Get Unlimited Downloads"}
                   </h3>
                   <p className="text-xs sm:text-sm text-[#A0A0A0] font-medium mt-0.5">
-                    Access all templates. No limits.
+                    {homeBanner2.subtitle || "Access all templates. No limits."}
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={scrollToTemplates}
-                className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
-              >
-                <span>Explore Now</span>
-                <ArrowRight size={15} />
-              </button>
+              {homeBanner2.ctaLink && homeBanner2.ctaLink !== "#templates" && !homeBanner2.ctaLink.startsWith("#") ? (
+                <Link
+                  to={homeBanner2.ctaLink}
+                  className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
+                >
+                  <span>{homeBanner2.ctaText || "Explore Now"}</span>
+                  <ArrowRight size={15} />
+                </Link>
+              ) : (
+                <button
+                  onClick={scrollToTemplates}
+                  className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
+                >
+                  <span>{homeBanner2.ctaText || "Explore Now"}</span>
+                  <ArrowRight size={15} />
+                </button>
+              )}
             </div>
 
           </div>
@@ -444,14 +617,15 @@ export default function Home() {
           </div>
 
         </div>
-      </section>
+      </motion.section>
 
       {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION RISING OVER THE VIDEO (Overlapping 3D Shelf) */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION (Smooth Pop-in / Scale Transition)        */}
       {/* ========================================================================= */}
-      <section
+      <motion.section
         id="templates"
-        className="scroll-mt-20 relative z-30 -mt-20 sm:-mt-28 lg:-mt-36 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
+        style={{ opacity: templateOpacity, scale: templateScale, y: templateY }}
+        className="scroll-mt-20 relative z-30 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
       >
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -671,65 +845,8 @@ export default function Home() {
                 </div>
 
                 {/* 4 Trending Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {trendingTemplates.map((template) => (
-                    <div
-                      key={template.id}
-                      onClick={() => navigate(`/template/${template.id}`)}
-                      data-bee-state="card"
-                      className="group bg-white rounded-2xl border-2 border-primary/30 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
-                    >
-                      <div className="p-3 bg-[#FFF9E8]/70 border-b border-primary/20">
-                        <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-white shadow-inner">
-                          <img
-                            src={template.image_url}
-                            alt={template.title}
-                            className="w-full h-full object-contain group-hover:scale-103 transition-transform duration-500"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-3.5 py-1.5 shadow flex items-center gap-1">
-                              <Eye size={12} /> View Deck
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 flex flex-col justify-between flex-grow">
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-black uppercase text-primary-amber">
-                              {template.category}
-                            </span>
-                            {!template.is_premium ? (
-                              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                                FREE
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-black bg-[#111111] text-[#FCBF14] px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Crown size={9} className="fill-[#FCBF14]" /> PRO
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="font-heading font-extrabold text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1 mb-1">
-                            {template.title}
-                          </h3>
-                        </div>
-
-                        <div className="pt-3 border-t border-primary/15 mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#111111]">
-                            <div className="w-4 h-4 rounded bg-orange-600 text-white font-black text-[9px] flex items-center justify-center">
-                              P
-                            </div>
-                            <span>Presentation</span>
-                          </div>
-                          <span className="text-xs font-black text-[#111111]">
-                            {!template.is_premium ? "Free" : formatPrice(template.price_inr)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                  {trendingTemplates.map((template) => renderShowcaseCard(template))}
                 </div>
               </div>
 
@@ -753,65 +870,8 @@ export default function Home() {
                 </div>
 
                 {/* 4 Leading Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {leadingTemplates.map((template) => (
-                    <div
-                      key={template.id}
-                      onClick={() => navigate(`/template/${template.id}`)}
-                      data-bee-state="card"
-                      className="group bg-white rounded-2xl border-2 border-primary/30 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
-                    >
-                      <div className="p-3 bg-[#FFF9E8]/70 border-b border-primary/20">
-                        <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-white shadow-inner">
-                          <img
-                            src={template.image_url}
-                            alt={template.title}
-                            className="w-full h-full object-contain group-hover:scale-103 transition-transform duration-500"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="hex-pill bg-[#FCBF14] text-[#111111] text-xs font-black px-3.5 py-1.5 shadow flex items-center gap-1">
-                              <Eye size={12} /> View Deck
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 flex flex-col justify-between flex-grow">
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-black uppercase text-primary-amber">
-                              {template.category}
-                            </span>
-                            {!template.is_premium ? (
-                              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                                FREE
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-black bg-[#111111] text-[#FCBF14] px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Crown size={9} className="fill-[#FCBF14]" /> PRO
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="font-heading font-extrabold text-sm text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1 mb-1">
-                            {template.title}
-                          </h3>
-                        </div>
-
-                        <div className="pt-3 border-t border-primary/15 mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#111111]">
-                            <div className="w-4 h-4 rounded bg-orange-600 text-white font-black text-[9px] flex items-center justify-center">
-                              P
-                            </div>
-                            <span>Presentation</span>
-                          </div>
-                          <span className="text-xs font-black text-[#111111]">
-                            {!template.is_premium ? "Free" : formatPrice(template.price_inr)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                  {leadingTemplates.map((template) => renderShowcaseCard(template))}
                 </div>
               </div>
 
@@ -891,139 +951,7 @@ export default function Home() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {displayedContinuousTemplates.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => navigate(`/template/${item.id}`)}
-                          data-bee-state="card"
-                          className="hex-card group bg-white border-2 border-primary/35 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm cursor-pointer"
-                        >
-                          {/* Framed Slide Mockup */}
-                          <div className="p-3 sm:p-3.5 bg-[#FFF9E8]/75 border-b border-primary/20">
-                            <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
-                              <img
-                                src={item.image_url}
-                                alt={item.title}
-                                className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
-                                <span className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-xl">
-                                  <Eye size={13} /> View Full Deck
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Card Body */}
-                          <div className="p-5 pt-3.5 flex flex-col flex-grow justify-between">
-                            <div>
-                              <div className="flex items-center justify-between gap-2 mb-2">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
-                                  {item.category}
-                                </span>
-                                {!item.is_premium ? (
-                                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                                    FREE TEMPLATE
-                                  </span>
-                                ) : (
-                                  <span className="bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                                    <Crown size={9} className="fill-[#FCBF14]" /> PREMIUM
-                                  </span>
-                                )}
-                                {showStars && item.rating ? (
-                                  <span className="text-[#111111] text-[10px] font-extrabold flex items-center gap-1">
-                                    <Star size={10} className="text-amber-500 fill-amber-500" /> {item.rating}
-                                  </span>
-                                ) : null}
-                              </div>
-
-                              <h3 className="font-heading font-extrabold text-base text-[#111111] group-hover:text-primary-amber transition-colors mb-1.5 line-clamp-1">
-                                {item.title}
-                              </h3>
-                              <p className="text-xs text-[#726F6D] line-clamp-2 leading-relaxed mb-4 font-medium">
-                                {item.description}
-                              </p>
-                            </div>
-
-                            <div>
-                              <div className="flex items-center justify-between pt-3 border-t border-primary/15 mb-3">
-                                <div>
-                                  {!item.is_premium ? (
-                                    <>
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
-                                          Free
-                                        </span>
-                                        <span className="text-xs text-[#726F6D] line-through font-bold">
-                                          {formatPrice(item.price_inr)}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] font-bold text-emerald-700 block">
-                                        3 Free Downloads / Day
-                                      </span>
-                                    </>
-                                  ) : isProUser ? (
-                                    <>
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-base sm:text-lg font-heading font-black text-[#111111]">
-                                          Unlocked
-                                        </span>
-                                        <span className="text-xs text-[#726F6D] line-through font-bold">
-                                          {formatPrice(item.price_inr)}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
-                                        <Crown size={10} /> Pro Plan Access
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="text-lg font-heading font-black text-[#111111]">
-                                        {formatPrice(item.price_inr)}
-                                      </div>
-                                      <span className="text-[10px] font-bold text-primary-amber block">
-                                        Unlocked with $5/mo Pro
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1.5 bg-[#FFF9E8] border border-primary/40 px-2.5 py-1 rounded-full text-[10px] font-extrabold text-[#111111]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                                  PowerPoint (.pptx)
-                                </div>
-                              </div>
-
-                              {!item.is_premium ? (
-                                <Link
-                                  to={`/template/${item.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  <Download size={13} /> Download Free <ArrowRight size={12} />
-                                </Link>
-                              ) : isProUser ? (
-                                <Link
-                                  to={`/template/${item.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-2.5 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  <Crown size={13} className="text-[#111111]" /> Download with Pro <ArrowRight size={12} />
-                                </Link>
-                              ) : (
-                                <Link
-                                  to={`/template/${item.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-2.5 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
-                                >
-                                  <Download size={13} /> Unlock with Pro ($5) <ArrowRight size={12} />
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                      {displayedContinuousTemplates.map((item) => renderShowcaseCard(item))}
                     </div>
 
                     {/* Continuous / Endless Load More Button */}
@@ -1048,7 +976,7 @@ export default function Home() {
           </div>
 
         </div>
-      </section>
+      </motion.section>
 
       {/* ========================================================================= */}
       {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP                                */}
