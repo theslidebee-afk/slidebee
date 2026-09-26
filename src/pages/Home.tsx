@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   Zap,
   Infinity as InfinityIcon,
@@ -36,6 +37,18 @@ export default function Home() {
   });
 
   const navigate = useNavigate();
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-linked transforms for overlapping 3D video transition
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  const videoOpacity = useTransform(scrollYProgress, [0, 0.65, 1], [1, 0.65, 0.1]);
+  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 0.94]);
+  const heroCardY = useTransform(scrollYProgress, [0, 0.7], [0, -35]);
+  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
 
   // Authentication & Pro Membership State
   const [isProUser, setIsProUser] = useState<boolean>(false);
@@ -249,23 +262,27 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
-      {/* 1 & 2. UNIFIED HERO STAGE (Video Background Covering Banners & Hero Card)  */}
+      {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
       {/* ========================================================================= */}
-      <section className="relative w-full pt-24 sm:pt-28 pb-16 sm:pb-24 lg:pb-28 overflow-hidden border-b-2 border-primary/20 flex flex-col items-center justify-center">
-        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes */}
-        <video
-          src="/hero_section.mp4"
-          poster="/hero_section_1.jpeg"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-        />
-
-        {/* Ambient Warm Golden Overlay & Contrast Vignette */}
-        <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/20 pointer-events-none" />
+      <section ref={heroRef} className="relative w-full pt-24 sm:pt-28 pb-28 sm:pb-36 lg:pb-44 overflow-hidden flex flex-col items-center justify-center">
+        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
+        <motion.div
+          style={{ opacity: videoOpacity, scale: videoScale }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <video
+            src="/hero_section.mp4"
+            poster="/hero_section_1.jpeg"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover select-none pointer-events-none"
+          />
+          {/* Ambient Warm Golden Overlay & Contrast Vignette */}
+          <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/20 pointer-events-none" />
+        </motion.div>
 
         {/* Central Stage Container */}
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
@@ -317,6 +334,7 @@ export default function Home() {
 
               <Link
                 to="/ordernow"
+                data-bee-state="quote"
                 className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm lg:text-base font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-full flex items-center gap-2 transition-all shadow-xl hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
               >
                 <span>Get Started</span>
@@ -369,8 +387,11 @@ export default function Home() {
 
           </div>
           
-          {/* Central Translucent Frosted Glass Card (Matching hero section_1.jpeg & reference) */}
-          <div className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all">
+          {/* Central Translucent Frosted Glass Card with Dissolving Parallax */}
+          <motion.div
+            style={{ y: heroCardY, opacity: heroCardOpacity }}
+            className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all"
+          >
             
             {/* Eyebrow */}
             <div className="mb-4">
@@ -412,7 +433,7 @@ export default function Home() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
 
           {/* Playful Note Beneath Hero Stage */}
           <div className="mt-6 text-center">
@@ -438,13 +459,16 @@ export default function Home() {
         </div>
 
         {/* Seamless Bottom Gradient Feather into Templates Section */}
-        <div className="absolute bottom-0 left-0 right-0 h-40 sm:h-56 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
+        <div className="absolute bottom-0 left-0 right-0 h-44 sm:h-64 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (#templates)                              */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION RISING OVER THE VIDEO (Overlapping 3D Shelf) */}
       {/* ========================================================================= */}
-      <section id="templates" className="scroll-mt-24 pt-4 sm:pt-8 pb-16 relative z-20">
+      <section
+        id="templates"
+        className="scroll-mt-20 relative z-30 -mt-20 sm:-mt-28 lg:-mt-36 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
+      >
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -668,6 +692,7 @@ export default function Home() {
                     <div
                       key={template.id}
                       onClick={() => navigate(`/template/${template.id}`)}
+                      data-bee-state="card"
                       className="group bg-white rounded-2xl border-2 border-primary/30 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
                     >
                       <div className="p-3 bg-[#FFF9E8]/70 border-b border-primary/20">
@@ -749,6 +774,7 @@ export default function Home() {
                     <div
                       key={template.id}
                       onClick={() => navigate(`/template/${template.id}`)}
+                      data-bee-state="card"
                       className="group bg-white rounded-2xl border-2 border-primary/30 hover:border-primary overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
                     >
                       <div className="p-3 bg-[#FFF9E8]/70 border-b border-primary/20">
@@ -885,6 +911,7 @@ export default function Home() {
                         <div
                           key={item.id}
                           onClick={() => navigate(`/template/${item.id}`)}
+                          data-bee-state="card"
                           className="hex-card group bg-white border-2 border-primary/35 overflow-hidden hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm cursor-pointer"
                         >
                           {/* Framed Slide Mockup */}

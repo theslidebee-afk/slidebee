@@ -218,6 +218,7 @@ export function Suspended3DCarousel() {
               <div
                 key={slide.id}
                 onClick={() => setActiveIndex(index)}
+                data-bee-state="card"
                 className={`absolute w-[200px] sm:w-[260px] md:w-[300px] lg:w-[340px] aspect-[4/5] rounded-[24px] sm:rounded-[32px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${
                   isCenter
                     ? "ring-4 ring-[#FCBF14] ring-offset-4 ring-offset-[#FFF9E8] shadow-[0_25px_60px_rgba(252,191,20,0.25)]"

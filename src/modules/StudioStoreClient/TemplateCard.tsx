@@ -23,6 +23,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
+      data-bee-state="card"
       className="hex-card bg-white border-2 border-primary/35 overflow-hidden group hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm"
     >
       <div>

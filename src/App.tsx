@@ -28,14 +28,18 @@ import Footer from "./components/Footer";
 import StickyMobileCTA from "./components/StickyMobileCTA";
 import CookieBanner from "./components/CookieBanner";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { BeeCursorProvider } from "./context/BeeCursorContext";
+import { CustomBeeCursor } from "./components/CustomBeeCursor";
 
 function App() {
   return (
     <CurrencyProvider>
-      <Router>
-        <ScrollToTop />
-        <SessionGuardWatcher />
-        <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
+      <BeeCursorProvider>
+        <Router>
+          <CustomBeeCursor />
+          <ScrollToTop />
+          <SessionGuardWatcher />
+          <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
           <Routes>
             {/* 1. Admin Studio (no public Navbar or Footer) */}
             <Route path="/admin/*" element={<Admin />} />
@@ -88,7 +92,8 @@ function App() {
           </Routes>
         </div>
       </Router>
-    </CurrencyProvider>
+    </BeeCursorProvider>
+  </CurrencyProvider>
   );
 }
 
