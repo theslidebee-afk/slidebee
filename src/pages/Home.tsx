@@ -44,10 +44,10 @@ export default function Home() {
     offset: ["start start", "end start"],
   });
 
-  const videoOpacity = useTransform(scrollYProgress, [0, 0.65, 1], [1, 0.65, 0.1]);
-  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 0.94]);
+  const videoOpacity = useTransform(scrollYProgress, [0, 0.75, 1], [1, 0.85, 0.2]);
+  const videoScale = useTransform(scrollYProgress, [0, 1], [1.02, 1.08]);
   const heroCardY = useTransform(scrollYProgress, [0, 0.7], [0, -35]);
-  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
+  const heroCardOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
   // Authentication & Pro Membership State
   const [isProUser, setIsProUser] = useState<boolean>(false);
@@ -263,11 +263,11 @@ export default function Home() {
       {/* ========================================================================= */}
       {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
       {/* ========================================================================= */}
-      <section ref={heroRef} className="relative w-full pt-24 sm:pt-28 pb-28 sm:pb-36 lg:pb-44 overflow-hidden flex flex-col items-center justify-center">
+      <section ref={heroRef} className="relative w-full min-h-screen lg:min-h-[105vh] pt-24 sm:pt-28 pb-32 sm:pb-44 lg:pb-52 overflow-hidden flex flex-col items-center justify-center bg-[#111111]">
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
           style={{ opacity: videoOpacity, scale: videoScale }}
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
         >
           <video
             src="/hero_section.mp4"
@@ -276,7 +276,7 @@ export default function Home() {
             muted
             loop
             playsInline
-            className="w-full h-full object-cover select-none pointer-events-none"
+            className="w-full h-full min-w-full min-h-full object-cover object-center select-none"
           />
           {/* Ambient Warm Golden Overlay & Contrast Vignette */}
           <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />

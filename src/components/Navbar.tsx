@@ -151,9 +151,17 @@ export default function Navbar() {
     { name: "Contact", path: "/contact" },
   ];
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof navLinks[0]) => {
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate("/");
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
+  const handleNavClick = (e: React.MouseEvent, link: typeof navLinks[0]) => {
+    e.preventDefault();
     if (link.isHash) {
-      e.preventDefault();
       if (location.pathname === "/" || location.pathname === "/home") {
         const el = document.getElementById("templates");
         if (el) {
@@ -170,9 +178,16 @@ export default function Navbar() {
           } else {
             window.scrollTo({ top: 750, behavior: "smooth" });
           }
-        }, 120);
+        }, 300);
       }
+      return;
     }
+
+    // Direct routing for all pages
+    navigate(link.path);
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   return (
@@ -186,15 +201,13 @@ export default function Navbar() {
     >
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
-        <Link
-          to="/"
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
+        <a
+          href="#/"
+          onClick={handleLogoClick}
           className="z-50 flex items-center cursor-pointer"
         >
           <SlideBeeLogo variant="dark" size="md" />
-        </Link>
+        </a>
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 lg:gap-8">
@@ -205,7 +218,7 @@ export default function Navbar() {
             return (
               <a
                 key={link.name}
-                href={link.path}
+                href={`#${link.path}`}
                 onClick={(e) => handleNavClick(e, link)}
                 className={clsx(
                   "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer",
@@ -310,7 +323,7 @@ export default function Navbar() {
               {navLinks.map((link) => (
                 <a
                   key={link.name}
-                  href={link.path}
+                  href={`#${link.path}`}
                   onClick={(e) => {
                     setIsMobileMenuOpen(false);
                     handleNavClick(e, link);

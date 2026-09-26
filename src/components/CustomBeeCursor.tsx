@@ -92,10 +92,12 @@ export const CustomBeeCursor: React.FC = () => {
 
       if (!isVisible) setIsVisible(true);
 
-      // Determine banking tilt
+      // Keep bee cursor positioned straight upright
       if (Math.abs(dx) > 1.2) {
-        const tilt = Math.max(-20, Math.min(20, (dx / dt) * 14 + (dy / dt) * 6));
+        const tilt = Math.max(-4, Math.min(4, (dx / dt) * 3));
         setTiltAngle(tilt);
+      } else {
+        setTiltAngle(0);
       }
 
       setIsMovingFast(speed > 0.85);
@@ -288,22 +290,22 @@ export const CustomBeeCursor: React.FC = () => {
           stiffness: 420,
           damping: 28,
         }}
-        // Bee head hotspot positioned right at cursor point
-        className="absolute -translate-x-[20px] -translate-y-[8px] pointer-events-none cursor-none flex items-center justify-center"
+        // Straight upright bee head hotspot positioned right at cursor point
+        className="absolute -translate-x-1/2 -translate-y-[6px] pointer-events-none cursor-none flex items-center justify-center"
       >
         <div className={isPerched ? "animate-bee-hover" : ""}>
-          {/* Minimalist Bee Graphic (Compact, centered, no heart trail line) */}
+          {/* Minimalist Bee Graphic (Straight upright, compact, centered) */}
           <div className="relative flex items-center justify-center">
             <svg
-              width="44"
+              width="42"
               height="38"
               viewBox="-110 -75 220 190"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="filter drop-shadow-[0_2px_5px_rgba(0,0,0,0.30)] overflow-visible"
             >
-              {/* Minimalist Bee Group (Tilted ~22 deg naturally for cursor pointing) */}
-              <g transform="rotate(22)">
+              {/* Minimalist Bee Group (Straight upright) */}
+              <g>
                 {/* Left Wing */}
                 <path
                   d="M -16 -4 C -82 -32 -118 8 -88 44 C -64 68 -24 38 -12 14 Z"

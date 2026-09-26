@@ -4,8 +4,7 @@ import {
   ArrowRight,
   Paintbrush,
   TrendingUp,
-  BarChart3,
-  ExternalLink
+  BarChart3
 } from "lucide-react";
 import { useStudioStore } from "../modules/StudioStoreClient";
 
@@ -133,12 +132,12 @@ export function Suspended3DCarousel() {
     }
   }, [templates]);
 
-  // Render a uniform slide card with compact dimensions
+  // Render a clean slide card displaying exclusively the slide preview image
   const renderCard = (slide: SlideItem, uniqueKey: string) => (
     <div
       key={uniqueKey}
       data-bee-state="card"
-      className="shrink-0 w-[220px] sm:w-[260px] md:w-[270px] aspect-[16/10] rounded-2xl overflow-hidden relative border border-primary/30 hover:border-primary/80 bg-white transition-all duration-300 shadow-md hover:shadow-xl group"
+      className="shrink-0 w-[240px] sm:w-[280px] md:w-[320px] aspect-[16/10] rounded-2xl overflow-hidden relative border border-primary/25 hover:border-primary/80 bg-white transition-all duration-300 shadow-sm hover:shadow-xl group"
     >
       {/* Slide Cover Image */}
       <img
@@ -153,44 +152,6 @@ export function Suspended3DCarousel() {
           }
         }}
       />
-
-      {/* Gradient Overlay & Meta Details */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent flex flex-col justify-between p-3 sm:p-4 text-white">
-        <div className="flex items-center justify-between">
-          <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[9px] font-black px-2.5 py-0.5 rounded-full border border-[#FCBF14]/30 uppercase tracking-wider">
-            {slide.category}
-          </span>
-          {slide.code && (
-            <span className="text-[9px] text-white/80 font-mono font-bold bg-white/10 px-1.5 py-0.5 rounded">
-              {slide.code}
-            </span>
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-xs sm:text-[13px] font-heading font-black text-white leading-snug line-clamp-1 drop-shadow-sm">
-            {slide.title}
-          </h3>
-          {slide.client && (
-            <p className="text-[10px] text-white/75 font-medium line-clamp-1 mt-0.5">
-              {slide.client}
-            </p>
-          )}
-
-          <div className="mt-2 pt-1.5 border-t border-white/20 flex items-center justify-between">
-            <span className="text-[9px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
-              SlideBee Deck
-            </span>
-            <Link
-              to={slide.code ? `/template/${slide.code}` : "/#templates"}
-              className="inline-flex items-center gap-1 text-[10px] text-white hover:text-[#FCBF14] font-bold transition-colors"
-            >
-              <span>View</span>
-              <ExternalLink size={10} />
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 

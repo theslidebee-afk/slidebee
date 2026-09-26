@@ -50,7 +50,9 @@ import {
   Crown,
   Gift,
   UserX,
-  Clock
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -165,6 +167,7 @@ export default function Admin() {
   const [isRefreshingDashboard, setIsRefreshingDashboard] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "success" | "error">("idle");
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string | null>(null);
+  const [adminCalendarDate, setAdminCalendarDate] = useState<number>(26);
 
   // Single Template Modal State
   const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
@@ -2375,405 +2378,551 @@ SlideBee Design Studio`
   const percentUsed = ((actualUsedMB / totalR2QuotaMB) * 100).toFixed(1);
   const remainingGB = (remainingMB / 1024).toFixed(2);
 
+  // 3-Column Eduspot Layout Calculations
+  const registeredClients = profiles.filter(
+    (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+  );
+  const registeredClientsCount = registeredClients.length;
+  const activeProSubscribers = subscriptions.filter((s) => s.status === "active");
+  const urgentOrder = orders.find(o => o.status === "pending" || o.status === "in_progress") || orders[0];
+
+  // Top categories calculation
+  const categoryCounts = templates.reduce((acc: Record<string, number>, t: any) => {
+    const cat = t.category || "Pitch Decks";
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {});
+  const topCategories = Object.entries(categoryCounts)
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .slice(0, 4)
+    .map(([name, count]) => ({
+      name,
+      count: count as number,
+      percent: templates.length > 0 ? Math.min(100, Math.round(((count as number) / templates.length) * 100)) : 25
+    }));
+  const displayCategories = topCategories.length > 0 ? topCategories : [
+    { name: "Pitch Decks", count: 18, percent: 45 },
+    { name: "Executive Keynotes", count: 12, percent: 30 },
+    { name: "Sales Collateral", count: 8, percent: 20 },
+    { name: "Board Reviews", count: 5, percent: 12 }
+  ];
+
+  // Donut gauge calculations
+  const totalBriefsCount = orders.length;
+  const deliveredBriefsCount = orders.filter(o => o.status === "completed" || o.status === "delivered").length;
+  const fulfillmentRate = totalBriefsCount > 0 ? Math.round((deliveredBriefsCount / totalBriefsCount) * 100) : 100;
+  const gaugeCircumference = 2 * Math.PI * 38;
+  const fulfillmentOffset = gaugeCircumference - (fulfillmentRate / 100) * gaugeCircumference;
+
+  const proConversionRate = registeredClientsCount > 0 ? Math.min(100, Math.round((activeProSubscribers.length / registeredClientsCount) * 100)) : 0;
+  const proOffset = gaugeCircumference - (proConversionRate / 100) * gaugeCircumference;
+
   return (
-    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-24 pb-20">
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Top Header Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-[#111111]/10 p-6 hex-card-lg shadow-sm mb-8">
-          <div className="flex items-center gap-4">
-            <SlideBeeLogo variant="light" size="md" />
-            <div className="border-l border-[#111111]/10 pl-4">
-              <h1 className="text-lg font-heading font-extrabold text-[#111111]">
-                SlideBee Master Studio Hub
-              </h1>
-              <span className="text-xs text-[#726F6D] font-medium">
-                Admin: <strong>{session.user.email}</strong>
+    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-20 pb-16">
+      <div className="w-[96%] max-w-[1880px] mx-auto px-2 sm:px-4 flex flex-col xl:flex-row gap-6">
+
+        {/* 1. LEFT SIDEBAR */}
+        <aside className="w-full xl:w-64 shrink-0 bg-white border border-[#111111]/10 rounded-3xl p-5 shadow-xs flex flex-col justify-between self-start xl:sticky xl:top-24">
+          <div className="space-y-6">
+            {/* Studio Logo Header */}
+            <div className="flex items-center gap-3 px-2 py-1">
+              <SlideBeeLogo variant="light" size="sm" />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary-amber block">
+                  Studio Admin
+                </span>
+                <span className="text-sm font-heading font-black text-[#111111]">
+                  SlideBee Hub
+                </span>
+              </div>
+            </div>
+
+            {/* Navigation Menu */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] px-3">
+                Operations
+              </span>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("orders"); navigate("/admin"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "orders"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShoppingBag size={15} />
+                  <span>Client Briefs</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                  activeTab === "orders" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
+                }`}>
+                  {orders.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("waitlist"); navigate("/admin"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "waitlist"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users size={15} />
+                  <span>Waitlist</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                  activeTab === "waitlist" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
+                }`}>
+                  {waitlist.length}
+                </span>
+              </button>
+
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] px-3 pt-3 block">
+                Catalog & Clients
+              </span>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "templates"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Layers size={15} />
+                  <span>Template Studio</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                  activeTab === "templates" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
+                }`}>
+                  {templates.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "subscriptions"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Crown size={15} />
+                  <span>Client Ledger</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                  activeTab === "subscriptions" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
+                }`}>
+                  {registeredClientsCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("storage"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "storage"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <HardDrive size={15} />
+                  <span>Cloudflare R2</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                  activeTab === "storage" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
+                }`}>
+                  {remainingGB}GB
+                </span>
+              </button>
+
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] px-3 pt-3 block">
+                Platform Config
+              </span>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "customization"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sliders size={15} />
+                  <span>Site CMS</span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-[#726F6D]">
+                  8 Pages
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("billing"); navigate("/admin/billing"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "billing"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <DollarSign size={15} />
+                  <span>Pricing & Gateway</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Actions in Sidebar */}
+          <div className="space-y-3 pt-6 border-t border-gray-100 mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setAddTemplateWarning("");
+                setIsAddTemplateOpen(true);
+              }}
+              className="w-full hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs py-2.5 px-3 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Plus size={14} /> Add Template
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsBulkImportOpen(true)}
+              className="w-full hex-pill bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] font-bold text-xs py-2 px-3 border border-primary/30 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet size={13} /> Bulk CSV Import
+            </button>
+            <div className="p-3 bg-[#FFF9E8] rounded-2xl border border-primary/20 text-center">
+              <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber block">
+                SlideBee Studio Engine
+              </span>
+              <span className="text-[11px] font-mono text-[#726F6D]">
+                Cloudflare D1 + R2 Live
               </span>
             </div>
           </div>
+        </aside>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={isRefreshingDashboard}
-              onClick={fetchDashboardData}
-              className={`hex-pill text-xs font-extrabold px-4 py-2 flex items-center gap-1.5 transition-all shadow-sm ${
-                refreshFeedback === "success"
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
-                  : refreshFeedback === "error"
-                  ? "bg-red-50 text-red-800 border border-red-300"
-                  : "bg-[#FFF9E8] text-[#111111] border border-[#111111]/10 hover:bg-black/5 hover:border-primary/50"
-              } disabled:opacity-60 disabled:cursor-not-allowed`}
-              title={lastRefreshedTime ? `Last synced at ${lastRefreshedTime}` : "Fetch latest live data from database"}
-            >
-              {isRefreshingDashboard ? (
-                <>
-                  <RefreshCw size={12} className="animate-spin text-primary-amber" />
-                  <span>Refreshing...</span>
-                </>
-              ) : refreshFeedback === "success" ? (
-                <>
-                  <Check size={12} className="text-emerald-600" />
-                  <span>Updated {lastRefreshedTime || "Just Now"}</span>
-                </>
-              ) : refreshFeedback === "error" ? (
-                <>
-                  <AlertCircle size={12} className="text-red-600" />
-                  <span>Sync Failed</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={12} />
-                  <span>Refresh Data</span>
-                </>
+        {/* 2. CENTER MAIN CONTENT */}
+        <main className="flex-1 min-w-0 space-y-6">
+          {/* Top Search & Actions Bar */}
+          <div className="bg-white border border-[#111111]/10 rounded-3xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search orders, templates, clients, waitlist..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-all"
+              />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={isRefreshingDashboard}
+                onClick={fetchDashboardData}
+                title={lastRefreshedTime ? `Last synced at ${lastRefreshedTime}` : "Sync live data"}
+                className={`hex-pill text-xs font-bold px-4 py-2.5 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-60 ${
+                  refreshFeedback === "success"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
+                    : refreshFeedback === "error"
+                    ? "bg-red-50 text-red-800 border border-red-300"
+                    : "bg-[#FFF9E8] hover:bg-primary/20 text-[#111111] border border-primary/30"
+                }`}
+              >
+                <RefreshCw size={13} className={isRefreshingDashboard ? "animate-spin text-primary-amber" : ""} />
+                <span>
+                  {isRefreshingDashboard
+                    ? "Syncing..."
+                    : refreshFeedback === "success"
+                    ? (lastRefreshedTime ? `Synced ${lastRefreshedTime}` : "Synced")
+                    : refreshFeedback === "error"
+                    ? "Failed"
+                    : "Refresh"}
+                </span>
+              </button>
+              {activeTab === "waitlist" && (
+                <button
+                  type="button"
+                  onClick={handleExportWaitlistCSV}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2.5 text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Download size={13} /> Export CSV
+                </button>
               )}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="hex-pill bg-red-50 text-red-700 border border-red-200 px-4 py-2 text-xs font-extrabold hover:bg-red-100 transition-all flex items-center gap-1.5"
-            >
-              <LogOut size={14} /> Log Out
-            </button>
+            </div>
           </div>
-        </div>
 
-        {/* 6 Metric Summary Cards */}
-        {(() => {
-          const registeredClients = profiles.filter(
-            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
-          );
-          const activeProSubscribers = subscriptions.filter((s) => s.status === "active");
-
-          return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-              <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <ShoppingBag size={18} />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Briefs
-                  </span>
-                </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  {orders.length}
-                </div>
-                <span className="text-[10px] text-[#726F6D] font-medium block">
-                  {orders.filter(o => o.status === 'pending').length} pending
-                </span>
+          {/* Welcome Banner */}
+          <div className="bg-[#111111] text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-lg border border-primary/20">
+            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+            <div className="relative z-10 max-w-2xl">
+              <div className="inline-flex items-center gap-2 bg-[#FCBF14]/20 border border-[#FCBF14]/40 px-3 py-1 rounded-full text-[#FCBF14] text-[11px] font-black uppercase tracking-wider mb-3">
+                <Crown size={12} /> SlideBee Executive Studio
               </div>
+              <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-white mb-2">
+                Welcome back, Master Admin!
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                Live monitoring for SlideBee presentation commissions, template downloads, and client subscriptions. Synced in real-time with Cloudflare D1.
+              </p>
 
-              <div className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm">
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <Users size={18} />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Waitlist
-                  </span>
+              {/* Inline Stats Counter */}
+              <div className="flex flex-wrap items-center gap-6 mt-5 pt-5 border-t border-white/10 text-xs">
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Active Briefs</span>
+                  <span className="font-heading font-black text-lg text-white">{orders.length}</span>
                 </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  {waitlist.length}
+                <div className="w-px h-8 bg-white/10" />
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Store Catalog</span>
+                  <span className="font-heading font-black text-lg text-white">{templates.length} Decks</span>
                 </div>
-                <span className="text-[10px] text-[#726F6D] font-medium block">
-                  Subscribers
-                </span>
-              </div>
-
-              <div 
-                onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
-                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
-              >
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <Layers size={18} />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Templates
-                  </span>
+                <div className="w-px h-8 bg-white/10" />
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Pro Retainers</span>
+                  <span className="font-heading font-black text-lg text-[#FCBF14]">{activeProSubscribers.length} VIP</span>
                 </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  {templates.length}
-                </div>
-                <span className="text-[10px] text-[#726F6D] font-medium block">
-                  In Store CMS
-                </span>
-              </div>
-
-              <div 
-                onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
-                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
-              >
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <Crown size={18} className="text-amber-500" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Clients & Pro
-                  </span>
-                </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  {registeredClients.length}
-                </div>
-                <span className="text-[10px] text-emerald-700 font-bold block">
-                  {activeProSubscribers.length} Active Pro VIP
-                </span>
-              </div>
-
-              <div 
-                onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
-                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all"
-              >
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <Sliders size={18} />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Site CMS
-                  </span>
-                </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  8
-                </div>
-                <span className="text-[10px] text-[#726F6D] font-medium block">
-                  Dynamic Pages
-                </span>
-              </div>
-
-              {/* R2 Storage Live Monitor Card */}
-              <div 
-                onClick={() => setActiveTab("storage")}
-                className="hex-card bg-white border border-[#111111]/8 p-4 shadow-sm cursor-pointer hover:border-primary transition-all col-span-2 sm:col-span-1"
-              >
-                <div className="flex items-center justify-between text-primary-amber mb-1.5">
-                  <HardDrive size={18} />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-                    Cloudflare R2
-                  </span>
-                </div>
-                <div className="text-2xl font-heading font-black text-[#111111]">
-                  {remainingGB} <span className="text-xs font-bold text-[#726F6D]">GB Free</span>
-                </div>
-                <div className="w-full bg-[#FFF9E8] rounded-full h-1.5 mt-2 overflow-hidden border border-[#111111]/10">
-                  <div 
-                    className="bg-primary-amber h-full rounded-full transition-all" 
-                    style={{ width: `${Math.max(3, Number(percentUsed))}%` }} 
-                  />
+                <div className="w-px h-8 bg-white/10" />
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Storage Free</span>
+                  <span className="font-heading font-black text-lg text-white">{remainingGB} GB</span>
                 </div>
               </div>
             </div>
-          );
-        })()}
+          </div>
 
-        {/* Tier 1: Dedicated Admin Sub-Page Navigation */}
-        {(() => {
-          const registeredClientsCount = profiles.filter(
-            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
-          ).length;
-
-          const activeSection = (activeTab === "customization")
-            ? "customization"
-            : (activeTab === "billing")
-            ? "billing"
-            : (activeTab === "templates")
-            ? "templates"
-            : (activeTab === "subscriptions")
-            ? "subscriptions"
-            : "operations";
-
-          return (
-            <div className="space-y-4 mb-6">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-[#111111]/10 p-2 hex-card shadow-sm">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-                  <button
-                    onClick={() => { setActiveTab("orders"); navigate("/admin"); }}
-                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                      activeSection === "operations"
-                        ? "bg-[#111111] text-[#FCBF14] shadow"
-                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
-                    }`}
-                  >
-                    <ShoppingBag size={14} /> Operations Hub
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
-                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                      activeSection === "templates"
-                        ? "bg-[#111111] text-[#FCBF14] shadow"
-                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
-                    }`}
-                  >
-                    <Layers size={14} /> Template Studio ({templates.length})
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
-                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                      activeSection === "subscriptions"
-                        ? "bg-[#111111] text-[#FCBF14] shadow"
-                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
-                    }`}
-                  >
-                    <Users size={14} /> Client Ledger & Pro ({registeredClientsCount})
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
-                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                      activeSection === "customization"
-                        ? "bg-[#111111] text-[#FCBF14] shadow"
-                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
-                    }`}
-                  >
-                    <Sliders size={14} /> Site Customization (8 Pages)
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("billing"); navigate("/admin/billing"); }}
-                    className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                      activeSection === "billing"
-                        ? "bg-[#111111] text-[#FCBF14] shadow"
-                        : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
-                    }`}
-                  >
-                    <DollarSign size={14} /> Pricing & Gateway
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {activeSection !== "customization" && activeSection !== "billing" && (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder={activeSection === "subscriptions" ? "Search clients by name, email..." : "Search records..."}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-4 py-1.5 text-xs text-[#111111] font-medium outline-none focus:border-primary shadow-sm"
-                      />
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
-                    </div>
-                  )}
-
-                  {activeTab === "waitlist" && (
-                    <button
-                      onClick={handleExportWaitlistCSV}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                    >
-                      <Download size={14} /> Export CSV
-                    </button>
-                  )}
-
-                  {activeSection === "subscriptions" && (
-                    <button
-                      onClick={() => {
-                        setGrantProTargetEmail("");
-                        setGrantProCredits(15);
-                        setGrantProDurationMonths(1);
-                        setIsGrantProModalOpen(true);
-                      }}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                    >
-                      <Gift size={14} /> Grant Pro Free
-                    </button>
-                  )}
-
-                  {activeSection === "templates" && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setIsBulkImportOpen(true)}
-                        className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                      >
-                        <FileSpreadsheet size={14} /> Bulk CSV Import
-                      </button>
-                      <button
-                        onClick={() => {
-                          setAddTemplateWarning("");
-                          setIsAddTemplateOpen(true);
-                        }}
-                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                      >
-                        <Plus size={14} /> Add Single
-                      </button>
-                    </div>
-                  )}
-                </div>
+          {/* 3 KPI Widget Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: Order Fulfillment */}
+            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                  Brief Fulfillment
+                </span>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {deliveredBriefsCount} Delivered
+                </span>
               </div>
-
-              {/* Tier 2: Subscriptions Sub-Tabs */}
-              {activeSection === "subscriptions" && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 p-2 rounded-xl border border-[#111111]/8">
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                    <button
-                      onClick={() => setClientFilter("all")}
-                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                        clientFilter === "all"
-                          ? "bg-primary text-[#111111] shadow-sm"
-                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                      }`}
-                    >
-                      <Users size={13} /> All Accounts ({registeredClientsCount})
-                    </button>
-                    <button
-                      onClick={() => setClientFilter("pro")}
-                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                        clientFilter === "pro"
-                          ? "bg-primary text-[#111111] shadow-sm"
-                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                      }`}
-                    >
-                      <Crown size={13} className="text-amber-500" /> Active Pro Retainers ({subscriptions.filter(s => s.status === "active").length})
-                    </button>
-                    <button
-                      onClick={() => setClientFilter("free")}
-                      className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                        clientFilter === "free"
-                          ? "bg-primary text-[#111111] shadow-sm"
-                          : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                      }`}
-                    >
-                      Free Tier ({profiles.filter(p => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@") && !subscriptions.some(s => s.user_email?.toLowerCase() === p.email?.toLowerCase() && s.status === "active")).length})
-                    </button>
+              <div className="flex items-center gap-6 my-2">
+                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
+                    <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
+                    <circle
+                      cx="45"
+                      cy="45"
+                      r="38"
+                      stroke="#FCBF14"
+                      strokeWidth="8"
+                      strokeDasharray={gaugeCircumference}
+                      strokeDashoffset={fulfillmentOffset}
+                      strokeLinecap="round"
+                      fill="none"
+                      className="transition-all duration-700"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-lg font-heading font-black text-[#111111]">
+                      {fulfillmentRate}%
+                    </span>
+                    <span className="text-[9px] font-bold text-[#726F6D]">Done</span>
                   </div>
                 </div>
-              )}
-
-              {/* Tier 2: Operations Sub-Tabs */}
-              {activeSection === "operations" && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  <button
-                    onClick={() => setActiveTab("orders")}
-                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "orders"
-                        ? "bg-primary text-[#111111] shadow"
-                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <ShoppingBag size={13} /> Orders & Briefs ({orders.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("waitlist")}
-                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "waitlist"
-                        ? "bg-primary text-[#111111] shadow"
-                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <Users size={13} /> Inbound Waitlist ({waitlist.length})
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
-                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "subscriptions"
-                        ? "bg-primary text-[#111111] shadow"
-                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <Users size={13} /> Client Accounts ({registeredClientsCount})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("storage")}
-                    className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "storage"
-                        ? "bg-primary text-[#111111] shadow"
-                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <HardDrive size={13} /> R2 10 GB Storage Monitor
-                  </button>
+                <div className="space-y-1 text-xs">
+                  <p className="font-extrabold text-[#111111]">Delivery Rate</p>
+                  <p className="text-[11px] text-[#726F6D]">
+                    {orders.filter(o => o.status === "pending").length} pending review
+                  </p>
+                  <p className="text-[11px] text-amber-700 font-bold">
+                    {orders.filter(o => o.status === "in_progress").length} in design
+                  </p>
                 </div>
-              )}
+              </div>
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                <span>Total Orders</span>
+                <strong className="text-[#111111]">{orders.length} commissions</strong>
+              </div>
             </div>
-          );
-        })()}
 
+            {/* Card 2: Pro VIP Retainers */}
+            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                  Client Pro Retainers
+                </span>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  {activeProSubscribers.length} Active
+                </span>
+              </div>
+              <div className="flex items-center gap-6 my-2">
+                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
+                    <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
+                    <circle
+                      cx="45"
+                      cy="45"
+                      r="38"
+                      stroke="#111111"
+                      strokeWidth="8"
+                      strokeDasharray={gaugeCircumference}
+                      strokeDashoffset={proOffset}
+                      strokeLinecap="round"
+                      fill="none"
+                      className="transition-all duration-700"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-lg font-heading font-black text-[#111111]">
+                      {proConversionRate}%
+                    </span>
+                    <span className="text-[9px] font-bold text-[#726F6D]">Pro</span>
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <p className="font-extrabold text-[#111111]">VIP Retainer Health</p>
+                  <p className="text-[11px] text-[#726F6D]">
+                    {registeredClientsCount} client accounts
+                  </p>
+                  <p className="text-[11px] text-emerald-700 font-bold">
+                    Subscriptions healthy
+                  </p>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                <span>Inbound Waitlist</span>
+                <strong className="text-[#111111]">{waitlist.length} leads</strong>
+              </div>
+            </div>
+
+            {/* Card 3: Template Catalog Breakdown */}
+            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                  Catalog Breakdown
+                </span>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-primary/20 text-[#111111]">
+                  {templates.length} Decks
+                </span>
+              </div>
+              <div className="space-y-2.5 my-2">
+                {displayCategories.map((cat, i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold text-[#111111]">
+                      <span>{cat.name}</span>
+                      <span className="text-[#726F6D] font-mono">{cat.count} ({cat.percent}%)</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-500"
+                        style={{ width: `${cat.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                <span>R2 Storage Quota</span>
+                <strong className="text-[#111111]">{remainingGB} GB free</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-Filters / Secondary Actions for Active Tab */}
+          {activeTab === "subscriptions" && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 p-3 rounded-2xl border border-[#111111]/10">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => setClientFilter("all")}
+                  className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    clientFilter === "all"
+                      ? "bg-primary text-[#111111] shadow-xs"
+                      : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                  }`}
+                >
+                  <Users size={13} /> All Accounts ({registeredClientsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClientFilter("pro")}
+                  className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    clientFilter === "pro"
+                      ? "bg-primary text-[#111111] shadow-xs"
+                      : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                  }`}
+                >
+                  <Crown size={13} className="text-amber-500" /> Active Pro ({activeProSubscribers.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClientFilter("free")}
+                  className={`px-3.5 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    clientFilter === "free"
+                      ? "bg-primary text-[#111111] shadow-xs"
+                      : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                  }`}
+                >
+                  Free Tier ({profiles.filter(p => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@") && !subscriptions.some(s => s.user_email?.toLowerCase() === p.email?.toLowerCase() && s.status === "active")).length})
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setGrantProTargetEmail("");
+                  setGrantProCredits(15);
+                  setGrantProDurationMonths(1);
+                  setIsGrantProModalOpen(true);
+                }}
+                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-1.5 text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
+              >
+                <Gift size={13} /> Grant Pro Access
+              </button>
+            </div>
+          )}
+
+          {/* Sub-Filters for Orders vs Waitlist */}
+          {(activeTab === "orders" || activeTab === "waitlist") && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("orders")}
+                className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "orders"
+                    ? "bg-primary text-[#111111] shadow-xs"
+                    : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                }`}
+              >
+                <ShoppingBag size={13} /> Client Briefs ({orders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("waitlist")}
+                className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "waitlist"
+                    ? "bg-primary text-[#111111] shadow-xs"
+                    : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
+                }`}
+              >
+                <Users size={13} /> Inbound Waitlist ({waitlist.length})
+              </button>
+            </div>
+          )}
+
+          {/* Tab Management Content Wrapper */}
+          <div className="space-y-6">
         {/* TAB 1: ORDERS WITH INTERACTIVE MILESTONE TIMELINE STEPPER */}
         {activeTab === "orders" && (
           <div className="space-y-6">
@@ -7547,6 +7696,150 @@ SlideBee Design Studio`
             </div>
           );
         })()}
+
+          </div>
+        </main>
+
+        {/* 3. RIGHT SIDEBAR */}
+        <aside className="w-full xl:w-80 shrink-0 space-y-6 self-start xl:sticky xl:top-24">
+          <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs space-y-5">
+            {/* Admin Profile */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center font-heading font-black text-primary-amber text-lg">
+                  AD
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-sm text-[#111111]">
+                    Master Admin
+                  </h4>
+                  <p className="text-[11px] text-[#726F6D] truncate max-w-[150px]">
+                    {session.user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("customization")}
+                className="p-2 text-gray-400 hover:text-[#111111] hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                title="CMS Settings"
+              >
+                <Settings size={16} />
+              </button>
+            </div>
+
+            {/* Interactive Operations Calendar */}
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-black text-[#111111]">
+                  September 2026
+                </span>
+                <div className="flex items-center gap-1">
+                  <button type="button" className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button type="button" className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-1">
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+                {/* 2 empty slots for Sun, Mon */}
+                <span className="py-1.5 text-gray-300"></span>
+                <span className="py-1.5 text-gray-300"></span>
+                {Array.from({ length: 30 }).map((_, i) => {
+                  const day = i + 1;
+                  const isSelected = day === adminCalendarDate;
+                  const isToday = day === 26;
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setAdminCalendarDate(day)}
+                      className={`py-1.5 rounded-xl transition-all cursor-pointer text-xs ${
+                        isSelected
+                          ? "bg-primary text-[#111111] font-black shadow-xs"
+                          : isToday
+                          ? "border border-primary font-bold text-[#111111]"
+                          : "hover:bg-gray-100 text-[#111111]/80"
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Priority Brief Card */}
+            {urgentOrder && (
+              <div className="p-4 bg-[#FFF9E8] border border-primary/30 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
+                    Priority Brief
+                  </span>
+                  <span className="text-[10px] font-mono text-[#726F6D]">
+                    #{urgentOrder.id?.slice(0, 8)}
+                  </span>
+                </div>
+                <h5 className="font-heading font-black text-xs text-[#111111] line-clamp-1">
+                  {urgentOrder.project_title || urgentOrder.service_type || "Presentation Commission"}
+                </h5>
+                <p className="text-[11px] text-[#726F6D]">
+                  Client: <strong className="text-[#111111]">{urgentOrder.client_name || urgentOrder.client_email}</strong>
+                </p>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full capitalize">
+                    {urgentOrder.status || "pending"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderForModal(urgentOrder)}
+                    className="text-[11px] font-black text-[#111111] hover:text-primary-amber flex items-center gap-1 cursor-pointer"
+                  >
+                    Inspect <ArrowRight size={11} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* System Telemetry & Storage */}
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-[#111111] flex items-center gap-1.5">
+                  <HardDrive size={13} className="text-primary-amber" /> Cloudflare R2
+                </span>
+                <span className="text-[11px] font-mono text-[#726F6D]">
+                  {actualUsedMB} MB / 10 GB
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-primary h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(3, Number(percentUsed))}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-[#726F6D] pt-1">
+                <span>Free Bucket: {remainingGB} GB remaining</span>
+                <span className="font-extrabold text-emerald-700">D1 Live</span>
+              </div>
+            </div>
+
+            {/* Logout button */}
+            <div className="pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full py-2.5 px-4 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <LogOut size={14} /> Log Out of Master Hub
+              </button>
+            </div>
+          </div>
+        </aside>
 
       </div>
 
