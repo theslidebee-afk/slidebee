@@ -248,14 +248,32 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
-      {/* 1. TOP SPLIT PROMOTION BANNERS (From Client Reference Mockup)             */}
+      {/* 1 & 2. UNIFIED HERO STAGE (Video Background Covering Banners & Hero Card)  */}
       {/* ========================================================================= */}
-      <section className="pt-24 sm:pt-28 pb-4">
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+      <section className="relative w-full pt-24 sm:pt-28 pb-16 sm:pb-24 lg:pb-28 overflow-hidden border-b-2 border-primary/20 flex flex-col items-center justify-center">
+        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes */}
+        <video
+          src="/hero_section.mp4"
+          poster="/hero_section_1.jpeg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+        />
+
+        {/* Ambient Warm Golden Overlay & Contrast Vignette */}
+        <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/20 pointer-events-none" />
+
+        {/* Central Stage Container */}
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
+          
+          {/* Top Split Promotion Banners (Now covered by video background) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-12 sm:mb-16">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
-            <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+            <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
               
               {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
               <div className="absolute -bottom-10 -left-10 w-64 h-64 pointer-events-none opacity-40">
@@ -306,7 +324,7 @@ export default function Home() {
             </div>
 
             {/* Banner 2: Black - Get Unlimited Downloads */}
-            <div className="bg-[#0D0D0D] text-white rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
+            <div className="bg-[#0D0D0D]/95 backdrop-blur-md text-white rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden min-h-[160px]">
               
               {/* Organic Flowing Contour Texture 1 (Top Left) */}
               <div className="absolute -top-12 -left-12 w-72 h-72 pointer-events-none opacity-50">
@@ -349,30 +367,6 @@ export default function Home() {
             </div>
 
           </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 2. HERO MAIN SECTION (Total Section Covered By Video Background)          */}
-      {/* ========================================================================= */}
-      <section className="relative w-full py-16 sm:py-24 lg:py-32 overflow-hidden border-b-2 border-primary/20 flex items-center justify-center min-h-[580px] sm:min-h-[660px] lg:min-h-[740px]">
-        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes */}
-        <video
-          src="/hero_section.mp4"
-          poster="/hero_section_1.jpeg"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-        />
-
-        {/* Ambient Warm Golden Overlay & Contrast Vignette */}
-        <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-black/25 pointer-events-none" />
-
-        {/* Central Stage Container */}
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center justify-center">
           
           {/* Central Translucent Frosted Glass Card (Matching hero section_1.jpeg & reference) */}
           <div className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all">
