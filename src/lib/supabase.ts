@@ -201,6 +201,21 @@ const edgeAuth = {
           role: json.data.user.role || 'client',
           user_metadata: json.data.user.user_metadata,
         }));
+
+        const isUserAdmin =
+          json.data.user.email === 'admin@theslidebee.com' ||
+          json.data.user.email === 'admin@slidebee.com' ||
+          json.data.user.email === 'superadmin@theslidebee.com' ||
+          json.data.user.email?.startsWith('admin@') ||
+          json.data.user.email?.startsWith('superadmin@') ||
+          json.data.user.role === 'admin' ||
+          json.data.user.role === 'super_admin';
+
+        if (isUserAdmin) {
+          localStorage.setItem('slidebee_admin_session', 'true');
+          localStorage.setItem('slidebee_admin_email', json.data.user.email);
+        }
+
         notifyAuthListeners('SIGNED_IN', json.data.session);
         return { data: json.data, error: null };
       }

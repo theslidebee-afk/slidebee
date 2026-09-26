@@ -24,7 +24,7 @@
  * 20. [TOB-SB-07] Email relay protection (unauthenticated dispatch & domain spoofing blocked)
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../src/lib/supabase";
 import fs from "fs";
 
 // Load environment credentials from .env if present
@@ -45,13 +45,8 @@ if (fs.existsSync(".env")) {
   });
 }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://whwyfqtvuubkfypmgosi.supabase.co";
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNjcyMzQsImV4cCI6MjEwMzk0MzIzNH0.cDUR7AhCc_5NGgO_iYHAka7wpk0cKTR0GsofBLw-taE";
 const RAZORPAY_KEY_ID = process.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TZARWG8iLkM589";
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "dkrrn39GSsbpcpKaaubqLpk3";
-
-// Public / anonymous client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 interface TestResult {
   workflow: string;

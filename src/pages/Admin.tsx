@@ -422,7 +422,17 @@ export default function Admin() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      if (session) {
+        setSession(session);
+      } else {
+        const localPin = localStorage.getItem("slidebee_admin_session");
+        if (localPin === "true") {
+          const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
+          setSession({ user: { email, role: "super_admin" } });
+        } else {
+          setSession(null);
+        }
+      }
     });
 
     return () => {

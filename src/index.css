@@ -325,3 +325,42 @@
   animation: beeHoverBreath 2.2s ease-in-out infinite;
 }
 
+/* Replace default system cursor entirely on desktop pointer devices */
+@media (hover: hover) and (pointer: fine) {
+  body.custom-bee-active,
+  body.custom-bee-active * {
+    cursor: none !important;
+  }
+}
+
+@keyframes beeClickPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.animate-bee-click-pulse {
+  animation: beeClickPulse 0.4s ease-out forwards;
+}
+
+@keyframes beeSparkleSpin {
+  0% {
+    transform: rotate(0deg) scale(0.85);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.85);
+  }
+}
+
+.animate-bee-sparkle {
+  animation: beeSparkleSpin 1.8s linear infinite;
+}
+

@@ -20,7 +20,6 @@ import {
   Monitor,
   Flame,
   ChevronRight,
-  ChevronDown,
   Users,
   Gift
 } from "lucide-react";
@@ -445,21 +444,7 @@ export default function Home() {
             </span>
           </div>
 
-          {/* Smooth Floating Scroll Cue to Catalog */}
-          <div className="mt-8 text-center relative z-20">
-            <button
-              onClick={scrollToTemplates}
-              className="inline-flex items-center gap-2 bg-[#FFFDF5]/90 hover:bg-white text-[#111111] px-6 py-2.5 rounded-full border border-black/10 shadow-lg hover:shadow-xl hover:scale-105 transition-all text-xs font-black tracking-tight cursor-pointer backdrop-blur-md group"
-            >
-              <span>Explore Master Templates</span>
-              <ChevronDown size={14} className="text-[#FCBF14] group-hover:translate-y-0.5 transition-transform" />
-            </button>
-          </div>
-
         </div>
-
-        {/* Seamless Bottom Gradient Feather into Templates Section */}
-        <div className="absolute bottom-0 left-0 right-0 h-44 sm:h-64 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
       </section>
 
       {/* ========================================================================= */}
