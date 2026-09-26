@@ -5,9 +5,7 @@ import {
   Check,
   ArrowRight,
   ChevronDown,
-  Flame,
-  LayoutGrid,
-  Paintbrush
+  Flame
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { openRazorpayCheckout } from "../lib/razorpay";
@@ -15,8 +13,8 @@ import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Pricing() {
   usePageSEO({
-    title: "Pricing — Template Marketplace & Custom Presentation Design | SlideBee",
-    description: "SlideBee pricing: download presentation templates free with 3 daily downloads or choose Monthly, Yearly, or Lifetime access. Also view transparent per-slide pricing for custom pitch decks and executive keynotes.",
+    title: "Pricing — Template Marketplace Plans | SlideBee",
+    description: "SlideBee pricing: download presentation templates free with 3 daily downloads or choose Monthly, Yearly, or Lifetime access with 100% editable slides.",
   });
 
   const location = useLocation();
@@ -52,7 +50,7 @@ export default function Pricing() {
     loadPricing();
   }, []);
 
-  // Handle auto-scroll if hash is present (#marketplace or #services)
+  // Handle auto-scroll if hash is present (#marketplace)
   useEffect(() => {
     if (location.hash) {
       const el = document.querySelector(location.hash);
@@ -141,71 +139,6 @@ export default function Pricing() {
     });
   };
 
-  const servicePlans = [
-    {
-      id: "redesign",
-      name: "Presentation Redesign",
-      badge: "Standard Polish",
-      desc: "For existing rough drafts, internal corporate reviews, and unformatted decks.",
-      pricePerSlide: currency === "USD"
-        ? `$${pricingConfig.rate_usd_redesign}`
-        : `₹${pricingConfig.rate_inr_redesign.toLocaleString()}`,
-      turnaround: "24h – 48h",
-      features: [
-        "Complete visual hierarchy overhaul",
-        "Brand typography & color harmony",
-        "Clean table & data alignment",
-        "High-resolution vector icons",
-        "100% editable Master PowerPoint (.pptx)",
-        "1 Round of revisions included"
-      ],
-      cta: "Order Redesign",
-      popular: false
-    },
-    {
-      id: "pitch",
-      name: "Venture Pitch Deck",
-      badge: "Most Popular",
-      desc: "Engineered for high-growth startups raising Pre-seed, Seed, or Series A/B capital.",
-      pricePerSlide: currency === "USD"
-        ? `$${pricingConfig.rate_usd_pitch}`
-        : `₹${pricingConfig.rate_inr_pitch.toLocaleString()}`,
-      turnaround: "48h – 72h",
-      features: [
-        "Proven 12-slide VC narrative structure",
-        "Investor-grade unit economics & cap-table visualizers",
-        "Custom bespoke vector illustrations & charts",
-        "TAM / SAM / SOM market sizing diagrams",
-        "Fully editable Master PowerPoint (.pptx) presentation",
-        "Unlimited revisions until final sign-off",
-        "Signed Non-Disclosure Agreement (NDA)"
-      ],
-      cta: "Order Pitch Deck",
-      popular: true
-    },
-    {
-      id: "executive",
-      name: "Executive & Stage Keynote",
-      badge: "C-Suite Standard",
-      desc: "High-stakes keynotes for board meetings, global conferences, and C-suite stages.",
-      pricePerSlide: currency === "USD"
-        ? `$${pricingConfig.rate_usd_executive}`
-        : `₹${pricingConfig.rate_inr_executive.toLocaleString()}`,
-      turnaround: "24h Priority Available",
-      features: [
-        "Ex-McKinsey strategic storytelling & executive summaries",
-        "Stage-optimized ultra-high contrast visual layouts",
-        "Custom 3D isometric systems & architecture graphics",
-        "Dedicated senior art director on direct WhatsApp/Slack",
-        "Master PowerPoint (.pptx) + High-Res Vector PDF export",
-        "Full Master Template & Brand Style Guide included",
-        "Priority 24-hour turnaround guarantee"
-      ],
-      cta: "Order Executive Keynote",
-      popular: false
-    }
-  ];
-
   interface FaqItem { q: string; a: string; }
 
   const defaultFaqs: FaqItem[] = [
@@ -214,24 +147,24 @@ export default function Pricing() {
       a: "SlideBee offers four membership tiers: Basic Free gives you 3 daily downloads from our Free templates library. Monthly Pro ($5/mo or ₹399/mo) unlocks 30 Premium template downloads per month. Yearly Pro ($45/yr or ₹3,499/yr) includes 30 Premium templates/mo plus an exclusive free design service for up to 10 slides. Lifetime VIP ($75 or ₹5,999 one-time) gives you unlimited premium downloads forever without any renewal fees."
     },
     {
-      q: "What is the Lifetime Plan safety limit?",
-      a: "Our Lifetime VIP plan grants unlimited downloads for legitimate human presentation use. An automated fair-use safety threshold of 45 downloads per month is maintained solely to detect web scrapers and unauthorized bots. If you hit this threshold during an active project, simply reach out to support for immediate verification."
+      q: "What files do I receive with my downloads?",
+      a: "Every template download includes 100% editable Master PowerPoint (.pptx) presentation files with embedded vector graphics, typography palettes, master slide layouts, and 16:9 widescreen format."
     },
     {
-      q: "How does the per-slide custom design pricing work?",
-      a: "Our custom presentation services are priced on a transparent per-slide basis with no hidden fees. You only pay for the exact slide count in your deck. Submit your draft or brief via Get a Quote to receive instant delivery estimates."
+      q: "Can I use downloaded templates for commercial and client presentations?",
+      a: "Yes, 100%. All paid plans include a full commercial royalty-free presentation license. You can use SlideBee decks for internal executive meetings, client presentations, sales pitches, and investor roadshows."
     },
     {
-      q: "What files do I receive upon completion?",
-      a: "For both template downloads and custom design deliverables, you receive 100% editable Master PowerPoint (.pptx) presentation files with embedded vector graphics, master layout themes, and print-ready PDFs."
+      q: "How does the Yearly Plan 10-slide design bonus work?",
+      a: "When you subscribe to the SlideBee Yearly Plan, our senior presentation studio designers will personally build or redesign up to 10 custom slides for your next investor pitch, keynote, or board meeting for free."
     },
     {
-      q: "How fast can you deliver a custom presentation?",
-      a: "Standard bespoke delivery is 24 to 48 hours depending on deck scope. We also provide dedicated rush turnaround for board meetings and investor pitch emergencies."
+      q: "Can I upgrade or cancel my plan anytime?",
+      a: "Yes. You have full control from your account dashboard. You can upgrade from Free to Monthly or Yearly at any time, or cancel renewals with a single click."
     },
     {
-      q: "Is my corporate data and intellectual property protected?",
-      a: "Yes, 100%. We execute mutual Non-Disclosure Agreements (NDAs) prior to onboarding. Files are kept in secure encrypted storage and are never disclosed or published without explicit consent."
+      q: "Is my payment information secure?",
+      a: "Yes, 100%. All transactions are processed through encrypted payment gateways with 256-bit SSL encryption. We never store your card details."
     }
   ];
 
@@ -242,38 +175,16 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden pt-28 pb-20 large-hex-grid">
 
-      {/* Quick Jump Navigation Pill */}
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-10 flex justify-center">
-        <div className="hex-pill inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border-2 border-primary/40 p-1.5 shadow-sm">
-          <Link
-            to="/templates"
-            className="hex-pill px-4 py-1.5 text-xs font-black text-[#111111] hover:bg-primary/30 transition-all flex items-center gap-1.5"
-          >
-            <LayoutGrid size={13} className="text-primary-amber" /> Template Marketplace <ArrowRight size={12} />
-          </Link>
-          <span className="text-[#726F6D] text-xs">|</span>
-          <a
-            href="#services"
-            className="hex-pill px-4 py-1.5 text-xs font-black text-[#111111] hover:bg-primary/30 transition-all flex items-center gap-1.5"
-          >
-            <Paintbrush size={13} className="text-primary-amber" /> Custom Design Services
-          </a>
-        </div>
-      </div>
-
       {/* ======================================================== */}
-      {/* SECTION A: TEMPLATE MARKETPLACE PLANS                     */}
+      {/* SECTION: TEMPLATE MARKETPLACE PLANS                      */}
       {/* ======================================================== */}
       <section id="marketplace" className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24 scroll-mt-32">
 
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 hex-pill bg-white border border-primary/40 px-5 py-2 text-xs font-extrabold uppercase tracking-wider text-primary-amber shadow-sm mb-4">
-            <LayoutGrid size={14} /> Template Marketplace Plans
-          </div>
+        <div className="text-center max-w-3xl mx-auto mb-12">
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] leading-tight mb-3">
-            Download Premium Templates.<br />
-            <span className="text-primary-amber">Pick Your Plan.</span>
+            Download Premium Templates <br className="hidden sm:inline" />
+            <span className="text-primary-amber">for Your Plan.</span>
           </h1>
           <p className="text-[#726F6D] text-sm font-medium max-w-xl mx-auto mb-6">
             Start with 3 free downloads per day, or unlock our complete 30-slide executive presentation library with Monthly, Yearly, or Lifetime access.
@@ -447,7 +358,7 @@ export default function Pricing() {
             </button>
           </div>
 
-          {/* CARD 4: Lifetime */}
+          {/* CARD 4: Lifetime (One-time Payment) */}
           <div className="hex-card-lg bg-white border-2 border-primary/50 hover:border-primary p-7 flex flex-col justify-between shadow-md hover:shadow-xl transition-all">
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -467,19 +378,18 @@ export default function Pricing() {
 
               <div className="space-y-3 border-t border-primary/20 pt-5">
                 {[
-                  "Unlimited Premium Templates & Downloads*",
+                  "Unlimited Premium Templates & Downloads",
                   "Never pay another monthly or yearly renewal",
                   "All current & future templates included forever",
                   "100% Editable Master PowerPoint (.pptx)",
                   "Full commercial license for all client projects",
                   "VIP priority support & custom deck requests",
-                  "*Fair-use limit of 45/mo to prevent bot crawling",
                 ].map((feat, i) => (
                   <div key={i} className="flex items-start gap-2.5 text-xs text-[#111111] font-medium">
                     <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border border-primary/40 mt-0.5">
                       <Check size={11} className="text-primary-amber stroke-[3]" />
                     </div>
-                    <span className={i === 6 ? "text-[#726F6D] text-[11px]" : ""}>{feat}</span>
+                    <span>{feat}</span>
                   </div>
                 ))}
               </div>
@@ -496,7 +406,7 @@ export default function Pricing() {
         </div>
 
         {/* Full-width Honey Gold Bonus Showcase Banner */}
-        <div className="hex-card-lg bg-gradient-to-r from-[#FCBF14] via-[#F5B301] to-[#FCBF14] text-[#111111] p-8 sm:p-10 shadow-xl border-2 border-black/10 max-w-7xl mx-auto relative overflow-hidden">
+        <div className="hex-card-lg bg-gradient-to-r from-[#FCBF14] via-[#F5B301] to-[#FCBF14] text-[#111111] p-8 sm:p-10 shadow-xl border-2 border-black/10 max-w-7xl mx-auto relative overflow-hidden mb-20">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
             <div className="max-w-3xl">
               <span className="hex-pill inline-block bg-[#111111] text-[#FCBF14] text-[10px] font-black px-3.5 py-1 uppercase tracking-wider mb-3">
@@ -519,211 +429,53 @@ export default function Pricing() {
           </div>
         </div>
 
-      </section>
-
-      {/* ======================================================== */}
-      {/* DIVIDER BANNER                                            */}
-      {/* ======================================================== */}
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 mb-20">
-        <div className="relative flex items-center gap-6">
-          <div className="flex-1 border-t-2 border-dashed border-primary/30" />
-          <div className="hex-pill bg-white border-2 border-primary/40 px-6 py-2.5 text-xs font-extrabold uppercase tracking-widest text-[#111111] shadow-sm flex items-center gap-2 shrink-0">
-            <Paintbrush size={13} className="text-primary-amber" /> Custom Design Services
+        {/* FAQ Section */}
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <span className="text-primary-amber text-xs font-extrabold uppercase tracking-wider block mb-2">
+              Got Questions?
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111]">
+              Frequently Asked Questions
+            </h2>
           </div>
-          <div className="flex-1 border-t-2 border-dashed border-primary/30" />
-        </div>
-      </div>
 
-      {/* ======================================================== */}
-      {/* SECTION B: CUSTOM DESIGN SERVICE PRICING                  */}
-      {/* ======================================================== */}
-      <section id="services" className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-16 scroll-mt-32">
+          <div className="space-y-4">
+            {faqs.map((faq, idx) => (
+              <div
+                key={idx}
+                className="hex-card bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm transition-all"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                  className="w-full px-6 py-4 text-left font-heading font-extrabold text-sm text-[#111111] flex items-center justify-between gap-4 cursor-pointer"
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-primary-amber transition-transform duration-300 ${openFaq === idx ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 hex-pill bg-white border border-primary/40 px-5 py-2 text-xs font-extrabold uppercase tracking-wider text-primary-amber shadow-sm mb-4">
-            <Paintbrush size={14} /> Bespoke Design Services
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] leading-tight mb-3">
-            Executive Presentation Design,<br />
-            <span className="text-primary-amber">Transparent Per-Slide Pricing.</span>
-          </h2>
-          <p className="text-[#726F6D] text-sm font-medium max-w-lg mx-auto mb-6">
-            Pay per slide or book dedicated designer capacity. Clear turnaround, signed NDAs, and 100% editable files.
-          </p>
-
-          {/* Currency Switcher */}
-          <div className="inline-flex items-center hex-pill bg-white border-2 border-primary/40 p-1 shadow-sm">
-            <button
-              onClick={() => setCurrency("USD")}
-              className={`px-6 py-2 hex-pill text-xs font-black transition-all ${
-                currency === "USD" ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              USD ($)
-            </button>
-            <button
-              onClick={() => setCurrency("INR")}
-              className={`px-6 py-2 hex-pill text-xs font-black transition-all ${
-                currency === "INR" ? "bg-[#111111] text-[#FCBF14] shadow" : "text-[#111111] hover:text-primary-amber"
-              }`}
-            >
-              INR (₹)
-            </button>
-          </div>
-        </div>
-
-        {/* 3 Service Tier Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch mb-16">
-          {servicePlans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`hex-card-lg bg-white p-7 sm:p-9 transition-all relative flex flex-col justify-between shadow-md hover:shadow-2xl ${
-                plan.popular
-                  ? "border-2 border-primary ring-4 ring-primary/20 lg:-translate-y-3 z-10"
-                  : "border-2 border-primary/40 hover:border-primary"
-              }`}
-            >
-              {plan.popular && (
-                <div className="hex-pill absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#111111] text-[#FCBF14] border border-primary font-black text-[11px] px-5 py-1.5 uppercase tracking-wider shadow-md inline-flex items-center gap-1.5">
-                  <Flame size={12} className="text-[#FCBF14]" /> {plan.badge}
-                </div>
-              )}
-
-              <div>
-                <div className="mb-4">
-                  <span className="text-xs font-extrabold uppercase tracking-widest text-primary-amber block mb-1">
-                    {plan.turnaround}
-                  </span>
-                  <h3 className="text-2xl font-heading font-extrabold text-[#111111]">{plan.name}</h3>
-                  <p className="text-[#726F6D] text-xs font-medium mt-1 leading-relaxed">{plan.desc}</p>
-                </div>
-
-                <div className="py-5 border-y border-primary/20 my-5">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl sm:text-5xl font-heading font-black text-[#111111]">
-                      {plan.pricePerSlide}
-                    </span>
-                    <span className="text-xs font-bold text-[#726F6D]">/ slide</span>
-                  </div>
-                  <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
-                    No minimum slide requirement
-                  </span>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-3 text-xs text-[#111111] font-medium">
-                      <div className="w-5 h-5 rounded-full bg-primary/20 text-primary-amber flex items-center justify-center shrink-0 mt-0.5 border border-primary/40">
-                        <Check size={11} className="stroke-[3]" />
+                <AnimatePresence>
+                  {openFaq === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-5 text-xs text-[#726F6D] font-medium leading-relaxed border-t border-primary/20 pt-3">
+                        {faq.a}
                       </div>
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-
-              <Link
-                to={`/ordernow?tier=${plan.id}`}
-                className={`hex-pill w-full text-center py-3.5 text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 ${
-                  plan.popular
-                    ? "bg-primary hover:bg-primary-dark text-[#111111] shadow-md hover:scale-[1.02]"
-                    : "bg-[#111111] hover:bg-black text-white hover:text-primary shadow-sm hover:scale-[1.02]"
-                }`}
-              >
-                {plan.cta} <ArrowRight size={15} />
-              </Link>
-            </div>
-          ))}
-        </div>
-
-        {/* Enterprise Retainer Banner */}
-        <div className="hex-card-dark p-8 sm:p-12 relative overflow-hidden border-2 border-primary shadow-2xl mb-16">
-          <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-[#FCBF14]/15 rounded-full blur-[140px] pointer-events-none" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-            <div className="lg:col-span-8">
-              <span className="hex-pill inline-block bg-primary text-[#111111] font-black px-4 py-1 text-xs uppercase tracking-wider mb-4">
-                Enterprise Retainer
-              </span>
-              <h3 className="text-2xl sm:text-4xl font-heading font-extrabold text-white mb-3 leading-tight">
-                Dedicated Senior Slide Designer On-Demand
-              </h3>
-              <p className="text-gray-300 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl mb-6">
-                For VC firms, private equity funds, corporate strategy teams, and agencies needing 40+ decks per month with guaranteed 24-hour turnaround.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-bold text-gray-300">
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-primary" /><span>Unlimited Queue</span></div>
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-primary" /><span>24h Turnaround</span></div>
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-primary" /><span>Direct Slack/WhatsApp</span></div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-4 flex flex-col items-center lg:items-end justify-center">
-              <div className="text-3xl sm:text-4xl font-heading font-black text-primary mb-1">
-                {currency === "USD"
-                  ? `$${pricingConfig.monthly_retainer_usd.toLocaleString()}`
-                  : `₹${pricingConfig.monthly_retainer_inr.toLocaleString()}`}
-                <span className="text-sm font-bold text-gray-400">/mo</span>
-              </div>
-              <span className="text-[11px] text-gray-400 font-medium mb-5">
-                Pause or cancel anytime • NDA signed
-              </span>
-              <Link
-                to="/contact?type=retainer"
-                className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-8 py-3.5 text-xs sm:text-sm transition-all flex items-center gap-2 shadow-lg hover:scale-105"
-              >
-                Inquire Enterprise Retainer <ArrowRight size={15} />
-              </Link>
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* FAQ */}
-        <div className="text-center mb-12">
-          <span className="text-primary-amber text-xs font-extrabold uppercase tracking-wider block mb-2">
-            Pricing Questions
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111]">
-            Frequently Asked Questions
-          </h2>
-        </div>
-
-        <div className="space-y-4">
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="hex-card bg-white border-2 border-primary/40 hover:border-primary overflow-hidden shadow-sm transition-all"
-            >
-              <button
-                type="button"
-                onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                className="w-full px-6 py-4 text-left font-heading font-extrabold text-sm text-[#111111] flex items-center justify-between gap-4 cursor-pointer"
-              >
-                <span>{faq.q}</span>
-                <ChevronDown
-                  size={18}
-                  className={`shrink-0 text-primary-amber transition-transform duration-300 ${openFaq === idx ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              <AnimatePresence>
-                {openFaq === idx && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-6 pb-5 text-xs text-[#726F6D] font-medium leading-relaxed border-t border-primary/20 pt-3">
-                      {faq.a}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
         </div>
 
       </section>

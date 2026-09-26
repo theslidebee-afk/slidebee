@@ -7,11 +7,11 @@ import { Suspended3DCarousel } from "../components/Suspended3DCarousel";
 import { 
   Sliders, 
   Paintbrush, 
-  TrendingUp, 
+  PenTool,
+  Sparkles,
   BarChart3, 
   LayoutGrid, 
-  Award, 
-  Megaphone,
+  Palette,
   ArrowRight
 } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -29,14 +29,14 @@ export default function Services() {
 
   const [sliderPosition, setSliderPosition] = useState(50);
   const [selectedService, setSelectedService] = useState<string>(() => {
-    const validServices = ["redesign", "pitch", "keynote", "data", "template", "sales"];
+    const validServices = ["redesign", "handwritten", "cleanup", "data", "template", "graphic"];
     const initialParam = new URLSearchParams(window.location.hash.split("?")[1] || window.location.search).get("service");
     return initialParam && validServices.includes(initialParam) ? initialParam : "redesign";
   });
   const [customServices, setCustomServices] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const validServices = ["redesign", "pitch", "keynote", "data", "template", "sales"];
+    const validServices = ["redesign", "handwritten", "cleanup", "data", "template", "graphic"];
     if (serviceParam && validServices.includes(serviceParam)) {
       setSelectedService(serviceParam);
       setSliderPosition(50);
@@ -59,8 +59,8 @@ export default function Services() {
   const servicesData = {
     redesign: {
       id: "redesign",
-      title: "Presentation Redesign",
-      tagline: "From Cluttered Drafts to Clean, Executive Impact",
+      title: "Redesign and Visual Enhancement",
+      tagline: "We uplift your slides with creativity",
       icon: <Paintbrush className="w-5 h-5" />,
       beforeImg: `${STORAGE_BASE}/hsbc_slide-2.jpg`,
       afterImg: `${STORAGE_BASE}/accenture_slide-1.jpg`,
@@ -69,65 +69,65 @@ export default function Services() {
       turnaround: "24h – 48h",
       idealFor: "Corporate decks, weekly business reviews, conference presentations"
     },
-    pitch: {
-      id: "pitch",
-      title: "Investor Pitch Decks",
-      tagline: "Engineered to Capture VC Attention & Secure Funding",
-      icon: <TrendingUp className="w-5 h-5" />,
+    handwritten: {
+      id: "handwritten",
+      title: "Handwritten Conversions",
+      tagline: "Deciphering handwritten text to marvelous-looking presentations",
+      icon: <PenTool className="w-5 h-5" />,
       beforeImg: `${STORAGE_BASE}/british_american_slide-3.jpg`,
       afterImg: `${STORAGE_BASE}/nike_slide-1.jpg`,
-      beforeTitle: "Rough Founder Notes",
-      afterTitle: "Investor-Ready Pitch Deck",
-      turnaround: "48h – 72h",
-      idealFor: "Pre-seed, Seed, Series A & B fundraising rounds"
+      beforeTitle: "Handwritten Notes / Sketches",
+      afterTitle: "Marvelous Presentation / After",
+      turnaround: "24h – 48h",
+      idealFor: "Whiteboard concepts, handwritten brainstorms, napkin sketches"
     },
-    keynote: {
-      id: "keynote",
-      title: "Executive & Board Keynotes",
-      tagline: "High-Stakes Strategic Alignment for C-Suite Leaders",
-      icon: <Award className="w-5 h-5" />,
-      beforeImg: `${STORAGE_BASE}/tag_slide-3.jpg`,
+    cleanup: {
+      id: "cleanup",
+      title: "Quick Scrub and Clean Up",
+      tagline: "Fixing presentation as swiftly as a kite",
+      icon: <Sparkles className="w-5 h-5" />,
+      beforeImg: `${STORAGE_BASE}/cvs_health_slide-3.jpg`,
       afterImg: `${STORAGE_BASE}/volvo_slide-1.jpg`,
-      beforeTitle: "Dense Department Report",
-      afterTitle: "Board-Ready Executive Keynote",
-      turnaround: "24h Rush Available",
-      idealFor: "Board meetings, all-hands townhalls, keynote addresses"
+      beforeTitle: "Rough Draft & Misalignments",
+      afterTitle: "Cleaned & Aligned Presentation",
+      turnaround: "12h – 24h Rush",
+      idealFor: "Emergency board meetings, rapid cleanup, formatting alignment"
     },
     data: {
       id: "data",
-      title: "Data & Financial Visualization",
-      tagline: "Turn Complex Spreadsheets into Intuitive Visual Stories",
+      title: "Data Visualization",
+      tagline: "Blending numbers with our marvelous design",
       icon: <BarChart3 className="w-5 h-5" />,
-      beforeImg: `${STORAGE_BASE}/cvs_health_slide-3.jpg`,
+      beforeImg: `${STORAGE_BASE}/tag_slide-3.jpg`,
       afterImg: `${STORAGE_BASE}/intel_slide-1.jpg`,
-      beforeTitle: "Raw Spreadsheet Screenshot",
-      afterTitle: "Dynamic Visual Dashboard",
+      beforeTitle: "Raw Spreadsheet Data",
+      afterTitle: "Marvelous Visual Dashboard",
       turnaround: "24h – 48h",
-      idealFor: "Quarterly financial reviews, SaaS metric dashboards, investor updates"
+      idealFor: "Financial reports, quarterly investor reviews, SaaS metrics"
     },
     template: {
       id: "template",
-      title: "Master Branded Template Systems",
-      tagline: "Empower Your Entire Organization with Cohesive Design",
+      title: "Template Creation",
+      tagline: "Highly stylized presentation templates",
       icon: <LayoutGrid className="w-5 h-5" />,
       beforeImg: `${STORAGE_BASE}/hsbc_slide-4.jpg`,
       afterImg: `${STORAGE_BASE}/levis_slide-1.jpg`,
-      beforeTitle: "Fragmented Slide Library",
-      afterTitle: "Unified Master Template System",
-      turnaround: "3 – 5 Days",
-      idealFor: "Growing scale-ups, enterprise brands, sales organizations"
+      beforeTitle: "Standard Plain Template",
+      afterTitle: "Highly Stylized Master System",
+      turnaround: "2 – 4 Days",
+      idealFor: "Company brand systems, sales organizations, agency templates"
     },
-    sales: {
-      id: "sales",
-      title: "Sales & Marketing Collateral",
-      tagline: "High-Conversion Proposals That Close Deals Faster",
-      icon: <Megaphone className="w-5 h-5" />,
+    graphic: {
+      id: "graphic",
+      title: "Graphic Design",
+      tagline: "Designing your visual story",
+      icon: <Palette className="w-5 h-5" />,
       beforeImg: `${STORAGE_BASE}/intel_slide-3.jpg`,
       afterImg: `${STORAGE_BASE}/tag_slide-1.jpg`,
-      beforeTitle: "Text-Heavy Word Document",
-      afterTitle: "Compelling Client Proposal",
+      beforeTitle: "Text-Heavy Concept",
+      afterTitle: "Designed Visual Story",
       turnaround: "24h – 48h",
-      idealFor: "B2B client pitches, agency proposals, RFP responses"
+      idealFor: "Custom infographics, product storyboards, marketing collateral"
     }
   };
 

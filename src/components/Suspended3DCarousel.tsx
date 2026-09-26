@@ -110,11 +110,11 @@ export function Suspended3DCarousel() {
   const { templates } = useStudioStore();
   const [upperSlides, setUpperSlides] = useState<SlideItem[]>(defaultUpperSlides);
   const [lowerSlides, setLowerSlides] = useState<SlideItem[]>(defaultLowerSlides);
-  const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
-  const dragStartX = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
-  // Sync with live store templates if available
+  // Sync with store templates if available
   useEffect(() => {
     if (templates && templates.length >= 8) {
       const upperMapped = templates.slice(0, 5).map((t, idx) => ({
@@ -140,157 +140,122 @@ export function Suspended3DCarousel() {
 
   const total = upperSlides.length;
 
-  const nextSlide = () => {
-    setActiveIndex((prev) => (prev + 1) % total);
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % total);
   };
 
-  const prevSlide = () => {
-    setActiveIndex((prev) => (prev - 1 + total) % total);
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + total) % total);
   };
 
   // Autoplay rotation every 5s when not hovered
   useEffect(() => {
     if (isHovered) return;
     const interval = setInterval(() => {
-      nextSlide();
+      handleNext();
     }, 5000);
     return () => clearInterval(interval);
   }, [isHovered, total]);
 
-  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+  const onTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    dragStartX.current = clientX;
+    touchStartX.current = clientX;
   };
 
-  const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
-    if (dragStartX.current === null) return;
+  const onTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    if (touchStartX.current === null) return;
     const clientX = "changedTouches" in e ? e.changedTouches[0].clientX : e.clientX;
-    const diff = clientX - dragStartX.current;
-    if (diff > 50) {
-      prevSlide();
-    } else if (diff < -50) {
-      nextSlide();
+    const diff = clientX - touchStartX.current;
+    if (diff > 45) {
+      handlePrev();
+    } else if (diff < -45) {
+      handleNext();
     }
-    dragStartX.current = null;
+    touchStartX.current = null;
   };
 
-  // Helper to render an individual 3D curved slide card
-  const renderSlideCard = (
-    slide: SlideItem,
-    index: number,
-    tier: "upper" | "lower",
-    effectiveIndex: number
-  ) => {
-    const offset = ((index - effectiveIndex + total + Math.floor(total / 2)) % total) - Math.floor(total / 2);
-    const isVisible = Math.abs(offset) <= 2;
-    if (!isVisible) return null;
-
-    const absOffset = Math.abs(offset);
-    const rotateY = -offset * (absOffset >= 2 ? 16 : 12);
-    const isSmall = typeof window !== "undefined" && window.innerWidth < 640;
-    const translateX = offset * (isSmall ? 150 : 220);
-
-    // Center is recessed; outer cards sweep forward toward the camera
-    const translateZ = Math.pow(absOffset, 1.35) * 40 - 35;
-
-    // Dual-tier elevation: upper tier curves gently up, lower tier curves down
-    const baseY = tier === "upper" ? (isSmall ? -80 : -110) : (isSmall ? 80 : 110);
-    const arcDelta = Math.pow(absOffset, 1.2) * 7;
-    const translateY = tier === "upper" ? baseY - arcDelta : baseY + arcDelta;
-
-    const scale = 0.92 + absOffset * 0.03;
-    const opacity = Math.max(0.68, 1 - absOffset * 0.14);
-    const zIndex = 40 - Math.round(absOffset * 5);
-    const isCenter = offset === 0;
-
-    return (
-      <div
-        key={`${tier}-${slide.id}`}
-        onClick={() => setActiveIndex(index)}
-        data-bee-state="card"
-        className={`absolute w-[180px] sm:w-[240px] md:w-[280px] lg:w-[310px] aspect-[16/10] rounded-[20px] sm:rounded-[26px] overflow-hidden cursor-pointer transition-all duration-700 ease-out shadow-[0_15px_40px_rgba(0,0,0,0.28)] ${
-          isCenter
-            ? "ring-3 sm:ring-4 ring-[#FCBF14] ring-offset-2 sm:ring-offset-4 ring-offset-[#FFF9E8] shadow-[0_22px_55px_rgba(252,191,20,0.25)]"
-            : "hover:brightness-105"
-        }`}
-        style={{
-          transform: `translate3d(${translateX}px, ${translateY}px, ${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-          opacity,
-          zIndex,
-          transformStyle: "preserve-3d",
+  // Render a uniform slide card with flat styling
+  const renderCard = (slide: SlideItem, isHighlight: boolean) => (
+    <div
+      key={slide.id}
+      data-bee-state="card"
+      className={`shrink-0 w-[260px] sm:w-[320px] md:w-[360px] aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden relative border transition-all duration-300 shadow-md hover:shadow-xl ${
+        isHighlight
+          ? "border-primary ring-2 ring-primary/40 shadow-primary/20 scale-[1.02]"
+          : "border-primary/25 hover:border-primary/60 bg-white"
+      }`}
+    >
+      {/* Slide Cover Image */}
+      <img
+        src={slide.image}
+        alt={slide.title}
+        className="w-full h-full object-cover select-none pointer-events-none"
+        loading="lazy"
+        onError={(e) => {
+          const fallback = defaultUpperSlides[0].image;
+          if (e.currentTarget.src !== fallback) {
+            e.currentTarget.src = fallback;
+          }
         }}
-      >
-        {/* Slide Preview Cover Image */}
-        <img
-          src={slide.image}
-          alt={slide.title}
-          className="w-full h-full object-cover select-none pointer-events-none"
-          loading="lazy"
-          onError={(e) => {
-            const fallbackList = tier === "upper" ? defaultUpperSlides : defaultLowerSlides;
-            const fallback = fallbackList[index % fallbackList.length].image;
-            if (e.currentTarget.src !== fallback) {
-              e.currentTarget.src = fallback;
-            }
-          }}
-        />
+      />
 
-        {/* Dark Gradient Overlay & Slide Meta */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-between p-3.5 sm:p-4 text-white">
-          <div className="flex items-center justify-between">
-            <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full border border-[#FCBF14]/30">
-              {slide.category}
+      {/* Gradient Overlay & Meta Details */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-between p-3.5 sm:p-5 text-white">
+        <div className="flex items-center justify-between">
+          <span className="bg-[#111111]/85 backdrop-blur-md text-[#FCBF14] text-[10px] font-black px-3 py-1 rounded-full border border-[#FCBF14]/30 uppercase tracking-wider">
+            {slide.category}
+          </span>
+          {slide.code && (
+            <span className="text-[10px] text-white/80 font-mono font-bold bg-white/10 px-2 py-0.5 rounded">
+              {slide.code}
             </span>
-            {slide.code && (
-              <span className="text-[9px] sm:text-[10px] text-white/70 font-mono font-bold">
-                {slide.code}
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div>
-            <h3 className="text-xs sm:text-sm font-heading font-black text-white leading-tight drop-shadow-md line-clamp-1">
-              {slide.title}
-            </h3>
-            {slide.client && (
-              <p className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 mt-0.5">
-                {slide.client}
-              </p>
-            )}
-            {isCenter && (
-              <div className="mt-2 pt-1.5 border-t border-white/20 flex items-center justify-between">
-                <span className="text-[9px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
-                  Executive Master Deck
-                </span>
-                <Link
-                  to={slide.code ? `/template/${slide.code}` : "/#templates"}
-                  className="inline-flex items-center gap-1 text-[10px] text-white hover:text-[#FCBF14] font-bold"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span>View Deck</span>
-                  <ExternalLink size={11} />
-                </Link>
-              </div>
-            )}
+        <div>
+          <h3 className="text-xs sm:text-sm font-heading font-black text-white leading-snug line-clamp-1 drop-shadow-sm">
+            {slide.title}
+          </h3>
+          {slide.client && (
+            <p className="text-[10px] sm:text-xs text-white/80 font-medium line-clamp-1 mt-0.5">
+              {slide.client}
+            </p>
+          )}
+
+          <div className="mt-2.5 pt-2 border-t border-white/20 flex items-center justify-between">
+            <span className="text-[10px] text-[#FCBF14] font-extrabold uppercase tracking-wider">
+              SlideBee Master Deck
+            </span>
+            <Link
+              to={slide.code ? `/template/${slide.code}` : "/#templates"}
+              className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-white hover:text-[#FCBF14] font-bold transition-colors"
+            >
+              <span>View Deck</span>
+              <ExternalLink size={12} />
+            </Link>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+
+  // Triple the array for seamless infinite wrap
+  const upperTrack = [...upperSlides, ...upperSlides, ...upperSlides];
+  const lowerTrack = [...lowerSlides, ...lowerSlides, ...lowerSlides];
 
   return (
     <div
-      className="relative w-full py-10 sm:py-14 overflow-hidden"
+      className="relative w-full py-8 sm:py-12 overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* 1. Header Section */}
-      <div className="max-w-3xl mx-auto text-center px-4 mb-6 sm:mb-10 relative z-10">
+      <div className="max-w-3xl mx-auto text-center px-4 mb-8 sm:mb-12 relative z-10">
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-black text-[#111111] tracking-tight leading-[1.08] mb-4">
           Supercharge Your Workflow
         </h2>
         <p className="text-sm sm:text-base lg:text-lg text-[#726F6D] font-medium leading-relaxed max-w-xl mx-auto mb-6">
-          All-in-one studio to storyboard, design, and deliver board-ready presentations — faster and smarter.
+          All-in-one presentation studio to storyboard, design, and deliver board-ready decks with speed and precision.
         </p>
         <Link
           to="/ordernow"
@@ -301,64 +266,74 @@ export function Suspended3DCarousel() {
         </Link>
       </div>
 
-      {/* 2. Two-Lined 3D Suspended Perspective Carousel Container */}
+      {/* 2. Simplified Two-Lined Flat Sliding Carousel */}
       <div
-        className="relative w-full h-[520px] sm:h-[620px] md:h-[680px] lg:h-[720px] flex items-center justify-center select-none"
-        style={{ perspective: "1600px" }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleTouchStart}
-        onMouseUp={handleTouchEnd}
+        className="relative w-full overflow-hidden select-none py-4"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onMouseDown={onTouchStart}
+        onMouseUp={onTouchEnd}
       >
-        {/* Suspended Stage Floor Shadow */}
-        <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[1200px] h-14 bg-black/15 blur-3xl rounded-full pointer-events-none" />
+        {/* Left & Right Soft Vignette Fades */}
+        <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-28 bg-gradient-to-r from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-28 bg-gradient-to-l from-[#FFF9E8] to-transparent z-20 pointer-events-none" />
 
-        {/* Left & Right Atmospheric Edge Vignette Fades */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-r from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-l from-[#FFF9E8] via-[#FFF9E8]/80 to-transparent z-40 pointer-events-none" />
+        {/* Carousel Tracks Container */}
+        <div className="space-y-4 sm:space-y-6">
+          
+          {/* Row 1: Upper Slide Cards */}
+          <div
+            className="flex gap-4 sm:gap-6 transition-transform duration-700 ease-in-out px-4"
+            style={{
+              transform: `translateX(calc(-${(currentIndex + total) * 100}% / 3.5))`,
+            }}
+          >
+            {upperTrack.map((slide, index) =>
+              renderCard(slide, (index % total) === currentIndex)
+            )}
+          </div>
 
-        <div
-          className="relative w-full h-full flex items-center justify-center animate-float-suspended"
-          style={{ transformStyle: "preserve-3d" }}
-        >
-          {/* Top Line (Upper Tier Cards) */}
-          {upperSlides.map((slide, index) =>
-            renderSlideCard(slide, index, "upper", activeIndex)
-          )}
+          {/* Row 2: Lower Slide Cards (offset by 1 card for visual balance) */}
+          <div
+            className="flex gap-4 sm:gap-6 transition-transform duration-700 ease-in-out px-4"
+            style={{
+              transform: `translateX(calc(-${((currentIndex + 1) + total) * 100}% / 3.5))`,
+            }}
+          >
+            {lowerTrack.map((slide, index) =>
+              renderCard(slide, (index % total) === ((currentIndex + 1) % total))
+            )}
+          </div>
 
-          {/* Bottom Line (Lower Tier Cards - Offset by 1 for Dynamic Stagger) */}
-          {lowerSlides.map((slide, index) =>
-            renderSlideCard(slide, index, "lower", (activeIndex + 1) % total)
-          )}
         </div>
 
         {/* Navigation Arrows */}
         <button
-          onClick={prevSlide}
+          onClick={handlePrev}
           aria-label="Previous Slide"
-          className="absolute left-3 sm:left-8 lg:left-16 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-[#111111] shadow-xl border border-primary/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
         >
           <ChevronLeft size={22} />
         </button>
 
         <button
-          onClick={nextSlide}
+          onClick={handleNext}
           aria-label="Next Slide"
-          className="absolute right-3 sm:right-8 lg:right-16 z-50 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/90 hover:bg-white text-[#111111] shadow-xl border border-black/10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-[#111111] shadow-xl border border-primary/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
         >
           <ChevronRight size={22} />
         </button>
       </div>
 
       {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6">
+      <div className="flex items-center justify-center gap-2 mt-6">
         {upperSlides.map((_, i) => (
           <button
             key={i}
-            onClick={() => setActiveIndex(i)}
+            onClick={() => setCurrentIndex(i)}
             aria-label={`Go to slide ${i + 1}`}
             className={`transition-all duration-300 rounded-full cursor-pointer ${
-              i === activeIndex
+              i === currentIndex
                 ? "w-8 h-2.5 bg-[#FCBF14]"
                 : "w-2.5 h-2.5 bg-[#111111]/20 hover:bg-[#111111]/40"
             }`}
