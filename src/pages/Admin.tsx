@@ -3579,8 +3579,9 @@ SlideBee Design Studio`
                         type="button"
                         onClick={async () => {
                           const nextVal = !tpl.is_credit_eligible;
-                          await supabase.from("templates").update({ is_credit_eligible: nextVal }).eq("id", tpl.id);
-                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal } : t));
+                          const nextIsPremium = nextVal ? 0 : 1;
+                          await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
+                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal, is_premium: nextIsPremium } : t));
                         }}
                         className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
                           tpl.is_credit_eligible

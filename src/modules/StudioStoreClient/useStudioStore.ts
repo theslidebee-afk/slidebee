@@ -104,7 +104,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
           features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
           formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-          is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : !Boolean(t.is_credit_eligible),
+          is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : (Number(t.price_inr) > 0),
           is_credit_eligible: Boolean(t.is_credit_eligible),
           is_featured: Boolean(t.is_featured),
           is_published: Boolean(t.is_published),

@@ -188,8 +188,12 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   notifications.push({
     id: "quota-status",
     category: "Quota",
-    title: `${quotaRemaining} / ${quotaTotal} Downloads Available`,
-    description: `Your ${userTier.toUpperCase()} membership cycle has ${quotaRemaining} template downloads ready.`,
+    title: userTier === "free"
+      ? `${quotaRemaining} / 3 Free Downloads Today`
+      : `${quotaRemaining} / ${quotaTotal} Pro Downloads Available`,
+    description: userTier === "free"
+      ? "Free tier accounts can download up to 3 community templates per day. Premium templates require a Pro subscription."
+      : `Your ${userTier.toUpperCase()} membership cycle has ${quotaRemaining} template downloads ready.`,
     time: "Cycle active",
     tab: "ledger"
   });
@@ -490,9 +494,16 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                     </div>
                   </div>
 
-                  <p className="text-xs font-semibold text-[#726F6D]">
-                    Available Design Credits
-                  </p>
+                  <div>
+                    <p className="text-xs font-semibold text-[#726F6D]">
+                      {userTier === "free" ? "Free Community Downloads Today" : "Available Pro Quota"}
+                    </p>
+                    {userTier === "free" && (
+                      <span className="text-[10px] text-amber-700 font-bold block mt-0.5">
+                        Free templates only • Premium requires Pro
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Card 2: Project Milestone: */}
@@ -937,8 +948,17 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                   <span className="text-lg font-heading font-black text-[#111111] capitalize">{userTier} Plan</span>
                 </div>
                 <div className="p-5 rounded-3xl bg-[#FFF9E8] border border-primary/30">
-                  <span className="text-[10px] font-black uppercase text-[#726F6D] block">Available Quota</span>
-                  <span className="text-lg font-heading font-black text-[#111111]">{quotaRemaining} / {quotaTotal} remaining</span>
+                  <span className="text-[10px] font-black uppercase text-[#726F6D] block">
+                    {userTier === "free" ? "Daily Community Quota" : "Monthly Pro Quota"}
+                  </span>
+                  <span className="text-lg font-heading font-black text-[#111111]">
+                    {quotaRemaining} / {quotaTotal} remaining {userTier === "free" ? "today" : "this month"}
+                  </span>
+                  {userTier === "free" && (
+                    <span className="text-[10px] text-amber-800 font-bold block mt-1">
+                      Free Community Decks only • Premium decks require Pro
+                    </span>
+                  )}
                 </div>
                 <div className="p-5 rounded-3xl bg-[#FFF9E8] border border-primary/30">
                   <span className="text-[10px] font-black uppercase text-[#726F6D] block">Downloaded Decks</span>

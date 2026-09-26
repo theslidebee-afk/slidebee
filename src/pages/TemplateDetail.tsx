@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Lock,
   Crown,
-  Zap,
   ShoppingBag
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
@@ -51,6 +50,7 @@ export default function TemplateDetail() {
 
   const [clientSub, setClientSub] = useState<any>(null);
   const [clientPurchases, setClientPurchases] = useState<any[]>([]);
+  const [freeDownloadsToday, setFreeDownloadsToday] = useState(0);
 
   const getClientInfo = () => {
     const local = localStorage.getItem("slidebee_client_user");
@@ -80,12 +80,17 @@ export default function TemplateDetail() {
 
       supabase
         .from("profiles")
-        .select("purchased_items")
+        .select("purchased_items, downloads_today, last_download_date")
         .eq("email", client.email)
         .maybeSingle()
         .then(({ data }) => {
-          if (Array.isArray(data?.purchased_items)) {
-            setClientPurchases(data.purchased_items);
+          if (data) {
+            if (Array.isArray(data.purchased_items)) {
+              setClientPurchases(data.purchased_items);
+            }
+            const today = new Date().toISOString().split("T")[0];
+            const usedToday = data.last_download_date === today ? (Number(data.downloads_today) || 0) : 0;
+            setFreeDownloadsToday(usedToday);
           }
         });
     }
@@ -176,7 +181,7 @@ export default function TemplateDetail() {
                   "Commercial Royalty-Free License"
                 ],
             formats: Array.isArray(matched.formats) && matched.formats.length > 0 ? matched.formats : ["PowerPoint"],
-            is_premium: matched.is_premium !== undefined ? Number(matched.is_premium) === 1 : !Boolean(matched.is_credit_eligible),
+            is_premium: matched.is_premium !== undefined ? Number(matched.is_premium) === 1 : (Number(matched.price_inr) > 0),
             is_credit_eligible: Boolean(matched.is_credit_eligible),
             is_featured: Boolean(matched.is_featured),
             is_published: true
@@ -228,7 +233,7 @@ export default function TemplateDetail() {
               description: t.description || "Executive presentation deck layout.",
               features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
               formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-              is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : !Boolean(t.is_credit_eligible),
+              is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : (Number(t.price_inr) > 0),
               is_credit_eligible: Boolean(t.is_credit_eligible),
               is_featured: Boolean(t.is_featured),
               is_published: true
@@ -324,12 +329,24 @@ export default function TemplateDetail() {
     }
   };
 
-  // Free Community Deck Download for Registered Users
+  // Free Community Deck Download for Registered Users (Community Templates Only)
   const handleDirectFreeDownload = async () => {
     setCreditNotice(null);
     const client = getClientInfo();
     if (!client) {
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
+      return;
+    }
+
+    // Strict Enforcement: Free users can ONLY download free community templates!
+    if (template?.is_premium) {
+      setCreditNotice("This is a Premium Template. Free accounts can only download templates from the Free Community Library. Upgrade to Pro or purchase a commercial license.");
+      return;
+    }
+
+    // Enforce 3 free downloads per day limit for non-pro accounts
+    if (!isPro && freeDownloadsToday >= 3) {
+      setCreditNotice("Daily Free Limit Reached (3/3). Free tier accounts can download up to 3 community decks per day. Upgrade to Pro for unlimited downloads.");
       return;
     }
 
@@ -353,7 +370,7 @@ export default function TemplateDetail() {
       currency: "INR"
     }).catch((err) => console.warn("Free template receipt email notice:", err));
 
-    // Persist to user's purchased items in profile
+    // Persist to user's purchased items and increment daily count in profile
     if (template) {
       const newItem = {
         id: template.id,
@@ -371,17 +388,26 @@ export default function TemplateDetail() {
         newItem
       ];
       setClientPurchases(updatedPurchases);
+
+      const today = new Date().toISOString().split("T")[0];
+      const nextCount = (freeDownloadsToday || 0) + 1;
+      setFreeDownloadsToday(nextCount);
+
       try {
         await supabase
           .from("profiles")
-          .update({ purchased_items: updatedPurchases })
+          .update({
+            purchased_items: updatedPurchases,
+            downloads_today: nextCount,
+            last_download_date: today
+          })
           .eq("email", client.email);
       } catch (err) {
         console.warn("Failed to persist free download to profile:", err);
       }
     }
 
-    setCreditNotice("Free template download initiated! A copy with download links has been dispatched to your email and added to your dashboard.");
+    setCreditNotice(`Free community template download initiated! (${(freeDownloadsToday || 0) + 1}/3 used today). A copy has been dispatched to your email.`);
   };
 
   // Standard Instant Purchase via Razorpay (Requires Login)
@@ -473,9 +499,13 @@ export default function TemplateDetail() {
                 Slide {activeSlideIdx + 1} of {slides.length}
               </div>
 
-              {(!template.is_premium || template.is_credit_eligible) && (
+              {!template.is_premium ? (
                 <div className="hex-pill-sm absolute top-3 right-3 bg-emerald-600 text-white font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-emerald-700">
-                  <Download size={11} /> Free Library Deck
+                  <Download size={11} /> Free Community Deck
+                </div>
+              ) : (
+                <div className="hex-pill-sm absolute top-3 right-3 bg-[#111111]/90 text-[#FCBF14] font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-[#FCBF14]/40 backdrop-blur-md">
+                  <Crown size={11} className="fill-[#FCBF14]" /> PRO Master Deck
                 </div>
               )}
             </div>
@@ -664,80 +694,108 @@ export default function TemplateDetail() {
                       </p>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    {/* Free Community Library Deck (Included in Free Account) */}
-                    {!template.is_premium || template.is_credit_eligible ? (
-                      <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-2.5 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                            <Download size={15} className="text-emerald-600" />
-                            <span>Free Community Library Deck</span>
-                          </div>
-                          <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
-                            Included in Free Tier
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                          Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment required.
-                        </p>
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={handleDirectFreeDownload}
-                          className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
-                        >
-                          <Download size={15} />
-                          {isProcessing ? "Preparing Download..." : "Download Free (PowerPoint .pptx)"}
-                        </button>
+                ) : !template.is_premium ? (
+                  /* FREE TEMPLATE FOR NON-PRO / FREE ACCOUNTS */
+                  <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
+                        <Download size={15} className="text-emerald-600" />
+                        <span>Free Community Library Deck</span>
                       </div>
-                    ) : (
-                      <div className="p-3 bg-[#FFFDF5] border border-primary/30 rounded-xl text-[11px] text-[#726F6D] font-medium flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1.5 font-bold text-[#111111]">
-                          <Crown size={12} className="text-[#FCBF14] fill-[#FCBF14]" />
-                          Premium Master Deck
-                        </span>
-                        <Link to="/pricing" className="text-primary-amber font-black hover:underline shrink-0">
-                          Upgrade to Pro
-                        </Link>
-                      </div>
-                    )}
-
-                    {/* Commercial Purchase Button (Requires Login) */}
+                      <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
+                        Free Account (3/Day)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                      Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment required.
+                    </p>
                     {!getClientInfo() ? (
                       <button
                         type="button"
                         onClick={() => navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))}
-                        className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                       >
-                        <Lock size={15} className="text-primary-amber" />
-                        Sign In to Buy Master PPTX ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})
+                        <Lock size={15} />
+                        Sign In to Download Free (.pptx)
                       </button>
                     ) : (
                       <button
                         type="button"
-                        disabled={isProcessing}
-                        onClick={handleInstantDownload}
-                        className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
+                        disabled={isProcessing || freeDownloadsToday >= 3}
+                        onClick={handleDirectFreeDownload}
+                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
                       >
                         <Download size={16} />
-                        {isProcessing ? "Processing..." : `Instant Commercial PPTX License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                        {isProcessing
+                          ? "Preparing Download..."
+                          : freeDownloadsToday >= 3
+                          ? "Daily Free Limit Reached (3/3 Used)"
+                          : `Download Free Community Deck (.pptx) • ${Math.max(0, 3 - freeDownloadsToday)} Left Today`}
                       </button>
                     )}
-
-                    {/* Upgrade to Pro Prompt */}
-                    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 flex items-center justify-between gap-2">
-                      <span>Unlock 15 presentation template downloads every month</span>
-                      <Link to="/pricing#marketplace" className="text-amber-900 font-extrabold underline shrink-0 flex items-center gap-0.5">
-                        <Zap size={11} className="text-amber-600" /> Go Pro →
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                      <span>Free Community License • Single Project Use</span>
+                    </div>
+                  </div>
+                ) : (
+                  /* PREMIUM TEMPLATE FOR FREE / GUEST ACCOUNTS: FREE CANNOT DOWNLOAD THIS! */
+                  <div className="space-y-4">
+                    {/* Pro Upgrade Callout */}
+                    <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary/70 rounded-2xl space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
+                          <Crown size={15} className="text-amber-500 fill-amber-400" />
+                          <span>Premium Master Presentation Deck</span>
+                        </div>
+                        <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
+                          PRO Exclusive
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                        This is an executive Premium Master Deck. Free tier accounts can only download community decks. Upgrade to Pro to unlock this deck and our entire presentation library.
+                      </p>
+                      <Link
+                        to="/pricing"
+                        className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
+                      >
+                        <Crown size={14} className="fill-[#111111]" />
+                        Upgrade to Pro to Unlock ($5/mo)
                       </Link>
+                    </div>
+
+                    {/* Standalone Commercial Purchase Button */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-center text-[#726F6D] font-bold">
+                        — or buy a standalone commercial license —
+                      </div>
+                      {!getClientInfo() ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))}
+                          className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                        >
+                          <Lock size={15} className="text-primary-amber" />
+                          Sign In to Buy Master PPTX ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={handleInstantDownload}
+                          className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
+                        >
+                          <ShoppingBag size={16} className="text-primary-amber" />
+                          {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                       <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
                       <span>Instant Automatic Download • Perpetual Commercial License</span>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {/* Agency Custom Polish Bridge */}
@@ -810,8 +868,8 @@ export default function TemplateDetail() {
                 </div>
                 <div className="flex justify-between">
                   <span>Library Tier:</span>
-                  <strong className={!template.is_premium || template.is_credit_eligible ? "text-emerald-600 font-bold" : "text-[#111111]"}>
-                    {!template.is_premium || template.is_credit_eligible ? "Free Community Tier (3 Daily Downloads)" : "Pro Master Collection"}
+                  <strong className={!template.is_premium ? "text-emerald-600 font-bold" : "text-[#111111]"}>
+                    {!template.is_premium ? "Free Community Tier (3 Daily Downloads)" : "Pro Master Collection"}
                   </strong>
                 </div>
                 <div className="flex justify-between">
@@ -879,7 +937,7 @@ export default function TemplateDetail() {
                         <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
                           {sim.category}
                         </span>
-                        {(!sim.is_premium || sim.is_credit_eligible) && (
+                        {(!sim.is_premium) && (
                           <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
                             <Download size={9} /> Free Deck
                           </span>

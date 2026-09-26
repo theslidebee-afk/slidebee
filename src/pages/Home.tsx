@@ -356,7 +356,7 @@ export default function Home() {
                   navigate(`/template/${template.id}`);
                 }}
                 className="w-7 h-7 rounded-full bg-white/95 text-[#111111] hover:text-primary-amber shadow-sm flex items-center justify-center transition-colors"
-                title="Quick download"
+                title={!template.is_premium ? "Free download" : "View PRO template"}
               >
                 <Download size={13} />
               </span>
