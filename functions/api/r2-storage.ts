@@ -56,19 +56,25 @@ function sanitizeFileKey(rawKey: string): string {
  */
 function getR2BucketBinding(env: any): any {
   if (!env || typeof env !== "object") return null;
-  if (env.R2_BUCKET && typeof env.R2_BUCKET.put === "function") return env.R2_BUCKET;
-  if (env["R2 bucket"] && typeof env["R2 bucket"].put === "function") return env["R2 bucket"];
-  if (env["R2_bucket"] && typeof env["R2_bucket"].put === "function") return env["R2_bucket"];
-  if (env.BUCKET && typeof env.BUCKET.put === "function") return env.BUCKET;
-  if (env.R2 && typeof env.R2.put === "function") return env.R2;
-  if (env.slidebee && typeof env.slidebee.put === "function") return env.slidebee;
-  if (env.SLIDEBEE_BUCKET && typeof env.SLIDEBEE_BUCKET.put === "function") return env.SLIDEBEE_BUCKET;
+  // Specific R2 bucket bindings only (never match project name 'slidebee' or D1 database 'DB')
+  const candidates = [
+    env.R2_BUCKET,
+    env["R2 bucket"],
+    env["R2_bucket"],
+    env.SLIDEBEE_BUCKET,
+    env.BUCKET,
+    env.R2
+  ];
 
-  // Search dynamically for any bound object implementing the Cloudflare R2Bucket interface
-  for (const key of Object.keys(env)) {
-    const val = env[key];
-    if (val && typeof val === "object" && typeof val.put === "function" && typeof val.delete === "function") {
-      return val;
+  for (const b of candidates) {
+    if (
+      b &&
+      typeof b === "object" &&
+      typeof b.put === "function" &&
+      typeof b.list === "function" &&
+      typeof b.get === "function"
+    ) {
+      return b;
     }
   }
   return null;
@@ -425,24 +431,31 @@ export async function onRequestPost(context: any) {
     // 3. Perform upload
     // Preference A: Native Cloudflare R2 bucket binding (zero tokens, fastest)
     if (r2Bucket) {
-      const putResult = await r2Bucket.put(fileKey, fileBuffer, {
-        httpMetadata: {
-          contentType: mimeType,
-          cacheControl: "public, max-age=31536000, immutable",
-        },
-      });
+      try {
+        const putResult = await r2Bucket.put(fileKey, fileBuffer, {
+          httpMetadata: {
+            contentType: mimeType,
+            cacheControl: "public, max-age=31536000, immutable",
+          },
+        });
 
-      const publicUrl = `${PUBLIC_CDN_BASE}/${fileKey}`;
-      return new Response(
-        JSON.stringify({
-          success: true,
-          key: fileKey,
-          publicUrl,
-          size: putResult?.size || fileSize,
-          uploaded: putResult?.uploaded ? new Date(putResult.uploaded).toISOString() : new Date().toISOString(),
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        const publicUrl = `${PUBLIC_CDN_BASE}/${fileKey}`;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            key: fileKey,
+            publicUrl,
+            size: putResult?.size || fileSize,
+            uploaded: putResult?.uploaded ? new Date(putResult.uploaded).toISOString() : new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (putErr: any) {
+        console.error("Native R2 binding put error:", putErr);
+        if (!apiToken) {
+          throw putErr;
+        }
+      }
     }
 
     // Preference B: REST API with user's CLOUDFLARE_API_TOKEN environment variable

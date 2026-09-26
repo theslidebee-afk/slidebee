@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import fs from 'fs'
 import { execFileSync } from 'child_process'
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "9821e608622e999a9c0f06f52a168d97";
@@ -217,8 +218,8 @@ function r2DevPlugin(): Plugin {
                 );
               }
 
-              // 3. Upload to Cloudflare R2 if token configured, else return public CDN endpoint
-              let uploadSuccess = true;
+              // 3. Upload to Cloudflare R2: try API token if configured, then fallback to wrangler CLI
+              let uploadSuccess = false;
               let uploadErrors: any = undefined;
 
               if (CF_API_TOKEN) {
@@ -244,14 +245,42 @@ function r2DevPlugin(): Plugin {
                 }
               }
 
+              // Fallback to wrangler CLI directly if no token or API failed
+              if (!uploadSuccess) {
+                try {
+                  const tmpFile = path.resolve('/tmp', `r2_upload_${Date.now()}_${path.basename(fileKey)}`);
+                  fs.writeFileSync(tmpFile, fileBuffer);
+                  execFileSync('npx', ['wrangler', 'r2', 'object', 'put', `${CF_BUCKET}/${fileKey}`, '--file', tmpFile], {
+                    encoding: 'utf-8',
+                    timeout: 60000,
+                  });
+                  try { fs.unlinkSync(tmpFile); } catch {}
+                  uploadSuccess = true;
+                  uploadErrors = undefined;
+                } catch (wranglerErr: any) {
+                  console.error('Wrangler R2 CLI upload error:', wranglerErr.message || wranglerErr);
+                  uploadSuccess = false;
+                  uploadErrors = wranglerErr.message || String(wranglerErr);
+                }
+              }
+
               res.setHeader('Content-Type', 'application/json');
+              if (!uploadSuccess) {
+                res.statusCode = 500;
+                return res.end(
+                  JSON.stringify({
+                    success: false,
+                    error: `Upload to Cloudflare R2 failed: ${uploadErrors || 'Unknown error'}`,
+                  })
+                );
+              }
+
               return res.end(
                 JSON.stringify({
-                  success: uploadSuccess,
+                  success: true,
                   key: fileKey,
                   publicUrl: `${PUBLIC_CDN_BASE}/${fileKey}`,
                   size: fileSize,
-                  errors: uploadErrors,
                 })
               );
             });
@@ -273,18 +302,43 @@ function r2DevPlugin(): Plugin {
               res.statusCode = 400;
               return res.end(JSON.stringify({ success: false, error: 'Missing key' }));
             }
-            const delRes = await fetch(
-              `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${key}`,
-              {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${CF_API_TOKEN}`,
-                },
+
+            let delSuccess = false;
+            let delErrors: any = undefined;
+
+            if (CF_API_TOKEN) {
+              try {
+                const delRes = await fetch(
+                  `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${key}`,
+                  {
+                    method: 'DELETE',
+                    headers: {
+                      Authorization: `Bearer ${CF_API_TOKEN}`,
+                    },
+                  }
+                );
+                const delJson: any = await delRes.json();
+                delSuccess = Boolean(delJson.success);
+              } catch (cfErr: any) {
+                delSuccess = false;
               }
-            );
-            const delJson: any = await delRes.json();
+            }
+
+            if (!delSuccess) {
+              try {
+                execFileSync('npx', ['wrangler', 'r2', 'object', 'delete', `${CF_BUCKET}/${key}`], {
+                  encoding: 'utf-8',
+                  timeout: 30000,
+                });
+                delSuccess = true;
+              } catch (err: any) {
+                console.error('Wrangler R2 CLI delete error:', err.message || err);
+                delErrors = err.message || String(err);
+              }
+            }
+
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify(delJson));
+            return res.end(JSON.stringify({ success: delSuccess, errors: delErrors }));
           }
         } catch (e: any) {
           res.statusCode = 500;

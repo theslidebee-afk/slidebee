@@ -292,16 +292,6 @@ export default function Admin() {
   const [zohoDeliverableEmail, setZohoDeliverableEmail] = useState(
     localStorage.getItem("slidebee_zoho_deliverable_email") || "design@theslidebee.com"
   );
-  const [zohoInquiriesEmail, setZohoInquiriesEmail] = useState(
-    localStorage.getItem("slidebee_zoho_inquiries_email") || "hello@theslidebee.com"
-  );
-  const [zohoBillingEmail, setZohoBillingEmail] = useState(
-    localStorage.getItem("slidebee_zoho_billing_email") || "billing@theslidebee.com"
-  );
-  const [testEmailRecipient, setTestEmailRecipient] = useState("");
-  const [testEmailSenderType, setTestEmailSenderType] = useState<"design" | "hello" | "billing">("design");
-  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
-  const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
 
   // Operations Hub In-App Client Email Composer State
   const [isClientEmailComposerOpen, setIsClientEmailComposerOpen] = useState(false);
@@ -339,14 +329,8 @@ export default function Admin() {
     loading: false
   });
 
-  // Razorpay Gateway Config State
-  const [razorpayKeyId, setRazorpayKeyId] = useState(localStorage.getItem("slidebee_razorpay_key") || "");
-  const [razorpayKeySecret, setRazorpayKeySecret] = useState(localStorage.getItem("slidebee_razorpay_secret") || "");
-  const [razorpayMode, setRazorpayMode] = useState<"test" | "live">((localStorage.getItem("slidebee_razorpay_mode") as any) || "test");
-
   // Site Customization & Pricing Config States
   const [activeCmsSubTab, setActiveCmsSubTab] = useState<"home" | "marquee" | "testimonials" | "services" | "portfolio" | "blog" | "about" | "contact" | "footer">("home");
-  const [activePricingSubTab, setActivePricingSubTab] = useState<"rates" | "payments" | "emails">("rates");
   const [configSaving, setConfigSaving] = useState(false);
   const [configSavedSuccess, setConfigSavedSuccess] = useState(false);
   const [configValidationError, setConfigValidationError] = useState("");
@@ -523,16 +507,9 @@ export default function Admin() {
             show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
           });
         }
-        if (configMap["razorpay_settings"]) {
-          const rz = configMap["razorpay_settings"];
-          if (rz.key_id) setRazorpayKeyId(rz.key_id);
-          if (rz.mode) setRazorpayMode(rz.mode);
-        }
         if (configMap["zoho_mail_settings"]) {
           const zh = configMap["zoho_mail_settings"];
           if (zh.deliverables) setZohoDeliverableEmail(zh.deliverables);
-          if (zh.inquiries) setZohoInquiriesEmail(zh.inquiries);
-          if (zh.billing) setZohoBillingEmail(zh.billing);
         }
       }
 
@@ -1639,73 +1616,6 @@ support@theslidebee.com`
     }
   };
 
-  // Dispatch Live Test Email via Zoho
-  const handleSendTestEmail = async () => {
-    if (!testEmailRecipient || !testEmailRecipient.includes("@")) {
-      setTestEmailStatus("Please enter a valid recipient email address.");
-      return;
-    }
-
-    setIsSendingTestEmail(true);
-    setTestEmailStatus("Dispatching test email via Zoho Mail router...");
-
-    let senderEmail = zohoDeliverableEmail;
-    let senderName = "SlideBee Design Studio";
-    let subject = "SlideBee Deliverables Test: Master File Dispatch";
-
-    if (testEmailSenderType === "hello") {
-      senderEmail = zohoInquiriesEmail;
-      senderName = "SlideBee Studio";
-      subject = "SlideBee Inquiry Test: General Desk Routing";
-    } else if (testEmailSenderType === "billing") {
-      senderEmail = zohoBillingEmail;
-      senderName = "SlideBee Billing";
-      subject = "SlideBee Billing Test: Invoice & Payment Receipt";
-    }
-
-    try {
-      const res = await fetch("/api/send-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-slidebee-app-token": "slidebee_internal_app_2026"
-        },
-        body: JSON.stringify({
-          to: testEmailRecipient.trim(),
-          fromEmail: senderEmail,
-          fromName: senderName,
-          replyTo: senderEmail,
-          subject,
-          html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; background-color: #FFF9E8; padding: 28px; border-radius: 14px; color: #111111;">
-              <h2 style="color: #936610; margin-top: 0;">SlideBee Zoho Mail Test Dispatch</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-                This diagnostic test confirms that your custom domain Zoho email routing is operational on <strong>theslidebee.com</strong>.
-              </p>
-              <div style="background-color: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #FCBF14; font-size: 13px;">
-                <p style="margin: 4px 0;"><strong>Sender Mailbox:</strong> ${senderEmail}</p>
-                <p style="margin: 4px 0;"><strong>Display Name:</strong> ${senderName}</p>
-                <p style="margin: 4px 0;"><strong>Recipient:</strong> ${testEmailRecipient.trim()}</p>
-                <p style="margin: 4px 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-              </div>
-            </div>
-          `
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setTestEmailStatus(`Success: Test email dispatched from ${senderEmail} to ${testEmailRecipient.trim()}.`);
-      } else {
-        setTestEmailStatus(`Notice: ${data?.error || data?.message || "Delivery queued via mail router."}`);
-      }
-    } catch (e: any) {
-      setTestEmailStatus(`Dispatcher notice: ${e.message}`);
-    } finally {
-      setIsSendingTestEmail(false);
-    }
-  };
-
   // Open & initialize the In-App Client Email Composer for an Order
   const handleOpenClientEmailComposer = (order: any, templateType: "milestone" | "assets" | "ready" = "milestone") => {
     if (!order) return;
@@ -2505,7 +2415,7 @@ SlideBee Design Studio`
               >
                 <div className="flex items-center gap-2.5">
                   <DollarSign size={15} />
-                  <span>Pricing & Gateway</span>
+                  <span>Pricing Rates</span>
                 </div>
               </button>
             </div>
@@ -6269,57 +6179,46 @@ SlideBee Design Studio`
               </div>
             )}
 
-            {/* Sub-nav for Pricing & Billing */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#111111]/10">
-              {[
-                { id: "rates", label: "Pricing Rates & Retainers", icon: DollarSign },
-                { id: "payments", label: "Razorpay Gateway", icon: CreditCard },
-                { id: "emails", label: "Zoho Mail Senders", icon: Mail },
-              ].map((subTab) => {
-                const IconComponent = subTab.icon;
-                return (
-                  <button
-                    key={subTab.id}
-                    onClick={() => setActivePricingSubTab(subTab.id as any)}
-                    className={`hex-pill px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                      activePricingSubTab === subTab.id
-                        ? "bg-primary text-[#111111] shadow-md scale-105"
-                        : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <IconComponent size={13} />
-                    {subTab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* SUB-TAB: PRICING CMS */}
-            {activePricingSubTab === "rates" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#111111]/8 mb-6">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                      Service Pricing Rates & Retainers
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Control per-slide prices for all tiers in USD ($) and INR (₹)
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleSaveConfig("pricing", siteConfigs["pricing"])}
-                    disabled={configSaving}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-5 py-2 text-xs flex items-center gap-1.5 shadow"
-                  >
-                    <Save size={14} /> {configSaving ? "Saving..." : "Save Pricing"}
-                  </button>
+            {/* PLATFORM CONFIG: PRICING RATES & TIERS */}
+            <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                <div>
+                  <h3 className="text-base font-heading font-extrabold text-[#111111]">
+                    Platform Pricing Rates & Tiers
+                  </h3>
+                  <p className="text-xs text-[#726F6D]">
+                    Control live rates for bespoke presentation services, marketplace access tiers, and enterprise retainers in USD ($) and INR (₹).
+                  </p>
                 </div>
+                <button
+                  onClick={() => handleSaveConfig("pricing", siteConfigs["pricing"])}
+                  disabled={configSaving}
+                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow cursor-pointer transition-all hover:scale-105"
+                >
+                  <Save size={14} /> {configSaving ? "Saving..." : "Save Pricing Rates"}
+                </button>
+              </div>
+
+              {/* SECTION 1: BESPOKE STUDIO SERVICES (PER-SLIDE) */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                    Tier 1
+                  </span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
+                    1. Bespoke Presentation Studio (Per-Slide Rates)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-[#726F6D] mb-4">
+                  Controls the per-slide pricing displayed across /services, /pricing comparison, and the /ordernow proposal engine.
+                </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      1. Presentation Redesign
-                    </h4>
+                  {/* Service 1 */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Presentation Redesign
+                    </h5>
                     <div className="space-y-3">
                       <div>
                         <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
@@ -6327,7 +6226,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_redesign ?? ""}
+                          value={siteConfigs["pricing"]?.rate_usd_redesign ?? 19}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_usd_redesign: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6341,7 +6240,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_redesign ?? ""}
+                          value={siteConfigs["pricing"]?.rate_inr_redesign ?? 1499}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_inr_redesign: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6352,10 +6251,11 @@ SlideBee Design Studio`
                     </div>
                   </div>
 
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      2. Venture Pitch Deck
-                    </h4>
+                  {/* Service 2 */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Venture Pitch Deck
+                    </h5>
                     <div className="space-y-3">
                       <div>
                         <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
@@ -6363,7 +6263,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_pitch ?? ""}
+                          value={siteConfigs["pricing"]?.rate_usd_pitch ?? 29}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_usd_pitch: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6377,7 +6277,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_pitch ?? ""}
+                          value={siteConfigs["pricing"]?.rate_inr_pitch ?? 2299}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_inr_pitch: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6388,10 +6288,11 @@ SlideBee Design Studio`
                     </div>
                   </div>
 
-                  <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      3. Executive Keynote
-                    </h4>
+                  {/* Service 3 */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Executive Keynote
+                    </h5>
                     <div className="space-y-3">
                       <div>
                         <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
@@ -6399,7 +6300,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_executive ?? ""}
+                          value={siteConfigs["pricing"]?.rate_usd_executive ?? 49}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_usd_executive: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6413,7 +6314,7 @@ SlideBee Design Studio`
                         </label>
                         <input
                           type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_executive ?? ""}
+                          value={siteConfigs["pricing"]?.rate_inr_executive ?? 3899}
                           onChange={(e) => setSiteConfigs({
                             ...siteConfigs,
                             pricing: { ...siteConfigs["pricing"], rate_inr_executive: e.target.value === "" ? "" : Number(e.target.value) }
@@ -6424,458 +6325,189 @@ SlideBee Design Studio`
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Pro Access Subscription & Yearly 50% Off Config */}
-                <div className="mt-8 pt-6 border-t border-[#111111]/8">
-                  <h4 className="text-sm font-heading font-extrabold text-[#111111] mb-1">
-                    SlideBee Pro Access Subscription & Yearly Deal
+              {/* SECTION 2: TEMPLATE MARKETPLACE ACCESS PLANS */}
+              <div className="pt-6 border-t border-[#111111]/8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                    Tier 2
+                  </span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
+                    2. Template Marketplace Access Plans & Deals (/pricing)
                   </h4>
-                  <p className="text-xs text-[#726F6D] mb-4">
-                    Set monthly base price and yearly discount percentage (automatically calculates 50% off yearly billing).
-                  </p>
+                </div>
+                <p className="text-[11px] text-[#726F6D] mb-4">
+                  Controls the live subscription cards, discount calculations, and checkout fees for the template catalog.
+                </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                    <div>
-                      <label className="text-xs font-bold text-[#111111] block mb-1">
-                        Monthly Base Price (₹ INR)
-                      </label>
-                      <input
-                        type="number"
-                        value={siteConfigs["pricing"]?.pro_monthly_inr ?? ""}
-                        onChange={(e) => setSiteConfigs({
-                          ...siteConfigs,
-                          pricing: { 
-                            ...siteConfigs["pricing"], 
-                            pro_monthly_inr: e.target.value === "" ? "" : Number(e.target.value) 
-                          }
-                        })}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-[#111111] block mb-1">
-                        Yearly Discount Percentage (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={siteConfigs["pricing"]?.pro_discount_percent ?? ""}
-                        onChange={(e) => setSiteConfigs({
-                          ...siteConfigs,
-                          pricing: { 
-                            ...siteConfigs["pricing"], 
-                            pro_discount_percent: e.target.value === "" ? "" : Number(e.target.value) 
-                          }
-                        })}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                      />
-                    </div>
-
-                    <div className="flex flex-col justify-between bg-white p-3.5 rounded-xl border border-primary/40">
-                      <span className="text-[10px] font-extrabold uppercase text-primary-amber tracking-wider">
-                        Auto-Calculated Yearly Price
-                      </span>
-                      <div className="text-xl font-heading font-black text-[#111111]">
-                        ₹{Math.round(
-                          ((Number(siteConfigs["pricing"]?.pro_monthly_inr) || 199) * 12) * 
-                          (1 - (Number(siteConfigs["pricing"]?.pro_discount_percent) || 50) / 100)
-                        ).toLocaleString()} <span className="text-xs font-medium text-[#726F6D]">/year</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* Monthly Pro Plan */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Monthly Pro Plan
+                    </h5>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Price ($/mo)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_monthly_usd ?? 5}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_monthly_usd: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
                       </div>
-                      <span className="text-[10px] text-green-700 font-bold">
-                        Saves {(Number(siteConfigs["pricing"]?.pro_discount_percent) || 50)}% compared to 12 monthly payments
-                      </span>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Price (₹/mo)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_monthly_inr ?? 399}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_monthly_inr: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Yearly Pro Plan */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Yearly Pro Plan (Best Value)
+                    </h5>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Price ($/year)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_yearly_usd ?? 45}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_yearly_usd: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Price (₹/year)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_yearly_inr ?? 3499}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_yearly_inr: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lifetime VIP Access */}
+                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
+                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
+                      Lifetime VIP Access
+                    </h5>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          USD Price ($ one-time)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_lifetime_usd ?? 75}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_lifetime_usd: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
+                          INR Price (₹ one-time)
+                        </label>
+                        <input
+                          type="number"
+                          value={siteConfigs["pricing"]?.tier_lifetime_inr ?? 5999}
+                          onChange={(e) => setSiteConfigs({
+                            ...siteConfigs,
+                            pricing: { ...siteConfigs["pricing"], tier_lifetime_inr: e.target.value === "" ? "" : Number(e.target.value) }
+                          })}
+                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Enterprise Retainer Pricing Config */}
-                <div className="mt-8 pt-6 border-t border-[#111111]/8">
-                  <h4 className="text-sm font-heading font-extrabold text-[#111111] mb-1">
-                    Dedicated Enterprise Retainer Pricing
+              {/* SECTION 3: DEDICATED ENTERPRISE PRESENTATION RETAINER */}
+              <div className="pt-6 border-t border-[#111111]/8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                    Tier 3
+                  </span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
+                    3. Dedicated Enterprise Retainer
                   </h4>
-                  <p className="text-xs text-[#726F6D] mb-4">
-                    Set the monthly retainer rate displayed in the Dedicated Presentation Team section on /pricing.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                    <div>
-                      <label className="text-xs font-bold text-[#111111] block mb-1">
-                        Enterprise Retainer Monthly Rate ($ USD)
-                      </label>
-                      <input
-                        type="number"
-                        value={siteConfigs["pricing"]?.monthly_retainer_usd ?? ""}
-                        onChange={(e) => setSiteConfigs({
-                          ...siteConfigs,
-                          pricing: { 
-                            ...siteConfigs["pricing"], 
-                            monthly_retainer_usd: e.target.value === "" ? "" : Number(e.target.value) 
-                          }
-                        })}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-[#111111] block mb-1">
-                        Enterprise Retainer Monthly Rate (₹ INR)
-                      </label>
-                      <input
-                        type="number"
-                        value={siteConfigs["pricing"]?.monthly_retainer_inr ?? ""}
-                        onChange={(e) => setSiteConfigs({
-                          ...siteConfigs,
-                          pricing: { 
-                            ...siteConfigs["pricing"], 
-                            monthly_retainer_inr: e.target.value === "" ? "" : Number(e.target.value) 
-                          }
-                        })}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                      />
-                    </div>
-                  </div>
                 </div>
-              </div>
-            )}
+                <p className="text-[11px] text-[#726F6D] mb-4">
+                  Set the monthly retainer rate displayed in the Dedicated Presentation Team section on /pricing.
+                </p>
 
-            {/* SUB-TAB: RAZORPAY PAYMENT GATEWAY SETTINGS */}
-            {activePricingSubTab === "payments" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
                   <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                      Razorpay Payment Gateway Integration
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Configure your Razorpay API Test or Live keys for template checkouts and payments.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        localStorage.setItem("slidebee_razorpay_key", razorpayKeyId);
-                        localStorage.setItem("slidebee_razorpay_secret", razorpayKeySecret);
-                        localStorage.setItem("slidebee_razorpay_mode", razorpayMode);
-                        try {
-                          await supabase.from("site_config").upsert([
-                            {
-                              key: "razorpay_settings",
-                              value: {
-                                key_id: razorpayKeyId,
-                                mode: razorpayMode,
-                                updated_at: new Date().toISOString()
-                              }
-                            }
-                          ], { onConflict: "key" });
-                        } catch (e) {
-                          console.warn("Supabase config save notice:", e);
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Enterprise Retainer Monthly Rate ($ USD)
+                    </label>
+                    <input
+                      type="number"
+                      value={siteConfigs["pricing"]?.monthly_retainer_usd ?? 1490}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        pricing: { 
+                          ...siteConfigs["pricing"], 
+                          monthly_retainer_usd: e.target.value === "" ? "" : Number(e.target.value) 
                         }
-                        setConfigSavedSuccess(true);
-                        setTimeout(() => setConfigSavedSuccess(false), 3000);
-                      }}
-                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2 text-xs flex items-center gap-1.5 shadow"
-                    >
-                      <Save size={14} /> Save Gateway Keys
-                    </button>
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
+                    />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
-                      Razorpay Key ID (Public Key)
+                    <label className="text-xs font-bold text-[#111111] block mb-1">
+                      Enterprise Retainer Monthly Rate (₹ INR)
                     </label>
                     <input
-                      type="text"
-                      placeholder="rzp_test_... or rzp_live_..."
-                      value={razorpayKeyId}
-                      onChange={(e) => setRazorpayKeyId(e.target.value.trim())}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-mono font-bold text-[#111111] outline-none"
+                      type="number"
+                      value={siteConfigs["pricing"]?.monthly_retainer_inr ?? 119000}
+                      onChange={(e) => setSiteConfigs({
+                        ...siteConfigs,
+                        pricing: { 
+                          ...siteConfigs["pricing"], 
+                          monthly_retainer_inr: e.target.value === "" ? "" : Number(e.target.value) 
+                        }
+                      })}
+                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
                     />
-                    <span className="text-[10px] text-[#726F6D] mt-1 block">
-                      Found in Razorpay Dashboard &gt; Settings &gt; API Keys.
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
-                      Razorpay Key Secret (Private Key)
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Enter secret key..."
-                      value={razorpayKeySecret}
-                      onChange={(e) => setRazorpayKeySecret(e.target.value.trim())}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2.5 text-xs font-mono font-bold text-[#111111] outline-none"
-                    />
-                    <span className="text-[10px] text-[#726F6D] mt-1 block">
-                      Used for backend webhook verification & automated billing.
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1.5">
-                      Environment Mode
-                    </label>
-                    <div className="flex items-center gap-4 pt-2">
-                      <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                        <input
-                          type="radio"
-                          name="razorpay_mode"
-                          checked={razorpayMode === "test"}
-                          onChange={() => setRazorpayMode("test")}
-                          className="accent-primary"
-                        />
-                        <span>Test Mode (Sandbox)</span>
-                      </label>
-                      <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                        <input
-                          type="radio"
-                          name="razorpay_mode"
-                          checked={razorpayMode === "live"}
-                          onChange={() => setRazorpayMode("live")}
-                          className="accent-primary"
-                        />
-                        <span>Live Mode (Production)</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#FFF9E8] p-4 rounded-xl border border-[#111111]/8 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary-amber shrink-0 mt-0.5">
-                    <CreditCard size={16} />
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <span className="font-extrabold text-[#111111] block">Integration Status:</span>
-                    <p className="text-[#726F6D] leading-relaxed">
-                      {razorpayKeyId ? (
-                        <span className="text-emerald-800 font-bold">
-                          Key configured ({razorpayKeyId.slice(0, 10)}...). Real test checkouts are active on all template downloads!
-                        </span>
-                      ) : (
-                        <span className="text-amber-800 font-medium">
-                          Waiting for API Key: You can paste your test key (<code className="font-mono text-[10px]">rzp_test_...</code>) right here whenever you obtain it from your Razorpay dashboard. In the meantime, the storefront is equipped with a smooth test-mode payment simulator.
-                        </span>
-                      )}
-                    </p>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* SUB-TAB: ZOHO MAIL SENDER ROUTING */}
-            {activePricingSubTab === "emails" && (
-              <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
-                  <div>
-                    <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
-                      Zoho Mail Senders & Deliverable Dispatcher
-                    </h3>
-                    <p className="text-xs text-[#726F6D]">
-                      Configure which Zoho custom domain address dispatches templates, inquiry replies, and invoices.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      localStorage.setItem("slidebee_zoho_deliverable_email", zohoDeliverableEmail);
-                      localStorage.setItem("slidebee_zoho_inquiries_email", zohoInquiriesEmail);
-                      localStorage.setItem("slidebee_zoho_billing_email", zohoBillingEmail);
-                      try {
-                        await supabase.from("site_config").upsert([
-                          {
-                            key: "zoho_mail_settings",
-                            value: {
-                              deliverables: zohoDeliverableEmail,
-                              inquiries: zohoInquiriesEmail,
-                              billing: zohoBillingEmail,
-                              updated_at: new Date().toISOString()
-                            }
-                          }
-                        ], { onConflict: "key" });
-                      } catch (e) {
-                        console.warn("Supabase config save notice:", e);
-                      }
-                      setConfigSavedSuccess(true);
-                      setTimeout(() => setConfigSavedSuccess(false), 3000);
-                    }}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2 text-xs flex items-center gap-1.5 shadow cursor-pointer"
-                  >
-                    <Save size={14} /> Save Mailbox Routing
-                  </button>
-                </div>
-
-                {/* Sender Accounts Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {/* Account 1: Deliverables */}
-                  <div className="bg-[#FFF9E8] border-2 border-primary/40 rounded-2xl p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="hex-pill-sm bg-[#111111] text-primary text-[10px] font-black px-2.5 py-0.5 uppercase">
-                        Template Deliverables
-                      </span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Active" />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-black text-sm text-[#111111]">
-                        Design & Production Studio
-                      </h4>
-                      <p className="text-[11px] text-[#726F6D] mt-0.5">
-                        Dispatches master .pptx template files and commercial licenses to paying clients.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                        Zoho Sender Mailbox:
-                      </label>
-                      <input
-                        type="email"
-                        value={zohoDeliverableEmail}
-                        onChange={(e) => setZohoDeliverableEmail(e.target.value.trim())}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-mono font-bold text-[#111111] outline-none"
-                      />
-                    </div>
-                    <div className="text-[10px] text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-                      <span>Anti-Bot Shield: Direct email delivery only</span>
-                    </div>
-                  </div>
-
-                  {/* Account 2: Inquiries & Welcome */}
-                  <div className="bg-[#FFF9E8] border border-primary/20 rounded-2xl p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase">
-                        General Inquiries
-                      </span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" title="Active" />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-black text-sm text-[#111111]">
-                        Client Relations & Desk
-                      </h4>
-                      <p className="text-[11px] text-[#726F6D] mt-0.5">
-                        Sends new account welcome emails, waitlist confirmations, and contact form replies.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                        Zoho Sender Mailbox:
-                      </label>
-                      <input
-                        type="email"
-                        value={zohoInquiriesEmail}
-                        onChange={(e) => setZohoInquiriesEmail(e.target.value.trim())}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-mono font-bold text-[#111111] outline-none"
-                      />
-                    </div>
-                    <div className="text-[10px] text-[#726F6D] font-medium bg-white px-2.5 py-1.5 rounded-lg border border-[#111111]/8">
-                      Default Reply-To: <code className="font-mono text-[9px] text-[#111111]">hello@theslidebee.com</code>
-                    </div>
-                  </div>
-
-                  {/* Account 3: Billing & Receipts */}
-                  <div className="bg-[#FFF9E8] border border-primary/20 rounded-2xl p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase">
-                        Finance & Receipts
-                      </span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" title="Active" />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-black text-sm text-[#111111]">
-                        Billing & Accounts
-                      </h4>
-                      <p className="text-[11px] text-[#726F6D] mt-0.5">
-                        Handles subscription receipts, Razorpay payment confirmations, and invoices.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                        Zoho Sender Mailbox:
-                      </label>
-                      <input
-                        type="email"
-                        value={zohoBillingEmail}
-                        onChange={(e) => setZohoBillingEmail(e.target.value.trim())}
-                        className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-mono font-bold text-[#111111] outline-none"
-                      />
-                    </div>
-                    <div className="text-[10px] text-[#726F6D] font-medium bg-white px-2.5 py-1.5 rounded-lg border border-[#111111]/8">
-                      Default Reply-To: <code className="font-mono text-[9px] text-[#111111]">billing@theslidebee.com</code>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Live Diagnostic Test Dispatcher */}
-                <div className="border border-primary/30 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-heading font-black text-xs text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
-                        <Mail size={14} className="text-primary-amber" /> Send Real Live Test Dispatch via Zoho
-                      </h4>
-                      <p className="text-[11px] text-[#726F6D]">
-                        Test the Cloudflare Pages edge function and Zoho Mail router in real time.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                    <div className="sm:col-span-4">
-                      <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                        Choose Sender Mailbox:
-                      </label>
-                      <select
-                        value={testEmailSenderType}
-                        onChange={(e) => setTestEmailSenderType(e.target.value as any)}
-                        className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-bold text-[#111111] outline-none cursor-pointer"
-                      >
-                        <option value="design">design@theslidebee.com (Deliverables)</option>
-                        <option value="hello">hello@theslidebee.com (General / Welcome)</option>
-                        <option value="billing">billing@theslidebee.com (Billing)</option>
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-5">
-                      <label className="text-[10px] font-bold text-[#726F6D] block mb-1">
-                        Recipient Test Email Address:
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="your-personal-email@gmail.com"
-                        value={testEmailRecipient}
-                        onChange={(e) => setTestEmailRecipient(e.target.value)}
-                        className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-medium text-[#111111] outline-none"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-3">
-                      <button
-                        type="button"
-                        disabled={isSendingTestEmail || !testEmailRecipient}
-                        onClick={handleSendTestEmail}
-                        className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-2 text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-40 cursor-pointer"
-                      >
-                        <Send size={13} className="text-primary" />
-                        {isSendingTestEmail ? "Dispatching..." : "Send Test Email"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {testEmailStatus && (
-                    <div className={`p-3 rounded-xl text-xs font-bold ${
-                      testEmailStatus.toLowerCase().includes("success") 
-                        ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-                        : "bg-amber-50 border border-amber-200 text-amber-800"
-                    }`}>
-                      {testEmailStatus}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
 

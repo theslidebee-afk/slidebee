@@ -30,6 +30,12 @@ export default function Pricing() {
     rate_inr_executive: 3899,
     monthly_retainer_usd: 1490,
     monthly_retainer_inr: 119000,
+    tier_monthly_usd: 5,
+    tier_monthly_inr: 399,
+    tier_yearly_usd: 45,
+    tier_yearly_inr: 3499,
+    tier_lifetime_usd: 75,
+    tier_lifetime_inr: 5999,
     pro_monthly_inr: 199,
     pro_discount_percent: 50
   });
@@ -63,36 +69,44 @@ export default function Pricing() {
   }, [location.hash]);
 
   const handleSubscribeTier = async (tier: "monthly" | "yearly" | "lifetime") => {
+    const monthlyUsd = Number(pricingConfig.tier_monthly_usd) || 5;
+    const yearlyUsd = Number(pricingConfig.tier_yearly_usd) || 45;
+    const lifetimeUsd = Number(pricingConfig.tier_lifetime_usd) || 75;
+
+    const monthlyInr = Number(pricingConfig.tier_monthly_inr) || 399;
+    const yearlyInr = Number(pricingConfig.tier_yearly_inr) || 3499;
+    const lifetimeInr = Number(pricingConfig.tier_lifetime_inr) || 5999;
+
     let amount = 5;
     let title = "SlideBee Monthly Pro";
     let desc = "30 Premium Presentation Templates per month";
 
     if (currency === "USD") {
       if (tier === "monthly") {
-        amount = 5;
-        title = "SlideBee Monthly Pro ($5/mo)";
+        amount = monthlyUsd;
+        title = `SlideBee Monthly Pro ($${monthlyUsd}/mo)`;
         desc = "30 Premium Presentation Templates per month";
       } else if (tier === "yearly") {
-        amount = 45;
-        title = "SlideBee Yearly Pro ($45/yr)";
+        amount = yearlyUsd;
+        title = `SlideBee Yearly Pro ($${yearlyUsd}/yr)`;
         desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service";
       } else if (tier === "lifetime") {
-        amount = 75;
-        title = "SlideBee Lifetime VIP ($75 one-time)";
+        amount = lifetimeUsd;
+        title = `SlideBee Lifetime VIP ($${lifetimeUsd} one-time)`;
         desc = "Unlimited Premium Presentation Downloads Forever";
       }
     } else {
       if (tier === "monthly") {
-        amount = 399;
-        title = "SlideBee Monthly Pro (₹399/mo)";
+        amount = monthlyInr;
+        title = `SlideBee Monthly Pro (₹${monthlyInr}/mo)`;
         desc = "30 Premium Presentation Templates per month";
       } else if (tier === "yearly") {
-        amount = 3499;
-        title = "SlideBee Yearly Pro (₹3,499/yr)";
+        amount = yearlyInr;
+        title = `SlideBee Yearly Pro (₹${yearlyInr.toLocaleString()}/yr)`;
         desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service";
       } else if (tier === "lifetime") {
-        amount = 5999;
-        title = "SlideBee Lifetime VIP (₹5,999 one-time)";
+        amount = lifetimeInr;
+        title = `SlideBee Lifetime VIP (₹${lifetimeInr.toLocaleString()} one-time)`;
         desc = "Unlimited Premium Presentation Downloads Forever";
       }
     }
@@ -269,7 +283,7 @@ export default function Pricing() {
               </div>
 
               <div className="text-4xl font-heading font-black text-[#111111] mb-1">
-                {currency === "USD" ? "$5" : "₹399"}
+                {currency === "USD" ? `$${pricingConfig.tier_monthly_usd ?? 5}` : `₹${pricingConfig.tier_monthly_inr ?? 399}`}
                 <span className="text-xs font-normal text-[#726F6D] ml-1">/month</span>
               </div>
               <p className="text-xs text-[#726F6D] font-medium mb-6">
@@ -320,11 +334,11 @@ export default function Pricing() {
               </div>
 
               <div className="text-4xl font-heading font-black text-white mb-0.5">
-                {currency === "USD" ? "$45" : "₹3,499"}
+                {currency === "USD" ? `$${pricingConfig.tier_yearly_usd ?? 45}` : `₹${(Number(pricingConfig.tier_yearly_inr) || 3499).toLocaleString()}`}
                 <span className="text-xs font-normal text-[#888888] ml-1">/year</span>
               </div>
               <p className="text-[11px] text-primary font-bold mb-2">
-                Equivalent to {currency === "USD" ? "$3.75/month" : "₹291/month"}
+                Equivalent to {currency === "USD" ? `$${((Number(pricingConfig.tier_yearly_usd) || 45) / 12).toFixed(2)}/month` : `₹${Math.round((Number(pricingConfig.tier_yearly_inr) || 3499) / 12)}/month`}
               </p>
               <p className="text-xs text-[#AAAAAA] font-medium mb-6">
                 Everything in Monthly plus our exclusive bespoke 10-slide design bonus.
@@ -369,7 +383,7 @@ export default function Pricing() {
               </div>
 
               <div className="text-4xl font-heading font-black text-[#111111] mb-1">
-                {currency === "USD" ? "$75" : "₹5,999"}
+                {currency === "USD" ? `$${pricingConfig.tier_lifetime_usd ?? 75}` : `₹${(Number(pricingConfig.tier_lifetime_inr) || 5999).toLocaleString()}`}
                 <span className="text-xs font-normal text-[#726F6D] ml-1">one-time</span>
               </div>
               <p className="text-xs text-[#726F6D] font-medium mb-6">
@@ -416,7 +430,7 @@ export default function Pricing() {
                 YEARLY PLAN BONUS: Free Design Service for Up to 10 Slides
               </h3>
               <p className="text-sm font-medium text-[#111111]/85 leading-relaxed">
-                When you subscribe to the SlideBee Yearly Plan ({currency === "USD" ? "$45" : "₹3,499"}), our senior presentation studio designers will personally build or redesign up to 10 custom slides for your next investor pitch, keynote, or board meeting for free ({currency === "USD" ? "$190+" : "₹14,990+"} value).
+                When you subscribe to the SlideBee Yearly Plan ({currency === "USD" ? `$${pricingConfig.tier_yearly_usd ?? 45}` : `₹${(Number(pricingConfig.tier_yearly_inr) || 3499).toLocaleString()}`}), our senior presentation studio designers will personally build or redesign up to 10 custom slides for your next investor pitch, keynote, or board meeting for free ({currency === "USD" ? `$${(Number(pricingConfig.rate_usd_redesign) || 19) * 10}+` : `₹${((Number(pricingConfig.rate_inr_redesign) || 1499) * 10).toLocaleString()}+`} value).
               </p>
             </div>
             <button
