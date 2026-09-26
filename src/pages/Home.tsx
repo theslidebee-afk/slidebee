@@ -19,6 +19,7 @@ import {
   Monitor,
   Flame,
   ChevronRight,
+  ChevronDown,
   Users,
   Gift
 } from "lucide-react";
@@ -389,24 +390,6 @@ export default function Home() {
               At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.
             </p>
 
-            {/* Action Buttons Row */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 w-full sm:w-auto">
-              <button
-                onClick={scrollToTemplates}
-                className="w-full sm:w-auto hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-sm sm:text-base font-black px-8 py-3.5 sm:py-4 rounded-full flex items-center justify-center gap-2 transition-all shadow-xl shadow-[#FCBF14]/25 hover:scale-105 cursor-pointer"
-              >
-                <span>Explore Templates</span>
-                <ArrowRight size={17} />
-              </button>
-
-              <Link
-                to="/ordernow"
-                className="w-full sm:w-auto hex-pill bg-[#111111] hover:bg-black text-white text-sm sm:text-base font-bold px-7 py-3.5 sm:py-4 rounded-full flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-105"
-              >
-                <span>Get a Custom Presentation</span>
-              </Link>
-            </div>
-
             {/* Trust Indicators Row */}
             <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-6 border-t border-[#111111]/10 w-full">
               <div className="flex items-center gap-2">
@@ -441,13 +424,27 @@ export default function Home() {
             </span>
           </div>
 
+          {/* Smooth Floating Scroll Cue to Catalog */}
+          <div className="mt-8 text-center relative z-20">
+            <button
+              onClick={scrollToTemplates}
+              className="inline-flex items-center gap-2 bg-[#FFFDF5]/90 hover:bg-white text-[#111111] px-6 py-2.5 rounded-full border border-black/10 shadow-lg hover:shadow-xl hover:scale-105 transition-all text-xs font-black tracking-tight cursor-pointer backdrop-blur-md group"
+            >
+              <span>Explore Master Templates</span>
+              <ChevronDown size={14} className="text-[#FCBF14] group-hover:translate-y-0.5 transition-transform" />
+            </button>
+          </div>
+
         </div>
+
+        {/* Seamless Bottom Gradient Feather into Templates Section */}
+        <div className="absolute bottom-0 left-0 right-0 h-40 sm:h-56 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
       </section>
 
       {/* ========================================================================= */}
       {/* 3. CONTINUOUS TEMPLATES SECTION (#templates)                              */}
       {/* ========================================================================= */}
-      <section id="templates" className="scroll-mt-24 py-16 border-t-2 border-primary/20">
+      <section id="templates" className="scroll-mt-24 pt-4 sm:pt-8 pb-16 relative z-20">
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
