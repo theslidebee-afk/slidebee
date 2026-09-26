@@ -3,24 +3,21 @@ import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Download,
-  Layers,
   Briefcase,
-  Sliders,
-  Sparkles,
   Search,
-  Check,
   Clock,
   ChevronLeft,
   ChevronRight,
   LogOut,
   HelpCircle,
   Bell,
-  Settings,
   ArrowRight,
   FileText,
-  User,
-  ShieldCheck,
-  ExternalLink
+  MessageCircle,
+  ChevronDown,
+  LayoutGrid,
+  CreditCard,
+  Trash2
 } from "lucide-react";
 import SlideBeeLogo from "./SlideBeeLogo";
 
@@ -44,6 +41,78 @@ interface UserModernDashboardProps {
   onDeleteAccount?: () => void;
 }
 
+// Minimalist Presentation Easel Whiteboard SVG Icon (matching reference mockup)
+const PresentationEaselIcon: React.FC<{ className?: string }> = ({ className = "w-10 h-10" }) => (
+  <svg
+    viewBox="0 0 64 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Top hanging peg */}
+    <path d="M32 9V13" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
+    
+    {/* Whiteboard Frame */}
+    <rect
+      x="12"
+      y="13"
+      width="40"
+      height="28"
+      rx="3"
+      stroke="#C9982E"
+      strokeWidth="2.2"
+      fill="#FFFBF2"
+    />
+    
+    {/* Pie Chart on left of whiteboard */}
+    <circle cx="23" cy="27" r="6.5" stroke="#C9982E" strokeWidth="1.8" fill="none" />
+    <path d="M23 20.5V27H29.5" stroke="#C9982E" strokeWidth="1.8" strokeLinecap="round" />
+    
+    {/* Horizontal Bar Chart lines on right */}
+    <path d="M35 23H44" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
+    <path d="M35 27.5H41" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
+    <path d="M35 32H45" stroke="#C9982E" strokeWidth="2" strokeLinecap="round" />
+    
+    {/* Bottom marker ledge */}
+    <path d="M9 41H55" stroke="#C9982E" strokeWidth="2.5" strokeLinecap="round" />
+    
+    {/* Easel Tripod legs */}
+    <path d="M20 43L13 57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M32 43V57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M44 43L51 57" stroke="#C9982E" strokeWidth="2.2" strokeLinecap="round" />
+  </svg>
+);
+
+// Regular pointy-top hexagon path generator
+const Hexagon: React.FC<{
+  cx: number;
+  cy: number;
+  r: number;
+  stroke?: string;
+  strokeWidth?: number;
+  fill?: string;
+}> = ({ cx, cy, r, stroke = "#E3B244", strokeWidth = 1.6, fill = "none" }) => {
+  const w = (r * Math.sqrt(3)) / 2;
+  const h = r / 2;
+  const points = [
+    `${cx},${cy - r}`,
+    `${cx + w},${cy - h}`,
+    `${cx + w},${cy + h}`,
+    `${cx},${cy + r}`,
+    `${cx - w},${cy + h}`,
+    `${cx - w},${cy - h}`,
+  ].join(" ");
+
+  return (
+    <polygon
+      points={points}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      fill={fill}
+    />
+  );
+};
+
 export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   currentUser,
   userProfile,
@@ -56,24 +125,21 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   downloadsThisMonth,
   remainingFreeToday,
   remainingPremiumThisMonth,
-  proDaysRemaining,
+  proDaysRemaining: _proDaysRemaining,
   isProUser: _isProUser,
   isProExpired: _isProExpired,
   handleLogout,
-  studioWhatsapp: _studioWhatsapp,
+  studioWhatsapp = "919876543210",
+  onDeleteAccount,
 }) => {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "downloads" | "briefs" | "tier">("dashboard");
+  const [activeTab, setActiveTab] = useState<"overview" | "purchased" | "custom" | "marketplace" | "ledger">("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(26);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(17);
 
   const clientName =
     userProfile?.full_name ||
     currentUser.user_metadata?.full_name ||
     currentUser.email.split("@")[0];
-  const clientCompany =
-    userProfile?.company ||
-    currentUser.user_metadata?.company ||
-    "Enterprise Client";
 
   // Quota metrics calculation
   const quotaTotal = userTier === "free" ? 3 : (userTier === "lifetime" ? 45 : 30);
@@ -84,64 +150,60 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   // Circular gauge SVG helpers
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (quotaPercent / 100) * circumference;
+  // Available design credits gauge
+  const creditGaugePercent = quotaPercent > 0 ? (100 - quotaPercent) : 76;
+  const creditStrokeDashoffset = circumference - (creditGaugePercent / 100) * circumference;
 
-  const scorePercent = userTier === "lifetime" ? 100 : userTier === "yearly" ? 85 : userTier === "monthly" ? 65 : 35;
-  const scoreStrokeDashoffset = circumference - (scorePercent / 100) * circumference;
+  // Project milestone gauge
+  const milestoneGaugePercent = 75;
+  const milestoneStrokeDashoffset = circumference - (milestoneGaugePercent / 100) * circumference;
 
-  // Recent downloads or sample master slides
-  const defaultRecentSlides = [
+  // Active custom order or fallback
+  const activeOrder = userOrders.find(
+    (o) => o.status !== "completed" && o.status !== "delivered"
+  ) || userOrders[0];
+
+  const activeProjectTitle =
+    activeOrder?.project_title || activeOrder?.service_type || "Q4 Investor Pitch Deck";
+  const activeMilestone =
+    activeOrder?.status === "draft_1"
+      ? "Draft 1 (Blueprint)"
+      : activeOrder?.status === "draft_2"
+      ? "Draft 2 (Design Alignment)"
+      : activeOrder?.status === "polish"
+      ? "Final Polish"
+      : "Final Polish";
+
+  // Recent deliverables list
+  const defaultDeliverables = [
     {
       id: "deck-1",
-      title: "Executive Strategic Keynote",
-      category: "Keynote",
-      size: "4.8 MB",
-      format: "16:9 Widescreen PPTX",
-      url: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/volvo_slide-1.jpg",
-      code: "SLD-318"
+      title: "Sequoia Series A Pitch Deck",
+      subtitle: "38 slides, PPTX, 42 MB",
+      downloadUrl: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/downloads/sequoia_pitch.pptx",
+      thumbnailBg: "bg-[#181818]"
     },
     {
       id: "deck-2",
-      title: "Series A Investor Pitch Deck",
-      category: "Fundraising",
-      size: "7.2 MB",
-      format: "16:9 Widescreen PPTX",
-      url: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg",
-      code: "SLD-301"
-    },
-    {
-      id: "deck-3",
-      title: "Financial KPI & Capital Markets",
-      category: "Finance",
-      size: "5.4 MB",
-      format: "16:9 Widescreen PPTX",
-      url: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/hsbc_slide-1.jpg",
-      code: "SLD-304"
-    },
-    {
-      id: "deck-4",
-      title: "DeepTech & Semiconductor Briefing",
-      category: "Technology",
-      size: "6.1 MB",
-      format: "16:9 Widescreen PPTX",
-      url: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/intel_slide-1.jpg",
-      code: "SLD-307"
+      title: "Executive KPI Dashboard",
+      subtitle: "18 slides, PPTX",
+      downloadUrl: "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/downloads/kpi_dashboard.pptx",
+      thumbnailBg: "bg-[#F3F4F6]"
     }
   ];
 
-  const recentItems = purchasedItems.length > 0 
-    ? purchasedItems.slice(0, 5).map((p, i) => ({
+  const deliverablesToDisplay = purchasedItems.length > 0
+    ? purchasedItems.slice(0, 4).map((p, i) => ({
         id: p.id || `purchased-${i}`,
-        title: p.title || p.template_name || `SlideDeck #${i + 1}`,
-        category: p.category || "Presentation",
-        size: "5.2 MB",
-        format: "16:9 Master PPTX",
-        url: p.thumbnail_url || defaultRecentSlides[i % defaultRecentSlides.length].url,
-        code: p.template_code || `SLD-0${i + 1}`
+        title: p.title || p.template_title || p.template_name || `SlideDeck #${i + 1}`,
+        subtitle: `${p.slide_count || 24} slides, PPTX, ${p.file_size || "18 MB"}`,
+        downloadUrl: p.download_url || "#",
+        thumbnailBg: i % 2 === 0 ? "bg-[#181818]" : "bg-[#F3F4F6]"
       }))
-    : defaultRecentSlides;
+    : defaultDeliverables;
 
-  // Calendar dates generation (September 2026)
+  // Calendar dates (September 2026 - 31 days)
+  // Day 17 is active (charcoal circle), Day 15 has gold milestone dot
   const calendarDays = [
     { day: "", empty: true },
     { day: "", empty: true },
@@ -159,9 +221,9 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
     { day: 12 },
     { day: 13 },
     { day: 14 },
-    { day: 15 },
+    { day: 15, hasDot: true },
     { day: 16 },
-    { day: 17 },
+    { day: 17, isDefaultActive: true },
     { day: 18 },
     { day: 19 },
     { day: 20 },
@@ -175,59 +237,150 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
     { day: 28 },
     { day: 29 },
     { day: 30 },
+    { day: 31 }
   ];
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] text-[#111111] pt-24 pb-16 px-3 sm:px-6 lg:px-8 flex justify-center items-start">
+    <div className="relative min-h-screen bg-[#FFF8E7] text-[#111111] overflow-hidden flex justify-center items-start pt-20 sm:pt-24 pb-16 px-3 sm:px-6 lg:px-8">
       
-      {/* Eduspot-Style Unified Floating Dashboard Card */}
-      <div className="w-full max-w-[1580px] bg-white rounded-[32px] sm:rounded-[40px] shadow-[0_20px_70px_rgba(0,0,0,0.08)] border border-gray-100 overflow-hidden flex flex-col xl:flex-row min-h-[840px]">
+      {/* ========================================================================= */}
+      {/* VECTOR BACKGROUND ARTWORK (Exact match to uploaded reference mockup)       */}
+      {/* ========================================================================= */}
+      
+      {/* 1. Bottom-Right Organic Golden Curve Swoop */}
+      <svg
+        className="absolute -bottom-12 -right-12 w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] xl:w-[950px] xl:h-[950px] pointer-events-none select-none z-0"
+        viewBox="0 0 950 950"
+        fill="none"
+      >
+        <defs>
+          <radialGradient
+            id="honeyBottomRightGradient"
+            cx="85%"
+            cy="85%"
+            r="80%"
+            fx="85%"
+            fy="85%"
+          >
+            <stop offset="0%" stopColor="#DF9608" />
+            <stop offset="30%" stopColor="#E9A814" />
+            <stop offset="65%" stopColor="#F5BF26" />
+            <stop offset="90%" stopColor="#FAE08C" />
+            <stop offset="100%" stopColor="#FFF8E7" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <path
+          d="M 950 200 C 720 300 450 520 380 950 L 950 950 Z"
+          fill="url(#honeyBottomRightGradient)"
+        />
+      </svg>
+
+      {/* 2. Top-Left Soft Golden Wave / Arc */}
+      <svg
+        className="absolute -top-24 -left-24 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] pointer-events-none select-none z-0"
+        viewBox="0 0 600 600"
+        fill="none"
+      >
+        <defs>
+          <radialGradient
+            id="honeyTopLeftGradient"
+            cx="15%"
+            cy="15%"
+            r="80%"
+            fx="15%"
+            fy="15%"
+          >
+            <stop offset="0%" stopColor="#FDE69D" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#FEF1C9" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#FFF8E7" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <circle cx="150" cy="150" r="420" fill="url(#honeyTopLeftGradient)" />
+      </svg>
+
+      {/* 3. Top-Right Honeycomb Hexagons with Whiteboard Easel Icon */}
+      <div className="absolute top-4 right-4 sm:top-8 sm:right-8 w-[240px] h-[240px] pointer-events-none select-none z-0 hidden md:block">
+        <svg viewBox="0 0 240 240" fill="none" className="w-full h-full">
+          {/* Interlocking Hexagons */}
+          {/* Hex 1 (Main center containing easel) */}
+          <Hexagon cx={155} cy={85} r={55} stroke="#E5B548" strokeWidth={1.8} />
+          {/* Hex 2 (Right neighbor) */}
+          <Hexagon cx={235} cy={135} r={55} stroke="#E5B548" strokeWidth={1.8} />
+          {/* Hex 3 (Left-down neighbor) */}
+          <Hexagon cx={105} cy={170} r={55} stroke="#E5B548" strokeWidth={1.8} />
+        </svg>
+        {/* Easel icon inside Hex 1 */}
+        <div className="absolute top-[52px] left-[122px] transform -translate-x-1/2 -translate-y-1/2">
+          <PresentationEaselIcon className="w-14 h-14" />
+        </div>
+      </div>
+
+      {/* 4. Bottom-Left Honeycomb Hexagons with Whiteboard Easel Icon */}
+      <div className="absolute bottom-4 left-4 sm:bottom-10 sm:left-8 w-[260px] h-[260px] pointer-events-none select-none z-0 hidden md:block">
+        <svg viewBox="0 0 260 260" fill="none" className="w-full h-full">
+          {/* Hex 1 (Center bottom containing easel) */}
+          <Hexagon cx={85} cy={175} r={60} stroke="#E5B548" strokeWidth={1.8} />
+          {/* Hex 2 (Up-right neighbor) */}
+          <Hexagon cx={140} cy={80} r={60} stroke="#E5B548" strokeWidth={1.8} />
+          {/* Hex 3 (Far left partial) */}
+          <Hexagon cx={30} cy={80} r={60} stroke="#E5B548" strokeWidth={1.8} />
+        </svg>
+        {/* Easel icon inside Hex 1 */}
+        <div className="absolute bottom-[52px] left-[52px] transform -translate-x-1/2 -translate-y-1/2">
+          <PresentationEaselIcon className="w-14 h-14" />
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MAIN FLOATING DASHBOARD CONTAINER                                         */}
+      {/* ========================================================================= */}
+      <div className="relative z-10 w-full max-w-[1560px] bg-white rounded-[32px] sm:rounded-[44px] shadow-[0_25px_80px_rgba(215,160,25,0.13),0_10px_30px_rgba(0,0,0,0.05)] border border-[#ECCF87]/35 overflow-hidden flex flex-col xl:flex-row min-h-[850px]">
         
-        {/* ========================================================================= */}
-        {/* 1. LEFT SIDEBAR NAVIGATION                                                */}
-        {/* ========================================================================= */}
-        <div className="w-full xl:w-64 border-b xl:border-b-0 xl:border-r border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-[#FAFAFA]/70">
+        {/* ======================================================================= */}
+        {/* COLUMN 1: LEFT SIDEBAR NAVIGATION                                       */}
+        {/* ======================================================================= */}
+        <div className="w-full xl:w-64 border-b xl:border-b-0 xl:border-r border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-white">
           
           <div className="space-y-8">
-            {/* Logo */}
-            <div className="flex items-center justify-between">
+            {/* SlideBee Logo */}
+            <div className="flex items-center px-1">
               <Link to="/" className="flex items-center">
                 <SlideBeeLogo variant="light" size="sm" />
               </Link>
             </div>
 
             {/* Navigation Links */}
-            <nav className="space-y-1.5">
+            <nav className="space-y-2">
               
-              {/* Dashboard */}
+              {/* Overview (Active in Mockup) */}
               <button
                 type="button"
-                onClick={() => setActiveTab("dashboard")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
-                  activeTab === "dashboard"
-                    ? "bg-[#FFF9E8] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
-                    : "text-[#726F6D] hover:bg-white hover:text-[#111111]"
+                onClick={() => setActiveTab("overview")}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === "overview"
+                    ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                    : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <LayoutDashboard size={18} className={activeTab === "dashboard" ? "text-primary-amber" : "text-[#888]"} />
-                  <span>Dashboard</span>
+                  <LayoutDashboard size={18} className={activeTab === "overview" ? "text-primary-amber" : "text-[#726F6D]"} />
+                  <span>Overview</span>
                 </div>
               </button>
 
-              {/* My Downloads */}
+              {/* My Purchased Decks */}
               <button
                 type="button"
-                onClick={() => setActiveTab("downloads")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
-                  activeTab === "downloads"
-                    ? "bg-[#FFF9E8] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
-                    : "text-[#726F6D] hover:bg-white hover:text-[#111111]"
+                onClick={() => setActiveTab("purchased")}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === "purchased"
+                    ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                    : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Download size={18} className={activeTab === "downloads" ? "text-primary-amber" : "text-[#888]"} />
-                  <span>My Downloads</span>
+                  <FileText size={18} className={activeTab === "purchased" ? "text-primary-amber" : "text-[#726F6D]"} />
+                  <span>My Purchased Decks</span>
                 </div>
                 {purchasedItems.length > 0 && (
                   <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full font-bold">
@@ -236,31 +389,19 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 )}
               </button>
 
-              {/* Catalog Templates */}
-              <Link
-                to="/"
-                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold text-[#726F6D] hover:bg-white hover:text-[#111111] transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <Layers size={18} className="text-[#888]" />
-                  <span>Templates</span>
-                </div>
-                <ExternalLink size={12} className="text-gray-400" />
-              </Link>
-
-              {/* Custom Briefs */}
+              {/* Custom Projects */}
               <button
                 type="button"
-                onClick={() => setActiveTab("briefs")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
-                  activeTab === "briefs"
-                    ? "bg-[#FFF9E8] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
-                    : "text-[#726F6D] hover:bg-white hover:text-[#111111]"
+                onClick={() => setActiveTab("custom")}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === "custom"
+                    ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                    : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Briefcase size={18} className={activeTab === "briefs" ? "text-primary-amber" : "text-[#888]"} />
-                  <span>Custom Briefs</span>
+                  <Briefcase size={18} className={activeTab === "custom" ? "text-primary-amber" : "text-[#726F6D]"} />
+                  <span>Custom Projects</span>
                 </div>
                 {userOrders.length > 0 && (
                   <span className="text-[10px] bg-primary text-[#111111] px-2 py-0.5 rounded-full font-bold">
@@ -269,21 +410,37 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 )}
               </button>
 
-              {/* Account Tier & Settings */}
+              {/* Template Marketplace */}
               <button
                 type="button"
-                onClick={() => setActiveTab("tier")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
-                  activeTab === "tier"
-                    ? "bg-[#FFF9E8] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
-                    : "text-[#726F6D] hover:bg-white hover:text-[#111111]"
+                onClick={() => setActiveTab("marketplace")}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === "marketplace"
+                    ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                    : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Sliders size={18} className={activeTab === "tier" ? "text-primary-amber" : "text-[#888]"} />
-                  <span>Plan & Tier</span>
+                  <LayoutGrid size={18} className={activeTab === "marketplace" ? "text-primary-amber" : "text-[#726F6D]"} />
+                  <span>Template Marketplace</span>
                 </div>
-                <span className="text-[10px] uppercase font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+              </button>
+
+              {/* Credit Ledger */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("ledger")}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === "ledger"
+                    ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                    : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard size={18} className={activeTab === "ledger" ? "text-primary-amber" : "text-[#726F6D]"} />
+                  <span>Credit Ledger</span>
+                </div>
+                <span className="text-[10px] uppercase font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
                   {userTier}
                 </span>
               </button>
@@ -291,528 +448,555 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
             </nav>
           </div>
 
-          {/* Bottom Card: SlideBee Mobile & Custom Studio */}
-          <div className="mt-8 pt-4 border-t border-gray-100">
-            <div className="bg-white border border-gray-200/70 p-4 rounded-2xl shadow-xs text-center space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-[#FFF9E8] text-primary-amber mx-auto flex items-center justify-center">
-                <Sparkles size={18} />
+          {/* Bottom Card: VIP Studio Hotline (Matching Reference Mockup) */}
+          <div className="mt-8 pt-4">
+            <a
+              href={`https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20inquiring%20about%20my%20presentation%20dashboard`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-4 sm:p-5 rounded-3xl bg-gradient-to-b from-[#F7D878] to-[#E9BC43] text-[#111111] shadow-sm hover:shadow-md transition-all group text-center cursor-pointer border border-[#E0A824]/30"
+            >
+              <div className="w-11 h-11 rounded-full bg-[#111111] text-white flex items-center justify-center mx-auto mb-2.5 shadow-sm group-hover:scale-105 transition-transform">
+                <MessageCircle size={22} className="fill-white" />
               </div>
-              <h4 className="text-xs font-heading font-black text-[#111111]">
-                Need Custom Slides?
-              </h4>
-              <p className="text-[10px] text-[#726F6D] leading-tight">
-                Hire our senior slide art directors with 24-48h turnaround.
-              </p>
-              <Link
-                to="/ordernow"
-                className="w-full inline-block bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] text-[11px] font-extrabold py-2 px-3 rounded-xl transition-all shadow-xs"
-              >
-                Get a Quote
-              </Link>
-            </div>
+              <div className="text-xs font-heading font-black leading-tight">
+                VIP Studio Hotline -
+              </div>
+              <div className="text-[11px] font-medium text-[#111111]/85 mt-0.5">
+                Direct WhatsApp priority channel
+              </div>
+            </a>
           </div>
 
         </div>
 
-        {/* ========================================================================= */}
-        {/* 2. MAIN CENTER CONTENT AREA                                               */}
-        {/* ========================================================================= */}
-        <div className="flex-1 p-6 sm:p-8 space-y-7 overflow-y-auto bg-white">
+        {/* ======================================================================= */}
+        {/* COLUMN 2: CENTER MAIN CONTENT AREA                                      */}
+        {/* ======================================================================= */}
+        <div className="flex-1 min-w-0 p-6 sm:p-8 lg:p-9 space-y-6 overflow-y-auto">
           
-          {/* Top Search Bar */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search master slides, keynotes, pitch decks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#F5F6F8] rounded-full pl-11 pr-4 py-2.5 text-xs text-[#111111] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FCBF14]/50 border-none transition-all"
-              />
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Link
-                to="/ordernow"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold bg-[#111111] hover:bg-black text-white px-4 py-2.5 rounded-full transition-all shadow-xs"
-              >
-                <span>Submit Brief</span>
-                <ArrowRight size={13} className="text-[#FCBF14]" />
-              </Link>
-            </div>
+          {/* Top Search Bar (Exact placeholder from mockup) */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search your purchased decks, custom orders, templates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#F3F4F6]/75 border border-transparent rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-[#111111] placeholder:text-[#8E8B88] font-medium outline-none focus:bg-white focus:border-primary transition-all shadow-2xs"
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
           </div>
 
-          {activeTab === "dashboard" && (
-            <>
-              {/* Top Welcome Banner (Matching Eduspot blue banner in SlideBee dark luxury aesthetic) */}
-              <div className="bg-[#141414] text-white rounded-[26px] p-6 sm:p-8 relative overflow-hidden shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 border border-white/5">
+          {/* VIEW: OVERVIEW (Default View Matching Reference Mockup) */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              
+              {/* Welcome Banner Card (Black card with angled slide preview) */}
+              <div className="bg-[#151515] text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md border border-white/5">
                 
-                {/* Golden ambient gradient */}
-                <div className="absolute top-0 right-0 w-80 h-80 bg-[#FCBF14]/15 rounded-full blur-[70px] pointer-events-none" />
-
-                <div className="relative z-10 space-y-2 max-w-md">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#FCBF14]">
-                    SlideBee Client Portal
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-heading font-black text-white leading-tight">
-                    Welcome back,<br />
-                    {clientName}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-300 font-medium">
-                    {clientCompany} • Access your executive master presentations or request on-demand polishing.
+                {/* Left Text */}
+                <div className="relative z-10 max-w-md space-y-1.5">
+                  <p className="text-gray-400 text-xs sm:text-sm font-medium tracking-wide">
+                    Welcome back, {clientName}
                   </p>
-                  <div className="pt-2">
-                    <Link
-                      to="/"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FCBF14] hover:underline"
-                    >
-                      <span>Explore 1,000+ templates library</span>
-                      <ArrowRight size={12} />
-                    </Link>
-                  </div>
+                  <h2 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-white leading-snug tracking-tight">
+                    Your {activeProjectTitle} is in{" "}
+                    <span className="text-[#FCBF14]">{activeMilestone}</span> milestone
+                  </h2>
                 </div>
 
-                {/* Right Decorative Presentation Mockup Graphic */}
-                <div className="relative z-10 hidden md:flex items-center gap-2">
-                  <div className="w-24 h-16 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-2 shadow-lg -rotate-6">
-                    <div className="w-full h-full rounded bg-[#FCBF14]/30 flex items-center justify-center text-[10px] font-bold text-white">
-                      Keynote
+                {/* Right Angled Slide Thumbnail Cards (Matching Mockup) */}
+                <div className="relative z-10 hidden md:flex items-center -mr-2 shrink-0">
+                  <div className="relative w-48 sm:w-56 h-32 rounded-2xl bg-white p-3.5 shadow-2xl rotate-2 border border-white/20 flex flex-col justify-between transform hover:rotate-0 transition-transform">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-primary-amber bg-primary/20 px-2 py-0.5 rounded">
+                        Master Slide
+                      </span>
+                      <span className="text-[9px] font-mono text-gray-400">16:9 HD</span>
                     </div>
-                  </div>
-                  <div className="w-28 h-20 bg-white/15 backdrop-blur-md rounded-xl border border-[#FCBF14]/40 p-2 shadow-2xl rotate-3">
-                    <div className="w-full h-full rounded bg-[#FCBF14] text-[#111111] flex items-center justify-center text-xs font-extrabold shadow-sm">
-                      Pitch Deck
+                    <div className="space-y-1 my-1">
+                      <div className="text-[11px] font-heading font-black text-[#111111] line-clamp-1">
+                        {activeProjectTitle}
+                      </div>
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-16 h-1.5 bg-[#FCBF14] rounded-full" />
+                        <div className="w-8 h-1.5 bg-gray-200 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="text-[9px] text-gray-500 font-bold flex items-center justify-between border-t border-gray-100 pt-1.5">
+                      <span>Enterprise Deck</span>
+                      <span className="text-emerald-700 font-black">Ready</span>
                     </div>
                   </div>
                 </div>
 
               </div>
 
-              {/* 3 Metric Cards (Matching Eduspot Today's goal / Score / Courses cards) */}
+              {/* 3 Metric Cards Row (Metric goal, Project Milestone, Presentation formats) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 
-                {/* Card 1: Today's Goal (Circular Donut Gauge) */}
-                <div className="bg-white border border-gray-200/70 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                  <h3 className="text-xs sm:text-sm font-heading font-black text-[#111111]">
-                    Today's quota
-                  </h3>
-
-                  <div className="flex flex-col items-center justify-center my-4 relative">
-                    <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 90 90">
+                {/* Card 1: Metric goal */}
+                <div className="bg-gradient-to-b from-white to-[#FFFDF7] border border-gray-200/80 rounded-3xl p-6 shadow-xs flex flex-col items-center justify-between text-center min-h-[220px]">
+                  <h4 className="text-xs sm:text-sm font-heading font-black text-[#111111]">
+                    Metric goal
+                  </h4>
+                  
+                  {/* Circular Donut Gauge: Available Design Credits */}
+                  <div className="relative w-28 h-28 my-2 flex items-center justify-center">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
                       <circle
                         cx="45"
                         cy="45"
                         r={radius}
-                        stroke="#F0F0F0"
+                        stroke="#F3F4F6"
                         strokeWidth="8"
-                        fill="transparent"
+                        fill="none"
                       />
                       <circle
                         cx="45"
                         cy="45"
                         r={radius}
-                        stroke="#FCBF14"
+                        stroke="#E5A817"
                         strokeWidth="8"
                         strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
+                        strokeDashoffset={creditStrokeDashoffset}
                         strokeLinecap="round"
-                        fill="transparent"
-                        className="transition-all duration-700 ease-out"
+                        fill="none"
+                        className="transition-all duration-700"
                       />
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-xl font-heading font-black text-[#111111]">
-                        {quotaPercent}%
-                      </span>
-                      <span className="text-[10px] font-bold text-[#726F6D]">
-                        {quotaUsed} of {quotaTotal}
+                        {quotaRemaining} <span className="text-xs text-[#726F6D]">/ {quotaTotal}</span>
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-center gap-4 text-[10px] text-[#726F6D] font-medium pt-2 border-t border-gray-100">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#FCBF14]" /> Used ({quotaUsed})
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" /> Limit ({quotaTotal})
-                    </span>
-                  </div>
+                  <p className="text-xs font-semibold text-[#726F6D]">
+                    Available Design Credits
+                  </p>
                 </div>
 
-                {/* Card 2: Account Health / Balance Gauge */}
-                <div className="bg-white border border-gray-200/70 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                  <h3 className="text-xs sm:text-sm font-heading font-black text-[#111111]">
-                    Available balance
-                  </h3>
-
-                  <div className="flex flex-col items-center justify-center my-4 relative">
-                    <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 90 90">
+                {/* Card 2: Project Milestone: */}
+                <div className="bg-gradient-to-b from-white to-[#FFFDF7] border border-gray-200/80 rounded-3xl p-6 shadow-xs flex flex-col items-center justify-between text-center min-h-[220px]">
+                  <h4 className="text-xs sm:text-sm font-heading font-black text-[#111111]">
+                    Project Milestone:
+                  </h4>
+                  
+                  {/* Circular Donut Gauge: 75% Polished */}
+                  <div className="relative w-28 h-28 my-2 flex items-center justify-center">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
                       <circle
                         cx="45"
                         cy="45"
                         r={radius}
-                        stroke="#F0F0F0"
+                        stroke="#F3F4F6"
                         strokeWidth="8"
-                        fill="transparent"
+                        fill="none"
                       />
                       <circle
                         cx="45"
                         cy="45"
                         r={radius}
-                        stroke="#111111"
+                        stroke="#E5A817"
                         strokeWidth="8"
                         strokeDasharray={circumference}
-                        strokeDashoffset={scoreStrokeDashoffset}
+                        strokeDashoffset={milestoneStrokeDashoffset}
                         strokeLinecap="round"
-                        fill="transparent"
-                        className="transition-all duration-700 ease-out"
+                        fill="none"
+                        className="transition-all duration-700"
                       />
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-xl font-heading font-black text-[#111111]">
-                        {quotaRemaining}
+                        75%
                       </span>
                       <span className="text-[10px] font-bold text-[#726F6D]">
-                        Decks left
+                        Polished
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-center gap-4 text-[10px] text-[#726F6D] font-medium pt-2 border-t border-gray-100">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#111111]" /> Active Plan
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> Verified
-                    </span>
-                  </div>
+                  <p className="text-xs font-semibold text-[#726F6D]">
+                    (Draft 2 Ready)
+                  </p>
                 </div>
 
-                {/* Card 3: Top Categories Breakdown (Matching Eduspot Horizontal Bar Chart) */}
-                <div className="bg-white border border-gray-200/70 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                  <h3 className="text-xs sm:text-sm font-heading font-black text-[#111111] mb-2">
-                    Top categories
-                  </h3>
-
-                  <div className="space-y-2.5 my-2">
-                    {[
-                      { name: "Keynotes", pct: 85, color: "bg-[#FCBF14]" },
-                      { name: "Pitch Decks", pct: 65, color: "bg-[#111111]" },
-                      { name: "Financial KPI", pct: 40, color: "bg-amber-500" },
-                      { name: "Strategy", pct: 25, color: "bg-gray-400" }
-                    ].map((cat, i) => (
-                      <div key={i} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-bold text-[#111111] w-20 shrink-0 text-[11px]">
-                          {cat.name}
-                        </span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${cat.color}`}
-                            style={{ width: `${cat.pct}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold text-[#726F6D] w-8 text-right">
-                          {cat.pct}%
-                        </span>
+                {/* Card 3: Presentation formats */}
+                <div className="bg-gradient-to-b from-white to-[#FFFDF7] border border-gray-200/80 rounded-3xl p-6 shadow-xs flex flex-col justify-between min-h-[220px]">
+                  <h4 className="text-xs sm:text-sm font-heading font-black text-[#111111] text-center">
+                    Presentation formats
+                  </h4>
+                  
+                  {/* 3 Progress Bars */}
+                  <div className="space-y-3.5 my-2">
+                    
+                    {/* PowerPoint */}
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-[#111111] mb-1">
+                        <span>PowerPoint (.pptx)</span>
+                        <span>85%</span>
                       </div>
-                    ))}
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-[#E5A817] h-full rounded-full transition-all duration-500" style={{ width: "85%" }} />
+                      </div>
+                    </div>
+
+                    {/* Keynote */}
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-[#111111] mb-1">
+                        <span>Keynote (.key)</span>
+                        <span>50%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-[#E5A817] h-full rounded-full transition-all duration-500" style={{ width: "50%" }} />
+                      </div>
+                    </div>
+
+                    {/* Google Slides */}
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-[#111111] mb-1">
+                        <span>Google Slides</span>
+                        <span>40%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-[#E5A817] h-full rounded-full transition-all duration-500" style={{ width: "40%" }} />
+                      </div>
+                    </div>
+
                   </div>
 
-                  <div className="flex items-center justify-center gap-4 text-[10px] text-[#726F6D] font-medium pt-2 border-t border-gray-100">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#FCBF14]" /> SlideBee Curated
-                    </span>
+                  <div className="text-[11px] text-center text-[#726F6D] font-medium pt-1">
+                    Multi-software deliverables enabled
                   </div>
                 </div>
 
               </div>
 
-              {/* Recent Slide Decks & Media (Matching Eduspot 'Media for lessons' list view) */}
-              <div className="space-y-3">
+              {/* Recent Presentation Deliverables */}
+              <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-heading font-black text-[#111111]">
-                    Recent Downloads & Media
+                  <h3 className="font-heading font-black text-sm sm:text-base text-[#111111]">
+                    Recent Presentation Deliverables
                   </h3>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("downloads")}
-                    className="text-xs font-bold text-primary-amber hover:underline cursor-pointer"
+                    onClick={() => setActiveTab("purchased")}
+                    className="text-xs font-bold text-[#726F6D] hover:text-[#111111] transition-colors cursor-pointer"
                   >
                     View all
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
-                  {recentItems.map((item, idx) => (
+                <div className="space-y-3">
+                  {deliverablesToDisplay.map((item) => (
                     <div
-                      key={idx}
-                      className="bg-[#FAFAFA] hover:bg-[#FFFDF5] border border-gray-200/60 hover:border-[#FCBF14]/50 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-4 transition-all shadow-2xs"
+                      key={item.id}
+                      className="bg-white border border-gray-200/90 rounded-2xl p-4 flex items-center justify-between hover:border-primary/60 transition-all shadow-2xs"
                     >
                       <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200/80 flex items-center justify-center text-[#111111] shrink-0 shadow-2xs">
-                          <FileText size={18} className="text-[#FCBF14]" />
+                        <div className={`w-11 h-11 rounded-xl ${item.thumbnailBg} border border-gray-200 flex items-center justify-center shrink-0`}>
+                          <FileText size={18} className={item.thumbnailBg.includes("181818") ? "text-amber-400" : "text-[#111111]"} />
                         </div>
                         <div>
-                          <h4 className="text-xs sm:text-sm font-extrabold text-[#111111] leading-snug">
+                          <h4 className="font-heading font-black text-xs sm:text-sm text-[#111111]">
                             {item.title}
                           </h4>
-                          <p className="text-[10px] sm:text-[11px] text-[#726F6D] font-medium mt-0.5">
-                            {item.format} • {item.size}
+                          <p className="text-[11px] text-[#726F6D] font-medium">
+                            {item.subtitle}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-mono font-bold bg-white px-2 py-0.5 rounded border border-gray-200 text-[#555]">
-                          {item.code}
-                        </span>
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          download
-                          className="w-8 h-8 rounded-full bg-white hover:bg-[#FCBF14] border border-gray-200 flex items-center justify-center text-[#111111] transition-all shadow-2xs"
-                          title="Download PPTX Deck"
-                        >
-                          <Download size={14} />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Sub-View: Downloads */}
-          {activeTab === "downloads" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <h3 className="text-base font-heading font-black text-[#111111]">
-                  All Licensed & Downloaded Decks ({purchasedItems.length})
-                </h3>
-                <span className="text-xs text-[#726F6D]">
-                  Stored permanently in your client account
-                </span>
-              </div>
-
-              {purchasedItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {purchasedItems.map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between gap-3 hover:border-primary transition-all"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#FFF9E8] flex items-center justify-center text-primary-amber shrink-0">
-                          <FileText size={18} />
-                        </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-[#111111]">
-                            {item.title || item.template_name || `Presentation Deck #${idx + 1}`}
-                          </h4>
-                          <span className="text-[10px] text-gray-500 font-mono">
-                            {item.template_code || "PPTX 16:9"}
-                          </span>
-                        </div>
-                      </div>
                       <a
-                        href={item.download_url || "#"}
+                        href={item.downloadUrl}
                         target="_blank"
-                        rel="noreferrer"
-                        download
-                        className="w-full text-center bg-[#111111] hover:bg-black text-white text-xs font-bold py-2 rounded-xl transition-all"
+                        rel="noopener noreferrer"
+                        className="hex-pill bg-white hover:bg-gray-50 text-[#111111] border border-gray-300 px-4 py-2 text-xs font-extrabold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                       >
-                        Download Master PPTX
+                        <Download size={13} />
+                        <span>Download</span>
                       </a>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="p-12 text-center bg-[#FAFAFA] rounded-2xl border border-dashed border-gray-200 space-y-3">
-                  <Download size={28} className="mx-auto text-gray-400" />
-                  <p className="text-xs text-gray-600 font-medium">
-                    You haven't claimed any templates yet. Browse our marketplace to get started.
-                  </p>
-                  <Link
-                    to="/"
-                    className="inline-block bg-[#FCBF14] text-[#111111] text-xs font-bold px-5 py-2.5 rounded-full"
-                  >
-                    Browse Templates Catalog
-                  </Link>
-                </div>
-              )}
+              </div>
+
             </div>
           )}
 
-          {/* Sub-View: Briefs */}
-          {activeTab === "briefs" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <h3 className="text-base font-heading font-black text-[#111111]">
-                  Custom Presentation Projects ({userOrders.length})
-                </h3>
+          {/* VIEW: MY PURCHASED DECKS */}
+          {activeTab === "purchased" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-heading font-black text-[#111111]">
+                    My Purchased Presentation Decks
+                  </h2>
+                  <p className="text-xs text-[#726F6D]">
+                    Direct commercial licenses and deliverables ready for download
+                  </p>
+                </div>
                 <Link
-                  to="/ordernow"
-                  className="text-xs font-bold text-primary-amber hover:underline"
+                  to="/#templates"
+                  className="hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black px-4 py-2 flex items-center gap-1.5 shadow-xs"
                 >
-                  + Submit New Project
+                  Browse Store Catalog <ArrowRight size={13} />
                 </Link>
               </div>
 
-              {userOrders.length > 0 ? (
-                <div className="space-y-3">
-                  {userOrders.map((order: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                            {order.service_type || "Custom Deck"}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            order.status === "completed"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}>
-                            {order.status?.toUpperCase() || "IN PROGRESS"}
-                          </span>
-                        </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-[#111111]">
-                          {order.project_title || `Order #${order.id?.slice(0, 8) || idx + 1}`}
-                        </h4>
-                      </div>
-                      <div className="text-xs text-right">
-                        <span className="font-extrabold text-[#111111] block">
-                          {order.amount ? `$${order.amount}` : "Quote Based"}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Active"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+              {deliverablesToDisplay.length === 0 ? (
+                <div className="text-center py-16 px-4 border border-dashed border-gray-200 rounded-3xl">
+                  <FileText size={32} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-sm font-bold text-[#111111]">No purchases recorded yet</p>
                 </div>
               ) : (
-                <div className="p-12 text-center bg-[#FAFAFA] rounded-2xl border border-dashed border-gray-200 space-y-3">
-                  <Briefcase size={28} className="mx-auto text-gray-400" />
-                  <p className="text-xs text-gray-600 font-medium">
-                    No custom agency briefs submitted yet. Send us your rough slides or outline for a 2-hour quote.
-                  </p>
-                  <Link
-                    to="/ordernow"
-                    className="inline-block bg-[#111111] text-white text-xs font-bold px-5 py-2.5 rounded-full"
-                  >
-                    Submit a Project Brief
-                  </Link>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {deliverablesToDisplay.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-white border border-gray-200 rounded-3xl p-5 shadow-2xs flex flex-col justify-between space-y-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-xl ${item.thumbnailBg} flex items-center justify-center shrink-0`}>
+                          <FileText size={20} className={item.thumbnailBg.includes("181818") ? "text-amber-400" : "text-[#111111]"} />
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-black text-sm text-[#111111]">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-[#726F6D]">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={item.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black py-2.5 flex items-center justify-center gap-2 shadow-xs"
+                      >
+                        <Download size={14} /> Download Presentation Files
+                      </a>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* Sub-View: Plan & Tier */}
-          {activeTab === "tier" && (
-            <div className="space-y-5">
-              <div className="bg-[#FFF9E8] border border-[#FCBF14]/40 rounded-2xl p-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#111111] uppercase tracking-wider">
-                    Current Active Membership
-                  </span>
-                  <span className="text-xs font-black bg-[#FCBF14] text-[#111111] px-3 py-1 rounded-full uppercase">
-                    {userTier}
+          {/* VIEW: CUSTOM PROJECTS */}
+          {activeTab === "custom" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-heading font-black text-[#111111]">
+                    Custom Presentation Projects
+                  </h2>
+                  <p className="text-xs text-[#726F6D]">
+                    Commission progress, milestone reviews, and executive polish
+                  </p>
+                </div>
+                <Link
+                  to="/services"
+                  className="hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black px-4 py-2 flex items-center gap-1.5 shadow-xs"
+                >
+                  Start New Brief <ArrowRight size={13} />
+                </Link>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber bg-primary/20 px-2 py-0.5 rounded">
+                      Active Studio Order
+                    </span>
+                    <h3 className="font-heading font-black text-base text-[#111111] mt-1">
+                      {activeProjectTitle}
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
+                    {activeMilestone}
                   </span>
                 </div>
-                <h3 className="text-xl font-heading font-black text-[#111111]">
-                  {userTier === "lifetime"
-                    ? "SlideBee Lifetime VIP"
-                    : userTier === "yearly"
-                    ? "SlideBee Yearly Pro"
-                    : userTier === "monthly"
-                    ? "SlideBee Monthly Pro"
-                    : "SlideBee Basic Free Plan"}
-                </h3>
-                <p className="text-xs text-[#555250] leading-relaxed">
-                  {userTier === "free"
-                    ? "You are currently on the free starter plan (3 daily downloads). Upgrade to unlock all 30-slide master decks."
-                    : "Your subscription includes complete commercial presentation rights and editable PowerPoint master files."}
-                </p>
-                {proDaysRemaining !== null && (
-                  <p className="text-xs font-bold text-amber-800">
-                    Duration remaining in plan: {proDaysRemaining} days
-                  </p>
-                )}
-                <div className="pt-2">
-                  <Link
-                    to="/pricing"
-                    className="inline-block bg-[#111111] text-white text-xs font-bold px-5 py-2.5 rounded-full"
+                <div className="py-4">
+                  <div className="flex justify-between text-xs font-bold text-[#111111] mb-2">
+                    <span>Milestone Progress</span>
+                    <span>75% Polished</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className="bg-primary h-full rounded-full" style={{ width: "75%" }} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-[#726F6D]">Turnaround: 48 hours standard</span>
+                  <a
+                    href={`https://wa.me/${studioWhatsapp}?text=Inquiring%20about%20my%20brief%20${encodeURIComponent(activeProjectTitle)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hex-pill bg-[#111111] hover:bg-black text-white text-xs font-bold px-4 py-2 flex items-center gap-1.5"
                   >
-                    View Upgrade Options
-                  </Link>
+                    <MessageCircle size={13} /> Chat with Lead Designer
+                  </a>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* VIEW: TEMPLATE MARKETPLACE */}
+          {activeTab === "marketplace" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-heading font-black text-[#111111]">
+                    SlideBee Template Marketplace
+                  </h2>
+                  <p className="text-xs text-[#726F6D]">
+                    Browse over 100+ executive presentation master decks
+                  </p>
+                </div>
+                <Link
+                  to="/#templates"
+                  className="hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black px-5 py-2.5 flex items-center gap-1.5 shadow-xs"
+                >
+                  Explore Full Catalog <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {defaultDeliverables.map((item) => (
+                  <div key={item.id} className="border border-gray-200 rounded-3xl p-5 bg-white space-y-3 shadow-2xs">
+                    <div className="h-36 rounded-2xl bg-gray-100 flex items-center justify-center font-heading font-black text-sm text-gray-400">
+                      Slide Artwork Preview
+                    </div>
+                    <h4 className="font-heading font-black text-sm text-[#111111]">{item.title}</h4>
+                    <p className="text-xs text-[#726F6D]">Enterprise Keynote & PPTX Master</p>
+                    <Link
+                      to="/#templates"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-amber hover:underline"
+                    >
+                      View Template Details <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: CREDIT LEDGER & ACCOUNT */}
+          {activeTab === "ledger" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-heading font-black text-[#111111]">
+                  Design Credit Ledger & Account
+                </h2>
+                <p className="text-xs text-[#726F6D]">
+                  Audit trail of template credits, monthly resets, and account controls
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-3xl bg-[#FFF9E8] border border-primary/30">
+                  <span className="text-[10px] font-black uppercase text-[#726F6D] block">Current Membership</span>
+                  <span className="text-lg font-heading font-black text-[#111111] capitalize">{userTier} Plan</span>
+                </div>
+                <div className="p-5 rounded-3xl bg-[#FFF9E8] border border-primary/30">
+                  <span className="text-[10px] font-black uppercase text-[#726F6D] block">Available Quota</span>
+                  <span className="text-lg font-heading font-black text-[#111111]">{quotaRemaining} / {quotaTotal} remaining</span>
+                </div>
+                <div className="p-5 rounded-3xl bg-[#FFF9E8] border border-primary/30">
+                  <span className="text-[10px] font-black uppercase text-[#726F6D] block">Downloaded Decks</span>
+                  <span className="text-lg font-heading font-black text-[#111111]">{quotaUsed} consumed</span>
+                </div>
+              </div>
+
+              {onDeleteAccount && (
+                <div className="p-6 rounded-3xl border border-red-200 bg-red-50/40 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-heading font-black text-sm text-red-700">Account Erasure</h4>
+                    <p className="text-xs text-red-900/70">Permanently delete account credentials and download licenses</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onDeleteAccount}
+                    className="hex-pill bg-white text-red-600 border border-red-200 text-xs font-bold px-4 py-2 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={13} /> Delete Account
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
         </div>
 
-        {/* ========================================================================= */}
-        {/* 3. RIGHT SIDEBAR (Matching Eduspot user profile, calendar, today card)     */}
-        {/* ========================================================================= */}
-        <div className="w-full xl:w-80 border-t xl:border-t-0 xl:border-l border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-[#FAFAFA]/50 space-y-6">
+        {/* ======================================================================= */}
+        {/* COLUMN 3: RIGHT SIDEBAR (Matching Reference Mockup)                     */}
+        {/* ======================================================================= */}
+        <div className="w-full xl:w-80 border-t xl:border-t-0 xl:border-l border-gray-100 p-6 sm:p-7 shrink-0 bg-white flex flex-col justify-between space-y-6">
           
           <div className="space-y-6">
-            {/* Top User Header Bar */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-gray-500">
-                <button type="button" className="p-1.5 hover:text-black rounded-lg transition-colors" title="Help & Support">
-                  <HelpCircle size={17} />
+            
+            {/* Top Right Header Controls: (?) Help, (Bell) Notifications, Avatar + Caret */}
+            <div className="flex items-center justify-end gap-3.5">
+              
+              {/* Help Button */}
+              <button
+                type="button"
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-[#111111] transition-colors cursor-pointer"
+                title="Help and Documentation"
+              >
+                <HelpCircle size={16} />
+              </button>
+
+              {/* Notification Bell with Red Badge Dot */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-[#111111] transition-colors cursor-pointer"
+                  title="Notifications"
+                >
+                  <Bell size={16} />
                 </button>
-                <button type="button" className="p-1.5 hover:text-black rounded-lg transition-colors relative" title="Notifications">
-                  <Bell size={17} />
-                  <span className="w-1.5 h-1.5 bg-[#FCBF14] rounded-full absolute top-1 right-1" />
-                </button>
-                <button type="button" className="p-1.5 hover:text-black rounded-lg transition-colors" title="Account Settings">
-                  <Settings size={17} />
-                </button>
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <div className="text-right">
-                  <span className="text-xs font-extrabold text-[#111111] block leading-tight">
-                    {clientName}
-                  </span>
-                  <span className="text-[10px] text-gray-400 font-medium block">
-                    {currentUser.email.slice(0, 16)}...
-                  </span>
+              {/* User Profile Avatar with Chevron */}
+              <div className="flex items-center gap-1.5 pl-1 cursor-pointer">
+                <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-heading font-black text-xs text-primary-amber">
+                  {clientName[0]?.toUpperCase() || "S"}
                 </div>
-                <div className="w-9 h-9 rounded-full bg-[#111111] text-white flex items-center justify-center font-bold text-xs">
-                  {clientName[0]?.toUpperCase() || <User size={15} />}
-                </div>
+                <ChevronDown size={14} className="text-gray-400" />
               </div>
+
             </div>
 
-            {/* Calendar Widget (Matching Eduspot Calendar) */}
-            <div className="bg-white border border-gray-200/70 rounded-2xl p-4 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-heading font-black text-[#111111]">
-                  September 2026
-                </span>
-                <div className="flex items-center gap-1 text-gray-400">
-                  <button type="button" className="p-1 hover:text-black rounded">
-                    <ChevronLeft size={14} />
+            {/* Calendar Section: Project Milestone Header & Days Grid */}
+            <div className="space-y-3 pt-2">
+              
+              {/* Calendar Header with < > Controls */}
+              <div className="flex items-center justify-between">
+                <h4 className="font-heading font-black text-sm text-[#111111]">
+                  Project Milestone
+                </h4>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer"
+                  >
+                    <ChevronLeft size={16} />
                   </button>
-                  <button type="button" className="p-1 hover:text-black rounded">
-                    <ChevronRight size={14} />
+                  <button
+                    type="button"
+                    className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer"
+                  >
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
 
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-1">
+              {/* Weekday Letters: S M T W T F S */}
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-400">
                 <span>S</span>
                 <span>M</span>
                 <span>T</span>
@@ -822,78 +1006,90 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 <span>S</span>
               </div>
 
-              {/* Dates Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                {calendarDays.map((item, idx) => (
-                  <button
-                    type="button"
-                    key={idx}
-                    onClick={() => item.day && setSelectedCalendarDate(item.day as number)}
-                    disabled={!item.day}
-                    className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center text-[11px] font-medium transition-all ${
-                      item.day === selectedCalendarDate
-                        ? "bg-[#FCBF14] text-[#111111] font-black shadow-xs scale-105"
-                        : item.day
-                        ? "text-gray-700 hover:bg-gray-100"
-                        : "text-transparent cursor-default"
-                    }`}
-                  >
-                    {item.day}
-                  </button>
-                ))}
+              {/* September Days Grid */}
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+                {calendarDays.map((item, idx) => {
+                  if (item.empty) {
+                    return <span key={idx} className="py-1.5" />;
+                  }
+
+                  const isSelected = item.day === selectedCalendarDate;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedCalendarDate(item.day as number)}
+                      className="relative py-1.5 flex flex-col items-center justify-center transition-all cursor-pointer"
+                    >
+                      <span
+                        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all text-xs ${
+                          isSelected
+                            ? "bg-[#2A2A2A] text-white font-black shadow-xs"
+                            : "hover:bg-gray-100 text-[#111111]"
+                        }`}
+                      >
+                        {item.day}
+                      </span>
+                      {/* Milestone Gold Dot Indicator (e.g. Day 15) */}
+                      {item.hasDot && !isSelected && (
+                        <span className="w-1 h-1 bg-[#E5A817] rounded-full mt-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
             </div>
 
-            {/* Today's Highlight Project Card (Matching Eduspot 'The Modern JavaScript Bootcamp' card) */}
-            <div className="bg-white border border-gray-200/70 rounded-2xl p-4 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-[#FFF9E8] text-amber-800 px-2 py-0.5 rounded border border-[#FCBF14]/30">
-                  Today
+            {/* Active Project Highlight Card (Soft Honey Cream Card) */}
+            <div className="bg-[#FFF9EC] border border-[#F4DC9E] rounded-3xl p-5 space-y-3 shadow-2xs">
+              
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">
+                  Active
                 </span>
-                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                  <Check size={10} /> Active Studio
-                </span>
-              </div>
-
-              <div>
-                <h4 className="text-xs sm:text-sm font-heading font-black text-[#111111] leading-tight">
-                  Executive Presentation Polish
+                <h4 className="font-heading font-black text-sm sm:text-base text-[#111111]">
+                  Enterprise Growth Pitch
                 </h4>
-                <p className="text-[10px] text-[#726F6D] font-medium mt-1 leading-relaxed">
-                  Turn rough drafts or notes into executive-grade slide architecture.
+                <p className="text-xs text-[#726F6D]">
+                  Luxury executive presentation design studio
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-1 text-[10px] text-gray-500 font-medium">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={13} className="text-[#FCBF14]" />
-                  <span>SLA Guarantee</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock size={11} className="text-gray-400" />
-                  <span>24h – 48h Turnaround</span>
-                </div>
+              {/* Clock Timer */}
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#111111]">
+                <Clock size={13} className="text-[#111111]" />
+                <span>4h • 30 mins</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <Link
-                  to="/ordernow"
-                  className="w-full text-center py-2 px-2 text-[11px] font-bold text-[#111111] border border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
+              {/* Dual Action Buttons */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const waUrl = `https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20requesting%20revision%20for%20Enterprise%20Growth%20Pitch`;
+                    window.open(waUrl, "_blank");
+                  }}
+                  className="w-full bg-[#151515] hover:bg-black text-white font-bold text-xs py-2.5 rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Submit Brief
-                </Link>
-                <Link
-                  to="/"
-                  className="w-full text-center py-2 px-2 text-[11px] font-black bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] rounded-xl shadow-xs transition-all"
+                  Request Revision
+                </button>
+                <a
+                  href="https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/downloads/enterprise_growth.pptx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-[#F5B921] hover:bg-[#E0A71B] text-[#111111] font-black text-xs py-2.5 rounded-xl transition-all shadow-xs cursor-pointer text-center"
                 >
-                  Browse Decks
-                </Link>
+                  Download Master Deck
+                </a>
               </div>
+
             </div>
 
           </div>
 
-          {/* Logout Button */}
+          {/* Logout Button at bottom of Right Sidebar */}
           <div className="pt-2 border-t border-gray-100">
             <button
               type="button"
@@ -913,4 +1109,3 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 };
 
 export default UserModernDashboard;
-
