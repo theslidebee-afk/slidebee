@@ -45,6 +45,7 @@ import {
   EyeOff,
   RefreshCw,
   LayoutTemplate,
+  LayoutDashboard,
   ShieldCheck,
   Cloud,
   Loader2,
@@ -146,7 +147,7 @@ export default function Admin() {
   // Dashboard Active Tab & Sub-Page State
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"orders" | "waitlist" | "templates" | "customization" | "billing" | "storage" | "subscriptions">("orders");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "waitlist" | "templates" | "customization" | "billing" | "storage" | "subscriptions">("overview");
 
   // Live Data States
   const [orders, setOrders] = useState<any[]>([]);
@@ -359,6 +360,10 @@ export default function Admin() {
       setActiveTab("waitlist");
     } else if (path.includes("/subscriptions") || path.includes("/clients")) {
       setActiveTab("subscriptions");
+    } else if (path.includes("/orders") || path.includes("/briefs")) {
+      setActiveTab("orders");
+    } else {
+      setActiveTab("overview");
     }
   }, [location.pathname]);
 
@@ -2723,11 +2728,34 @@ hello@theslidebee.com`;
             {/* Navigation Menu */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] px-3">
+                Executive Desk
+              </span>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("overview"); navigate("/admin"); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "overview"
+                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <LayoutDashboard size={15} />
+                  <span>Studio Overview</span>
+                </div>
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                  activeTab === "overview" ? "bg-primary/20 text-[#FCBF14]" : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  Live
+                </span>
+              </button>
+
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D] px-3 pt-2 block">
                 Operations
               </span>
               <button
                 type="button"
-                onClick={() => { setActiveTab("orders"); navigate("/admin"); }}
+                onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === "orders"
                     ? "bg-[#111111] text-[#FCBF14] shadow-xs"
@@ -2948,179 +2976,395 @@ hello@theslidebee.com`;
             </div>
           </div>
 
-          {/* Welcome Banner */}
-          <div className="bg-[#111111] text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-lg border border-primary/20">
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-amber-500/10 via-transparent to-transparent pointer-events-none" />
-            <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 bg-[#FCBF14]/20 border border-[#FCBF14]/40 px-3 py-1 rounded-full text-[#FCBF14] text-[11px] font-black uppercase tracking-wider mb-3">
-                <Crown size={12} /> SlideBee Executive Studio
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-white mb-2">
-                Welcome back, Master Admin!
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                Live monitoring for SlideBee presentation commissions, template downloads, and client subscriptions. Synced in real-time with Cloudflare D1.
-              </p>
+          {/* TAB 0: STUDIO OVERVIEW (INFO & INSIGHTS EXECUTIVE SUITE) */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              {/* Welcome Banner with Interactive Linked Counters */}
+              <div className="bg-[#111111] text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-lg border border-primary/20">
+                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+                <div className="relative z-10 max-w-2xl">
+                  <div className="inline-flex items-center gap-2 bg-[#FCBF14]/20 border border-[#FCBF14]/40 px-3 py-1 rounded-full text-[#FCBF14] text-[11px] font-black uppercase tracking-wider mb-3">
+                    <Crown size={12} /> SlideBee Executive Studio
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-white mb-2">
+                    Welcome back, Master Admin!
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                    Live telemetry for SlideBee presentation commissions, template downloads, and client subscriptions. Synced in real-time with Cloudflare D1.
+                  </p>
 
-              {/* Inline Stats Counter */}
-              <div className="flex flex-wrap items-center gap-6 mt-5 pt-5 border-t border-white/10 text-xs">
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Active Briefs</span>
-                  <span className="font-heading font-black text-lg text-white">{orders.length}</span>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Store Catalog</span>
-                  <span className="font-heading font-black text-lg text-white">{templates.length} Decks</span>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Pro Retainers</span>
-                  <span className="font-heading font-black text-lg text-[#FCBF14]">{activeProSubscribers.length} VIP</span>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Storage Free</span>
-                  <span className="font-heading font-black text-lg text-white">{remainingGB} GB</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3 KPI Widget Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: Order Fulfillment */}
-            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
-                  Brief Fulfillment
-                </span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {deliveredBriefsCount} Delivered
-                </span>
-              </div>
-              <div className="flex items-center gap-6 my-2">
-                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
-                    <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
-                    <circle
-                      cx="45"
-                      cy="45"
-                      r="38"
-                      stroke="#FCBF14"
-                      strokeWidth="8"
-                      strokeDasharray={gaugeCircumference}
-                      strokeDashoffset={fulfillmentOffset}
-                      strokeLinecap="round"
-                      fill="none"
-                      className="transition-all duration-700"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-lg font-heading font-black text-[#111111]">
-                      {fulfillmentRate}%
-                    </span>
-                    <span className="text-[9px] font-bold text-[#726F6D]">Done</span>
+                  {/* Inline Stats Counter with Clickable Links */}
+                  <div className="flex flex-wrap items-center gap-6 mt-5 pt-5 border-t border-white/10 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
+                      className="text-left group cursor-pointer"
+                    >
+                      <span className="text-gray-400 group-hover:text-primary-amber block text-[10px] uppercase font-bold transition-colors">
+                        Active Briefs →
+                      </span>
+                      <span className="font-heading font-black text-lg text-white group-hover:text-primary-amber transition-colors">
+                        {orders.length}
+                      </span>
+                    </button>
+                    <div className="w-px h-8 bg-white/10" />
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+                      className="text-left group cursor-pointer"
+                    >
+                      <span className="text-gray-400 group-hover:text-primary-amber block text-[10px] uppercase font-bold transition-colors">
+                        Store Catalog →
+                      </span>
+                      <span className="font-heading font-black text-lg text-white group-hover:text-primary-amber transition-colors">
+                        {templates.length} Decks
+                      </span>
+                    </button>
+                    <div className="w-px h-8 bg-white/10" />
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                      className="text-left group cursor-pointer"
+                    >
+                      <span className="text-gray-400 group-hover:text-primary-amber block text-[10px] uppercase font-bold transition-colors">
+                        Pro Retainers →
+                      </span>
+                      <span className="font-heading font-black text-lg text-[#FCBF14] group-hover:underline">
+                        {activeProSubscribers.length} VIP
+                      </span>
+                    </button>
+                    <div className="w-px h-8 bg-white/10" />
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("storage"); }}
+                      className="text-left group cursor-pointer"
+                    >
+                      <span className="text-gray-400 group-hover:text-primary-amber block text-[10px] uppercase font-bold transition-colors">
+                        Storage Free →
+                      </span>
+                      <span className="font-heading font-black text-lg text-white group-hover:text-primary-amber transition-colors">
+                        {remainingGB} GB
+                      </span>
+                    </button>
                   </div>
                 </div>
-                <div className="space-y-1 text-xs">
-                  <p className="font-extrabold text-[#111111]">Delivery Rate</p>
-                  <p className="text-[11px] text-[#726F6D]">
-                    {orders.filter(o => o.status === "pending").length} pending review
-                  </p>
-                  <p className="text-[11px] text-amber-700 font-bold">
-                    {orders.filter(o => o.status === "in_progress").length} in design
-                  </p>
-                </div>
               </div>
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
-                <span>Total Orders</span>
-                <strong className="text-[#111111]">{orders.length} commissions</strong>
-              </div>
-            </div>
 
-            {/* Card 2: Pro VIP Retainers */}
-            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
-                  Client Pro Retainers
-                </span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                  {activeProSubscribers.length} Active
-                </span>
-              </div>
-              <div className="flex items-center gap-6 my-2">
-                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
-                    <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
-                    <circle
-                      cx="45"
-                      cy="45"
-                      r="38"
-                      stroke="#111111"
-                      strokeWidth="8"
-                      strokeDasharray={gaugeCircumference}
-                      strokeDashoffset={proOffset}
-                      strokeLinecap="round"
-                      fill="none"
-                      className="transition-all duration-700"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-lg font-heading font-black text-[#111111]">
-                      {proConversionRate}%
+              {/* 3 KPI Widget Cards with Interactive Navigation */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card 1: Order Fulfillment */}
+                <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                      Brief Fulfillment
                     </span>
-                    <span className="text-[9px] font-bold text-[#726F6D]">Pro</span>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
+                      className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    >
+                      {deliveredBriefsCount} Delivered →
+                    </button>
                   </div>
-                </div>
-                <div className="space-y-1 text-xs">
-                  <p className="font-extrabold text-[#111111]">Pro Membership Health</p>
-                  <p className="text-[11px] text-[#726F6D]">
-                    {registeredClientsCount} client accounts
-                  </p>
-                  <p className="text-[11px] text-emerald-700 font-bold">
-                    Subscriptions healthy
-                  </p>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
-                <span>Inbound Waitlist</span>
-                <strong className="text-[#111111]">{waitlist.length} leads</strong>
-              </div>
-            </div>
-
-            {/* Card 3: Template Catalog Breakdown */}
-            <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
-                  Catalog Breakdown
-                </span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-primary/20 text-[#111111]">
-                  {templates.length} Decks
-                </span>
-              </div>
-              <div className="space-y-2.5 my-2">
-                {displayCategories.map((cat, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold text-[#111111]">
-                      <span>{cat.name}</span>
-                      <span className="text-[#726F6D] font-mono">{cat.count} ({cat.percent}%)</span>
+                  <div className="flex items-center gap-6 my-2">
+                    <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
+                        <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
+                        <circle
+                          cx="45"
+                          cy="45"
+                          r="38"
+                          stroke="#FCBF14"
+                          strokeWidth="8"
+                          strokeDasharray={gaugeCircumference}
+                          strokeDashoffset={fulfillmentOffset}
+                          strokeLinecap="round"
+                          fill="none"
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-lg font-heading font-black text-[#111111]">
+                          {fulfillmentRate}%
+                        </span>
+                        <span className="text-[9px] font-bold text-[#726F6D]">Done</span>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-primary h-full rounded-full transition-all duration-500"
-                        style={{ width: `${cat.percent}%` }}
-                      />
+                    <div className="space-y-1 text-xs">
+                      <p className="font-extrabold text-[#111111]">Delivery Rate</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOrderMilestoneFilter("discovery");
+                          setActiveTab("orders");
+                          navigate("/admin/orders");
+                        }}
+                        className="text-[11px] text-[#726F6D] hover:text-[#111111] hover:underline block text-left cursor-pointer"
+                      >
+                        {orders.filter(o => o.status === "pending").length} pending review
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOrderMilestoneFilter("refining");
+                          setActiveTab("orders");
+                          navigate("/admin/orders");
+                        }}
+                        className="text-[11px] text-amber-700 font-bold hover:underline block text-left cursor-pointer"
+                      >
+                        {orders.filter(o => o.status === "in_progress").length} in design
+                      </button>
                     </div>
                   </div>
-                ))}
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
+                      className="hover:text-[#111111] hover:underline cursor-pointer"
+                    >
+                      Manage Briefs
+                    </button>
+                    <strong className="text-[#111111]">{orders.length} commissions</strong>
+                  </div>
+                </div>
+
+                {/* Card 2: Pro VIP Retainers */}
+                <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                      Client Pro Retainers
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setClientFilter("pro"); setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                      className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                    >
+                      {activeProSubscribers.length} Active →
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-6 my-2">
+                    <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
+                        <circle cx="45" cy="45" r="38" stroke="#F3F4F6" strokeWidth="8" fill="none" />
+                        <circle
+                          cx="45"
+                          cy="45"
+                          r="38"
+                          stroke="#111111"
+                          strokeWidth="8"
+                          strokeDasharray={gaugeCircumference}
+                          strokeDashoffset={proOffset}
+                          strokeLinecap="round"
+                          fill="none"
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-lg font-heading font-black text-[#111111]">
+                          {proConversionRate}%
+                        </span>
+                        <span className="text-[9px] font-bold text-[#726F6D]">Pro</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <p className="font-extrabold text-[#111111]">Pro Membership Health</p>
+                      <button
+                        type="button"
+                        onClick={() => { setClientFilter("all"); setActiveTab("subscriptions"); navigate("/admin/clients"); }}
+                        className="text-[11px] text-[#726F6D] hover:text-[#111111] hover:underline block text-left cursor-pointer"
+                      >
+                        {registeredClientsCount} client accounts
+                      </button>
+                      <p className="text-[11px] text-emerald-700 font-bold">
+                        Subscriptions healthy
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("waitlist"); navigate("/admin"); }}
+                      className="hover:text-[#111111] hover:underline cursor-pointer"
+                    >
+                      Inbound Waitlist
+                    </button>
+                    <strong className="text-[#111111]">{waitlist.length} leads</strong>
+                  </div>
+                </div>
+
+                {/* Card 3: Template Catalog Breakdown */}
+                <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#726F6D]">
+                      Catalog Breakdown
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("templates"); navigate("/admin/templates"); }}
+                      className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-primary/20 text-[#111111] hover:bg-primary transition-colors cursor-pointer"
+                    >
+                      {templates.length} Decks →
+                    </button>
+                  </div>
+                  <div className="space-y-2.5 my-2">
+                    {displayCategories.map((cat, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setAdminTemplateCategory(cat.name);
+                          setActiveTab("templates");
+                          navigate("/admin/templates");
+                        }}
+                        className="w-full text-left space-y-1 group cursor-pointer"
+                      >
+                        <div className="flex justify-between text-[11px] font-bold text-[#111111] group-hover:text-primary-amber transition-colors">
+                          <span>{cat.name}</span>
+                          <span className="text-[#726F6D] font-mono">{cat.count} ({cat.percent}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-primary h-full rounded-full transition-all duration-500"
+                            style={{ width: `${cat.percent}%` }}
+                          />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("storage"); }}
+                      className="hover:text-[#111111] hover:underline cursor-pointer"
+                    >
+                      R2 Storage Quota
+                    </button>
+                    <strong className="text-[#111111]">{remainingGB} GB free</strong>
+                  </div>
+                </div>
               </div>
-              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
-                <span>R2 Storage Quota</span>
-                <strong className="text-[#111111]">{remainingGB} GB free</strong>
+
+              {/* Quick Launchpad & Active Highlights in Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Executive Quick Actions */}
+                <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <h3 className="font-heading font-black text-sm text-[#111111] flex items-center gap-2">
+                      <Zap size={16} className="text-primary-amber" /> Studio Command Launchpad
+                    </h3>
+                    <span className="text-[10px] font-extrabold text-[#726F6D] uppercase">Direct Actions</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
+                      className="p-3.5 rounded-2xl bg-[#FFF9E8] border border-primary/30 hover:border-primary text-left transition-all hover:scale-[1.02] cursor-pointer"
+                    >
+                      <ShoppingBag size={18} className="text-[#111111] mb-2" />
+                      <div className="font-heading font-black text-xs text-[#111111]">Review Briefs</div>
+                      <div className="text-[10px] text-[#726F6D] font-medium">{orders.length} total projects</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("templates");
+                        setIsAddTemplateOpen(true);
+                        navigate("/admin/templates");
+                      }}
+                      className="p-3.5 rounded-2xl bg-[#FFF9E8] border border-primary/30 hover:border-primary text-left transition-all hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Plus size={18} className="text-[#111111] mb-2" />
+                      <div className="font-heading font-black text-xs text-[#111111]">Add Template</div>
+                      <div className="text-[10px] text-[#726F6D] font-medium">Publish to storefront</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleOpenManageTierModal({ id: "", email: "", full_name: "Client", tier: "monthly" });
+                      }}
+                      className="p-3.5 rounded-2xl bg-[#FFF9E8] border border-primary/30 hover:border-primary text-left transition-all hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Gift size={18} className="text-[#111111] mb-2" />
+                      <div className="font-heading font-black text-xs text-[#111111]">Grant VIP Pro</div>
+                      <div className="text-[10px] text-[#726F6D] font-medium">Assign Pro membership</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("customization"); navigate("/admin/customization"); }}
+                      className="p-3.5 rounded-2xl bg-[#FFF9E8] border border-primary/30 hover:border-primary text-left transition-all hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Sliders size={18} className="text-[#111111] mb-2" />
+                      <div className="font-heading font-black text-xs text-[#111111]">Site Customizer</div>
+                      <div className="text-[10px] text-[#726F6D] font-medium">Banners, CMS & hero</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Urgent Pending Briefs Feed */}
+                <div className="bg-white border border-[#111111]/10 rounded-3xl p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <h3 className="font-heading font-black text-sm text-[#111111] flex items-center gap-2">
+                      <Clock size={16} className="text-primary-amber" /> Live Brief Pipeline
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}
+                      className="text-[10px] font-black text-primary-amber hover:underline cursor-pointer"
+                    >
+                      View All ({orders.length}) →
+                    </button>
+                  </div>
+
+                  {orders.length === 0 ? (
+                    <div className="text-center py-8 text-[#726F6D] text-xs">
+                      No active commissions currently in the pipeline.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {orders.slice(0, 3).map((ord) => {
+                        const milestone = ORDER_MILESTONES[getMilestoneIndex(ord.status)] || ORDER_MILESTONES[0];
+                        return (
+                          <div
+                            key={ord.id}
+                            className="p-3 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between gap-3 hover:bg-[#FFF9E8]/60 transition-colors"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-xs text-[#111111] truncate">
+                                {ord.service_type || "Presentation Design"}
+                              </div>
+                              <div className="text-[10px] text-[#726F6D] truncate">
+                                {ord.client_name || ord.client_email} • {ord.slide_count || "Custom"} slides
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-[#111111]">
+                                {milestone.label}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrderForModal(ord);
+                                  setOrderDeliverableFile(null);
+                                  setDeliverableSuccessMsg("");
+                                }}
+                                className="hex-pill-sm bg-[#111111] text-white hover:text-primary text-[10px] font-bold px-2.5 py-1 cursor-pointer"
+                              >
+                                Inspect
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Sub-Filters / Secondary Actions for Active Tab */}
           {activeTab === "subscriptions" && (
