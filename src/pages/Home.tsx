@@ -33,12 +33,12 @@ export default function Home() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Window scroll-linked transforms for pinned hero stage parallax depth
+  // Window scroll-linked subtle depth
   const { scrollY } = useScroll();
-  const heroCardY = useTransform(scrollY, [0, 480], [0, -32]);
-  const heroCardOpacity = useTransform(scrollY, [0, 420], [1, 0.25]);
-  const videoScale = useTransform(scrollY, [0, 520], [1, 0.95]);
-  const videoOpacity = useTransform(scrollY, [0, 480], [1, 0.4]);
+  const heroCardY = useTransform(scrollY, [0, 500], [0, -20]);
+  const heroCardOpacity = useTransform(scrollY, [0, 500], [1, 0.75]);
+  const videoScale = useTransform(scrollY, [0, 500], [1, 0.98]);
+  const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.85]);
 
   // Real executive slide sets for rich preview variety matching SlideEgg showcase
   const portfolioSlideSets = [
@@ -427,11 +427,11 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
-      {/* 1 & 2. UNIFIED HERO STAGE (Pinned Hero Stage)                              */}
+      {/* 1 & 2. UNIFIED HERO STAGE                                                 */}
       {/* ========================================================================= */}
-      <div
+      <section
         ref={heroRef}
-        className="sticky top-0 w-full min-h-screen z-10 overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
+        className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -636,14 +636,18 @@ export default function Home() {
           </div>
 
         </motion.div>
-      </div>
+      </section>
 
       {/* ========================================================================= */}
       {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
       {/* ========================================================================= */}
-      <section
+      <motion.section
         id="templates"
-        className="scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20"
+        initial={{ opacity: 0.9, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.05 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-6 sm:-mt-10"
       >
         <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
           
@@ -862,12 +866,18 @@ export default function Home() {
           )}
 
         </div>
-      </section>
+      </motion.section>
 
       {/* ========================================================================= */}
       {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP                                */}
       {/* ========================================================================= */}
-      <section className="py-12 border-t-2 border-primary/20">
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 bg-[#FFF9E8] py-12 border-t-2 border-primary/20"
+      >
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 shadow-lg">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
@@ -940,12 +950,18 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ========================================================================= */}
       {/* 5. CLIENT TESTIMONIALS                                                    */}
       {/* ========================================================================= */}
-      <section className="pt-12 pb-20">
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 bg-[#FFF9E8] pt-12 pb-20"
+      >
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
@@ -993,7 +1009,7 @@ export default function Home() {
           </div>
 
         </div>
-      </section>
+      </motion.section>
 
     </div>
   );
