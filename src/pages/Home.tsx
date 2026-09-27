@@ -33,13 +33,12 @@ export default function Home() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Parallax scroll-linked transforms without opacity dimming
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-
-  const heroCardY = useTransform(scrollYProgress, [0, 0.6], [0, -25]);
+  // Window scroll-linked transforms for pinned hero stage parallax depth
+  const { scrollY } = useScroll();
+  const heroCardY = useTransform(scrollY, [0, 480], [0, -32]);
+  const heroCardOpacity = useTransform(scrollY, [0, 420], [1, 0.25]);
+  const videoScale = useTransform(scrollY, [0, 520], [1, 0.95]);
+  const videoOpacity = useTransform(scrollY, [0, 480], [1, 0.4]);
 
   // Real executive slide sets for rich preview variety matching SlideEgg showcase
   const portfolioSlideSets = [
@@ -428,13 +427,17 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
-      {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
-      <section
+      {/* 1 & 2. UNIFIED HERO STAGE (Pinned Hero Stage)                              */}
+      {/* ========================================================================= */}
+      <div
         ref={heroRef}
-        className="relative w-full min-h-screen lg:min-h-[105vh] pt-16 sm:pt-20 lg:pt-22 pb-16 sm:pb-24 overflow-hidden flex flex-col items-center justify-center bg-[#111111]"
+        className="sticky top-0 w-full min-h-screen z-10 overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+        <motion.div
+          style={{ scale: videoScale, opacity: videoOpacity }}
+          className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
+        >
           <video
             src="/hero_section.mp4"
             poster="/hero_section_1.jpeg"
@@ -446,13 +449,16 @@ export default function Home() {
           />
           {/* Crisp, clean overlay without heavy darkening or opacity haze */}
           <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-        </div>
+        </motion.div>
 
         {/* Central Stage Container */}
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
+        <motion.div
+          style={{ y: heroCardY, opacity: heroCardOpacity }}
+          className="w-[92%] max-w-[1760px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
+        >
           
-          {/* Top Split Promotion Banners (Moved up with tighter proportions) */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 -mt-2 sm:-mt-4 lg:-mt-6 mb-5 sm:mb-7">
+          {/* Top Split Promotion Banners (Center aligned with central card) */}
+          <div className="w-full max-w-5xl lg:max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
             <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px]">
@@ -495,14 +501,26 @@ export default function Home() {
                 </div>
               </div>
 
-              <Link
-                to={homeBanner1.ctaLink || "/ordernow"}
-                data-bee-state="quote"
-                className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10"
-              >
-                <span>{homeBanner1.ctaText || "Get Started"}</span>
-                <ArrowRight size={15} className="text-[#FCBF14]" />
-              </Link>
+              {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (
+                <Link
+                  to={homeBanner1.ctaLink}
+                  data-bee-state="quote"
+                  className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10 cursor-pointer"
+                >
+                  <span>{homeBanner1.ctaText || "Get Started"}</span>
+                  <ArrowRight size={15} className="text-[#FCBF14]" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={scrollToTemplates}
+                  data-bee-state="quote"
+                  className="hex-pill bg-[#111111] hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10 cursor-pointer"
+                >
+                  <span>{homeBanner1.ctaText || "Get Started"}</span>
+                  <ArrowRight size={15} className="text-[#FCBF14]" />
+                </button>
+              )}
             </div>
 
             {/* Banner 2: Black - Get Unlimited Downloads */}
@@ -549,6 +567,7 @@ export default function Home() {
                 </Link>
               ) : (
                 <button
+                  type="button"
                   onClick={scrollToTemplates}
                   className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center cursor-pointer relative z-10"
                 >
@@ -560,56 +579,55 @@ export default function Home() {
 
           </div>
           
-          {/* Central Translucent Frosted Glass Card with Dissolving Parallax */}
-          <motion.div
-            style={{ y: heroCardY }}
-            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/85 sm:bg-[#FFFDF5]/90 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[48px] py-10 sm:py-16 lg:py-20 px-6 sm:px-14 lg:px-20 text-center shadow-[0_30px_90px_rgba(0,0,0,0.24)] flex flex-col items-center justify-center transition-all"
+          {/* Central Translucent Frosted Glass Card */}
+          <div
+            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/85 sm:bg-[#FFFDF5]/90 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[48px] py-8 sm:py-12 lg:py-14 px-6 sm:px-12 lg:px-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.24)] flex flex-col items-center justify-center transition-all"
           >
             
             {/* Eyebrow */}
-            <div className="mb-4 sm:mb-5">
+            <div className="mb-3 sm:mb-4">
               <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
                 {heroConfig.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
               </span>
             </div>
 
             {/* Bold Display Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-3xl whitespace-pre-line">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-heading font-black text-[#111111] leading-[1.08] tracking-tight mb-4 max-w-3xl whitespace-pre-line">
               {heroConfig.title || "Ideas Deserve\nBetter Slides."}
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-3xl mx-auto mb-8 whitespace-pre-line">
+            <p className="text-xs sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-3xl mx-auto mb-6 sm:mb-7 whitespace-pre-line">
               {heroConfig.subtitle || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."}
             </p>
 
             {/* Trust Indicators Row */}
-            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-6 border-t border-[#111111]/10 w-full">
+            <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-8 pt-5 border-t border-[#111111]/10 w-full">
               <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-primary-amber fill-[#FCBF14]" />
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber fill-[#FCBF14]" />
                 <span className="text-xs sm:text-sm font-bold text-[#111111]">
                   Professional Quality
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#111111]" />
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#111111]" />
                 <span className="text-xs sm:text-sm font-bold text-[#111111]">
                   Trusted by Creators & Teams
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Gift className="w-5 h-5 text-primary-amber" />
+                <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber" />
                 <span className="text-xs sm:text-sm font-bold text-[#111111]">
                   Save Time. Present Better.
                 </span>
               </div>
             </div>
 
-          </motion.div>
+          </div>
 
           {/* Playful Note Beneath Hero Stage */}
-          <div className="mt-6 text-center">
-            <span className="inline-block font-heading font-black italic text-base sm:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
+          <div className="mt-4 sm:mt-5 text-center">
+            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
               Better Presentations Brighter Ideas
               <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
                 <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
@@ -617,15 +635,15 @@ export default function Home() {
             </span>
           </div>
 
-        </div>
-      </section>
+        </motion.div>
+      </div>
 
       {/* ========================================================================= */}
       {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
       {/* ========================================================================= */}
       <section
         id="templates"
-        className="scroll-mt-20 relative z-30 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/40 shadow-[0_-35px_80px_rgba(0,0,0,0.28)] pt-12 sm:pt-16 pb-20"
+        className="scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20"
       >
         <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
           
