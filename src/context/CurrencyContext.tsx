@@ -13,6 +13,23 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 const detectIsIndia = (): boolean => {
   try {
+    if (typeof window !== 'undefined') {
+      const clientUserStr = localStorage.getItem('slidebee_client_user');
+      if (clientUserStr) {
+        try {
+          const client = JSON.parse(clientUserStr);
+          const country = client?.country || client?.user_metadata?.country || client?.user_metadata?.location;
+          if (country) {
+            const c = String(country).trim().toLowerCase();
+            if (c === 'in' || c === 'india') return true;
+            if (c === 'us' || c === 'usa' || c === 'uk' || c === 'ca' || c === 'eu' || c === 'gb') return false;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
     if (
       timeZone.includes('Calcutta') ||

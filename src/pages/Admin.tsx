@@ -40,7 +40,6 @@ import {
   Phone,
   Compass,
   DollarSign,
-  Star,
   Eye,
   EyeOff,
   RefreshCw,
@@ -147,19 +146,14 @@ export default function Admin() {
   // Dashboard Active Tab & Sub-Page State
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "waitlist" | "templates" | "customization" | "billing" | "storage" | "subscriptions">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions">("overview");
 
   // Live Data States
   const [orders, setOrders] = useState<any[]>([]);
-  const [waitlist, setWaitlist] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [siteConfigs, setSiteConfigs] = useState<Record<string, any>>({});
-  const [templateMetricsSettings, setTemplateMetricsSettings] = useState<{ show_stars: boolean; show_downloads: boolean }>({
-    show_stars: false,
-    show_downloads: false
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [orderMilestoneFilter, setOrderMilestoneFilter] = useState<string>("all");
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
@@ -356,8 +350,6 @@ export default function Admin() {
       setActiveTab("billing");
     } else if (path.includes("/storage")) {
       setActiveTab("storage");
-    } else if (path.includes("/waitlist")) {
-      setActiveTab("waitlist");
     } else if (path.includes("/subscriptions") || path.includes("/clients")) {
       setActiveTab("subscriptions");
     } else if (path.includes("/orders") || path.includes("/briefs")) {
@@ -448,7 +440,6 @@ export default function Admin() {
       // Parallel concurrent retrieval for instant sub-second refresh
       const [
         ordersRes,
-        waitlistRes,
         templatesRes,
         profilesRes,
         subsRes,
@@ -456,7 +447,6 @@ export default function Admin() {
         r2Data
       ] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
-        supabase.from("waitlist").select("*").order("created_at", { ascending: false }),
         supabase.from("templates").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
@@ -492,8 +482,7 @@ export default function Admin() {
         } catch {}
       }
 
-      // Update Waitlist
-      if (waitlistRes.data) setWaitlist(waitlistRes.data);
+
 
       // Update Templates
       if (templatesRes.data && templatesRes.data.length > 0) {
@@ -530,12 +519,7 @@ export default function Admin() {
             setCategoriesList(Array.from(new Set<string>(["Pitch Decks", "Business", "Infographics", "Marketing", "Corporate", "Finance", "Strategy", ...unique])));
           }
         }
-        if (configMap["show_template_metrics"]) {
-          setTemplateMetricsSettings({
-            show_stars: Boolean(configMap["show_template_metrics"].show_stars),
-            show_downloads: Boolean(configMap["show_template_metrics"].show_downloads)
-          });
-        }
+
         if (configMap["zoho_mail_settings"]) {
           const zh = configMap["zoho_mail_settings"];
           if (zh.deliverables) setZohoDeliverableEmail(zh.deliverables);
@@ -1016,19 +1000,7 @@ support@theslidebee.com`
     }
   };
 
-  // Export Waitlist to CSV
-  const handleExportWaitlistCSV = () => {
-    if (waitlist.length === 0) return;
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      ["Email,Source,Joined At", ...waitlist.map(w => `"${w.email}","${w.source || ''}","${w.created_at}"`)].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `slidebee_waitlist_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+
 
   // Download Comprehensive Sample Bulk Template CSV
   const handleDownloadSampleCSV = () => {
@@ -2653,9 +2625,7 @@ hello@theslidebee.com`;
     return matchesSearch && currentIdx === targetIdx;
   });
 
-  const filteredWaitlist = waitlist.filter(w => 
-    w.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
 
 
 
@@ -2770,26 +2740,6 @@ hello@theslidebee.com`;
                   activeTab === "orders" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
                 }`}>
                   {orders.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setActiveTab("waitlist"); navigate("/admin"); }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === "waitlist"
-                    ? "bg-[#111111] text-[#FCBF14] shadow-xs"
-                    : "text-[#726F6D] hover:text-[#111111] hover:bg-black/5"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users size={15} />
-                  <span>Waitlist</span>
-                </div>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                  activeTab === "waitlist" ? "bg-primary/20 text-[#FCBF14]" : "bg-gray-100 text-[#726F6D]"
-                }`}>
-                  {waitlist.length}
                 </span>
               </button>
 
@@ -2931,7 +2881,7 @@ hello@theslidebee.com`;
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="Search orders, templates, clients, waitlist..."
+                placeholder="Search orders, templates, clients..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-[#FFF9E8] border border-[#111111]/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-all"
@@ -2964,15 +2914,6 @@ hello@theslidebee.com`;
                     : "Refresh"}
                 </span>
               </button>
-              {activeTab === "waitlist" && (
-                <button
-                  type="button"
-                  onClick={handleExportWaitlistCSV}
-                  className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-4 py-2.5 text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Download size={13} /> Export CSV
-                </button>
-              )}
             </div>
           </div>
 
@@ -3183,12 +3124,12 @@ hello@theslidebee.com`;
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#726F6D]">
                     <button
                       type="button"
-                      onClick={() => { setActiveTab("waitlist"); navigate("/admin"); }}
+                      onClick={() => { setClientFilter("all"); setActiveTab("subscriptions"); navigate("/admin/clients"); }}
                       className="hover:text-[#111111] hover:underline cursor-pointer"
                     >
-                      Inbound Waitlist
+                      All Clients →
                     </button>
-                    <strong className="text-[#111111]">{waitlist.length} leads</strong>
+                    <strong className="text-[#111111]">{registeredClientsCount} accounts</strong>
                   </div>
                 </div>
 
@@ -3422,33 +3363,7 @@ hello@theslidebee.com`;
             </div>
           )}
 
-          {/* Sub-Filters for Orders vs Waitlist */}
-          {(activeTab === "orders" || activeTab === "waitlist") && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("orders")}
-                className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  activeTab === "orders"
-                    ? "bg-primary text-[#111111] shadow-xs"
-                    : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                }`}
-              >
-                <ShoppingBag size={13} /> Client Briefs ({orders.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("waitlist")}
-                className={`px-4 py-1.5 hex-pill text-xs font-extrabold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  activeTab === "waitlist"
-                    ? "bg-primary text-[#111111] shadow-xs"
-                    : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
-                }`}
-              >
-                <Users size={13} /> Inbound Waitlist ({waitlist.length})
-              </button>
-            </div>
-          )}
+
 
           {/* Tab Management Content Wrapper */}
           <div className="space-y-6">
@@ -3707,100 +3622,11 @@ hello@theslidebee.com`;
           </div>
         )}
 
-        {/* TAB 2: WAITLIST */}
-        {activeTab === "waitlist" && (
-          <div className="hex-card-lg bg-white border border-[#111111]/10 overflow-hidden shadow-md">
-            {filteredWaitlist.length === 0 ? (
-              <div className="p-12 text-center text-[#726F6D]">
-                <Users size={36} className="mx-auto text-gray-300 mb-2" />
-                <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Waitlist Leads</h4>
-                <p className="text-xs font-medium mt-1">Signups from the Coming Soon page will appear here.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] font-extrabold uppercase tracking-wider">
-                      <th className="p-4">Date Joined</th>
-                      <th className="p-4">Email Address</th>
-                      <th className="p-4">Source / Note</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#111111]/6 font-medium text-[#111111]">
-                    {filteredWaitlist.map((w) => (
-                      <tr key={w.id} className="hover:bg-primary/5 transition-colors">
-                        <td className="p-4 whitespace-nowrap text-[#726F6D]">
-                          {new Date(w.created_at).toLocaleString()}
-                        </td>
-                        <td className="p-4 font-extrabold text-[#111111]">
-                          {w.email}
-                        </td>
-                        <td className="p-4 text-[#726F6D]">
-                          {w.source || "Coming Soon Hero"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+
 
         {/* TAB 3: TEMPLATES */}
         {activeTab === "templates" && (
           <div className="space-y-6">
-            {/* Storefront Metrics Visibility Controls */}
-            <div className="hex-card bg-white border-2 border-primary/40 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h4 className="font-heading font-extrabold text-sm text-[#111111] flex items-center gap-2">
-                  <Sliders size={16} className="text-primary-amber" />
-                  Storefront Star Ratings & Download Metrics Controls
-                </h4>
-                <p className="text-xs text-[#726F6D]">
-                  Control whether clients see star ratings and download counts on public template cards and detail pages.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Star Ratings Toggle */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const next = { ...templateMetricsSettings, show_stars: !templateMetricsSettings.show_stars };
-                    setTemplateMetricsSettings(next);
-                    await handleSaveConfig("show_template_metrics", next);
-                  }}
-                  className={`hex-pill px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    templateMetricsSettings.show_stars
-                      ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-400 shadow-sm"
-                      : "bg-[#FFF9E8] text-[#726F6D] border border-primary/30"
-                  }`}
-                >
-                  <Star size={13} className={templateMetricsSettings.show_stars ? "fill-amber-500 text-amber-500" : ""} />
-                  <span>Star Ratings: {templateMetricsSettings.show_stars ? "Visible on Site" : "Hidden from Clients"}</span>
-                </button>
-
-                {/* Downloads Count Toggle */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const next = { ...templateMetricsSettings, show_downloads: !templateMetricsSettings.show_downloads };
-                    setTemplateMetricsSettings(next);
-                    await handleSaveConfig("show_template_metrics", next);
-                  }}
-                  className={`hex-pill px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    templateMetricsSettings.show_downloads
-                      ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-400 shadow-sm"
-                      : "bg-[#FFF9E8] text-[#726F6D] border border-primary/30"
-                  }`}
-                >
-                  <Download size={13} />
-                  <span>Downloads Count: {templateMetricsSettings.show_downloads ? "Visible on Site" : "Hidden from Clients"}</span>
-                </button>
-              </div>
-            </div>
-
             {/* Category Management Hub */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-primary/40 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
