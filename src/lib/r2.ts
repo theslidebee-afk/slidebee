@@ -255,12 +255,46 @@ export async function deleteFromR2(key: string): Promise<boolean> {
 }
 
 /**
- * Normalizes any asset URL (legacy Supabase storage, flat R2 root, or relative)
- * to its exact structured Cloudflare R2 folder CDN URL.
+ * Automatically converts Google Drive sharing links to direct streamable CDN URLs.
+ * Handles /file/d/ID/view, /open?id=ID, and direct download links.
+ */
+export function convertGoogleDriveUrl(url: string | undefined | null, isImage = true): string {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed.includes("drive.google.com") && !trimmed.includes("docs.google.com")) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+                trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    if (isImage) {
+      // Direct CDN image stream for Google Drive
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    } else {
+      // Direct binary download link for PPTX / deliverables
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+  }
+
+  return trimmed;
+}
+
+/**
+ * Normalizes any asset URL (legacy Supabase storage, flat R2 root, Google Drive, or relative)
+ * to its exact structured Cloudflare R2 folder CDN URL or direct media URL.
  */
 export function normalizeR2Url(url: string | undefined | null, _type: "slides" | "decks" = "slides"): string {
   if (!url || typeof url !== "string") {
     return "";
+  }
+
+  // Auto-convert Google Drive sharing links to direct CDN media links
+  if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+    return convertGoogleDriveUrl(url, _type === "slides");
   }
 
   // If already proper structured R2 URL, return as-is

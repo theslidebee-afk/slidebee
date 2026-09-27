@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
-import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
+import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, convertGoogleDriveUrl, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import { 
   sendProGrantedEmail, 
   sendProExpiringSoonEmail,
@@ -1241,8 +1241,9 @@ support@theslidebee.com`
       const title = rawTitle || `Executive Template ${i}`;
       const code = rawCode || `SLD-${Math.floor(100 + Math.random() * 900)}`;
       const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${code.toLowerCase()}`;
-      const thumbnail_url = rawThumb || "/portfolio/case_study_a_1.png";
-      const slide_count = Number(parts[slidesCountIdx]) || slides.length || 25;
+      const thumbnail_url = convertGoogleDriveUrl(rawThumb, true) || "/portfolio/case_study_a_1.png";
+      const convertedSlides = slides.map(s => convertGoogleDriveUrl(s, true));
+      const slide_count = Number(parts[slidesCountIdx]) || convertedSlides.length || 25;
 
       let features: string[] = [
         `${slide_count}+ High-Impact Slides`,
@@ -1254,7 +1255,7 @@ support@theslidebee.com`
         if (parsedFeats.length > 0) features = parsedFeats;
       }
 
-      const download_url = rawDownload || thumbnail_url;
+      const download_url = convertGoogleDriveUrl(rawDownload, false) || thumbnail_url;
       const is_credit_eligible = creditEligibleIdx !== -1
         ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
         : false;
@@ -1275,7 +1276,7 @@ support@theslidebee.com`
         slides_count: slide_count,
         thumbnail_url,
         image_url: thumbnail_url,
-        slides,
+        slides: convertedSlides,
         download_url,
         file_name: "Master Presentation.pptx",
         file_size: "18.5 MB",
@@ -1394,10 +1395,12 @@ support@theslidebee.com`
           // Mirror thumbnail if external
           if (updatedThumb && updatedThumb.startsWith("http") && !updatedThumb.includes("r2.dev")) {
             try {
-              const res = await fetch(updatedThumb);
+              const fetchUrl = convertGoogleDriveUrl(updatedThumb, true);
+              const res = await fetch(fetchUrl);
               if (res.ok) {
                 const blob = await res.blob();
-                const ext = updatedThumb.split(".").pop()?.split(/[?#]/)[0] || "jpg";
+                const rawExt = fetchUrl.split(".").pop()?.split(/[?#]/)[0];
+                const ext = rawExt && rawExt.length <= 4 && ["jpg", "jpeg", "png", "webp"].includes(rawExt.toLowerCase()) ? rawExt : "webp";
                 const fileName = `ingest_${tpl.code || Date.now()}_thumb_${tplIdx}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
                 const r2Res = await uploadToR2(blob, { folder: "bulk-ingest", fileName });
                 if (r2Res.success && r2Res.publicUrl) {
@@ -1416,10 +1419,12 @@ support@theslidebee.com`
             updatedSlides.map(async (slideUrl, sIdx) => {
               if (slideUrl && slideUrl.startsWith("http") && !slideUrl.includes("r2.dev")) {
                 try {
-                  const res = await fetch(slideUrl);
+                  const fetchUrl = convertGoogleDriveUrl(slideUrl, true);
+                  const res = await fetch(fetchUrl);
                   if (res.ok) {
                     const blob = await res.blob();
-                    const ext = slideUrl.split(".").pop()?.split(/[?#]/)[0] || "jpg";
+                    const rawExt = fetchUrl.split(".").pop()?.split(/[?#]/)[0];
+                    const ext = rawExt && rawExt.length <= 4 && ["jpg", "jpeg", "png", "webp"].includes(rawExt.toLowerCase()) ? rawExt : "webp";
                     const fileName = `ingest_${tpl.code || Date.now()}_slide_${sIdx + 1}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
                     const r2Res = await uploadToR2(blob, { folder: "bulk-ingest", fileName });
                     if (r2Res.success && r2Res.publicUrl) {
