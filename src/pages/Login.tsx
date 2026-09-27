@@ -700,7 +700,7 @@ export default function Login() {
               </h2>
               <p className="text-xs text-[#726F6D] font-medium mt-1">
                 {isSignUp 
-                  ? "Access deck briefs, retainer quotas, and deliverables" 
+                  ? "Access deck briefs, pro template quotas, and deliverables" 
                   : "Manage your active presentation projects & templates"}
               </p>
             </div>

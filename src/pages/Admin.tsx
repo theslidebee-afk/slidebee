@@ -998,6 +998,20 @@ support@theslidebee.com`
     document.body.removeChild(link);
   };
 
+  // Load 100-Template Test Dataset directly into CSV Parser
+  const handleLoad100TestTemplates = async () => {
+    try {
+      const res = await fetch("/samples/slidebee_100_templates_bulk_test.csv");
+      if (res.ok) {
+        const text = await res.text();
+        handleParseCSV(text);
+        setBulkModalTab("csv");
+      }
+    } catch (e) {
+      console.warn("Could not load 100 test templates:", e);
+    }
+  };
+
   // Robust CSV Line Tokenizer supporting quoted strings and commas
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
@@ -2629,7 +2643,7 @@ SlideBee Design Studio`
                   </div>
                 </div>
                 <div className="space-y-1 text-xs">
-                  <p className="font-extrabold text-[#111111]">VIP Retainer Health</p>
+                  <p className="font-extrabold text-[#111111]">Pro Membership Health</p>
                   <p className="text-[11px] text-[#726F6D]">
                     {registeredClientsCount} client accounts
                   </p>
@@ -3587,17 +3601,17 @@ SlideBee Design Studio`
 
                   <div>
                     <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Delivery Guarantee Headline
+                      Hero Bottom Tagline / Slogan
                     </label>
                     <input
                       type="text"
-                      value={siteConfigs["hero"]?.guarantee || ""}
+                      value={siteConfigs["hero"]?.slogan || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), guarantee: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), slogan: e.target.value }
                       })}
                       className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                      placeholder="e.g. 24–48hr turnaround · Venture-grade polish"
+                      placeholder="e.g. Better Presentations Brighter Ideas"
                     />
                   </div>
                 </div>
@@ -6883,14 +6897,14 @@ SlideBee Design Studio`
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                        Active Monthly Retainer Subscriptions
+                        Active Pro Memberships
                       </h3>
                       <span className="hex-pill-sm bg-primary/20 text-[#111111] font-black text-[10px] px-2 py-0.5 border border-primary/40">
                         {activeSubscriptions.length} Active
                       </span>
                     </div>
                     <p className="text-xs text-[#726F6D] mt-0.5">
-                      Real-time monitoring of client slide quotas, billing tiers, renewals, and complimentary VIP access
+                      Real-time monitoring of client monthly template quotas (30 templates/mo), Pro tier status, renewals, and complimentary VIP access
                     </p>
                   </div>
 
@@ -6911,7 +6925,7 @@ SlideBee Design Studio`
                   <div className="p-10 text-center text-[#726F6D]">
                     <CreditCard size={32} className="mx-auto text-gray-300 mb-2" />
                     <h4 className="font-heading font-extrabold text-sm text-[#111111]">No Active Subscriptions</h4>
-                    <p className="text-xs font-medium mt-1">Client retainers and complimentary grants will appear here.</p>
+                    <p className="text-xs font-medium mt-1">Client Pro memberships and complimentary grants will appear here.</p>
                     <button
                       onClick={() => {
                         setManageTierTargetClient(null);
@@ -6963,7 +6977,7 @@ SlideBee Design Studio`
                                   </span>
                                 ) : (
                                   <span className="hex-pill-sm bg-blue-50 text-blue-800 border border-blue-200 text-[9px] font-bold px-1.5 py-0.5 mt-0.5 inline-block">
-                                    Paid Retainer
+                                    Pro Member
                                   </span>
                                 )}
                               </td>
@@ -7453,12 +7467,27 @@ SlideBee Design Studio`
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={handleDownloadSampleCSV}
-                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    type="button"
+                    onClick={handleLoad100TestTemplates}
+                    className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] border border-primary/50 px-3 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
-                    <Download size={13} /> Download Sample CSV
+                    <Sparkles size={13} /> Load 100 Test Templates
+                  </button>
+                  <a
+                    href="/samples/slidebee_100_templates_bulk_test.csv"
+                    download="slidebee_100_templates_bulk_test.csv"
+                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Download size={13} /> Download 100-Template CSV
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleCSV}
+                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Download size={13} /> Sample CSV
                   </button>
                   <button
                     type="button"

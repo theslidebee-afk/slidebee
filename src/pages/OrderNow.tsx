@@ -274,8 +274,8 @@ export default function OrderNow() {
           style_preference: formData.stylePreference,
           drive_url: formData.driveLink,
           project_brief: formData.projectNotes,
-          full_name: formData.name,
-          email: formData.email,
+          full_name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
           company: formData.company,
           phone: formData.phone,
           status: 'pending'

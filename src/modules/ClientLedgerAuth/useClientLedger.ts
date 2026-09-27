@@ -75,34 +75,57 @@ export function useClientLedger() {
 
   const fetchClientData = useCallback(async (userEmail: string) => {
     if (!userEmail) return;
+    const cleanEmail = userEmail.trim();
 
     // 1. Fetch Profile ledger
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
-      .eq("email", userEmail)
+      .ilike("email", cleanEmail)
       .maybeSingle();
 
     if (profile) {
       setUserProfile(profile as UserProfile);
     }
 
-    // 2. Fetch Orders
+    // 2. Fetch Orders (Case-insensitive matching to guarantee custom briefs appear in user dashboard)
     const { data: ords } = await supabase
       .from("orders")
       .select("*")
-      .eq("email", userEmail)
+      .ilike("email", cleanEmail)
       .order("created_at", { ascending: false });
 
-    if (ords) {
-      setUserOrders(ords);
+    // Also check local client order backup if present
+    let localSaved: any[] = [];
+    try {
+      const raw = localStorage.getItem("slidebee_orders");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          localSaved = parsed.filter((o: any) => o.email && o.email.trim().toLowerCase() === cleanEmail.toLowerCase());
+        }
+      }
+    } catch {
+      // ignore json parse error
     }
+
+    const mergedOrders = [...(ords || [])];
+    localSaved.forEach((lo) => {
+      const exists = mergedOrders.some(
+        (mo) => (mo.order_reference && mo.order_reference === lo.order_reference) || (mo.id && mo.id === lo.id)
+      );
+      if (!exists) {
+        mergedOrders.push(lo);
+      }
+    });
+
+    setUserOrders(mergedOrders);
 
     // 3. Fetch Subscription
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("*")
-      .eq("user_email", userEmail)
+      .ilike("user_email", cleanEmail)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

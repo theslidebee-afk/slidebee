@@ -628,7 +628,7 @@ export default function Home() {
           {/* Playful Note Beneath Hero Stage */}
           <div className="mt-4 sm:mt-5 text-center">
             <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
-              Better Presentations Brighter Ideas
+              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
               <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
                 <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
               </svg>
@@ -654,9 +654,6 @@ export default function Home() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="hex-pill inline-flex items-center gap-1.5 bg-white border border-[#111111]/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-700 shadow-xs">
-                    <Sparkles size={12} className="text-[#FCBF14]" /> Continuous Catalog
-                  </span>
                   <span className="text-xs font-bold text-[#726F6D]">
                     Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
                   </span>
