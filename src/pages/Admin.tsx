@@ -576,7 +576,7 @@ export default function Admin() {
       clientEmail: cleanEmail,
       clientName,
       expiryDate: sub.current_period_end,
-      slidesLimit: sub.slides_limit || 15,
+      slidesLimit: sub.slides_limit || 30,
       slidesUsed: sub.slides_used || 0,
     });
     setRevokeNoticeType("immediate");
@@ -628,7 +628,7 @@ export default function Admin() {
         if (revokeSendEmail) {
           try {
             const daysRemaining = 7;
-            const remainingQuota = Math.max(0, (revokeProTarget.slidesLimit || 15) - (revokeProTarget.slidesUsed || 0));
+            const remainingQuota = Math.max(0, (revokeProTarget.slidesLimit || 30) - (revokeProTarget.slidesUsed || 0));
             const res = await sendProExpiringSoonEmail({
               clientEmail: revokeProTarget.clientEmail,
               clientName: revokeProTarget.clientName,
@@ -671,7 +671,7 @@ export default function Admin() {
     const daysRemaining = expiryDate
       ? Math.max(0, Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
       : 7;
-    const remainingQuota = Math.max(0, (sub.slides_limit || 15) - (sub.slides_used || 0));
+    const remainingQuota = Math.max(0, (sub.slides_limit || 30) - (sub.slides_used || 0));
 
     if (!window.confirm(`Send 1-Week Expiration Reminder email to ${cleanEmail} (${daysRemaining} days remaining, ${remainingQuota} templates left)?`)) {
       return;
@@ -7157,12 +7157,12 @@ SlideBee Design Studio`
                               </td>
                               <td className="p-4">
                                 <div className="font-bold mb-1">
-                                  {sub.slides_used || 0} / {sub.slides_limit || 15} Templates
+                                  {sub.slides_used || 0} / {sub.slides_limit || 30} Templates
                                 </div>
                                 <div className="w-32 bg-[#FFF9E8] rounded-full h-1.5 overflow-hidden border border-[#111111]/10">
                                   <div 
                                     className="bg-primary-amber h-full rounded-full" 
-                                    style={{ width: `${Math.min(100, ((sub.slides_used || 0) / (sub.slides_limit || 15)) * 100)}%` }} 
+                                    style={{ width: `${Math.min(100, ((sub.slides_used || 0) / (sub.slides_limit || 30)) * 100)}%` }} 
                                   />
                                 </div>
                               </td>
@@ -7257,7 +7257,7 @@ SlideBee Design Studio`
                                         id: sub.user_id || "",
                                         email: sub.user_email,
                                         full_name: sub.user_email.split("@")[0],
-                                        credits_balance: sub.slides_limit || 15,
+                                        credits_balance: sub.slides_limit || 30,
                                       };
                                       handleOpenDeleteAccountModal(clientObj);
                                     }}

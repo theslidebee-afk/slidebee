@@ -363,8 +363,8 @@ export default function Home() {
         {/* Main Card Canvas with Subtle Border & Soft Shadow */}
         <div className="relative bg-[#FAFAFA] group-hover:bg-white border border-[#111111]/10 group-hover:border-[#FCBF14] rounded-2xl p-2 sm:p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] group-hover:shadow-xl transition-all duration-300 overflow-hidden">
           
-          {/* Swallowtail Ribbon Tag */}
-          {!template.is_premium ? (
+          {/* Swallowtail Ribbon Tag: Free badge for free community decks */}
+          {!template.is_premium && (
             <div
               style={{
                 clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
@@ -372,15 +372,6 @@ export default function Home() {
               className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading"
             >
               Free
-            </div>
-          ) : (
-            <div
-              style={{
-                clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
-              }}
-              className="absolute top-2 left-0 bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading flex items-center gap-1"
-            >
-              <Crown size={10} className="fill-[#FCBF14]" /> PRO
             </div>
           )}
 

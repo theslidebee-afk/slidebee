@@ -49,6 +49,7 @@ export default function TemplateDetail() {
   const [showDownloads, setShowDownloads] = useState(false);
 
   const [clientSub, setClientSub] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [clientPurchases, setClientPurchases] = useState<any[]>([]);
   const [freeDownloadsToday, setFreeDownloadsToday] = useState(0);
 
@@ -57,7 +58,11 @@ export default function TemplateDetail() {
     if (local) {
       try {
         const u = JSON.parse(local);
-        return { email: u.email, name: u.user_metadata?.full_name || u.email.split("@")[0] };
+        return {
+          email: u.email,
+          name: u.user_metadata?.full_name || u.name || u.full_name || u.email.split("@")[0],
+          tier: u.tier,
+        };
       } catch (e) {}
     }
     return null;
@@ -80,11 +85,12 @@ export default function TemplateDetail() {
 
       supabase
         .from("profiles")
-        .select("purchased_items, downloads_today, last_download_date")
+        .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
         .eq("email", client.email)
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
+            setUserProfile(data);
             if (Array.isArray(data.purchased_items)) {
               setClientPurchases(data.purchased_items);
             }
@@ -282,14 +288,32 @@ export default function TemplateDetail() {
 
 
   const isPro = Boolean(
-    clientSub &&
-    clientSub.status === "active" &&
-    (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())
+    (clientSub &&
+      clientSub.status === "active" &&
+      (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())) ||
+    (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
+    (client?.tier && ["monthly", "yearly", "lifetime"].includes(client.tier))
   );
 
-  const quotaRemaining = isPro
-    ? Math.max(0, Number(clientSub?.slides_limit || 15) - Number(clientSub?.slides_used || 0))
-    : 0;
+  const isMonthlyTier =
+    clientSub?.plan_name?.toLowerCase().includes("monthly") ||
+    userProfile?.tier === "monthly" ||
+    client?.tier === "monthly";
+
+  // Monthly Pro receives 30 templates per month, Yearly receives 360, Lifetime receives 45
+  const quotaLimit = Number(
+    clientSub?.slides_limit
+      ? (isMonthlyTier && Number(clientSub.slides_limit) < 30 ? 30 : Number(clientSub.slides_limit))
+      : (isMonthlyTier ? 30 : userProfile?.tier === "yearly" ? 360 : userProfile?.tier === "lifetime" ? 45 : 30)
+  );
+
+  const quotaUsed = Number(
+    clientSub?.slides_used !== undefined && clientSub?.slides_used !== null
+      ? clientSub.slides_used
+      : (userProfile?.downloads_this_month || 0)
+  );
+
+  const quotaRemaining = isPro ? Math.max(0, quotaLimit - quotaUsed) : 0;
 
   const alreadyOwned = Boolean(
     clientPurchases.some(
@@ -299,7 +323,7 @@ export default function TemplateDetail() {
     )
   );
 
-  // Pro Template Download (Uses 15 monthly template quota, completely free for all decks)
+  // Pro Template Download (Uses 30 monthly template quota, completely free for all decks)
   const handleProDownload = async () => {
     setCreditNotice(null);
     const client = getClientInfo();
@@ -313,7 +337,7 @@ export default function TemplateDetail() {
     if (!result.success && result.message) {
       setCreditNotice(result.message);
     } else if (result.success) {
-      // Re-sync subscription quota in state
+      // Re-sync subscription quota and profile in state
       if (client.email) {
         supabase
           .from("subscriptions")
@@ -324,6 +348,20 @@ export default function TemplateDetail() {
           .maybeSingle()
           .then(({ data }) => {
             if (data) setClientSub(data);
+          });
+
+        supabase
+          .from("profiles")
+          .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
+          .eq("email", client.email)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              setUserProfile(data);
+              if (Array.isArray(data.purchased_items)) {
+                setClientPurchases(data.purchased_items);
+              }
+            }
           });
       }
     }
@@ -564,10 +602,14 @@ export default function TemplateDetail() {
               <div className="p-4 bg-[#FFF9E8] rounded-2xl border-2 border-primary/30 flex flex-wrap items-center justify-between gap-3 shadow-xs">
                 <div>
                   <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                    {isPro ? "Included with Pro Membership" : "Perpetual Commercial License"}
+                    {isPro && quotaRemaining > 0
+                      ? "Included with Pro Membership"
+                      : isPro && quotaRemaining <= 0
+                      ? "Pro Quota Limit Reached (Commercial License Required)"
+                      : "Perpetual Commercial License"}
                   </span>
                   <div className="flex items-baseline gap-2 mt-0.5">
-                    {isPro ? (
+                    {isPro && quotaRemaining > 0 ? (
                       <>
                         <span className="text-2xl sm:text-3xl font-heading font-black text-emerald-800">
                           Free with Pro
@@ -589,9 +631,14 @@ export default function TemplateDetail() {
                       </>
                     )}
                   </div>
-                  {isPro && (
+                  {isPro && quotaRemaining > 0 && (
                     <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
-                      Deducts 1 template from your 15 monthly quota ({quotaRemaining} downloads remaining)
+                      Deducts 1 template from your {quotaLimit} monthly quota ({quotaRemaining} downloads remaining)
+                    </span>
+                  )}
+                  {isPro && quotaRemaining <= 0 && (
+                    <span className="text-[11px] text-amber-800 font-semibold block mt-1">
+                      Your {quotaLimit} templates for this month are used ({quotaUsed}/{quotaLimit}). Buy a standalone license to continue downloading immediately.
                     </span>
                   )}
                 </div>
@@ -646,7 +693,7 @@ export default function TemplateDetail() {
                     </a>
                   </div>
                 ) : isPro ? (
-                  /* Pro Member Instant Download (15/Month Template Quota - All Templates Unlocked) */
+                  /* Pro Member Instant Download (30/Month Template Quota - All Templates Unlocked) */
                   <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary rounded-2xl space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
@@ -654,45 +701,60 @@ export default function TemplateDetail() {
                         <span>Pro VIP Membership Access</span>
                       </div>
                       <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
-                        {quotaRemaining} of {Number(clientSub?.slides_limit || 15)} Left
+                        {quotaRemaining} of {quotaLimit} Left
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                      This complete presentation deck is fully covered by your active Pro membership quota. Instant delivery with zero payment.
-                    </p>
-                    <button
-                      type="button"
-                      disabled={isProcessing || quotaRemaining <= 0}
-                      onClick={handleProDownload}
-                      className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
-                    >
-                      <Download size={17} />
-                      {isProcessing
-                        ? "Unlocking Presentation..."
-                        : quotaRemaining > 0
-                        ? `Use Pro Quota • Download Master PPTX (${quotaRemaining} Left)`
-                        : `Monthly Template Quota Exhausted (${Number(clientSub?.slides_limit || 15)}/${Number(clientSub?.slides_limit || 15)})`}
-                    </button>
-                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                      <span>Perpetual Commercial Rights • Deducts 1 from 15-Deck Monthly Quota</span>
-                    </div>
 
-                    {/* Standalone Buy Option for Pro Users (if quota is exhausted or client wants direct purchase) */}
-                    <div className="pt-2 border-t border-amber-200/80">
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={handleInstantDownload}
-                        className="hex-pill-sm w-full bg-white hover:bg-amber-50 text-[#111111] font-extrabold py-2.5 text-xs transition-all flex items-center justify-center gap-2 border border-primary/40 shadow-xs cursor-pointer"
-                      >
-                        <ShoppingBag size={13} className="text-primary-amber" />
-                        <span>Or Buy Standalone Commercial License ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})</span>
-                      </button>
-                      <p className="text-[10px] text-center text-[#726F6D] mt-1">
-                        Keeps your 15 monthly quota downloads intact
-                      </p>
-                    </div>
+                    {quotaRemaining > 0 ? (
+                      /* USER HAS PRO QUOTA AVAILABLE: ONLY PRO QUOTA DOWNLOAD, NO BUY OPTION */
+                      <>
+                        <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                          This complete presentation deck is fully covered by your active Pro membership quota. Instant delivery with zero payment.
+                        </p>
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={handleProDownload}
+                          className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
+                        >
+                          <Download size={17} />
+                          {isProcessing
+                            ? "Unlocking Presentation..."
+                            : `Use Pro Quota • Download Master PPTX (${quotaRemaining} Left)`}
+                        </button>
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                          <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                          <span>Perpetual Commercial Rights • Deducts 1 from {quotaLimit}-Deck Monthly Quota</span>
+                        </div>
+                      </>
+                    ) : (
+                      /* USER HAS EXHAUSTED THE 30 TEMPLATES: PROMPT TO BUY */
+                      <div className="space-y-3">
+                        <div className="bg-amber-100/80 border border-amber-300 p-3.5 rounded-xl text-xs text-amber-900 font-medium space-y-1">
+                          <p className="font-extrabold text-[#111111] text-xs">
+                            Monthly Template Quota Reached ({quotaLimit}/{quotaLimit} Used)
+                          </p>
+                          <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                            You have consumed all {quotaLimit} included template downloads for your current billing cycle. Your quota resets on your next renewal. You can purchase a standalone commercial license for this template below to download it immediately.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={handleInstantDownload}
+                          className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
+                        >
+                          <ShoppingBag size={17} className="text-[#FCBF14]" />
+                          {isProcessing
+                            ? "Opening Checkout..."
+                            : `Buy Standalone Commercial License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                        </button>
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                          <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                          <span>Perpetual Commercial Rights • Instant Master PPTX Unlock</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : !template.is_premium ? (
                   /* FREE TEMPLATE FOR NON-PRO / FREE ACCOUNTS */

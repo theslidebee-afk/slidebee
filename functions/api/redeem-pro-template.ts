@@ -103,7 +103,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     // 2. Check remaining quota
-    const quotaLimit = Number(sub?.slides_limit || (profile?.tier === "lifetime" ? 45 : 30));
+    const isMonthly = sub?.plan_name?.toLowerCase().includes("monthly") || profile?.tier === "monthly";
+    const subLimit = Number(sub?.slides_limit || 0);
+    const quotaLimit = Number(
+      subLimit > 0
+        ? (isMonthly && subLimit < 30 ? 30 : subLimit)
+        : (profile?.tier === "lifetime" ? 45 : profile?.tier === "yearly" ? 360 : 30)
+    );
     const quotaUsed = Number(profile?.downloads_this_month || sub?.slides_used || 0);
     const quotaRemaining = Math.max(0, quotaLimit - quotaUsed);
 
@@ -152,7 +158,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `You have consumed all ${quotaLimit} template downloads for your current billing cycle. Quota resets on renewal.`,
+          error: `You have consumed all ${quotaLimit} template downloads for your current billing cycle. You can purchase a standalone commercial license for this template.`,
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
