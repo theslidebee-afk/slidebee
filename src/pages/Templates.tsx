@@ -394,7 +394,7 @@ export default function Templates() {
                                 Free
                               </span>
                               <span className="text-xs text-[#726F6D] line-through font-bold">
-                                {formatPrice(item.price_inr)}
+                                {formatPrice(item.price_inr, item.price_usd)}
                               </span>
                             </div>
                             <span className="text-[10px] font-bold text-emerald-700 block">

@@ -59,26 +59,25 @@ const detectIsIndia = (): boolean => {
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currency, setCurrencyState] = useState<Currency>(() => {
-    // 1. Check if user already manually selected currency in localStorage
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('slidebee_currency') as Currency;
-      if (saved === 'INR' || saved === 'USD') {
-        return saved;
+      try {
+        localStorage.removeItem('slidebee_currency');
+      } catch {
+        // ignore
       }
-      // 2. Synchronous client heuristic (India -> INR, otherwise USD)
       return detectIsIndia() ? 'INR' : 'USD';
     }
     return 'USD';
   });
 
   useEffect(() => {
-    // If user has an explicit manual selection saved, honor it
-    const saved = localStorage.getItem('slidebee_currency') as Currency;
-    if (saved === 'INR' || saved === 'USD') {
-      return;
+    try {
+      localStorage.removeItem('slidebee_currency');
+    } catch {
+      // ignore
     }
 
-    // 3. Asynchronous Cloudflare edge geo-detection via /cdn-cgi/trace
+    // Authoritative Cloudflare edge geo-detection via /cdn-cgi/trace
     fetch('/cdn-cgi/trace')
       .then((res) => {
         if (!res.ok) throw new Error('Trace unavailable');
@@ -99,17 +98,13 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       })
       .catch(() => {
-        // Fallback already handled by synchronous initial state
+        // Fallback to client heuristics if trace endpoint is unreachable
+        setCurrencyState(detectIsIndia() ? 'INR' : 'USD');
       });
   }, []);
 
   const handleSetCurrency = (cur: Currency) => {
     setCurrencyState(cur);
-    try {
-      localStorage.setItem('slidebee_currency', cur);
-    } catch {
-      // Ignore storage errors
-    }
   };
 
   const formatPrice = (inrAmount: number, usdAmount?: number): string => {

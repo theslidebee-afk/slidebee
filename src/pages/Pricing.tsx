@@ -19,7 +19,7 @@ export default function Pricing() {
   });
 
   const location = useLocation();
-  const { currency, symbol } = useCurrency();
+  const { currency } = useCurrency();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const [pricingConfig, setPricingConfig] = useState<any>({
@@ -207,13 +207,7 @@ export default function Pricing() {
             Start with 3 free downloads per day, or unlock our complete 30-slide executive presentation library with Monthly, Yearly, or Lifetime access.
           </p>
 
-          {/* Localized Currency Indicator */}
-          <div className="inline-flex items-center gap-2 hex-pill bg-white border border-[#111111]/15 px-4 py-1.5 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-[#726F6D]">
-              Pricing automatically localized to <strong className="text-[#111111]">{currency} ({symbol})</strong> based on your region
-            </span>
-          </div>
+
         </div>
 
         {/* 4-Card Responsive Pricing Grid */}
