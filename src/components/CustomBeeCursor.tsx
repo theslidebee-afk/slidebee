@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useBeeCursor } from "../context/BeeCursorContext";
 
 interface ClickRipple {
@@ -9,6 +10,8 @@ interface ClickRipple {
 
 export const CustomBeeCursor: React.FC = () => {
   const { beeState, setBeeState } = useBeeCursor();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   // State only for elements that change on interaction, NOT on continuous mousemove
   const [isSupported, setIsSupported] = useState<boolean>(true);
@@ -22,9 +25,14 @@ export const CustomBeeCursor: React.FC = () => {
   const isVisibleRef = useRef<boolean>(false);
   const rippleId = useRef<number>(0);
 
-  // Check if device supports fine hover (desktop mouse) and activate custom-bee-active
+  // Check if device supports fine hover (desktop mouse) and activate custom-bee-active on non-admin pages
   useEffect(() => {
     if (typeof window !== "undefined") {
+      if (isAdminRoute) {
+        document.body.classList.remove("custom-bee-active");
+        return;
+      }
+
       const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
       setIsSupported(finePointer.matches);
 
@@ -34,7 +42,7 @@ export const CustomBeeCursor: React.FC = () => {
 
       const handleChange = (e: MediaQueryListEvent) => {
         setIsSupported(e.matches);
-        if (e.matches) {
+        if (e.matches && !isAdminRoute) {
           document.body.classList.add("custom-bee-active");
         } else {
           document.body.classList.remove("custom-bee-active");
@@ -47,7 +55,7 @@ export const CustomBeeCursor: React.FC = () => {
         document.body.classList.remove("custom-bee-active");
       };
     }
-  }, []);
+  }, [isAdminRoute]);
 
   // High-performance pointer tracking via direct DOM transforms (Zero React re-renders on move)
   useEffect(() => {
@@ -188,6 +196,10 @@ export const CustomBeeCursor: React.FC = () => {
     : isHover
     ? "scale-115"
     : "scale-100";
+
+  if (isAdminRoute || !isSupported) {
+    return null;
+  }
 
   return (
     <div

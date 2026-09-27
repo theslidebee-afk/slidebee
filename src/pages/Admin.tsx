@@ -1227,17 +1227,7 @@ support@theslidebee.com`
         });
       }
 
-      // 6. Validate Deliverable URL
-      if (!rawDownload) {
-        warnings.push({
-          row: rowNum,
-          code: rawCode || "—",
-          title: rawTitle,
-          field: "download_url",
-          issue: "No Master .pptx download URL specified",
-        });
-      }
-
+      // 6. Deliverable URL: Automatically mapped to Cloudflare R2 storage
       const title = rawTitle || `Executive Template ${i}`;
       const code = rawCode || `SLD-${Math.floor(100 + Math.random() * 900)}`;
       const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${code.toLowerCase()}`;
@@ -1255,7 +1245,10 @@ support@theslidebee.com`
         if (parsedFeats.length > 0) features = parsedFeats;
       }
 
-      const download_url = convertGoogleDriveUrl(rawDownload, false) || thumbnail_url;
+      // Default to Cloudflare R2 deck storage if not explicitly provided
+      const download_url = rawDownload
+        ? convertGoogleDriveUrl(rawDownload, false)
+        : `${R2_PUBLIC_BASE_URL}/templates/decks/${code.toLowerCase()}.pptx`;
       const is_credit_eligible = creditEligibleIdx !== -1
         ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
         : false;
@@ -8100,25 +8093,6 @@ SlideBee Design Studio`
                         className="hidden"
                       />
                     </label>
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[10px] font-bold text-[#726F6D] shrink-0">Or R2 URL:</span>
-                      <input
-                        type="url"
-                        placeholder="https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/..."
-                        value={newPptUrl}
-                        onChange={(e) => {
-                          const val = e.target.value.trim();
-                          setNewPptUrl(val);
-                          if (val && !newPptFilename) {
-                            const name = val.split("/").pop() || "presentation.pptx";
-                            setNewPptFilename(name);
-                            setNewPptSize("R2 CDN File");
-                          }
-                        }}
-                        className="flex-1 bg-[#FFF9E8] border border-[#111111]/15 rounded px-2.5 py-1 text-[11px] font-mono text-[#111111]"
-                      />
-                    </div>
 
                     {newPptFilename ? (
                       <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded-lg text-xs font-bold flex items-center justify-between">

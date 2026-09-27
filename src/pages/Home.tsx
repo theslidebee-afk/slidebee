@@ -33,12 +33,13 @@ export default function Home() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Window scroll-linked subtle depth
+  // Window scroll-driven motion: templates slide up in direct 1:1 sync with scroll
   const { scrollY } = useScroll();
-  const heroCardY = useTransform(scrollY, [0, 500], [0, -20]);
-  const heroCardOpacity = useTransform(scrollY, [0, 500], [1, 0.75]);
+  const heroCardY = useTransform(scrollY, [0, 480], [0, -30]);
+  const heroCardOpacity = useTransform(scrollY, [0, 450], [1, 0.7]);
   const videoScale = useTransform(scrollY, [0, 500], [1, 0.98]);
   const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.85]);
+  const templatesSlideUpY = useTransform(scrollY, [0, 420], [80, 0]);
 
   // Real executive slide sets for rich preview variety matching SlideEgg showcase
   const portfolioSlideSets = [
@@ -643,11 +644,8 @@ export default function Home() {
       {/* ========================================================================= */}
       <motion.section
         id="templates"
-        initial={{ opacity: 0.9, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.05 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-6 sm:-mt-10"
+        style={{ y: templatesSlideUpY }}
+        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-8 sm:-mt-14"
       >
         <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
           
