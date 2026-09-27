@@ -310,6 +310,8 @@ export default function Admin() {
   const [copiedAssetUrlsSuccess, setCopiedAssetUrlsSuccess] = useState(false);
   const [csvRawText, setCsvRawText] = useState("");
   const [parsedBulkTemplates, setParsedBulkTemplates] = useState<any[]>([]);
+  const [csvErrors, setCsvErrors] = useState<Array<{ row: number; code: string; title: string; field: string; issue: string }>>([]);
+  const [csvWarnings, setCsvWarnings] = useState<Array<{ row: number; code: string; title: string; field: string; issue: string }>>([]);
   const [isImportingBulk, setIsImportingBulk] = useState(false);
   const [bulkImportSuccessCount, setBulkImportSuccessCount] = useState<number | null>(null);
   const [shouldMirrorAssets, setShouldMirrorAssets] = useState(true);
@@ -998,20 +1000,6 @@ support@theslidebee.com`
     document.body.removeChild(link);
   };
 
-  // Load 100-Template Test Dataset directly into CSV Parser
-  const handleLoad100TestTemplates = async () => {
-    try {
-      const res = await fetch("/samples/slidebee_100_templates_bulk_test.csv");
-      if (res.ok) {
-        const text = await res.text();
-        handleParseCSV(text);
-        setBulkModalTab("csv");
-      }
-    } catch (e) {
-      console.warn("Could not load 100 test templates:", e);
-    }
-  };
-
   // Robust CSV Line Tokenizer supporting quoted strings and commas
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
@@ -1038,12 +1026,14 @@ support@theslidebee.com`
     return result;
   };
 
-  // Parse CSV text into rich Template objects
+  // Parse CSV text into rich Template objects with Deep Quality & Integrity Checker
   const handleParseCSV = (raw: string) => {
     setCsvRawText(raw);
     const lines = raw.trim().split("\n");
     if (lines.length < 2) {
       setParsedBulkTemplates([]);
+      setCsvErrors([]);
+      setCsvWarnings([]);
       return;
     }
 
@@ -1069,76 +1059,237 @@ support@theslidebee.com`
     const descIdx = hasHeaderCode ? getColIndex("description", 11) : getColIndex("description", 6);
     const featuresIdx = getColIndex("features", 12);
     const creditEligibleIdx = getColIndex("is_credit_eligible", -1);
+    const formatsIdx = getColIndex("formats", -1);
 
     const items: any[] = [];
+    const errors: Array<{ row: number; code: string; title: string; field: string; issue: string }> = [];
+    const warnings: Array<{ row: number; code: string; title: string; field: string; issue: string }> = [];
+
+    // Track internal duplicates within the CSV itself
+    const seenCodesInCsv = new Map<string, number>();
+    const seenTitlesInCsv = new Map<string, number>();
+
+    // Index existing store templates for collision checks
+    const existingCodeMap = new Map<string, string>();
+    const existingTitleMap = new Map<string, string>();
+    templates.forEach((t) => {
+      if (t.code && t.code.trim()) {
+        existingCodeMap.set(t.code.trim().toUpperCase(), t.title || "Existing Store Item");
+      }
+      if (t.title && t.title.trim()) {
+        existingTitleMap.set(t.title.trim().toLowerCase(), t.code || t.id || "Store Item");
+      }
+    });
+
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
       
       const parts = parseCSVLine(line);
-      if (parts.length >= 3) {
-        const title = parts[titleIdx] || `Executive Template ${i}`;
-        const code = parts[codeIdx]?.startsWith("SLD-") ? parts[codeIdx] : (parts[codeIdx] || `SLD-${Math.floor(100 + Math.random() * 900)}`);
-        const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${code.toLowerCase()}`;
-        const thumbnail_url = parts[thumbIdx] || "/portfolio/case_study_a_1.png";
+      const rowNum = i + 1; // 1-indexed row including header
+
+      const rawCode = (parts[codeIdx] || "").trim();
+      const rawTitle = (parts[titleIdx] || "").trim();
+      const rawCategory = (parts[catIdx] || "").trim();
+      const rawInr = (parts[inrIdx] || "").trim();
+      const rawUsd = (parts[usdIdx] || "").trim();
+      const rawThumb = (parts[thumbIdx] || "").trim();
+      const rawDownload = (parts[downloadUrlIdx] || "").trim();
+
+      // 1. Validate SKU / Code
+      if (!rawCode) {
+        errors.push({
+          row: rowNum,
+          code: "MISSING",
+          title: rawTitle || "Untitled",
+          field: "code",
+          issue: "SKU / Code is required for every template (e.g. SLD-101)",
+        });
+      } else {
+        const normalizedCode = rawCode.toUpperCase();
         
-        // Multi slide preview URLs
-        let slides: string[] = [];
-        if (parts[previewUrlsIdx]) {
-          slides = parts[previewUrlsIdx].split(/[;|]/).map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean);
-        }
-        if (slides.length === 0) {
-          slides = [thumbnail_url];
-        }
-
-        const slide_count = Number(parts[slidesCountIdx]) || slides.length || 25;
-
-        // Features list
-        let features: string[] = [
-          `${slide_count}+ High-Impact Slides`,
-          "16:9 Widescreen Layout",
-          "Fully Editable Vector Elements"
-        ];
-        if (parts[featuresIdx]) {
-          const parsedFeats = parts[featuresIdx].split(/[;|]/).map(f => f.trim().replace(/^"|"$/g, "")).filter(Boolean);
-          if (parsedFeats.length > 0) features = parsedFeats;
+        // A. Duplicate within this CSV
+        if (seenCodesInCsv.has(normalizedCode)) {
+          errors.push({
+            row: rowNum,
+            code: rawCode,
+            title: rawTitle,
+            field: "code",
+            issue: `Duplicate SKU "${rawCode}" detected in CSV (first appeared at row ${seenCodesInCsv.get(normalizedCode)})`,
+          });
+        } else {
+          seenCodesInCsv.set(normalizedCode, rowNum);
         }
 
-        const download_url = parts[downloadUrlIdx] || thumbnail_url;
-        const is_credit_eligible = creditEligibleIdx !== -1
-          ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
-          : false;
+        // B. Collision with existing template in database
+        if (existingCodeMap.has(normalizedCode)) {
+          errors.push({
+            row: rowNum,
+            code: rawCode,
+            title: rawTitle,
+            field: "code",
+            issue: `SKU "${rawCode}" is already taken by existing store template "${existingCodeMap.get(normalizedCode)}"`,
+          });
+        }
+      }
 
-        const formatsIdx = getColIndex("formats", -1);
-        const parsedFormats = formatsIdx !== -1 && parts[formatsIdx]
-          ? parts[formatsIdx].split(/[;|]/).map(f => f.trim()).filter(Boolean)
-          : [];
+      // 2. Validate Title
+      if (!rawTitle || rawTitle.length < 3) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle || "EMPTY",
+          field: "title",
+          issue: "Title is missing or too short (minimum 3 characters required)",
+        });
+      } else {
+        const normalizedTitle = rawTitle.toLowerCase();
+        
+        // Duplicate title in this CSV
+        if (seenTitlesInCsv.has(normalizedTitle)) {
+          warnings.push({
+            row: rowNum,
+            code: rawCode || "—",
+            title: rawTitle,
+            field: "title",
+            issue: `Duplicate title "${rawTitle}" repeated in this CSV (first at row ${seenTitlesInCsv.get(normalizedTitle)})`,
+          });
+        } else {
+          seenTitlesInCsv.set(normalizedTitle, rowNum);
+        }
 
-        items.push({
-          title,
-          slug,
-          code,
-          category: parts[catIdx] || "Pitch Decks",
-          price_inr: Number(parts[inrIdx]) || 499,
-          price_usd: Number(parts[usdIdx]) || 9,
-          original_price_inr: Number(parts[origInrIdx]) || (Number(parts[inrIdx]) ? Number(parts[inrIdx]) * 2 : 999),
-          slide_count,
-          slides_count: slide_count,
-          thumbnail_url,
-          image_url: thumbnail_url,
-          slides,
-          download_url,
-          file_name: "Master Presentation.pptx",
-          file_size: "18.5 MB",
-          formats: parsedFormats,
-          features,
-          description: parts[descIdx] || "High-impact presentation deck layout tailored for executive presentations.",
-          is_credit_eligible,
-          is_published: true
+        // Existing title in store
+        if (existingTitleMap.has(normalizedTitle)) {
+          warnings.push({
+            row: rowNum,
+            code: rawCode || "—",
+            title: rawTitle,
+            field: "title",
+            issue: `A template titled "${rawTitle}" already exists in your store (SKU: ${existingTitleMap.get(normalizedTitle)})`,
+          });
+        }
+      }
+
+      // 3. Validate Pricing
+      const price_inr = Number(rawInr);
+      const price_usd = Number(rawUsd);
+      if (isNaN(price_inr) || price_inr < 0) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "price_inr",
+          issue: `Invalid INR price "${rawInr}". Must be a valid positive number.`,
         });
       }
+      if (isNaN(price_usd) || price_usd < 0) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "price_usd",
+          issue: `Invalid USD price "${rawUsd}". Must be a valid positive number.`,
+        });
+      }
+
+      // 4. Validate Thumbnail URL
+      if (!rawThumb) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "thumbnail_url",
+          issue: "Cover thumbnail image URL is missing",
+        });
+      } else if (!rawThumb.startsWith("http://") && !rawThumb.startsWith("https://") && !rawThumb.startsWith("/")) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "thumbnail_url",
+          issue: `Malformed thumbnail URL: "${rawThumb}". Must be a valid URL starting with https:// or /`,
+        });
+      }
+
+      // 5. Validate Slide Previews
+      let slides: string[] = [];
+      if (parts[previewUrlsIdx]) {
+        slides = parts[previewUrlsIdx].split(/[;|]/).map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean);
+      }
+      if (slides.length === 0) {
+        slides = [rawThumb || "/portfolio/case_study_a_1.png"];
+        warnings.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "slides_preview_urls",
+          issue: "No multi-slide preview URLs provided; using cover thumbnail only",
+        });
+      }
+
+      // 6. Validate Deliverable URL
+      if (!rawDownload) {
+        warnings.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "download_url",
+          issue: "No Master .pptx download URL specified",
+        });
+      }
+
+      const title = rawTitle || `Executive Template ${i}`;
+      const code = rawCode || `SLD-${Math.floor(100 + Math.random() * 900)}`;
+      const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${code.toLowerCase()}`;
+      const thumbnail_url = rawThumb || "/portfolio/case_study_a_1.png";
+      const slide_count = Number(parts[slidesCountIdx]) || slides.length || 25;
+
+      let features: string[] = [
+        `${slide_count}+ High-Impact Slides`,
+        "16:9 Widescreen Layout",
+        "Fully Editable Vector Elements"
+      ];
+      if (parts[featuresIdx]) {
+        const parsedFeats = parts[featuresIdx].split(/[;|]/).map(f => f.trim().replace(/^"|"$/g, "")).filter(Boolean);
+        if (parsedFeats.length > 0) features = parsedFeats;
+      }
+
+      const download_url = rawDownload || thumbnail_url;
+      const is_credit_eligible = creditEligibleIdx !== -1
+        ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
+        : false;
+
+      const parsedFormats = formatsIdx !== -1 && parts[formatsIdx]
+        ? parts[formatsIdx].split(/[;|]/).map(f => f.trim()).filter(Boolean)
+        : [];
+
+      items.push({
+        title,
+        slug,
+        code,
+        category: rawCategory || "Pitch Decks",
+        price_inr: isNaN(price_inr) ? 499 : price_inr,
+        price_usd: isNaN(price_usd) ? 9 : price_usd,
+        original_price_inr: Number(parts[origInrIdx]) || (price_inr ? price_inr * 2 : 999),
+        slide_count,
+        slides_count: slide_count,
+        thumbnail_url,
+        image_url: thumbnail_url,
+        slides,
+        download_url,
+        file_name: "Master Presentation.pptx",
+        file_size: "18.5 MB",
+        formats: parsedFormats,
+        features,
+        description: parts[descIdx] || "High-impact presentation deck layout tailored for executive presentations.",
+        is_credit_eligible,
+        is_published: true
+      });
     }
+
     setParsedBulkTemplates(items);
+    setCsvErrors(errors);
+    setCsvWarnings(warnings);
   };
 
   // Handle CSV file upload
@@ -7467,27 +7618,13 @@ SlideBee Design Studio`
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleLoad100TestTemplates}
-                    className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] border border-primary/50 px-3 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Sparkles size={13} /> Load 100 Test Templates
-                  </button>
-                  <a
-                    href="/samples/slidebee_100_templates_bulk_test.csv"
-                    download="slidebee_100_templates_bulk_test.csv"
-                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Download size={13} /> Download 100-Template CSV
-                  </a>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleDownloadSampleCSV}
-                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="rounded-lg bg-[#FFF9E8] hover:bg-[#111111] hover:text-[#FCBF14] border border-[#111111]/10 px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
-                    <Download size={13} /> Sample CSV
+                    <Download size={13} /> Download Sample CSV
                   </button>
                   <button
                     type="button"
@@ -7604,12 +7741,84 @@ SlideBee Design Studio`
                     />
                   </div>
 
+                  {/* CSV QUALITY & INTEGRITY CHECKER SUMMARY */}
+                  {parsedBulkTemplates.length > 0 && (
+                    <div className="space-y-3">
+                      {csvErrors.length > 0 ? (
+                        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 text-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-black text-red-800">
+                              <AlertCircle size={16} className="text-red-600 shrink-0" />
+                              <span>CSV Quality Checker: {csvErrors.length} Blocking Issue(s) Detected</span>
+                            </div>
+                            <span className="text-[10px] font-bold bg-red-200 text-red-900 px-2 py-0.5 rounded">
+                              Import Paused
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-red-700 leading-relaxed">
+                            To protect database integrity and prevent duplicate SKU overwrites, please fix the following rows before importing:
+                          </p>
+                          <div className="max-h-36 overflow-y-auto border border-red-200 rounded-lg bg-white overflow-hidden text-[11px]">
+                            <table className="w-full text-left">
+                              <thead className="bg-red-100/60 text-red-900 font-bold border-b border-red-200">
+                                <tr>
+                                  <th className="p-2 w-14">Row</th>
+                                  <th className="p-2 w-24">SKU / Code</th>
+                                  <th className="p-2">Issue Description</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-red-100">
+                                {csvErrors.map((err, errIdx) => (
+                                  <tr key={errIdx} className="hover:bg-red-50/50">
+                                    <td className="p-2 font-mono font-bold text-red-800">Line {err.row}</td>
+                                    <td className="p-2 font-mono text-gray-700">{err.code}</td>
+                                    <td className="p-2 text-red-700 font-medium">{err.issue}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : csvWarnings.length > 0 ? (
+                        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 text-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-black text-amber-900">
+                              <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                              <span>CSV Health Checker: All {parsedBulkTemplates.length} templates valid with {csvWarnings.length} warning(s)</span>
+                            </div>
+                            <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">
+                              Valid with Warnings
+                            </span>
+                          </div>
+                          <div className="max-h-24 overflow-y-auto border border-amber-200 rounded-lg bg-white p-2 text-[10px] text-amber-800 space-y-1">
+                            {csvWarnings.map((warn, wIdx) => (
+                              <div key={wIdx} className="flex items-start gap-1.5">
+                                <span className="font-mono font-bold shrink-0">Line {warn.row} ({warn.code}):</span>
+                                <span>{warn.issue}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs flex items-center justify-between text-emerald-900">
+                          <div className="flex items-center gap-2 font-extrabold">
+                            <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
+                            <span>CSV Health Checker: 100% Passed. Zero SKU duplicates, zero database collisions, and all deliverables verified.</span>
+                          </div>
+                          <span className="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-full">
+                            Verified Clean
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Parsed Preview Table */}
                   {parsedBulkTemplates.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                          Ready to Publish ({parsedBulkTemplates.length} Templates Verified)
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-[#111111]">
+                          Templates to Ingest ({parsedBulkTemplates.length} Loaded)
                         </span>
                       </div>
 
@@ -7806,12 +8015,16 @@ SlideBee Design Studio`
                 </button>
                 <button
                   type="button"
-                  disabled={parsedBulkTemplates.length === 0 || isImportingBulk}
+                  disabled={parsedBulkTemplates.length === 0 || isImportingBulk || csvErrors.length > 0}
                   onClick={handleExecuteBulkImport}
-                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 shadow-md cursor-pointer"
+                  className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-md cursor-pointer"
                 >
                   <UploadCloud size={15} />
-                  {isImportingBulk ? "Importing to Database..." : `Import ${parsedBulkTemplates.length} Templates to Store`}
+                  {isImportingBulk
+                    ? "Importing to Database..."
+                    : csvErrors.length > 0
+                    ? `Resolve ${csvErrors.length} CSV Issue(s) to Import`
+                    : `Import ${parsedBulkTemplates.length} Verified Templates to Store`}
                 </button>
               </div>
             </motion.div>
