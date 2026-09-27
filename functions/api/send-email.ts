@@ -82,8 +82,8 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const body = await request.json();
-    const { to, subject, html, text, replyTo, fromEmail, fromName } = body;
+    const body = await request.json().catch(() => ({}));
+    const { to, subject, html, text, replyTo, fromEmail, fromName, attachments } = body;
 
     if (!to || !subject || (!html && !text)) {
       return new Response(
@@ -140,38 +140,51 @@ export async function onRequestPost(context: any) {
     const primarySender = `${senderDisplayName} <${configuredEmail}>`;
     const fallbackSender = `${senderDisplayName} <onboarding@resend.dev>`;
 
+    const emailPayload: any = {
+      from: primarySender,
+      to: recipients,
+      reply_to: replyTo || configuredEmail,
+      subject,
+      html: html || `<p>${text || ""}</p>`,
+    };
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      emailPayload.attachments = attachments.map((att: any) => {
+        let content = att.content || "";
+        if (typeof content === "string" && content.includes(",")) {
+          content = content.split(",")[1];
+        }
+        return {
+          filename: att.filename || "Presentation_Deliverable.pptx",
+          content,
+        };
+      });
+    }
+
     let resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: primarySender,
-        to: recipients,
-        reply_to: replyTo || configuredEmail,
-        subject,
-        html: html || `<p>${text || ""}</p>`,
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     let resendData: any = await resendRes.json();
 
     // If unverified domain error, retry with verified onboarding sender
     if (!resendRes.ok && resendData?.message?.includes("domain")) {
+      const fallbackPayload: any = {
+        ...emailPayload,
+        from: fallbackSender,
+        reply_to: replyTo || "hello@theslidebee.com",
+      };
       resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          from: fallbackSender,
-          to: recipients,
-          reply_to: replyTo || "hello@theslidebee.com",
-          subject,
-          html: html || `<p>${text || ""}</p>`,
-        }),
+        body: JSON.stringify(fallbackPayload),
       });
       resendData = await resendRes.json();
     }

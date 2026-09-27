@@ -172,7 +172,13 @@ export default function Services() {
 
         {/* Edge-to-edge Suspended Carousel Container */}
         <div className="w-full z-10 relative">
-          <Suspended3DCarousel />
+          <Suspended3DCarousel
+            onSelectService={(svcId) => {
+              setSelectedService(svcId);
+              setSliderPosition(50);
+              document.getElementById("services-grid")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
         </div>
       </section>
 

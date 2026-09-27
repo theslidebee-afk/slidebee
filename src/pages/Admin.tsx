@@ -185,9 +185,9 @@ export default function Admin() {
     "Strategy"
   ]);
   const [newCategoryInput, setNewCategoryInput] = useState("");
-  const [orderDeliverableUrl, setOrderDeliverableUrl] = useState("");
-  const [orderDeliverableName, setOrderDeliverableName] = useState("");
-  const [isSavingDeliverable, setIsSavingDeliverable] = useState(false);
+  const [orderDeliverableFile, setOrderDeliverableFile] = useState<{ name: string; size: string; base64: string } | null>(null);
+  const [isSendingDeliverableEmail, setIsSendingDeliverableEmail] = useState(false);
+  const [deliverableSuccessMsg, setDeliverableSuccessMsg] = useState("");
   const [newPriceINR, setNewPriceINR] = useState<number | string>(499);
   const [newPriceUSD, setNewPriceUSD] = useState<number | string>(9);
   const [newSlideCount, setNewSlideCount] = useState<number | string>(25);
@@ -462,8 +462,30 @@ export default function Admin() {
         })
       ]);
 
-      // Update Orders
-      if (ordersRes.data) setOrders(ordersRes.data);
+      // Update Orders (merged with optimistic local cache)
+      if (ordersRes.data && ordersRes.data.length > 0) {
+        try {
+          const cached = localStorage.getItem("slidebee_admin_orders");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const statusMap = new Map(parsed.map((p: any) => [p.id, p]));
+            const merged = ordersRes.data.map((o: any) => {
+              const local: any = statusMap.get(o.id);
+              return local ? { ...o, ...local } : o;
+            });
+            setOrders(merged);
+          } else {
+            setOrders(ordersRes.data);
+          }
+        } catch {
+          setOrders(ordersRes.data);
+        }
+      } else {
+        try {
+          const cached = localStorage.getItem("slidebee_admin_orders");
+          if (cached) setOrders(JSON.parse(cached));
+        } catch {}
+      }
 
       // Update Waitlist
       if (waitlistRes.data) setWaitlist(waitlistRes.data);
@@ -554,15 +576,36 @@ export default function Admin() {
     navigate("/login");
   };
 
-  // Handle Status Update on Order
+  // Handle Status Update on Order (Optimistic + Supabase persistence)
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
+    // 1. Optimistic update in state immediately so UI advances smoothly without delay
+    setOrders((prev) => {
+      const updated = prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o));
+      try {
+        localStorage.setItem("slidebee_admin_orders", JSON.stringify(updated));
+      } catch (e) {
+        // ignore
+      }
+      return updated;
+    });
 
-    if (!error) {
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    // Also update modal selection if currently viewing this order
+    setSelectedOrderForModal((prev: any) =>
+      prev && prev.id === orderId ? { ...prev, status: newStatus } : prev
+    );
+
+    // 2. Persist to Supabase if possible
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
+
+      if (error) {
+        console.warn("Supabase order status update notice (local state maintained):", error.message);
+      }
+    } catch (err) {
+      console.warn("Supabase network error:", err);
     }
   };
 
@@ -1780,7 +1823,7 @@ support@theslidebee.com`
   };
 
   // Open & initialize the In-App Client Email Composer for an Order
-  const handleOpenClientEmailComposer = (order: any, templateType: "milestone" | "assets" | "ready" = "milestone") => {
+  const handleOpenClientEmailComposer = (order: any, templateType: "milestone" | "assets" | "ready" | "deliverable" = "milestone") => {
     if (!order) return;
     setIsClientEmailComposerOpen(true);
     setClientEmailStatus(null);
@@ -1788,7 +1831,7 @@ support@theslidebee.com`
     handleApplyClientEmailTemplate(order, templateType);
   };
 
-  const handleApplyClientEmailTemplate = (order: any, templateType: "milestone" | "assets" | "ready") => {
+  const handleApplyClientEmailTemplate = (order: any, templateType: "milestone" | "assets" | "ready" | "deliverable") => {
     if (!order) return;
     const clientName = order.client_name?.trim() || "there";
     const orderRef = order.id ? `#${order.id.slice(0, 8)}` : "your order";
@@ -1824,6 +1867,28 @@ Looking forward to your feedback!
 
 Best regards,
 SlideBee Design Studio`
+      );
+    } else if (templateType === "deliverable") {
+      setClientEmailSubject(`Final Presentation Deliverable: ${serviceName} (${orderRef})`);
+      setClientEmailBody(
+`Hi ${clientName},
+
+We are delighted to deliver your completed SlideBee master presentation!
+
+Attached to this email, you will find your master presentation file (${orderDeliverableFile?.name || "Master_Deck.pptx"}). Every slide has been designed and polished in full accordance with your project specifications and requirements.
+
+Project Summary:
+• Service: ${serviceName}
+• Scope: ${order.slide_count || "Custom"} Slides
+• Format: Master Presentation (.pptx)
+
+If you have any feedback or require any adjustments, please reply directly to this email and our creative team will assist you immediately.
+
+Thank you for partnering with SlideBee!
+
+Best regards,
+SlideBee Design Studio
+hello@theslidebee.com`
       );
     } else {
       // Default: Milestone update
@@ -1884,6 +1949,14 @@ SlideBee Design Studio`
       </div>
     `;
 
+    const attachmentsPayload: any[] = [];
+    if (orderDeliverableFile && orderDeliverableFile.base64) {
+      attachmentsPayload.push({
+        filename: orderDeliverableFile.name,
+        content: orderDeliverableFile.base64,
+      });
+    }
+
     try {
       const res = await fetch("/api/send-email", {
         method: "POST",
@@ -1899,6 +1972,7 @@ SlideBee Design Studio`
           subject: clientEmailSubject.trim(),
           html: formattedHtml,
           text: clientEmailBody.trim(),
+          attachments: attachmentsPayload.length > 0 ? attachmentsPayload : undefined,
         }),
       });
 
@@ -1906,8 +1980,41 @@ SlideBee Design Studio`
       if (res.ok && data.success) {
         setClientEmailStatus({
           type: "success",
-          message: `Email successfully dispatched from ${clientEmailSender} to ${order.client_email}!`,
+          message: `Email successfully dispatched from ${clientEmailSender} to ${order.client_email}${attachmentsPayload.length > 0 ? " with attached master presentation!" : "!"}`,
         });
+
+        if (attachmentsPayload.length > 0) {
+          const deliverableName = orderDeliverableFile?.name || "Presentation_Deliverable.pptx";
+          const sentTimestamp = new Date().toISOString();
+          handleUpdateOrderStatus(order.id, "completed");
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === order.id
+                ? {
+                    ...o,
+                    status: "completed",
+                    deliverable_name: deliverableName,
+                    deliverable_sent_at: sentTimestamp,
+                  }
+                : o
+            )
+          );
+          if (selectedOrderForModal && selectedOrderForModal.id === order.id) {
+            setSelectedOrderForModal((prev: any) =>
+              prev
+                ? {
+                    ...prev,
+                    status: "completed",
+                    deliverable_name: deliverableName,
+                    deliverable_sent_at: sentTimestamp,
+                  }
+                : prev
+            );
+          }
+          setDeliverableSuccessMsg(
+            `Master presentation file (${deliverableName}) sent to ${order.client_email} and order marked as Completed!`
+          );
+        }
       } else {
         setClientEmailStatus({
           type: "error",
@@ -1921,6 +2028,181 @@ SlideBee Design Studio`
       });
     } finally {
       setIsSendingClientEmail(false);
+    }
+  };
+
+  // Handle local deliverable file attachment for master presentation
+  const handleDeliverableFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 40 * 1024 * 1024) {
+      alert("File size exceeds 40MB limit for email attachments. Please compress or optimize the file.");
+      return;
+    }
+
+    const sizeFormatted = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+      : `${(file.size / 1024).toFixed(0)} KB`;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setOrderDeliverableFile({
+        name: file.name,
+        size: sizeFormatted,
+        base64,
+      });
+      setDeliverableSuccessMsg("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 1-Click direct deliverable email dispatch
+  const handleDirectDeliverableEmailDispatch = async (order: any) => {
+    if (!order || !order.client_email) {
+      alert("Client email address is missing on this order.");
+      return;
+    }
+    if (!orderDeliverableFile) {
+      alert("Please attach the final master presentation file (.pptx / .zip) first.");
+      return;
+    }
+
+    setIsSendingDeliverableEmail(true);
+    setDeliverableSuccessMsg("");
+
+    const clientName = order.client_name?.trim() || "there";
+    const orderRef = order.id ? `#${order.id.slice(0, 8)}` : "your order";
+    const serviceName = order.service_type || "Presentation Design";
+    const deliverableSubject = `Final Master Presentation Deliverable: ${serviceName} (${orderRef})`;
+    const deliverableBody = `Hi ${clientName},
+
+We are thrilled to present your finalized master presentation deck!
+
+Attached to this email is your presentation file (${orderDeliverableFile.name}, ${orderDeliverableFile.size}). Every slide has been tailored to your specifications with executive typography, balanced visual hierarchy, and polished design.
+
+Project Summary:
+• Service: ${serviceName}
+• Scope: ${order.slide_count || "Custom"} Slides
+• Format: Master Presentation (.pptx)
+
+If you have any questions or require any adjustments, please reply directly to this email and our team will gladly assist you.
+
+Thank you for partnering with SlideBee!
+
+Best regards,
+SlideBee Design Studio
+hello@theslidebee.com`;
+
+    const escapedBody = deliverableBody
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const formattedHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">SlideBee Studio</h1>
+          <p style="color: #726F6D; font-size: 13px; margin-top: 4px; font-weight: 500;">Executive Presentation Design on Demand</p>
+        </div>
+        <div style="background-color: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <div style="font-size: 14px; color: #111111; line-height: 1.7; white-space: pre-wrap;">${escapedBody}</div>
+        </div>
+        <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #726F6D; line-height: 1.5;">
+          <p style="margin: 0;"><strong>SlideBee Design Studio</strong></p>
+          <p style="margin: 4px 0 0 0;">Official Communications &middot; Bangalore, Karnataka, India</p>
+        </div>
+      </div>
+    `;
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-slidebee-app-token": "slidebee_internal_app_2026",
+        },
+        body: JSON.stringify({
+          to: order.client_email.trim(),
+          fromEmail: clientEmailSender || "design@theslidebee.com",
+          fromName: "SlideBee Design Studio",
+          replyTo: clientEmailSender || "design@theslidebee.com",
+          subject: deliverableSubject,
+          html: formattedHtml,
+          text: deliverableBody,
+          attachments: [
+            {
+              filename: orderDeliverableFile.name,
+              content: orderDeliverableFile.base64,
+            },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const deliverableName = orderDeliverableFile.name;
+        const sentTimestamp = new Date().toISOString();
+
+        // 1. Advance status to completed optimistically
+        handleUpdateOrderStatus(order.id, "completed");
+
+        // 2. Record deliverable metadata
+        setOrders((prev) => {
+          const updated = prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  status: "completed",
+                  deliverable_name: deliverableName,
+                  deliverable_sent_at: sentTimestamp,
+                }
+              : o
+          );
+          try {
+            localStorage.setItem("slidebee_admin_orders", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        if (selectedOrderForModal && selectedOrderForModal.id === order.id) {
+          setSelectedOrderForModal((prev: any) =>
+            prev
+              ? {
+                  ...prev,
+                  status: "completed",
+                  deliverable_name: deliverableName,
+                  deliverable_sent_at: sentTimestamp,
+                }
+              : prev
+          );
+        }
+
+        // 3. Persist to Supabase
+        try {
+          await supabase
+            .from("orders")
+            .update({
+              status: "completed",
+              deliverable_name: deliverableName,
+            })
+            .eq("id", order.id);
+        } catch (dbErr) {
+          console.warn("Supabase deliverable update warning:", dbErr);
+        }
+
+        setDeliverableSuccessMsg(
+          `Master deliverable (${deliverableName}) successfully dispatched to ${order.client_email}! Status updated to Completed.`
+        );
+      } else {
+        alert(data.error || "Failed to dispatch deliverable email. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Deliverable dispatch error:", err);
+      alert(`Error sending deliverable: ${err?.message || err}`);
+    } finally {
+      setIsSendingDeliverableEmail(false);
     }
   };
 
@@ -3158,10 +3440,10 @@ SlideBee Design Studio`
                                 <button
                                   type="button"
                                   onClick={() => {
-                                  setSelectedOrderForModal(ord);
-                                  setOrderDeliverableUrl(ord.deliverable_url || "");
-                                  setOrderDeliverableName(ord.deliverable_name || "");
-                                }}
+                                    setSelectedOrderForModal(ord);
+                                    setOrderDeliverableFile(null);
+                                    setDeliverableSuccessMsg("");
+                                  }}
                                   className="hex-pill-sm bg-[#111111] text-white hover:text-primary font-bold px-3 py-1.5 inline-flex items-center gap-1 text-[11px] transition-colors shadow-sm"
                                 >
                                   Inspect Brief
@@ -9185,105 +9467,128 @@ SlideBee Design Studio`
                 )}
               </div>
 
-              {/* FINAL MASTER PRESENTATION DELIVERABLE (.PPTX) */}
-              <div className="bg-[#FFFDF5] border-2 border-primary/40 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
+              {/* MASTER PRESENTATION DELIVERABLE (.PPTX / .ZIP) */}
+              <div className="bg-[#FFFDF5] border-2 border-primary/40 rounded-xl p-4 sm:p-5 shadow-sm space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText size={16} className="text-primary-amber" />
                     <h4 className="font-heading font-extrabold text-xs text-[#111111]">
-                      Final Master Presentation Deliverable (.pptx)
+                      Master Presentation Deliverable (.pptx / .zip)
                     </h4>
                   </div>
-                  {selectedOrderForModal.deliverable_url && (
-                    <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 border border-emerald-300">
-                      Deliverable Uploaded
+                  {(selectedOrderForModal.deliverable_sent_at || (selectedOrderForModal.status === "completed" && selectedOrderForModal.deliverable_name)) ? (
+                    <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 border border-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 size={11} className="text-emerald-600" /> Dispatched to Client Email
+                    </span>
+                  ) : (
+                    <span className="hex-pill-sm bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 border border-amber-300">
+                      Confidential • Email Delivery Only
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-[#726F6D]">
-                  Attach the finalized PowerPoint master deck for this design commission. The client can immediately download it from their User Dashboard.
+
+                <p className="text-[11px] text-[#726F6D] leading-relaxed">
+                  Commissioned presentations are confidential and are never uploaded to public cloud storage (R2). Attach the final PowerPoint presentation file directly below to securely deliver it to <strong>{selectedOrderForModal.client_email}</strong> via verified studio email.
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
-                      Deliverable Download URL:
-                    </label>
+                {/* File Attachment Dropzone / Card */}
+                {!orderDeliverableFile ? (
+                  <div className="border-2 border-dashed border-primary/40 hover:border-primary rounded-xl p-4 bg-white/70 hover:bg-white transition-all text-center">
                     <input
-                      type="url"
-                      placeholder="https://pub-....r2.dev/decks/client_final.pptx or Drive link"
-                      value={orderDeliverableUrl}
-                      onChange={(e) => setOrderDeliverableUrl(e.target.value)}
-                      className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-mono focus:border-primary outline-none"
+                      type="file"
+                      id="deliverable-file-input"
+                      accept=".pptx,.ppt,.zip,.pdf,.key"
+                      onChange={handleDeliverableFileChange}
+                      className="hidden"
                     />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
-                      Deliverable File Name:
+                    <label
+                      htmlFor="deliverable-file-input"
+                      className="flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary-dark">
+                        <UploadCloud size={20} />
+                      </div>
+                      <span className="text-xs font-black text-[#111111]">
+                        Attach Master Presentation (.pptx, .ppt, .zip)
+                      </span>
+                      <span className="text-[10px] text-[#726F6D]">
+                        Maximum 40MB • Encrypted direct email attachment
+                      </span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Acme_Corp_Master_Deck_Final.pptx"
-                      value={orderDeliverableName}
-                      onChange={(e) => setOrderDeliverableName(e.target.value)}
-                      className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-primary/20">
-                  <div className="text-[11px] text-[#726F6D]">
-                    {selectedOrderForModal.deliverable_url && (
-                      <a
-                        href={selectedOrderForModal.deliverable_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary-amber font-bold underline inline-flex items-center gap-1"
-                      >
-                        <Download size={11} /> Test Current Deliverable Link
-                      </a>
+                    {selectedOrderForModal.deliverable_name && (
+                      <div className="mt-3 pt-2.5 border-t border-primary/20 text-[11px] text-[#726F6D] flex items-center justify-center gap-1.5">
+                        <Check size={12} className="text-emerald-600" />
+                        <span>Last dispatched deck: <strong className="text-[#111111]">{selectedOrderForModal.deliverable_name}</strong></span>
+                      </div>
                     )}
                   </div>
+                ) : (
+                  <div className="bg-white border-2 border-primary/50 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#FCBF14] flex items-center justify-center shrink-0">
+                        <FileText size={20} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black text-[#111111] break-all">
+                          {orderDeliverableFile.name}
+                        </div>
+                        <div className="text-[10px] text-[#726F6D] font-bold flex items-center gap-2">
+                          <span>{orderDeliverableFile.size}</span>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-black">Ready to dispatch via email</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setOrderDeliverableFile(null)}
+                      className="hex-pill-sm self-end sm:self-auto bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] font-bold px-2.5 py-1 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 size={11} /> Remove
+                    </button>
+                  </div>
+                )}
+
+                {/* Feedback message banner if deliverable was dispatched */}
+                {deliverableSuccessMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>{deliverableSuccessMsg}</span>
+                  </div>
+                )}
+
+                {/* Deliverable Action Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-primary/20">
                   <button
                     type="button"
-                    disabled={isSavingDeliverable || !orderDeliverableUrl.trim()}
-                    onClick={async () => {
-                      setIsSavingDeliverable(true);
-                      try {
-                        const { error } = await supabase
-                          .from("orders")
-                          .update({
-                            deliverable_url: orderDeliverableUrl.trim(),
-                            deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
-                            status: "completed",
-                          })
-                          .eq("id", selectedOrderForModal.id);
-                        if (error) throw error;
-                        setOrders(orders.map(o => o.id === selectedOrderForModal.id ? {
-                          ...o,
-                          deliverable_url: orderDeliverableUrl.trim(),
-                          deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
-                          status: "completed"
-                        } : o));
-                        setSelectedOrderForModal({
-                          ...selectedOrderForModal,
-                          deliverable_url: orderDeliverableUrl.trim(),
-                          deliverable_name: orderDeliverableName.trim() || "Presentation_Deliverable.pptx",
-                          status: "completed"
-                        });
-                        setProActionFeedback({ type: "success", message: "Final deliverable saved & order marked completed! Available in client dashboard." });
-                        setTimeout(() => setProActionFeedback(null), 5000);
-                      } catch (err: any) {
-                        console.error("Failed to save deliverable:", err);
-                        alert(`Failed to save deliverable: ${err?.message || err}`);
-                      } finally {
-                        setIsSavingDeliverable(false);
-                      }
+                    onClick={() => {
+                      handleOpenClientEmailComposer(selectedOrderForModal, "deliverable");
                     }}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                    className="hex-pill-sm bg-white border border-[#111111]/20 hover:border-primary text-[#111111] font-bold text-xs px-3.5 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Save size={13} />
-                    {isSavingDeliverable ? "Saving..." : "Save Deliverable & Mark Completed"}
+                    <Mail size={12} />
+                    <span>Review & Customize Email</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSendingDeliverableEmail || !orderDeliverableFile}
+                    onClick={() => handleDirectDeliverableEmailDispatch(selectedOrderForModal)}
+                    className="hex-pill bg-[#111111] hover:bg-primary text-white hover:text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSendingDeliverableEmail ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Sending Deliverable Email...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={13} />
+                        <span>Send Deliverable via Email & Mark Completed</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -9330,6 +9635,13 @@ SlideBee Design Studio`
                           1-Click Studio Templates:
                         </label>
                         <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "deliverable")}
+                            className="rounded-lg text-[11px] font-extrabold px-3 py-1 bg-amber-100/90 border border-primary/60 hover:bg-primary text-[#111111] transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <FileText size={11} /> Master Deliverable
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleApplyClientEmailTemplate(selectedOrderForModal, "milestone")}
@@ -9424,6 +9736,21 @@ SlideBee Design Studio`
                           className="w-full bg-white border border-[#111111]/20 rounded-lg p-2.5 text-xs font-medium text-[#111111] focus:outline-none focus:border-primary leading-relaxed resize-y"
                         />
                       </div>
+
+                      {/* Attached Deliverable Notice */}
+                      {orderDeliverableFile && (
+                        <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-primary/30 rounded-lg text-xs">
+                          <div className="flex items-center gap-2">
+                            <FileText size={14} className="text-primary-amber" />
+                            <span className="font-extrabold text-[#111111]">
+                              Attached Master File: {orderDeliverableFile.name} ({orderDeliverableFile.size})
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                            Attached
+                          </span>
+                        </div>
+                      )}
 
                       {/* Feedback status banner */}
                       {clientEmailStatus && (

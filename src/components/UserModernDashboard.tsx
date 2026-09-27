@@ -16,7 +16,9 @@ import {
   ChevronDown,
   LayoutGrid,
   CreditCard,
-  Trash2
+  Trash2,
+  Mail,
+  CheckCircle2
 } from "lucide-react";
 import SlideBeeLogo from "./SlideBeeLogo";
 
@@ -858,10 +860,29 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                               <Download size={14} /> Download Final Master (.pptx)
                             </a>
                           </div>
+                        ) : (order.status === "completed" || order.deliverable_name || order.deliverable_sent_at) ? (
+                          <div className="bg-[#FEF5DC] border border-[#FCBF14]/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#FCBF14] flex items-center justify-center font-bold shrink-0">
+                                <Mail size={20} />
+                              </div>
+                              <div>
+                                <h5 className="font-heading font-black text-sm text-[#111111]">
+                                  {order.deliverable_name || "Final Master Presentation (.pptx)"}
+                                </h5>
+                                <p className="text-xs text-[#726F6D]">
+                                  Dispatched directly as attachment to your registered email ({order.client_email || "your inbox"}).
+                                </p>
+                              </div>
+                            </div>
+                            <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-xs font-black px-3.5 py-1.5 border border-emerald-300 flex items-center gap-1.5 shrink-0">
+                              <CheckCircle2 size={13} className="text-emerald-600" /> Dispatched via Email
+                            </span>
+                          </div>
                         ) : (
                           <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between">
                             <span className="text-xs text-[#726F6D]">
-                              Final master deliverables will appear here upon studio milestone completion.
+                              Final master deliverables will be dispatched directly to your email upon studio milestone completion.
                             </span>
                             <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
                               In Production
