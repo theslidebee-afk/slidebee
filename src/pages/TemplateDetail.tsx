@@ -41,6 +41,11 @@ export default function TemplateDetail() {
   const [isCopied, setIsCopied] = useState(false);
   const [creditNotice, setCreditNotice] = useState<string | null>(null);
 
+  // Mobile swipe gesture state
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const minSwipeDistance = 45;
+
   // Similar templates state
   const [similarTemplates, setSimilarTemplates] = useState<StoreTemplate[]>([]);
 
@@ -280,6 +285,28 @@ export default function TemplateDetail() {
   const currentSlideImg = slides[activeSlideIdx] || template.image_url;
   const templateCode = template.code;
 
+  // Touch Swipe Handlers for Presentation Slides
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > minSwipeDistance && slides.length > 1) {
+      // Swiped left -> next slide
+      setActiveSlideIdx((prev) => (prev + 1) % slides.length);
+    } else if (distance < -minSwipeDistance && slides.length > 1) {
+      // Swiped right -> previous slide
+      setActiveSlideIdx((prev) => (prev - 1 + slides.length) % slides.length);
+    }
+  };
+
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     setIsCopied(true);
@@ -496,7 +523,12 @@ export default function TemplateDetail() {
           {/* Left Column: Interactive Full HD Multi-Slide Previewer */}
           <div className="lg:col-span-7 space-y-4">
             
-            <div className="hex-card-dark bg-[#FFF9E8] border-2 border-primary/50 overflow-hidden shadow-2xl relative w-full flex items-center justify-center group">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="hex-card-dark bg-[#FFF9E8] border-2 border-primary/50 overflow-hidden shadow-2xl relative w-full flex items-center justify-center group touch-pan-y"
+            >
               <AnimatePresence mode="wait">
                 <motion.img
                   key={activeSlideIdx}
@@ -510,24 +542,24 @@ export default function TemplateDetail() {
                 />
               </AnimatePresence>
 
-              {/* Prev / Next Slide Navigation Arrows */}
+              {/* Prev / Next Slide Navigation Arrows (44px Touch Targets) */}
               {slides.length > 1 && (
                 <>
                   <button
                     type="button"
                     onClick={() => setActiveSlideIdx((prev) => (prev - 1 + slides.length) % slides.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-70 hover:opacity-100 hover:scale-105"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-75 hover:opacity-100 hover:scale-105"
                     title="Previous Slide"
                   >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={22} />
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveSlideIdx((prev) => (prev + 1) % slides.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-70 hover:opacity-100 hover:scale-105"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-75 hover:opacity-100 hover:scale-105"
                     title="Next Slide"
                   >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={22} />
                   </button>
                 </>
               )}
@@ -548,14 +580,14 @@ export default function TemplateDetail() {
               )}
             </div>
 
-            {/* Slide Navigation Thumbnails */}
+            {/* Slide Navigation Thumbnails (Touch Momentum Scroll) */}
             {slides.length > 1 && (
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar touch-pan-x">
                 {slides.map((s, idx) => (
                   <button
                     key={idx}
                     onClick={() => setActiveSlideIdx(idx)}
-                    className={`relative w-28 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-[#FFF9E8] ${
+                    className={`relative w-28 min-h-[44px] rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-[#FFF9E8] ${
                       activeSlideIdx === idx
                         ? "border-primary shadow-md scale-105"
                         : "border-[#111111]/15 opacity-70 hover:opacity-100"

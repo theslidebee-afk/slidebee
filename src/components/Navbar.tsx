@@ -134,6 +134,18 @@ export default function Navbar() {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
   const handleLogoutAdmin = async () => {
     await performGlobalLogout();
     setIsAdmin(false);
@@ -324,9 +336,9 @@ export default function Navbar() {
           </MagneticButton>
         </div>
 
-        {/* Mobile Hamburger Button */}
+        {/* Mobile Hamburger Button (44px Minimum Touch Target) */}
         <button
-          className="md:hidden z-50 p-2 text-white hover:text-[#FCBF14] transition-colors"
+          className="md:hidden z-50 min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-white hover:text-[#FCBF14] transition-colors rounded-xl cursor-pointer"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -334,16 +346,16 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Menu Dropdown (Touch & Viewport Optimized) */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 bg-[#111111]/98 backdrop-blur-xl z-40 md:hidden flex flex-col justify-center px-8 pt-20 pb-12"
+            className="fixed inset-0 h-[100dvh] bg-[#111111]/98 backdrop-blur-xl z-40 md:hidden flex flex-col justify-start px-6 pt-24 pb-safe overflow-y-auto no-scrollbar"
           >
-            <nav className="flex flex-col gap-6 text-center">
+            <nav className="flex flex-col gap-3 text-center my-auto pb-6">
               {navLinks.map((link) => {
                 if (link.isHash) {
                   return (
@@ -354,7 +366,7 @@ export default function Navbar() {
                         setIsMobileMenuOpen(false);
                         handleNavClick(e, link);
                       }}
-                      className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer bg-transparent border-none"
+                      className="min-h-[48px] flex items-center justify-center text-xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer bg-transparent border-none py-2"
                     >
                       {link.name}
                     </button>
@@ -365,24 +377,24 @@ export default function Navbar() {
                     key={link.name}
                     to={link.path}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-2xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer"
+                    className="min-h-[48px] flex items-center justify-center text-xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer py-2"
                   >
                     {link.name}
                   </Link>
                 );
               })}
-              <div className="pt-6 border-t border-white/10 flex flex-col gap-4">
+              <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
                 {isAdmin ? (
                   <>
                     <Link
                       to="/admin"
-                      className="rounded-full text-base text-white font-black py-3 border border-[#FCBF14]/40 bg-white/10 gap-2 flex items-center justify-center transition-all"
+                      className="rounded-full text-sm text-white font-black py-3.5 border border-[#FCBF14]/40 bg-white/10 gap-2 flex items-center justify-center transition-all min-h-[48px]"
                     >
                       <Shield size={18} className="text-[#FCBF14]" /> Admin Studio Hub
                     </Link>
                     <button
                       onClick={handleLogoutAdmin}
-                      className="rounded-full text-sm text-red-400 font-bold py-2.5 bg-white/5 border border-white/10 transition-all"
+                      className="rounded-full text-xs text-red-400 font-bold py-3 bg-white/5 border border-white/10 transition-all min-h-[44px]"
                     >
                       Log Out Admin
                     </button>
@@ -390,21 +402,21 @@ export default function Navbar() {
                 ) : clientUser ? (
                   <Link
                     to="/login"
-                    className="rounded-full text-base text-white font-black py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all"
+                    className="rounded-full text-sm text-white font-black py-3.5 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all min-h-[48px]"
                   >
                     <User size={18} /> My Dashboard ({userTier.toUpperCase()})
                   </Link>
                 ) : (
                   <Link
                     to="/login"
-                    className="rounded-full text-base text-white font-bold py-3 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all"
+                    className="rounded-full text-sm text-white font-bold py-3.5 border border-white/20 bg-white/10 gap-2 flex items-center justify-center transition-all min-h-[48px]"
                   >
                     <User size={18} /> Login to Account
                   </Link>
                 )}
                 <Link
                   to="/ordernow"
-                  className="rounded-full bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-base font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5 transition-all"
+                  className="rounded-full bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-sm font-black py-3.5 shadow-lg flex items-center justify-center gap-1.5 transition-all min-h-[48px]"
                 >
                   Get a Quote <ArrowRight size={15} />
                 </Link>

@@ -207,26 +207,36 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           
           <div className="space-y-8">
             {/* SlideBee Logo */}
-            <div className="flex items-center px-1">
+            <div className="flex items-center justify-between px-1">
               <Link to="/" className="flex items-center">
                 <SlideBeeLogo variant="light" size="sm" />
               </Link>
+              <div className="xl:hidden">
+                <a
+                  href={`https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20inquiring%20about%20my%20presentation%20dashboard`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hex-pill bg-primary text-[#111111] font-bold text-xs px-3 py-1.5 flex items-center gap-1.5 shadow-xs min-h-[36px]"
+                >
+                  <MessageCircle size={14} /> VIP Chat
+                </a>
+              </div>
             </div>
 
-            {/* Navigation Links */}
-            <nav className="space-y-2">
+            {/* Navigation Links (Horizontal Touch Scroll on Mobile, Vertical on Desktop) */}
+            <nav className="flex flex-row xl:flex-col gap-2 overflow-x-auto no-scrollbar touch-pan-x pb-2 xl:pb-0 shrink-0">
               
               {/* Overview (Active in Mockup) */}
               <button
                 type="button"
                 onClick={() => setActiveTab("overview")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "overview"
                     ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
                     : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   <LayoutDashboard size={18} className={activeTab === "overview" ? "text-primary-amber" : "text-[#726F6D]"} />
                   <span>Overview</span>
                 </div>
@@ -236,15 +246,15 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("purchased")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap gap-2 ${
                   activeTab === "purchased"
                     ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
                     : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   <FileText size={18} className={activeTab === "purchased" ? "text-primary-amber" : "text-[#726F6D]"} />
-                  <span>My Purchased Decks</span>
+                  <span>My Decks</span>
                 </div>
                 {purchasedItems.length > 0 && (
                   <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full font-bold">
@@ -257,13 +267,13 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("custom")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap gap-2 ${
                   activeTab === "custom"
                     ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
                     : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   <Briefcase size={18} className={activeTab === "custom" ? "text-primary-amber" : "text-[#726F6D]"} />
                   <span>Custom Projects</span>
                 </div>
@@ -278,15 +288,15 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("marketplace")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "marketplace"
                     ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
                     : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   <LayoutGrid size={18} className={activeTab === "marketplace" ? "text-primary-amber" : "text-[#726F6D]"} />
-                  <span>Template Marketplace</span>
+                  <span>Marketplace</span>
                 </div>
               </button>
 
@@ -294,15 +304,15 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("ledger")}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap gap-2 ${
                   activeTab === "ledger"
                     ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
                     : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   <CreditCard size={18} className={activeTab === "ledger" ? "text-primary-amber" : "text-[#726F6D]"} />
-                  <span>Subscription & Quota</span>
+                  <span>Plan & Quota</span>
                 </div>
                 <span className="text-[10px] uppercase font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
                   {userTier}
@@ -312,8 +322,8 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
             </nav>
           </div>
 
-          {/* Bottom Card: VIP Studio Hotline (Matching Reference Mockup) */}
-          <div className="mt-8 pt-4">
+          {/* Bottom Card: VIP Studio Hotline (Desktop Sidebar Only) */}
+          <div className="hidden xl:block mt-8 pt-4">
             <a
               href={`https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20inquiring%20about%20my%20presentation%20dashboard`}
               target="_blank"
