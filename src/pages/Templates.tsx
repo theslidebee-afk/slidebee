@@ -85,7 +85,7 @@ export default function Templates() {
 
   // Read dynamically from deep storefront hook
   const { templates: allTemplates, loading, showStars, showDownloads } = useStudioStore();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
 
   // Distinct category list
   const categories = ["All", ...Array.from(new Set(allTemplates.map(t => t.category)))];
@@ -279,7 +279,7 @@ export default function Templates() {
                   Premium Executive Decks (30 Templates / Month)
                 </h4>
                 <p className="text-xs text-[#726F6D] font-medium">
-                  Full 30+ slide executive frameworks unlocked with Monthly ($5), Yearly ($45), or Lifetime ($75) membership.
+                  Full 30+ slide executive frameworks unlocked with Monthly ({currency === "INR" ? "₹399" : "$5"}), Yearly ({currency === "INR" ? "₹3,499" : "$45"}), or Lifetime ({currency === "INR" ? "₹5,999" : "$75"}) membership.
                 </p>
               </div>
             </div>
@@ -408,7 +408,7 @@ export default function Templates() {
                                 Unlocked
                               </span>
                               <span className="text-xs text-[#726F6D] line-through font-bold">
-                                {formatPrice(item.price_inr)}
+                                {formatPrice(item.price_inr, item.price_usd)}
                               </span>
                             </div>
                             <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
@@ -418,15 +418,15 @@ export default function Templates() {
                         ) : (
                           <>
                             <div className="text-lg font-heading font-black text-[#111111]">
-                              {formatPrice(item.price_inr)}
+                              {formatPrice(item.price_inr, item.price_usd)}
                             </div>
                             {item.original_price_inr && (
                               <div className="text-[10px] text-[#726F6D] line-through font-medium">
-                                {formatPrice(item.original_price_inr)}
+                                {formatPrice(item.original_price_inr, (item.price_usd || 5) * 2)}
                               </div>
                             )}
                             <span className="text-[10px] font-bold text-primary-amber block">
-                              Unlocked with $5/mo Pro
+                              Unlocked with {currency === "INR" ? "₹399/mo" : "$5/mo"} Pro
                             </span>
                           </>
                         )}
@@ -483,7 +483,7 @@ export default function Templates() {
                         onClick={(e) => e.stopPropagation()}
                         className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-extrabold py-3 text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm text-center border border-primary/30"
                       >
-                        <Download size={14} /> Unlock with Pro ($5) <ArrowRight size={12} />
+                        <Download size={14} /> Unlock with Pro ({currency === "INR" ? "₹399" : "$5"}) <ArrowRight size={12} />
                       </Link>
                     )}
                   </div>

@@ -10,7 +10,6 @@ import {
   ChevronRight,
   LogOut,
   HelpCircle,
-  Bell,
   ArrowRight,
   FileText,
   MessageCircle,
@@ -65,8 +64,6 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<"overview" | "purchased" | "custom" | "marketplace" | "ledger">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(17);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(true);
 
   const clientName =
     userProfile?.full_name ||
@@ -151,61 +148,6 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   const deliverablesToDisplay = allPurchasedDeliverables.length > 0
     ? allPurchasedDeliverables.slice(0, 4)
     : defaultDeliverables;
-
-  // Dynamic user notifications
-  const notifications: Array<{
-    id: string;
-    category: string;
-    title: string;
-    description: string;
-    time: string;
-    tab?: "overview" | "purchased" | "custom" | "marketplace" | "ledger";
-  }> = [];
-
-  const masterDeliverableOrder = userOrders.find((o) => Boolean(o.deliverable_url));
-  if (masterDeliverableOrder) {
-    notifications.push({
-      id: "deliverable-ready",
-      category: "Master Ready",
-      title: "Final Master (.pptx) Available",
-      description: `Studio deliverable for "${masterDeliverableOrder.project_title || masterDeliverableOrder.service_type || 'Custom Order'}" is ready for download.`,
-      time: "Just now",
-      tab: "custom"
-    });
-  }
-
-  if (activeOrder) {
-    notifications.push({
-      id: "order-milestone",
-      category: "Project Status",
-      title: `${activeProjectTitle}: ${activeMilestone}`,
-      description: `Your presentation brief is currently in the ${activeMilestone} milestone.`,
-      time: "Active",
-      tab: "custom"
-    });
-  }
-
-  notifications.push({
-    id: "quota-status",
-    category: "Quota",
-    title: userTier === "free"
-      ? `${quotaRemaining} / 3 Free Downloads Today`
-      : `${quotaRemaining} / ${quotaTotal} Pro Downloads Available`,
-    description: userTier === "free"
-      ? "Free tier accounts can download up to 3 community templates per day. Premium templates require a Pro subscription."
-      : `Your ${userTier.toUpperCase()} membership cycle has ${quotaRemaining} template downloads ready.`,
-    time: "Cycle active",
-    tab: "ledger"
-  });
-
-  notifications.push({
-    id: "catalog-update",
-    category: "Studio Update",
-    title: "New Executive Decks Added",
-    description: "Explore the latest 16:9 master templates in the marketplace.",
-    time: "This week",
-    tab: "marketplace"
-  });
 
   // Calendar dates (September 2026 - 31 days)
   // Day 17 is active (charcoal circle), Day 15 has gold milestone dot
@@ -1004,73 +946,6 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               >
                 <HelpCircle size={16} />
               </button>
-
-              {/* Notification Bell with Interactive Popover */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNotificationsOpen((prev) => !prev);
-                    setUnreadNotifications(false);
-                  }}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-                    isNotificationsOpen ? "bg-[#FCBF14] text-[#111111]" : "bg-gray-100 hover:bg-gray-200 text-[#111111]"
-                  }`}
-                  title="Notifications"
-                >
-                  <Bell size={16} />
-                </button>
-                {unreadNotifications && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
-                )}
-
-                {/* Notification Dropdown Popover */}
-                {isNotificationsOpen && (
-                  <div className="absolute right-0 top-12 w-80 sm:w-88 bg-white border border-[#111111]/10 rounded-3xl shadow-2xl p-4 z-50 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <span className="font-heading font-black text-xs text-[#111111]">Notifications</span>
-                        <span className="text-[10px] bg-primary/20 text-[#111111] px-1.5 py-0.5 rounded-full font-bold">
-                          {notifications.length}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsNotificationsOpen(false)}
-                        className="text-gray-400 hover:text-[#111111] text-xs font-bold cursor-pointer"
-                      >
-                        Close
-                      </button>
-                    </div>
-
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => {
-                            if (n.tab) setActiveTab(n.tab);
-                            setIsNotificationsOpen(false);
-                          }}
-                          className="p-3 rounded-2xl bg-gray-50 hover:bg-[#FFF9EC] border border-gray-100 hover:border-primary/40 transition-all cursor-pointer space-y-1"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
-                              {n.category}
-                            </span>
-                            <span className="text-[10px] text-gray-400">{n.time}</span>
-                          </div>
-                          <p className="text-xs font-bold text-[#111111] leading-snug">
-                            {n.title}
-                          </p>
-                          <p className="text-[11px] text-[#726F6D]">
-                            {n.description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* User Profile Avatar with Chevron */}
               <div className="flex items-center gap-1.5 pl-1 cursor-pointer">

@@ -6184,10 +6184,10 @@ SlideBee Design Studio`
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
                 <div>
                   <h3 className="text-base font-heading font-extrabold text-[#111111]">
-                    Platform Pricing Rates & Tiers
+                    Template Marketplace Rates & Tiers
                   </h3>
                   <p className="text-xs text-[#726F6D]">
-                    Control live rates for bespoke presentation services, marketplace access tiers, and enterprise retainers in USD ($) and INR (₹).
+                    Control live subscription rates for template marketplace membership tiers (Monthly Pro, Yearly Pro, Lifetime VIP) in USD ($) and INR (₹).
                   </p>
                 </div>
                 <button
@@ -6199,142 +6199,14 @@ SlideBee Design Studio`
                 </button>
               </div>
 
-              {/* SECTION 1: BESPOKE STUDIO SERVICES (PER-SLIDE) */}
+              {/* TEMPLATE MARKETPLACE ACCESS PLANS */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
-                    Tier 1
+                    Marketplace Plans
                   </span>
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
-                    1. Bespoke Presentation Studio (Per-Slide Rates)
-                  </h4>
-                </div>
-                <p className="text-[11px] text-[#726F6D] mb-4">
-                  Controls the per-slide pricing displayed across /services, /pricing comparison, and the /ordernow proposal engine.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {/* Service 1 */}
-                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      Presentation Redesign
-                    </h5>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          USD Rate / slide ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_redesign ?? 19}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_redesign: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          INR Rate / slide (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_redesign ?? 1499}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_redesign: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service 2 */}
-                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      Venture Pitch Deck
-                    </h5>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          USD Rate / slide ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_pitch ?? 29}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_pitch: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          INR Rate / slide (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_pitch ?? 2299}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_pitch: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service 3 */}
-                  <div className="bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-primary-amber mb-3">
-                      Executive Keynote
-                    </h5>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          USD Rate / slide ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_usd_executive ?? 49}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_usd_executive: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-[#726F6D] block mb-1">
-                          INR Rate / slide (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={siteConfigs["pricing"]?.rate_inr_executive ?? 3899}
-                          onChange={(e) => setSiteConfigs({
-                            ...siteConfigs,
-                            pricing: { ...siteConfigs["pricing"], rate_inr_executive: e.target.value === "" ? "" : Number(e.target.value) }
-                          })}
-                          className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-1.5 text-xs font-extrabold text-[#111111]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: TEMPLATE MARKETPLACE ACCESS PLANS */}
-              <div className="pt-6 border-t border-[#111111]/8">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
-                    Tier 2
-                  </span>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
-                    2. Template Marketplace Access Plans & Deals (/pricing)
+                    Template Marketplace Access Plans & Deals (/pricing)
                   </h4>
                 </div>
                 <p className="text-[11px] text-[#726F6D] mb-4">
@@ -6451,59 +6323,6 @@ SlideBee Design Studio`
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 3: DEDICATED ENTERPRISE PRESENTATION RETAINER */}
-              <div className="pt-6 border-t border-[#111111]/8">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
-                    Tier 3
-                  </span>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
-                    3. Dedicated Enterprise Retainer
-                  </h4>
-                </div>
-                <p className="text-[11px] text-[#726F6D] mb-4">
-                  Set the monthly retainer rate displayed in the Dedicated Presentation Team section on /pricing.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-[#FFF9E8] p-5 rounded-2xl border border-[#111111]/8">
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Enterprise Retainer Monthly Rate ($ USD)
-                    </label>
-                    <input
-                      type="number"
-                      value={siteConfigs["pricing"]?.monthly_retainer_usd ?? 1490}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        pricing: { 
-                          ...siteConfigs["pricing"], 
-                          monthly_retainer_usd: e.target.value === "" ? "" : Number(e.target.value) 
-                        }
-                      })}
-                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Enterprise Retainer Monthly Rate (₹ INR)
-                    </label>
-                    <input
-                      type="number"
-                      value={siteConfigs["pricing"]?.monthly_retainer_inr ?? 119000}
-                      onChange={(e) => setSiteConfigs({
-                        ...siteConfigs,
-                        pricing: { 
-                          ...siteConfigs["pricing"], 
-                          monthly_retainer_inr: e.target.value === "" ? "" : Number(e.target.value) 
-                        }
-                      })}
-                      className="w-full bg-white border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-black text-[#111111]"
-                    />
                   </div>
                 </div>
               </div>

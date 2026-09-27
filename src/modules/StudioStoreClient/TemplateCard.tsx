@@ -13,8 +13,10 @@ interface TemplateCardProps {
 
 export function TemplateCard({ template, showStars = false, showDownloads = false, isPro = false }: TemplateCardProps) {
   const { formatPrice, currency } = useCurrency();
-  const price = currency === "USD" ? template.price_usd : template.price_inr;
-  const originalPrice = currency === "USD" ? template.price_usd * 2 : template.original_price_inr;
+  const priceInr = template.price_inr ?? 299;
+  const priceUsd = template.price_usd ?? 5;
+  const originalPriceInr = template.original_price_inr;
+  const originalPriceUsd = template.price_usd ? template.price_usd * 2 : 10;
 
   const isFree = !template.is_premium;
 
@@ -99,7 +101,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                     Free
                   </span>
                   <span className="text-xs text-[#726F6D] line-through font-bold">
-                    {formatPrice(price)}
+                    {formatPrice(priceInr, priceUsd)}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 block">
@@ -113,7 +115,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                     Unlocked
                   </span>
                   <span className="text-xs text-[#726F6D] line-through font-bold">
-                    {formatPrice(price)}
+                    {formatPrice(priceInr, priceUsd)}
                   </span>
                 </div>
                 <span className="text-[10px] font-black text-primary-amber flex items-center gap-1 mt-0.5">
@@ -124,16 +126,16 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
               <>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-heading font-extrabold text-[#111111]">
-                    {formatPrice(price)}
+                    {formatPrice(priceInr, priceUsd)}
                   </span>
-                  {originalPrice && originalPrice > price && (
+                  {((currency === "USD" && originalPriceUsd > priceUsd) || (currency === "INR" && originalPriceInr && originalPriceInr > priceInr)) && (
                     <span className="text-xs text-[#726F6D] line-through font-medium">
-                      {formatPrice(originalPrice)}
+                      {formatPrice(originalPriceInr || priceInr * 2, originalPriceUsd)}
                     </span>
                   )}
                 </div>
                 <span className="text-[10px] font-bold text-primary-amber block">
-                  Unlocked with \$5/mo Pro
+                  Unlocked with {currency === "INR" ? "₹399/mo" : "$5/mo"} Pro
                 </span>
               </>
             )}

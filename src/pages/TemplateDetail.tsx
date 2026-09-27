@@ -615,17 +615,17 @@ export default function TemplateDetail() {
                           Free with Pro
                         </span>
                         <span className="text-xs text-[#726F6D] line-through font-bold">
-                          {formatPrice(currency === "USD" ? template.price_usd : template.price_inr)}
+                          {formatPrice(template.price_inr, template.price_usd)}
                         </span>
                       </>
                     ) : (
                       <>
                         <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
-                          {formatPrice(currency === "USD" ? template.price_usd : template.price_inr)}
+                          {formatPrice(template.price_inr, template.price_usd)}
                         </span>
                         {template.original_price_inr && (
                           <span className="text-xs text-[#726F6D] line-through font-medium">
-                            {formatPrice(template.original_price_inr)}
+                            {formatPrice(template.original_price_inr, (template.price_usd || 5) * 2)}
                           </span>
                         )}
                       </>
@@ -747,7 +747,7 @@ export default function TemplateDetail() {
                           <ShoppingBag size={17} className="text-[#FCBF14]" />
                           {isProcessing
                             ? "Opening Checkout..."
-                            : `Buy Standalone Commercial License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                            : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
                         </button>
                         <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                           <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
@@ -822,7 +822,7 @@ export default function TemplateDetail() {
                         className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
                       >
                         <Crown size={14} className="fill-[#111111]" />
-                        Upgrade to Pro to Unlock ($5/mo)
+                        Upgrade to Pro to Unlock ({currency === "INR" ? "₹399/mo" : "$5/mo"})
                       </Link>
                     </div>
 
@@ -838,7 +838,7 @@ export default function TemplateDetail() {
                           className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
                         >
                           <Lock size={15} className="text-primary-amber" />
-                          Sign In to Buy Master PPTX ({formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})
+                          Sign In to Buy Master PPTX ({formatPrice(template.price_inr, template.price_usd)})
                         </button>
                       ) : (
                         <button
@@ -848,7 +848,7 @@ export default function TemplateDetail() {
                           className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
                         >
                           <ShoppingBag size={16} className="text-primary-amber" />
-                          {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(currency === "USD" ? template.price_usd : template.price_inr)})`}
+                          {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
                         </button>
                       )}
                     </div>
@@ -1011,7 +1011,7 @@ export default function TemplateDetail() {
                           {sim.title}
                         </h3>
                         <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
-                          {formatPrice(currency === "USD" ? sim.price_usd : sim.price_inr)}
+                          {formatPrice(sim.price_inr, sim.price_usd)}
                         </span>
                       </div>
                     </div>

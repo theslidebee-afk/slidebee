@@ -1,73 +1,128 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type Currency = 'INR' | 'USD' | 'GBP' | 'EUR';
+export type Currency = 'INR' | 'USD';
 
 interface CurrencyContextType {
   currency: Currency;
   setCurrency: (currency: Currency) => void;
-  formatPrice: (inrAmount: number) => string;
+  formatPrice: (inrAmount: number, usdAmount?: number) => string;
   symbol: string;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
-// Exchange rates & clean price mapping
-const conversionRates: Record<Currency, { rate: number; symbol: string; prefix: string }> = {
-  INR: { rate: 1, symbol: '₹', prefix: '₹' },
-  USD: { rate: 0.012, symbol: '$', prefix: '$' },
-  GBP: { rate: 0.0095, symbol: '£', prefix: '£' },
-  EUR: { rate: 0.011, symbol: '€', prefix: '€' },
+const detectIsIndia = (): boolean => {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (
+      timeZone.includes('Calcutta') ||
+      timeZone.includes('Kolkata') ||
+      timeZone.includes('Asia/Kolkata')
+    ) {
+      return true;
+    }
+
+    if (new Date().getTimezoneOffset() === -330) {
+      return true;
+    }
+
+    const locale = (navigator.language || '').toLowerCase();
+    const languages = (navigator.languages || []).map(l => l.toLowerCase());
+    const allLocales = [locale, ...languages];
+
+    const indianLocaleMatches = ['en-in', 'hi', 'ta', 'te', 'kn', 'ml', 'mr', 'gu', 'pa', 'bn'];
+    if (allLocales.some(l => indianLocaleMatches.some(match => l.includes(match)))) {
+      return true;
+    }
+  } catch {
+    // Default to false if check fails
+  }
+  return false;
 };
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currency, setCurrency] = useState<Currency>('INR');
+  const [currency, setCurrencyState] = useState<Currency>(() => {
+    // 1. Check if user already manually selected currency in localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('slidebee_currency') as Currency;
+      if (saved === 'INR' || saved === 'USD') {
+        return saved;
+      }
+      // 2. Synchronous client heuristic (India -> INR, otherwise USD)
+      return detectIsIndia() ? 'INR' : 'USD';
+    }
+    return 'USD';
+  });
 
   useEffect(() => {
-    // 1. Check if user already manually selected currency
+    // If user has an explicit manual selection saved, honor it
     const saved = localStorage.getItem('slidebee_currency') as Currency;
-    if (saved && conversionRates[saved]) {
-      setCurrency(saved);
+    if (saved === 'INR' || saved === 'USD') {
       return;
     }
 
-    // 2. Auto-detect country via Timezone / Locale
-    try {
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const userLocale = navigator.language || '';
-
-      if (timeZone.includes('Calcutta') || timeZone.includes('Kolkata') || userLocale.includes('en-IN') || userLocale.includes('hi')) {
-        setCurrency('INR');
-      } else if (timeZone.includes('London') || userLocale.includes('en-GB')) {
-        setCurrency('GBP');
-      } else if (timeZone.includes('Europe') || userLocale.includes('fr') || userLocale.includes('de') || userLocale.includes('es') || userLocale.includes('it')) {
-        setCurrency('EUR');
-      } else {
-        // Default to USD for US, Canada, and rest of world
-        setCurrency('USD');
-      }
-    } catch {
-      setCurrency('INR');
-    }
+    // 3. Asynchronous Cloudflare edge geo-detection via /cdn-cgi/trace
+    fetch('/cdn-cgi/trace')
+      .then((res) => {
+        if (!res.ok) throw new Error('Trace unavailable');
+        return res.text();
+      })
+      .then((text) => {
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('loc=')) {
+            const countryCode = line.split('=')[1]?.trim()?.toUpperCase();
+            if (countryCode === 'IN') {
+              setCurrencyState('INR');
+            } else if (countryCode) {
+              setCurrencyState('USD');
+            }
+            break;
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback already handled by synchronous initial state
+      });
   }, []);
 
   const handleSetCurrency = (cur: Currency) => {
-    setCurrency(cur);
-    localStorage.setItem('slidebee_currency', cur);
+    setCurrencyState(cur);
+    try {
+      localStorage.setItem('slidebee_currency', cur);
+    } catch {
+      // Ignore storage errors
+    }
   };
 
-  const formatPrice = (inrAmount: number): string => {
-    const config = conversionRates[currency];
+  const formatPrice = (inrAmount: number, usdAmount?: number): string => {
     if (currency === 'INR') {
-      return `${config.prefix}${inrAmount}`;
+      return `₹${Math.round(inrAmount).toLocaleString('en-IN')}`;
     }
-    // Clean formatted pricing for international (e.g. ₹299 -> $3.99, ₹499 -> $6.99, ₹799 -> $9.99, ₹999 -> $12.99)
-    if (inrAmount <= 299) return `${config.prefix}3.99`;
-    if (inrAmount <= 499) return `${config.prefix}6.99`;
-    if (inrAmount <= 799) return `${config.prefix}9.99`;
-    if (inrAmount <= 999) return `${config.prefix}12.99`;
-    
-    const converted = (inrAmount * config.rate).toFixed(2);
-    return `${config.prefix}${converted}`;
+
+    // Currency is USD
+    if (usdAmount !== undefined && usdAmount !== null && !isNaN(usdAmount)) {
+      return `$${usdAmount}`;
+    }
+
+    // If passed amount is already small (e.g. <= 100), treat as USD amount directly
+    if (inrAmount <= 100) {
+      return `$${inrAmount}`;
+    }
+
+    // Clean price mapping based on standard INR tier brackets
+    if (inrAmount <= 299) return '$3.99';
+    if (inrAmount <= 399) return '$5';
+    if (inrAmount <= 499) return '$6.99';
+    if (inrAmount <= 799) return '$9.99';
+    if (inrAmount <= 999) return '$12.99';
+    if (inrAmount <= 1499) return '$19';
+    if (inrAmount <= 2299) return '$29';
+    if (inrAmount <= 3499) return '$45';
+    if (inrAmount <= 3899) return '$49';
+    if (inrAmount <= 5999) return '$75';
+
+    return `$${Math.round(inrAmount / 80)}`;
   };
 
   return (
@@ -76,7 +131,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currency,
         setCurrency: handleSetCurrency,
         formatPrice,
-        symbol: conversionRates[currency].symbol,
+        symbol: currency === 'INR' ? '₹' : '$',
       }}
     >
       {children}

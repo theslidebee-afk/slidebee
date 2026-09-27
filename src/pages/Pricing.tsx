@@ -10,6 +10,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { openRazorpayCheckout } from "../lib/razorpay";
 import { usePageSEO } from "../hooks/usePageSEO";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function Pricing() {
   usePageSEO({
@@ -18,7 +19,7 @@ export default function Pricing() {
   });
 
   const location = useLocation();
-  const [currency, setCurrency] = useState<"USD" | "INR">("USD");
+  const { currency, setCurrency } = useCurrency();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const [pricingConfig, setPricingConfig] = useState<any>({
@@ -158,7 +159,9 @@ export default function Pricing() {
   const defaultFaqs: FaqItem[] = [
     {
       q: "How do template downloads and tiers work?",
-      a: "SlideBee offers four membership tiers: Basic Free gives you 3 daily downloads from our Free templates library. Monthly Pro ($5/mo or ₹399/mo) unlocks 30 Premium template downloads per month. Yearly Pro ($45/yr or ₹3,499/yr) includes 30 Premium templates/mo plus an exclusive free design service for up to 10 slides. Lifetime VIP ($75 or ₹5,999 one-time) gives you unlimited premium downloads forever without any renewal fees."
+      a: currency === "INR"
+        ? `SlideBee offers four membership tiers: Basic Free gives you 3 daily downloads from our Free templates library. Monthly Pro (₹${pricingConfig.tier_monthly_inr ?? 399}/mo) unlocks 30 Premium template downloads per month. Yearly Pro (₹${(Number(pricingConfig.tier_yearly_inr) || 3499).toLocaleString()}/yr) includes 30 Premium templates/mo plus an exclusive free design service for up to 10 slides. Lifetime VIP (₹${(Number(pricingConfig.tier_lifetime_inr) || 5999).toLocaleString()} one-time) gives you unlimited premium downloads forever without any renewal fees.`
+        : `SlideBee offers four membership tiers: Basic Free gives you 3 daily downloads from our Free templates library. Monthly Pro ($${pricingConfig.tier_monthly_usd ?? 5}/mo) unlocks 30 Premium template downloads per month. Yearly Pro ($${pricingConfig.tier_yearly_usd ?? 45}/yr) includes 30 Premium templates/mo plus an exclusive free design service for up to 10 slides. Lifetime VIP ($${pricingConfig.tier_lifetime_usd ?? 75} one-time) gives you unlimited premium downloads forever without any renewal fees.`
     },
     {
       q: "What files do I receive with my downloads?",

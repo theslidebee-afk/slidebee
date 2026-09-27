@@ -431,7 +431,7 @@ export default function Home() {
       {/* 1 & 2. UNIFIED HERO STAGE (Parallax Video Background)                     */}
       <section
         ref={heroRef}
-        className="relative w-full min-h-screen lg:min-h-[105vh] pt-24 sm:pt-28 pb-20 sm:pb-28 overflow-hidden flex flex-col items-center justify-center bg-[#111111]"
+        className="relative w-full min-h-screen lg:min-h-[105vh] pt-16 sm:pt-20 lg:pt-22 pb-16 sm:pb-24 overflow-hidden flex flex-col items-center justify-center bg-[#111111]"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
@@ -451,8 +451,8 @@ export default function Home() {
         {/* Central Stage Container */}
         <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
           
-          {/* Top Split Promotion Banners (Tighter proportions) */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
+          {/* Top Split Promotion Banners (Moved up with tighter proportions) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 -mt-2 sm:-mt-4 lg:-mt-6 mb-5 sm:mb-7">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
             <div className="bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px]">
@@ -563,23 +563,23 @@ export default function Home() {
           {/* Central Translucent Frosted Glass Card with Dissolving Parallax */}
           <motion.div
             style={{ y: heroCardY }}
-            className="w-full max-w-4xl mx-auto bg-[#FFFDF5]/80 sm:bg-[#FFFDF5]/88 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-8 sm:p-12 lg:p-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.22)] flex flex-col items-center justify-center transition-all"
+            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/85 sm:bg-[#FFFDF5]/90 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[48px] py-10 sm:py-16 lg:py-20 px-6 sm:px-14 lg:px-20 text-center shadow-[0_30px_90px_rgba(0,0,0,0.24)] flex flex-col items-center justify-center transition-all"
           >
             
             {/* Eyebrow */}
-            <div className="mb-4">
+            <div className="mb-4 sm:mb-5">
               <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
                 {heroConfig.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
               </span>
             </div>
 
             {/* Bold Display Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-2xl whitespace-pre-line">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-heading font-black text-[#111111] leading-[1.05] tracking-tight mb-5 max-w-3xl whitespace-pre-line">
               {heroConfig.title || "Ideas Deserve\nBetter Slides."}
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-2xl mx-auto mb-8 whitespace-pre-line">
+            <p className="text-sm sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-3xl mx-auto mb-8 whitespace-pre-line">
               {heroConfig.subtitle || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."}
             </p>
 
