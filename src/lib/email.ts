@@ -786,7 +786,7 @@ export async function sendProExpiredEmail({
     </div>
   `;
 
-  return sendEmail({
+    return sendEmail({
     to: clientEmail,
     fromEmail: senderEmail,
     fromName: "SlideBee Studio",
@@ -795,4 +795,62 @@ export async function sendProExpiredEmail({
     html,
   });
 }
+
+/**
+ * 11. Password Reset Recovery Email
+ */
+export async function sendPasswordResetEmail({
+  clientEmail,
+  resetUrl,
+}: {
+  clientEmail: string;
+  resetUrl: string;
+}) {
+  const safeEmail = escapeHtml(clientEmail);
+  const safeResetUrl = sanitizeExternalUrl(resetUrl);
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Executive Presentation Design Studio</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">Password Reset Request</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          We received a request to reset the password for your SlideBee account (<strong>${safeEmail}</strong>).
+        </p>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Click the button below to choose a secure new password. This recovery link is valid for <strong>60 minutes</strong>.
+        </p>
+
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${safeResetUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; border-radius: 9999px; text-decoration: none; padding: 14px 28px; display: inline-block; font-size: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(252,191,20,0.3);">
+            Reset Password
+          </a>
+        </div>
+
+        <div style="background-color: #FFF9E8; padding: 14px; border-radius: 8px; border: 1px solid rgba(252,191,20,0.4); font-size: 12px; color: #936610; line-height: 1.5;">
+          <strong>Security Note:</strong> If you did not request this password reset, no action is needed. Your current password remains secure and this link will expire automatically.
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D; line-height: 1.6;">
+        SlideBee &bull; Curated Master PowerPoint Presentation Catalog<br/>
+        Need assistance? Reply directly to this email or reach us at <a href="mailto:hello@theslidebee.com" style="color: #936610; text-decoration: underline;">hello@theslidebee.com</a>.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: clientEmail,
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Security',
+    replyTo: 'hello@theslidebee.com',
+    subject: 'Reset Your SlideBee Password',
+    html,
+  });
+}
+
 

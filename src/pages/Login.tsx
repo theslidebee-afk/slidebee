@@ -98,9 +98,18 @@ export default function Login() {
   const [isResetMode, setIsResetMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const url = window.location.href;
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const hashParams = new URLSearchParams(hash.split("?")[1] || "");
+    const searchParams = new URLSearchParams(search);
+    const token = hashParams.get("token") || searchParams.get("token");
+    const email = hashParams.get("email") || searchParams.get("email");
+    if (token) sessionStorage.setItem("slidebee_recovery_token", token);
+    if (email) sessionStorage.setItem("slidebee_recovery_email", email);
     return (
       url.includes("action=reset") ||
       url.includes("type=recovery") ||
+      Boolean(token) ||
       sessionStorage.getItem("slidebee_password_recovery") === "true"
     );
   });
@@ -115,9 +124,18 @@ export default function Login() {
     const checkRecovery = () => {
       if (typeof window === "undefined") return;
       const url = window.location.href;
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      const hashParams = new URLSearchParams(hash.split("?")[1] || "");
+      const searchParams = new URLSearchParams(search);
+      const token = hashParams.get("token") || searchParams.get("token");
+      const email = hashParams.get("email") || searchParams.get("email");
+      if (token) sessionStorage.setItem("slidebee_recovery_token", token);
+      if (email) sessionStorage.setItem("slidebee_recovery_email", email);
       if (
         url.includes("action=reset") ||
         url.includes("type=recovery") ||
+        Boolean(token) ||
         sessionStorage.getItem("slidebee_password_recovery") === "true"
       ) {
         setIsResetMode(true);
@@ -306,7 +324,14 @@ export default function Login() {
 
     setResetSubmitting(true);
     try {
-      const res = await completePasswordReset(newPassword);
+      const hash = typeof window !== "undefined" ? window.location.hash || "" : "";
+      const search = typeof window !== "undefined" ? window.location.search || "" : "";
+      const hashParams = new URLSearchParams(hash.split("?")[1] || "");
+      const searchParams = new URLSearchParams(search);
+      const token = hashParams.get("token") || searchParams.get("token") || sessionStorage.getItem("slidebee_recovery_token") || "";
+      const email = hashParams.get("email") || searchParams.get("email") || sessionStorage.getItem("slidebee_recovery_email") || "";
+
+      const res = await completePasswordReset(newPassword, token, email);
       if (!res.success) {
         setResetError(res.message || "Failed to update password. Link may have expired.");
         setResetSubmitting(false);
@@ -315,6 +340,8 @@ export default function Login() {
 
       setResetCompleted(true);
       sessionStorage.removeItem("slidebee_password_recovery");
+      sessionStorage.removeItem("slidebee_recovery_token");
+      sessionStorage.removeItem("slidebee_recovery_email");
 
       const { data: { session } } = await supabase.auth.getSession();
       const userEmail = session?.user?.email?.toLowerCase().trim() || "";

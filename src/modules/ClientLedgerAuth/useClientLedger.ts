@@ -489,15 +489,49 @@ export function useClientLedger() {
     };
   };
 
-  // Secure Password Reset Completion via GoTrue Auth
-  const completePasswordReset = async (newPasswordInput: string): Promise<{ success: boolean; message: string }> => {
+  // Secure Password Reset Completion via D1 Edge Auth & GoTrue
+  const completePasswordReset = async (newPasswordInput: string, token?: string, email?: string): Promise<{ success: boolean; message: string }> => {
     const cleanPass = newPasswordInput.trim();
     if (!cleanPass || cleanPass.length < 8) {
       return { success: false, message: "Password must be at least 8 characters in length." };
     }
     try {
+      // 1. Prioritize Cloudflare D1 recovery token verification
+      if (token) {
+        const res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reset_password_confirm",
+            token,
+            email,
+            password: cleanPass
+          }),
+        });
+        const json = await res.json();
+        if (res.ok && !json.error) {
+          if (json.data?.session) {
+            localStorage.setItem("slidebee_edge_session", JSON.stringify(json.data.session));
+            if (json.data.user) {
+              setCurrentUser(json.data.user);
+              localStorage.setItem("slidebee_client_user", JSON.stringify({
+                email: json.data.user.email,
+                tier: json.data.profile?.tier || "free",
+                role: json.data.user.role || "client",
+                user_metadata: json.data.user.user_metadata
+              }));
+            }
+          }
+          return { success: true, message: "Password has been successfully updated." };
+        } else if (json.error) {
+          return { success: false, message: json.error.message || "Password update failed." };
+        }
+      }
+
+      // 2. Direct updateUser fallback
       const { data, error } = await supabase.auth.updateUser({
-        password: cleanPass
+        password: cleanPass,
+        email
       });
       if (error) {
         return { success: false, message: error.message || "Failed to update password. Recovery link may have expired." };
