@@ -84,17 +84,17 @@ export default function About() {
             </div>
           </div>
 
-          {/* Right Visual Column: Team Photo with Stepped Silhouette & Sticky Note */}
-          <div className="lg:col-span-6 relative flex justify-center lg:justify-end">
+          {/* Right Visual Column: Team Photo Filling Visual Stage with Accent Note */}
+          <div className="lg:col-span-6 relative flex items-center justify-center w-full">
             
-            <div className="relative w-full max-w-[500px]">
+            <div className="relative w-full h-[380px] sm:h-[460px] lg:h-[520px]">
               
-              {/* Stepped Organic Silhouette Team Image Container */}
-              <div className="relative rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5] aspect-[4/3.3]">
+              {/* Full-bleed Visual Container */}
+              <div className="relative w-full h-full rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5]">
                 <img
-                  src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80"}
+                  src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=85"}
                   alt="SlideBee Presentation Design Team"
-                  className="w-full h-full object-cover grayscale contrast-110 brightness-95"
+                  className="w-full h-full object-cover"
                   loading="lazy"
                 />
               </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -6,8 +6,6 @@ import {
   Briefcase,
   Search,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
   HelpCircle,
   ArrowRight,
@@ -65,9 +63,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "purchased" | "custom" | "marketplace" | "ledger">("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(() => new Date().getDate());
-  const [selectedMilestoneInfo, setSelectedMilestoneInfo] = useState<any>(null);
+
 
   const clientName =
     userProfile?.full_name ||
@@ -153,89 +149,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
     ? allPurchasedDeliverables.slice(0, 4)
     : defaultDeliverables;
 
-  // Interactive calendar month navigation and dynamic day calculations
-  const currentCalYear = calendarViewDate.getFullYear();
-  const currentCalMonth = calendarViewDate.getMonth();
-  const monthName = calendarViewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  const firstDayOfWeek = new Date(currentCalYear, currentCalMonth, 1).getDay();
-
-  const handlePrevMonth = () => {
-    setCalendarViewDate(new Date(currentCalYear, currentCalMonth - 1, 1));
-  };
-  const handleNextMonth = () => {
-    setCalendarViewDate(new Date(currentCalYear, currentCalMonth + 1, 1));
-  };
-
-  // Map userOrders and project deliverables to calendar milestones for the displayed month
-  const monthMilestones = useMemo(() => {
-    const map: Record<number, { title: string; type: string; status: string; date: string; order: any }> = {};
-
-    userOrders.forEach((order) => {
-      // Order created date
-      if (order.created_at) {
-        const orderDate = new Date(order.created_at);
-        if (orderDate.getFullYear() === currentCalYear && orderDate.getMonth() === currentCalMonth) {
-          const d = orderDate.getDate();
-          map[d] = {
-            title: order.project_title || order.service_type || "Custom Project Brief",
-            type: "Brief Received",
-            status: order.status || "in_progress",
-            date: orderDate.toLocaleDateString(),
-            order,
-          };
-        }
-      }
-
-      // Expected delivery milestone (24h or 48h)
-      if (order.created_at) {
-        const estDelivery = new Date(order.created_at);
-        const hoursToAdd = order.rush_delivery ? 24 : 48;
-        estDelivery.setTime(estDelivery.getTime() + hoursToAdd * 60 * 60 * 1000);
-        if (estDelivery.getFullYear() === currentCalYear && estDelivery.getMonth() === currentCalMonth) {
-          const d = estDelivery.getDate();
-          if (!map[d]) {
-            map[d] = {
-              title: `${order.project_title || order.service_type || "Project"} Delivery Target`,
-              type: "Milestone Delivery",
-              status: order.status === "completed" || order.status === "delivered" ? "Delivered" : "Target Turnaround",
-              date: estDelivery.toLocaleDateString(),
-              order,
-            };
-          }
-        }
-      }
-    });
-
-    return map;
-  }, [userOrders, currentCalYear, currentCalMonth]);
-
-  const calendarDays = useMemo(() => {
-    const items: Array<{ day: number | null; empty?: boolean; hasDot?: boolean; isToday?: boolean; milestone?: any }> = [];
-
-    // Empty leading slots for day-of-week alignment
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      items.push({ day: null, empty: true });
-    }
-
-    const today = new Date();
-    const isThisMonth = today.getFullYear() === currentCalYear && today.getMonth() === currentCalMonth;
-    const todayDate = today.getDate();
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const milestone = monthMilestones[d];
-      items.push({
-        day: d,
-        empty: false,
-        hasDot: Boolean(milestone),
-        isToday: isThisMonth && d === todayDate,
-        milestone: milestone || null,
-      });
-    }
-
-    return items;
-  }, [firstDayOfWeek, daysInMonth, currentCalYear, currentCalMonth, monthMilestones]);
 
   return (
     <div className="relative min-h-screen bg-[#FFF8E7] text-[#111111] overflow-hidden flex justify-center items-start pt-16 sm:pt-20 pb-16 px-3 sm:px-6 lg:px-8">
@@ -1036,111 +950,19 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 
             </div>
 
-            {/* Calendar Section: Project Milestone Header & Days Grid */}
-            <div className="space-y-3 pt-2">
-              
-              {/* Calendar Header with < > Controls and Month/Year Display */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-heading font-black text-sm text-[#111111]">
-                    Project Milestones
-                  </h4>
-                  <p className="text-[11px] font-extrabold text-primary-amber">
-                    {monthName}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handlePrevMonth}
-                    aria-label="Previous month"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-[#111111] transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextMonth}
-                    aria-label="Next month"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-[#111111] transition-colors cursor-pointer"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
 
-              {/* Weekday Letters: S M T W T F S */}
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-400">
-                <span>S</span>
-                <span>M</span>
-                <span>T</span>
-                <span>W</span>
-                <span>T</span>
-                <span>F</span>
-                <span>S</span>
-              </div>
-
-              {/* Dynamic Days Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
-                {calendarDays.map((item, idx) => {
-                  if (item.empty || item.day === null) {
-                    return <span key={idx} className="py-1.5" />;
-                  }
-
-                  const isSelected = item.day === selectedCalendarDate;
-
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCalendarDate(item.day as number);
-                        if (item.milestone) {
-                          setSelectedMilestoneInfo(item.milestone);
-                        } else {
-                          setSelectedMilestoneInfo(null);
-                        }
-                      }}
-                      className="relative py-1.5 flex flex-col items-center justify-center transition-all cursor-pointer"
-                    >
-                      <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all text-xs ${
-                          isSelected
-                            ? "bg-[#2A2A2A] text-white font-black shadow-xs"
-                            : item.isToday
-                            ? "bg-amber-100 text-amber-900 font-extrabold border border-amber-300"
-                            : "hover:bg-gray-100 text-[#111111]"
-                        }`}
-                      >
-                        {item.day}
-                      </span>
-                      {/* Milestone Gold Dot Indicator */}
-                      {item.hasDot && !isSelected && (
-                        <span className="w-1.5 h-1.5 bg-[#E5A817] rounded-full mt-0.5" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-            </div>
-
-            {/* Active Project or Selected Milestone Highlight Card */}
+            {/* Active Project Highlight Card */}
             <div className="bg-[#FFF9EC] border border-[#F4DC9E] rounded-3xl p-5 space-y-3 shadow-2xs">
               
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">
-                  {selectedMilestoneInfo
-                    ? `${selectedMilestoneInfo.type} • Day ${selectedCalendarDate}`
-                    : (activeOrder?.status === "completed" || activeOrder?.status === "delivered" ? "Delivered" : "Active Brief")}
+                  {activeOrder?.status === "completed" || activeOrder?.status === "delivered" ? "Delivered" : "Active Brief"}
                 </span>
                 <h4 className="font-heading font-black text-sm sm:text-base text-[#111111]">
-                  {selectedMilestoneInfo ? selectedMilestoneInfo.title : activeProjectTitle}
+                  {activeProjectTitle}
                 </h4>
                 <p className="text-xs text-[#726F6D]">
-                  {selectedMilestoneInfo
-                    ? `Status: ${selectedMilestoneInfo.status}`
-                    : (activeOrder?.service_type || "Executive presentation design studio")}
+                  {activeOrder?.service_type || "Executive presentation design studio"}
                 </p>
               </div>
 
@@ -1148,7 +970,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#111111]">
                 <Clock size={13} className="text-[#111111]" />
                 <span>
-                  {selectedMilestoneInfo?.order?.rush_delivery || activeOrder?.rush_delivery
+                  {activeOrder?.rush_delivery
                     ? "Rush 24h Turnaround"
                     : "48h Standard Delivery"}
                 </span>
@@ -1159,16 +981,16 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const waUrl = `https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20requesting%20revision%20for%20${encodeURIComponent(selectedMilestoneInfo ? selectedMilestoneInfo.title : activeProjectTitle)}`;
+                    const waUrl = `https://wa.me/${studioWhatsapp}?text=Hi%20SlideBee,%20requesting%20revision%20for%20${encodeURIComponent(activeProjectTitle)}`;
                     window.open(waUrl, "_blank");
                   }}
                   className="w-full bg-[#151515] hover:bg-black text-white font-bold text-xs py-2.5 rounded-xl transition-all cursor-pointer text-center"
                 >
                   Request Revision / Chat
                 </button>
-                {selectedMilestoneInfo?.order?.deliverable_url || activeOrder?.deliverable_url ? (
+                {activeOrder?.deliverable_url ? (
                   <a
-                    href={selectedMilestoneInfo?.order?.deliverable_url || activeOrder?.deliverable_url}
+                    href={activeOrder?.deliverable_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full bg-[#F5B921] hover:bg-[#E0A71B] text-[#111111] font-black text-xs py-2.5 rounded-xl transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-1.5"
@@ -1177,7 +999,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
                   </a>
                 ) : (
                   <div className="w-full bg-white/80 text-[#726F6D] border border-dashed border-[#ECCF87] font-bold text-[11px] py-2.5 rounded-xl text-center">
-                    Milestone: {selectedMilestoneInfo ? selectedMilestoneInfo.status : activeMilestone}
+                    Milestone: {activeMilestone}
                   </div>
                 )}
               </div>

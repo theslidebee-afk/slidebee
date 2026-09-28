@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -52,9 +52,10 @@ import {
   Gift,
   UserX,
   Clock,
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid
+  LayoutGrid,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
@@ -172,7 +173,9 @@ export default function Admin() {
   const [isRefreshingDashboard, setIsRefreshingDashboard] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "success" | "error">("idle");
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string | null>(null);
-  const [adminCalendarDate, setAdminCalendarDate] = useState<number>(26);
+  const [adminTemplateSort, setAdminTemplateSort] = useState<string>("date_desc");
+  const [adminTemplateViewMode, setAdminTemplateViewMode] = useState<"table" | "grid">("table");
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Single Template Modal State
   const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
@@ -272,18 +275,6 @@ export default function Admin() {
   const [deleteAccountEmailSubject, setDeleteAccountEmailSubject] = useState("Account Deletion & Data Privacy Confirmation — SlideBee Studio");
   const [deleteAccountEmailBody, setDeleteAccountEmailBody] = useState<string>("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-
-  const TEMPLATE_CATEGORIES = [
-    "All",
-    "Pitch Decks",
-    "Business",
-    "Strategy",
-    "Marketing",
-    "Finance",
-    "Infographics",
-    "Timelines",
-    "Education"
-  ];
 
   // Edit Template Modal State
   const [isEditTemplateOpen, setIsEditTemplateOpen] = useState(false);
@@ -2754,6 +2745,70 @@ hello@theslidebee.com`;
   const proConversionRate = registeredClientsCount > 0 ? Math.min(100, Math.round((activeProSubscribers.length / registeredClientsCount) * 100)) : 0;
   const proOffset = gaugeCircumference - (proConversionRate / 100) * gaugeCircumference;
 
+  const formatUploadedDate = (dateStr?: string): string => {
+    if (!dateStr) return "N/A";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const sortedAndFilteredTemplates = useMemo(() => {
+    const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
+
+    return templates
+      .filter((t) => {
+        if (adminTemplateFilter === "published" && t.is_published === false) return false;
+        if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
+        if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
+        if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
+        if (effectiveSearch) {
+          const match =
+            t.title?.toLowerCase().includes(effectiveSearch) ||
+            t.code?.toLowerCase().includes(effectiveSearch) ||
+            t.category?.toLowerCase().includes(effectiveSearch) ||
+            t.description?.toLowerCase().includes(effectiveSearch);
+          if (!match) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        switch (adminTemplateSort) {
+          case "date_desc": {
+            const timeA = new Date(a.created_at || 0).getTime();
+            const timeB = new Date(b.created_at || 0).getTime();
+            return timeB - timeA;
+          }
+          case "date_asc": {
+            const timeA = new Date(a.created_at || 0).getTime();
+            const timeB = new Date(b.created_at || 0).getTime();
+            return timeA - timeB;
+          }
+          case "title_asc":
+            return (a.title || "").localeCompare(b.title || "");
+          case "title_desc":
+            return (b.title || "").localeCompare(a.title || "");
+          case "price_desc":
+            return (b.price_inr || b.price_usd || 0) - (a.price_inr || a.price_usd || 0);
+          case "price_asc":
+            return (a.price_inr || a.price_usd || 0) - (b.price_inr || b.price_usd || 0);
+          case "downloads_desc":
+            return (b.downloads || 0) - (a.downloads || 0);
+          case "slides_desc":
+            return (b.slides_count || b.slide_count || 0) - (a.slides_count || a.slide_count || 0);
+          default:
+            return 0;
+        }
+      });
+  }, [templates, adminTemplateFilter, adminTemplateCategory, adminTemplateSearch, searchTerm, adminTemplateSort]);
+
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-20 pb-16">
       <div className="w-[96%] max-w-[1880px] mx-auto px-2 sm:px-4 flex flex-col xl:flex-row gap-6">
@@ -3706,75 +3761,125 @@ hello@theslidebee.com`;
         {/* TAB 3: TEMPLATES */}
         {activeTab === "templates" && (
           <div className="space-y-6">
-            {/* Category Management Hub */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-primary/40 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h4 className="font-heading font-extrabold text-sm text-[#111111] flex items-center gap-2">
-                    <LayoutGrid size={16} className="text-primary-amber" />
-                    Marketplace Category Manager & Taxonomy
-                  </h4>
-                  <p className="text-xs text-[#726F6D]">
-                    Create and manage presentation categories. Categories added here instantly appear across the entire storefront, navbar filters, and template creation modals.
-                  </p>
-                </div>
+            
+            {/* Top Bar Filter & Toolbar (Excel-Grade Category, Sort & Controls) */}
+            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#111111]/10 shadow-xs space-y-4 mb-6">
+              
+              {/* Row 1: Search, Category Filter, Sort Filter, and View Switcher */}
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
                 
-                {/* Add Category Input */}
-                <div className="flex items-center gap-2">
+                {/* Search Input */}
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#726F6D]" />
                   <input
                     type="text"
-                    placeholder="New category name..."
-                    value={newCategoryInput}
-                    onChange={(e) => setNewCategoryInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddNewCategory();
-                      }
-                    }}
-                    className="bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-1.5 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                    placeholder="Search templates by title, SKU, keyword..."
+                    value={adminTemplateSearch}
+                    onChange={(e) => setAdminTemplateSearch(e.target.value)}
+                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-8 py-2.5 text-xs font-medium text-[#111111] outline-none focus:border-primary"
                   />
+                  {adminTemplateSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminTemplateSearch("")}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-[#726F6D] hover:text-[#111111] font-bold cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Controls: Category, Sort, View Toggle */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  
+                  {/* Category Dropdown (Top Bar Option) */}
+                  <div className="flex items-center gap-1.5 bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-1.5 shadow-2xs">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#726F6D]">Category:</span>
+                    <select
+                      value={adminTemplateCategory}
+                      onChange={(e) => setAdminTemplateCategory(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-[#111111] outline-none cursor-pointer pr-1"
+                    >
+                      <option value="All">All Categories ({templates.length})</option>
+                      {categoriesList.map((cat) => {
+                        const count = templates.filter(t => t.category?.toLowerCase() === cat.toLowerCase()).length;
+                        return (
+                          <option key={cat} value={cat}>
+                            {cat} ({count})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  {/* Manage Categories Modal Trigger Button */}
                   <button
                     type="button"
-                    onClick={handleAddNewCategory}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="hex-pill bg-white hover:bg-gray-50 border border-primary/40 text-primary-amber text-xs font-extrabold px-3 py-2 flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                    title="Manage taxonomy & categories"
                   >
-                    <Plus size={13} /> Add Category
+                    <Sliders size={13} />
+                    <span>Manage Categories</span>
                   </button>
-                </div>
-              </div>
 
-              {/* Active Categories Pills */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#111111]/8">
-                <span className="text-[11px] font-bold text-[#726F6D]">Active Categories:</span>
-                {categoriesList.map((cat) => {
-                  const deckCount = templates.filter(t => t.category?.toLowerCase() === cat.toLowerCase()).length;
-                  return (
-                    <div
-                      key={cat}
-                      className="bg-[#FFF9E8] border border-primary/30 rounded-lg px-2.5 py-1 text-xs font-bold text-[#111111] flex items-center gap-1.5 shadow-2xs"
+                  {/* Excel-Style Sort Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-1.5 shadow-2xs">
+                    <ArrowUpDown size={13} className="text-primary-amber" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#726F6D]">Sort:</span>
+                    <select
+                      value={adminTemplateSort}
+                      onChange={(e) => setAdminTemplateSort(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-[#111111] outline-none cursor-pointer pr-1"
                     >
-                      <span>{cat}</span>
-                      <span className="text-[10px] font-mono text-[#726F6D] bg-white px-1.5 rounded-full border border-[#111111]/5">
-                        {deckCount}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(cat)}
-                        className="text-gray-400 hover:text-red-600 transition-colors ml-0.5 cursor-pointer"
-                        title={`Remove "${cat}" category`}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      <option value="date_desc">Latest to Oldest (Uploaded)</option>
+                      <option value="date_asc">Oldest to Latest (Uploaded)</option>
+                      <option value="title_asc">Title: A to Z</option>
+                      <option value="title_desc">Title: Z to A</option>
+                      <option value="price_desc">Price: High to Low</option>
+                      <option value="price_asc">Price: Low to High</option>
+                      <option value="downloads_desc">Downloads: Most to Least</option>
+                      <option value="slides_desc">Slides: High to Low</option>
+                    </select>
+                  </div>
 
-            {/* Template Status & Search Filter Bar */}
-            <div className="bg-white p-3.5 rounded-2xl border border-[#111111]/10 shadow-xs space-y-3 mb-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* View Mode Toggle: Table vs Grid */}
+                  <div className="flex items-center bg-[#FFF9E8] border border-[#111111]/12 p-0.5 rounded-full shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setAdminTemplateViewMode("table")}
+                      className={`px-3 py-1.5 text-xs font-black rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                        adminTemplateViewMode === "table"
+                          ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                          : "text-[#726F6D] hover:text-[#111111]"
+                      }`}
+                      title="Excel Sheet Table View"
+                    >
+                      <FileSpreadsheet size={13} />
+                      <span className="hidden sm:inline">Table View</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTemplateViewMode("grid")}
+                      className={`px-3 py-1.5 text-xs font-black rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                        adminTemplateViewMode === "grid"
+                          ? "bg-[#111111] text-[#FCBF14] shadow-xs"
+                          : "text-[#726F6D] hover:text-[#111111]"
+                      }`}
+                      title="Card Grid View"
+                    >
+                      <LayoutGrid size={13} />
+                      <span className="hidden sm:inline">Grid View</span>
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Row 2: Status Filter Tabs and Quick Action / Counter */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#111111]/8">
+                
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -3821,287 +3926,554 @@ hello@theslidebee.com`;
                     }`}
                   >
                     <Coins size={12} />
-                    <span>Free Community Decks ({templates.filter(t => t.is_credit_eligible).length})</span>
+                    <span>Free Community ({templates.filter(t => t.is_credit_eligible).length})</span>
                   </button>
                 </div>
 
-                <div className="text-xs text-[#726F6D] font-bold">
-                  {(() => {
-                    const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
-                    const count = templates.filter(t => {
-                      if (adminTemplateFilter === "published" && t.is_published === false) return false;
-                      if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
-                      if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
-                      if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
-                      if (effectiveSearch) {
-                        const match =
-                          t.title?.toLowerCase().includes(effectiveSearch) ||
-                          t.code?.toLowerCase().includes(effectiveSearch) ||
-                          t.category?.toLowerCase().includes(effectiveSearch) ||
-                          t.description?.toLowerCase().includes(effectiveSearch);
-                        if (!match) return false;
-                      }
-                      return true;
-                    }).length;
-                    return `Showing ${count} of ${templates.length} Decks`;
-                  })()}
-                </div>
-              </div>
-
-              {/* Instant Search & Category Selection Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2.5 border-t border-[#111111]/8">
-                <div className="relative w-full sm:w-80">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#726F6D]" />
-                  <input
-                    type="text"
-                    placeholder="Search templates by title, SKU, keyword..."
-                    value={adminTemplateSearch}
-                    onChange={(e) => setAdminTemplateSearch(e.target.value)}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill pl-9 pr-8 py-2 text-xs font-medium text-[#111111] outline-none focus:border-primary"
-                  />
-                  {adminTemplateSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setAdminTemplateSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#726F6D] hover:text-[#111111] font-bold"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-xs font-bold text-[#726F6D] shrink-0">Category:</span>
-                  <select
-                    value={adminTemplateCategory}
-                    onChange={(e) => setAdminTemplateCategory(e.target.value)}
-                    className="bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-3 py-2 text-xs font-bold text-[#111111] outline-none focus:border-primary cursor-pointer w-full sm:w-auto"
-                  >
-                    {TEMPLATE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  {(adminTemplateSearch || adminTemplateCategory !== "All" || adminTemplateFilter !== "all") && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[#726F6D] font-bold">
+                    Showing {sortedAndFilteredTemplates.length} of {templates.length} Decks
+                  </span>
+                  {(adminTemplateSearch || adminTemplateCategory !== "All" || adminTemplateFilter !== "all" || adminTemplateSort !== "date_desc") && (
                     <button
                       type="button"
                       onClick={() => {
                         setAdminTemplateSearch("");
                         setAdminTemplateCategory("All");
                         setAdminTemplateFilter("all");
+                        setAdminTemplateSort("date_desc");
                       }}
-                      className="hex-pill bg-gray-100 hover:bg-gray-200 text-[#111111] px-3 py-2 text-xs font-bold whitespace-nowrap cursor-pointer transition-all"
+                      className="text-xs font-bold text-red-600 hover:underline cursor-pointer"
                     >
-                      Reset Filters
+                      Reset All
                     </button>
                   )}
                 </div>
+
               </div>
+
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {templates
-                .filter(t => {
-                  const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
-                  if (adminTemplateFilter === "published" && t.is_published === false) return false;
-                  if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
-                  if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
-                  if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
-                  if (effectiveSearch) {
-                    const match =
-                      t.title?.toLowerCase().includes(effectiveSearch) ||
-                      t.code?.toLowerCase().includes(effectiveSearch) ||
-                      t.category?.toLowerCase().includes(effectiveSearch) ||
-                      t.description?.toLowerCase().includes(effectiveSearch);
-                    if (!match) return false;
-                  }
-                  return true;
-                })
-                .map((tpl) => (
-                <div
-                  key={tpl.id}
-                  className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
-                >
-                  <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
-                    <img
-                      src={normalizeR2Url(tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png")}
-                      alt={tpl.title}
-                      className="w-full h-full object-cover"
-                    />
+            {/* Template Display: Table View vs Grid View */}
+            {adminTemplateViewMode === "table" ? (
+              <div className="bg-white rounded-3xl border border-[#111111]/10 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] text-[11px] font-black uppercase tracking-wider select-none">
+                        <th className="py-3.5 px-4 font-black">
+                          <button
+                            type="button"
+                            onClick={() => setAdminTemplateSort(prev => prev === "title_asc" ? "title_desc" : "title_asc")}
+                            className="flex items-center gap-1 hover:text-[#111111] cursor-pointer"
+                          >
+                            <span>SKU / Title</span>
+                            <ArrowUpDown size={11} />
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-3 font-black">Preview</th>
+                        <th className="py-3.5 px-4 font-black">
+                          <button
+                            type="button"
+                            onClick={() => setAdminTemplateSort(prev => prev === "title_asc" ? "title_desc" : "title_asc")}
+                            className="flex items-center gap-1 hover:text-[#111111] cursor-pointer"
+                          >
+                            <span>Category</span>
+                            <ArrowUpDown size={11} />
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-4 font-black">
+                          <button
+                            type="button"
+                            onClick={() => setAdminTemplateSort(prev => prev === "price_desc" ? "price_asc" : "price_desc")}
+                            className="flex items-center gap-1 hover:text-[#111111] cursor-pointer"
+                          >
+                            <span>Price</span>
+                            <ArrowUpDown size={11} />
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-3 font-black text-center">
+                          <button
+                            type="button"
+                            onClick={() => setAdminTemplateSort(prev => prev === "slides_desc" ? "date_desc" : "slides_desc")}
+                            className="inline-flex items-center gap-1 hover:text-[#111111] cursor-pointer"
+                          >
+                            <span>Slides</span>
+                            <ArrowUpDown size={11} />
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-4 font-black">
+                          <button
+                            type="button"
+                            onClick={() => setAdminTemplateSort(prev => prev === "date_desc" ? "date_asc" : "date_desc")}
+                            className="flex items-center gap-1 hover:text-[#111111] cursor-pointer text-primary-amber"
+                          >
+                            <span>Uploaded Date</span>
+                            {adminTemplateSort === "date_desc" ? <ArrowDown size={11} /> : <ArrowUp size={11} />}
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-4 font-black">Status</th>
+                        <th className="py-3.5 px-4 font-black text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#111111]/8">
+                      {sortedAndFilteredTemplates.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-xs text-[#726F6D] font-bold">
+                            No matching presentation templates found. Try clearing your filters or search.
+                          </td>
+                        </tr>
+                      ) : (
+                        sortedAndFilteredTemplates.map((tpl) => (
+                          <tr key={tpl.id} className="hover:bg-[#FFF9E8]/40 transition-colors group">
+                            
+                            {/* SKU / Title */}
+                            <td className="py-3.5 px-4 max-w-[280px]">
+                              <div className="flex items-center gap-2 mb-1">
+                                {tpl.code ? (
+                                  <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-gray-100 text-[#111111] border border-[#111111]/10">
+                                    {tpl.code}
+                                  </span>
+                                ) : null}
+                                <span className="text-[10px] text-[#726F6D] font-mono">{tpl.id?.slice(0, 8)}</span>
+                              </div>
+                              <h5 className="font-heading font-extrabold text-xs text-[#111111] line-clamp-1 group-hover:text-primary-amber transition-colors">
+                                {tpl.title}
+                              </h5>
+                              <p className="text-[11px] text-[#726F6D] line-clamp-1 mt-0.5">
+                                {tpl.description}
+                              </p>
+                            </td>
+
+                            {/* Preview Thumbnail */}
+                            <td className="py-3.5 px-3">
+                              <div className="w-14 h-9 rounded-lg bg-[#111111] overflow-hidden border border-[#111111]/15 shadow-2xs shrink-0">
+                                <img
+                                  src={normalizeR2Url(tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png")}
+                                  alt={tpl.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </td>
+
+                            {/* Category */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#FFF9E8] text-primary-amber border border-primary/30 shadow-2xs">
+                                {tpl.category || "General"}
+                              </span>
+                            </td>
+
+                            {/* Price */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="font-heading font-black text-xs text-[#111111]">
+                                ₹{tpl.price_inr || 499}
+                              </div>
+                              <div className="text-[10px] text-[#726F6D] font-bold">
+                                ${tpl.price_usd || 9} USD
+                              </div>
+                            </td>
+
+                            {/* Slides Count */}
+                            <td className="py-3.5 px-3 whitespace-nowrap text-center">
+                              <span className="font-mono text-xs font-bold text-[#111111]">
+                                {tpl.slides_count || tpl.slide_count || 25}
+                              </span>
+                            </td>
+
+                            {/* Uploaded Date */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="text-xs font-bold text-[#111111]">
+                                {formatUploadedDate(tpl.created_at)}
+                              </div>
+                              <div className="text-[10px] text-[#726F6D]">
+                                {tpl.created_at ? new Date(tpl.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Verified"}
+                              </div>
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex flex-col gap-1">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full w-fit ${
+                                  tpl.is_published !== false
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${tpl.is_published !== false ? "bg-emerald-500" : "bg-gray-400"}`} />
+                                  {tpl.is_published !== false ? "Published" : "Draft"}
+                                </span>
+                                {tpl.is_credit_eligible ? (
+                                  <span className="text-[9px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full w-fit">
+                                    Free Tier
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-[#726F6D]">
+                                    Premium
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditTemplateModal(tpl)}
+                                  className="p-1.5 text-gray-500 hover:text-[#111111] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Template Properties"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const nextVal = tpl.is_published === false ? true : false;
+                                    setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_published: nextVal } : t));
+                                    const authToken = session?.access_token || "";
+                                    const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+                                    try {
+                                      await fetch("/api/admin-template", {
+                                        method: "PUT",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                                          ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+                                        },
+                                        body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
+                                      });
+                                    } catch (err) {
+                                      await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                                    }
+                                  }}
+                                  className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                  title={tpl.is_published !== false ? "Unpublish Template" : "Publish Template"}
+                                >
+                                  {tpl.is_published !== false ? <Eye size={13} /> : <EyeOff size={13} />}
+                                </button>
+                                {tpl.download_url && (
+                                  <a
+                                    href={normalizeR2Url(tpl.download_url, "decks")}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 text-gray-500 hover:text-primary-amber hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Download Master PPTX"
+                                  >
+                                    <Download size={13} />
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Template"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              /* Grid View */
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {sortedAndFilteredTemplates.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
+                  >
+                    <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
+                      <img
+                        src={normalizeR2Url(tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png")}
+                        alt={tpl.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider">
+                          {tpl.category}
+                        </div>
+                        {tpl.code && (
+                          <span className="text-[10px] font-black text-[#726F6D] uppercase font-mono">
+                            {tpl.code}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Uploaded Date Badge */}
+                      <div className="flex items-center gap-1.5 mb-2 text-[10px] font-extrabold text-[#726F6D]">
+                        <Clock size={11} className="text-primary-amber" />
+                        <span>Uploaded: {formatUploadedDate(tpl.created_at)}</span>
+                      </div>
+
+                      <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
+                        {tpl.title}
+                      </h4>
+                      <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-3">
+                        {tpl.description}
+                      </p>
+
+                      {/* Master Deliverable Format Badge */}
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-2 text-[11px] font-bold text-[#111111]">
+                        <FileText size={13} className="text-primary-amber" />
+                        <span>Deliverable: Master PowerPoint (.pptx)</span>
+                      </div>
+
+                      {/* Cloud Storage Mapping Badge */}
+                      <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-2.5 mb-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-extrabold text-[#111111]">
+                          <span className="flex items-center gap-1">
+                            <Cloud size={12} className="text-primary-amber" />
+                            R2 Cloud Storage:
+                          </span>
+                          <span className="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-black text-[9px]">
+                            {tpl.download_url && tpl.download_url.includes("r2.dev") ? "Mapped to R2" : "Connected"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#726F6D] font-mono truncate flex items-center justify-between">
+                          <span className="truncate" title={tpl.download_url || tpl.file_name}>
+                            {tpl.download_url ? tpl.download_url.split("/").slice(-2).join("/") : (tpl.file_name ? `templates/decks/${tpl.file_name}` : "templates/decks/pending")}
+                          </span>
+                          {tpl.download_url && (
+                            <a
+                              href={normalizeR2Url(tpl.download_url, "decks")}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              className="ml-2 text-primary-amber hover:underline font-sans font-black text-[9px] shrink-0"
+                            >
+                              Test PPTX
+                            </a>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-[#726F6D] flex items-center justify-between pt-0.5 border-t border-primary/10">
+                          <span>Slide Previews: {Array.isArray(tpl.slides) ? tpl.slides.length : (tpl.slide_count || 0)} cached</span>
+                          <span className="font-mono text-[9px] text-emerald-800 font-bold">
+                            {tpl.thumbnail_url && tpl.thumbnail_url.includes("r2.dev") ? "R2 CDN Active" : "Live CDN"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
+                        <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
+                        <span className="text-primary-amber font-extrabold">
+                          ₹{tpl.price_inr} / ${tpl.price_usd}
+                        </span>
+                      </div>
+
+                      {/* Storefront Marketplace Visibility Toggle */}
+                      <div className="flex items-center justify-between pt-2.5 border-t border-[#111111]/8 text-[11px] font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${tpl.is_published !== false ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
+                          <span className="text-[10px] font-extrabold text-[#726F6D]">
+                            {tpl.is_published !== false ? "Storefront: Visible" : "Storefront: Hidden"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const nextVal = tpl.is_published === false ? true : false;
+                            setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_published: nextVal } : t));
+                            const authToken = session?.access_token || "";
+                            const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+                            try {
+                              await fetch("/api/admin-template", {
+                                method: "PUT",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                                  ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+                                },
+                                body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
+                              });
+                            } catch (err) {
+                              await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                            }
+                          }}
+                          className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
+                            tpl.is_published !== false
+                              ? "bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200"
+                              : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                          }`}
+                        >
+                          {tpl.is_published !== false ? (
+                            <>
+                              <Eye size={12} className="text-emerald-700" />
+                              <span>Enabled</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff size={12} className="text-gray-500" />
+                              <span>Disabled</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Free Community Template Tag & Toggle */}
+                      <div className="flex items-center justify-between pt-2 border-t border-[#111111]/8 text-[11px] font-bold">
+                        <span className="text-[10px] font-extrabold text-[#726F6D]">Free Community Deck Tag:</span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const nextVal = !tpl.is_credit_eligible;
+                            const nextIsPremium = nextVal ? 0 : 1;
+                            setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal, is_premium: nextIsPremium } : t));
+                            const authToken = session?.access_token || "";
+                            const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+                            try {
+                              await fetch("/api/admin-template", {
+                                method: "PUT",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                                  ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+                                },
+                                body: JSON.stringify({ id: tpl.id, is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }),
+                              });
+                            } catch (err) {
+                              await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
+                            }
+                          }}
+                          className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
+                            tpl.is_credit_eligible
+                              ? "bg-primary text-[#111111] border border-[#111111]/20 shadow-xs"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
+                          }`}
+                        >
+                          {tpl.is_credit_eligible ? "Eligible (Free Tag)" : "+ Tag as Free"}
+                        </button>
+                      </div>
+
+                      {/* Template Card Controls: Edit & Delete */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-[#111111]/8 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => openEditTemplateModal(tpl)}
+                          className="hex-pill-sm flex-1 bg-primary hover:bg-primary-dark text-[#111111] font-black py-1.5 text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                        >
+                          <Edit3 size={13} /> Edit Template
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
+                          className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                          title="Delete Template"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Category Management Modal (Top-bar launched) */}
+            {isCategoryModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-primary/40 space-y-5 animate-scale-up">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center text-primary-amber">
+                        <Sliders size={16} />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-black text-base text-[#111111]">
+                          Manage Store Categories
+                        </h4>
+                        <p className="text-xs text-[#726F6D]">
+                          Add or remove presentation categories across the catalog
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryModalOpen(false)}
+                      className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[#111111] transition-colors cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
 
-                  <div className="p-5">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="hex-pill inline-block bg-[#FFF9E8] text-primary-amber border border-primary/20 text-[10px] font-extrabold px-3 py-0.5 uppercase tracking-wider">
-                        {tpl.category}
-                      </div>
-                      {tpl.code && (
-                        <span className="text-[10px] font-black text-[#726F6D] uppercase">
-                          {tpl.code}
-                        </span>
-                      )}
+                  {/* Add New Category Field */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#111111] block">Add New Category</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. Executive Strategy, Product Hunt..."
+                        value={newCategoryInput}
+                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNewCategory();
+                          }
+                        }}
+                        className="flex-1 bg-[#FFF9E8] border border-[#111111]/15 rounded-xl px-3.5 py-2 text-xs text-[#111111] font-bold focus:border-primary outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewCategory}
+                        className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-4 py-2 flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+                      >
+                        <Plus size={13} /> Add
+                      </button>
                     </div>
+                  </div>
 
-                    <h4 className="font-heading font-extrabold text-base text-[#111111] mb-1">
-                      {tpl.title}
-                    </h4>
-                    <p className="text-xs text-[#726F6D] font-medium line-clamp-2 mb-3">
-                      {tpl.description}
-                    </p>
-
-                    {/* Master Deliverable Format Badge */}
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-2 text-[11px] font-bold text-[#111111]">
-                      <FileText size={13} className="text-primary-amber" />
-                      <span>Deliverable: Master PowerPoint (.pptx)</span>
-                    </div>
-
-                    {/* Cloud Storage Mapping Badge */}
-                    <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-2.5 mb-3 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] font-extrabold text-[#111111]">
-                        <span className="flex items-center gap-1">
-                          <Cloud size={12} className="text-primary-amber" />
-                          R2 Cloud Storage:
-                        </span>
-                        <span className="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-black text-[9px]">
-                          {tpl.download_url && tpl.download_url.includes("r2.dev") ? "Mapped to R2" : "Connected"}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-[#726F6D] font-mono truncate flex items-center justify-between">
-                        <span className="truncate" title={tpl.download_url || tpl.file_name}>
-                          {tpl.download_url ? tpl.download_url.split("/").slice(-2).join("/") : (tpl.file_name ? `templates/decks/${tpl.file_name}` : "templates/decks/pending")}
-                        </span>
-                        {tpl.download_url && (
-                          <a
-                            href={normalizeR2Url(tpl.download_url, "decks")}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download
-                            className="ml-2 text-primary-amber hover:underline font-sans font-black text-[9px] shrink-0"
+                  {/* Active Categories List */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-[#726F6D] block">
+                      Active Categories ({categoriesList.length})
+                    </label>
+                    <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-1">
+                      {categoriesList.map((cat) => {
+                        const deckCount = templates.filter(t => t.category?.toLowerCase() === cat.toLowerCase()).length;
+                        return (
+                          <div
+                            key={cat}
+                            className="bg-[#FFF9E8] border border-primary/30 rounded-xl px-3 py-1.5 text-xs font-bold text-[#111111] flex items-center gap-2 shadow-2xs"
                           >
-                            Test PPTX
-                          </a>
-                        )}
-                      </div>
-                      <div className="text-[9px] text-[#726F6D] flex items-center justify-between pt-0.5 border-t border-primary/10">
-                        <span>Slide Previews: {Array.isArray(tpl.slides) ? tpl.slides.length : (tpl.slide_count || 0)} cached</span>
-                        <span className="font-mono text-[9px] text-emerald-800 font-bold">
-                          {tpl.thumbnail_url && tpl.thumbnail_url.includes("r2.dev") ? "R2 CDN Active" : "Live CDN"}
-                        </span>
-                      </div>
+                            <span>{cat}</span>
+                            <span className="text-[10px] font-mono text-[#726F6D] bg-white px-1.5 py-0.5 rounded-full border border-[#111111]/10">
+                              {deckCount}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory(cat)}
+                              className="text-gray-400 hover:text-red-600 transition-colors ml-1 cursor-pointer"
+                              title={`Remove "${cat}" category`}
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
+                  </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-[#111111]/8 text-xs font-bold">
-                      <span>{tpl.slide_count || tpl.slides_count || 25} Slides</span>
-                      <span className="text-primary-amber font-extrabold">
-                        ₹{tpl.price_inr} / ${tpl.price_usd}
-                      </span>
-                    </div>
-
-                    {/* Storefront Marketplace Visibility Toggle */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-[#111111]/8 text-[11px] font-bold">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${tpl.is_published !== false ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
-                        <span className="text-[10px] font-extrabold text-[#726F6D]">
-                          {tpl.is_published !== false ? "Storefront: Visible" : "Storefront: Hidden"}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const nextVal = tpl.is_published === false ? true : false;
-                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_published: nextVal } : t));
-                          const authToken = session?.access_token || "";
-                          const adminKey = localStorage.getItem("slidebee_admin_key") || "";
-                          try {
-                            await fetch("/api/admin-template", {
-                              method: "PUT",
-                              headers: {
-                                "Content-Type": "application/json",
-                                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-                                ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
-                              },
-                              body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
-                            });
-                          } catch (err) {
-                            await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
-                          }
-                        }}
-                        className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
-                          tpl.is_published !== false
-                            ? "bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200"
-                            : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-                        }`}
-                      >
-                        {tpl.is_published !== false ? (
-                          <>
-                            <Eye size={12} className="text-emerald-700" />
-                            <span>Enabled</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff size={12} className="text-gray-500" />
-                            <span>Disabled</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Free Community Template Tag & Toggle */}
-                    <div className="flex items-center justify-between pt-2 border-t border-[#111111]/8 text-[11px] font-bold">
-                      <span className="text-[10px] font-extrabold text-[#726F6D]">Free Community Deck Tag:</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const nextVal = !tpl.is_credit_eligible;
-                          const nextIsPremium = nextVal ? 0 : 1;
-                          setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal, is_premium: nextIsPremium } : t));
-                          const authToken = session?.access_token || "";
-                          const adminKey = localStorage.getItem("slidebee_admin_key") || "";
-                          try {
-                            await fetch("/api/admin-template", {
-                              method: "PUT",
-                              headers: {
-                                "Content-Type": "application/json",
-                                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-                                ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
-                              },
-                              body: JSON.stringify({ id: tpl.id, is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }),
-                            });
-                          } catch (err) {
-                            await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
-                          }
-                        }}
-                        className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
-                          tpl.is_credit_eligible
-                            ? "bg-primary text-[#111111] border border-[#111111]/20 shadow-xs"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
-                        }`}
-                      >
-                        {tpl.is_credit_eligible ? "Eligible (Free Tag)" : "+ Tag as Free"}
-                      </button>
-                    </div>
-
-                    {/* Template Card Controls: Edit & Delete */}
-                    <div className="flex items-center gap-2 pt-3 border-t border-[#111111]/8 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => openEditTemplateModal(tpl)}
-                        className="hex-pill-sm flex-1 bg-primary hover:bg-primary-dark text-[#111111] font-black py-1.5 text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      >
-                        <Edit3 size={13} /> Edit Template
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
-                        className="hex-pill-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                        title="Delete Template"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
+                  <div className="pt-3 border-t border-gray-100 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryModalOpen(false)}
+                      className="hex-pill bg-[#111111] hover:bg-black text-[#FCBF14] text-xs font-black px-6 py-2.5 transition-all cursor-pointer"
+                    >
+                      Done
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -7939,51 +8311,6 @@ hello@theslidebee.com`;
               </button>
             </div>
 
-            {/* Interactive Operations Calendar */}
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-black text-[#111111]">
-                  September 2026
-                </span>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer">
-                    <ChevronLeft size={14} />
-                  </button>
-                  <button type="button" className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 cursor-pointer">
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-1">
-                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
-                {/* 2 empty slots for Sun, Mon */}
-                <span className="py-1.5 text-gray-300"></span>
-                <span className="py-1.5 text-gray-300"></span>
-                {Array.from({ length: 30 }).map((_, i) => {
-                  const day = i + 1;
-                  const isSelected = day === adminCalendarDate;
-                  const isToday = day === 26;
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setAdminCalendarDate(day)}
-                      className={`py-1.5 rounded-xl transition-all cursor-pointer text-xs ${
-                        isSelected
-                          ? "bg-primary text-[#111111] font-black shadow-xs"
-                          : isToday
-                          ? "border border-primary font-bold text-[#111111]"
-                          : "hover:bg-gray-100 text-[#111111]/80"
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Priority Brief Card */}
             {urgentOrder && (
