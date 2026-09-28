@@ -387,21 +387,32 @@ export default function Login() {
     try {
       const finalReason = clientDeleteCustomReason.trim() || clientDeleteReason;
 
-      await fetch("/api/delete-account", {
+      // Retrieve current session token from edge session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData?.session?.access_token || "";
+      const userId = currentUser?.id || sessionData?.session?.user?.id || "";
+
+      const res = await fetch("/api/delete-account", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(currentUser?.id ? { Authorization: `Bearer ${currentUser.id}` } : {}),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : (userId ? { Authorization: `Bearer ${userId}` } : {})),
+          ...(userId ? { "x-user-id": userId } : {}),
         },
         body: JSON.stringify({
           targetEmail: currentUser.email,
-          targetUserId: currentUser.id,
+          targetUserId: userId,
           reason: finalReason,
           customNotes: clientDeleteComments,
           sendNotice: true,
           clientName: userProfile?.full_name || currentUser.email.split("@")[0],
         }),
       });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Server could not process account deletion.");
+      }
 
       // Sign out and clear session
       await logout();

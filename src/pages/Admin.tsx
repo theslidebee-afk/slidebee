@@ -984,7 +984,9 @@ support@theslidebee.com`
       await supabase.from("subscriptions").delete().eq("user_email", deleteAccountTarget.email);
       if (deleteAccountTarget.id) {
         await supabase.from("profiles").delete().eq("id", deleteAccountTarget.id);
+        await supabase.from("users").delete().eq("id", deleteAccountTarget.id);
       }
+      await supabase.from("users").delete().eq("email", deleteAccountTarget.email);
 
       // 3. Fallback direct email dispatch if sendEmail is checked
       if (deleteAccountSendEmail) {
