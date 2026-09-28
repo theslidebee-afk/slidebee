@@ -45,6 +45,18 @@ function getR2AdminHeaders(): Record<string, string> {
       headers["x-slidebee-admin-key"] = adminKey;
       headers["Authorization"] = `Bearer ${adminKey}`;
     }
+
+    if (!headers["Authorization"]) {
+      const edgeSessionRaw = localStorage.getItem("slidebee_edge_session");
+      if (edgeSessionRaw) {
+        try {
+          const session = JSON.parse(edgeSessionRaw);
+          if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+          }
+        } catch {}
+      }
+    }
   }
   return headers;
 }
@@ -201,8 +213,17 @@ export async function uploadToR2(
       ...getR2AdminHeaders(),
     };
     try {
+      if (!headers["Authorization"]) {
+        const edgeSessionRaw = localStorage.getItem("slidebee_edge_session");
+        if (edgeSessionRaw) {
+          const parsed = JSON.parse(edgeSessionRaw);
+          if (parsed?.access_token) {
+            headers["Authorization"] = `Bearer ${parsed.access_token}`;
+          }
+        }
+      }
       const authData = localStorage.getItem("sb-pcuacwvyfxvxszqgspxk-auth-token");
-      if (authData) {
+      if (authData && !headers["Authorization"]) {
         const parsed = JSON.parse(authData);
         if (parsed?.access_token) {
           headers["Authorization"] = `Bearer ${parsed.access_token}`;

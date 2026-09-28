@@ -234,7 +234,7 @@ export async function onRequestGet(context: any) {
 
   try {
     // Security Check: Require admin authorization to query R2 storage telemetry and inventory
-    if (!isAuthorizedAdmin(request, env)) {
+    if (!(await isAuthorizedAdmin(request, env))) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -294,21 +294,54 @@ export async function onRequestGet(context: any) {
   }
 }
 
-function isAuthorizedAdmin(request: Request, env?: any): boolean {
+async function isAuthorizedAdmin(request: Request, env?: any): Promise<boolean> {
   const adminKey = request.headers.get("x-slidebee-admin-key");
   const authHeader = request.headers.get("Authorization");
   const expectedSecret = env?.SLIDEBEE_ADMIN_SECRET;
 
-  if (!expectedSecret) return false;
+  if (expectedSecret) {
+    if (adminKey && adminKey === expectedSecret) {
+      return true;
+    }
 
-  if (adminKey && adminKey === expectedSecret) {
-    return true;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7).trim();
+      if (token === expectedSecret) {
+        return true;
+      }
+    }
   }
 
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7).trim();
-    if (token === expectedSecret) {
-      return true;
+  // Authorize via active Cloudflare D1 admin session
+  if (env?.DB) {
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (adminKey) {
+      token = adminKey.trim();
+    }
+
+    if (token) {
+      try {
+        const activeSession = await env.DB.prepare(
+          `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+        ).bind(token).first();
+
+        if (activeSession) {
+          const sessionEmail = String(activeSession.email || "").toLowerCase().trim();
+          if (
+            activeSession.role === "admin" ||
+            activeSession.role === "super_admin" ||
+            sessionEmail === "admin@theslidebee.com" ||
+            sessionEmail === "admin@slidebee.com" ||
+            sessionEmail.startsWith("admin@")
+          ) {
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn("D1 admin session check notice:", e);
+      }
     }
   }
 
@@ -322,7 +355,7 @@ export async function onRequestPost(context: any) {
 
   try {
     // Security Check: Verify admin authorization for storage modifications
-    if (!isAuthorizedAdmin(request, env)) {
+    if (!(await isAuthorizedAdmin(request, env))) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -511,7 +544,7 @@ export async function onRequestDelete(context: any) {
 
   try {
     // Security Check: Verify admin authorization for storage deletions
-    if (!isAuthorizedAdmin(request, env)) {
+    if (!(await isAuthorizedAdmin(request, env))) {
       return new Response(
         JSON.stringify({
           success: false,

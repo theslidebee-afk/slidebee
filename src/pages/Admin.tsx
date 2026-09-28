@@ -1583,32 +1583,58 @@ support@theslidebee.com`
       is_published: 1
     };
 
-    const { data, error } = await supabase
-      .from("templates")
-      .insert([payload])
-      .select();
+    let createdRecord: any = null;
+    try {
+      const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+      const authToken = session?.access_token || "";
+      const res = await fetch("/api/admin-template", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!error && data) {
-      setTemplates([data[0], ...templates]);
-      setIsAddTemplateOpen(false);
-      setNewTitle("");
-      setNewDesc("");
-      setNewThumbnail("");
-      setNewSlides([]);
-      setNewPptUrl("");
-      setNewPptFilename("");
-      setNewPptSize("");
-      setNewFormats([]);
-      setNewIsCreditEligible(false);
-      setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
-      setAddTemplateWarning("");
-    } else {
-      // Fallback local persistence if insert notice
-      const fallbackItem = { id: `tpl-${Date.now()}`, ...payload };
-      setTemplates([fallbackItem, ...templates]);
-      setIsAddTemplateOpen(false);
-      setAddTemplateWarning("");
+      if (res.ok) {
+        const resJson = await res.json();
+        if (resJson.success && resJson.template) {
+          createdRecord = resJson.template;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Backend /api/admin-template POST notice:", apiErr);
     }
+
+    if (!createdRecord) {
+      try {
+        const { data, error } = await supabase
+          .from("templates")
+          .insert([payload])
+          .select();
+        if (!error && data) {
+          createdRecord = Array.isArray(data) ? data[0] : data;
+        }
+      } catch (insertErr) {
+        console.warn("Insert template fallback notice:", insertErr);
+      }
+    }
+
+    const finalItem = createdRecord || { id: `tpl-${Date.now()}`, ...payload };
+    setTemplates([finalItem, ...templates]);
+    setIsAddTemplateOpen(false);
+    setNewTitle("");
+    setNewDesc("");
+    setNewThumbnail("");
+    setNewSlides([]);
+    setNewPptUrl("");
+    setNewPptFilename("");
+    setNewPptSize("");
+    setNewFormats([]);
+    setNewIsCreditEligible(false);
+    setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
+    setAddTemplateWarning("");
     setIsCreatingTemplate(false);
   };
 
@@ -1692,18 +1718,50 @@ support@theslidebee.com`
     };
 
     try {
-      const { data, error } = await supabase
-        .from("templates")
-        .update(payload)
-        .eq("id", editingTemplate.id)
-        .select();
+      let isUpdated = false;
+      let updatedRecord: any = null;
 
-      if (!error && data && data.length > 0) {
-        setTemplates((prev) => prev.map((t) => (t.id === editingTemplate.id ? { ...t, ...data[0] } : t)));
-      } else {
-        // Fallback update local state
-        setTemplates((prev) => prev.map((t) => (t.id === editingTemplate.id ? { ...t, ...payload } : t)));
+      // 1. Persist directly to Cloudflare D1 via /api/admin-template
+      try {
+        const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+        const authToken = session?.access_token || "";
+        const res = await fetch("/api/admin-template", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+          },
+          body: JSON.stringify({ id: editingTemplate.id, ...payload }),
+        });
+
+        if (res.ok) {
+          const resJson = await res.json();
+          if (resJson.success && resJson.template) {
+            isUpdated = true;
+            updatedRecord = resJson.template;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("Backend /api/admin-template PUT notice:", apiErr);
       }
+
+      // 2. Fallback edge query via supabase/data client
+      if (!isUpdated) {
+        const { data, error } = await supabase
+          .from("templates")
+          .update(payload)
+          .eq("id", editingTemplate.id);
+
+        if (!error && data) {
+          isUpdated = true;
+          updatedRecord = Array.isArray(data) ? data[0] : data;
+        }
+      }
+
+      // 3. Update React state
+      const finalTpl = updatedRecord ? { ...editingTemplate, ...updatedRecord } : { ...editingTemplate, ...payload };
+      setTemplates((prev) => prev.map((t) => (t.id === editingTemplate.id ? { ...t, ...finalTpl } : t)));
       setEditTemplateSuccess(true);
       setTimeout(() => {
         setEditTemplateSuccess(false);
@@ -3948,8 +4006,22 @@ hello@theslidebee.com`;
                         type="button"
                         onClick={async () => {
                           const nextVal = tpl.is_published === false ? true : false;
-                          await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
                           setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_published: nextVal } : t));
+                          const authToken = session?.access_token || "";
+                          const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+                          try {
+                            await fetch("/api/admin-template", {
+                              method: "PUT",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                                ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+                              },
+                              body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
+                            });
+                          } catch (err) {
+                            await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                          }
                         }}
                         className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
                           tpl.is_published !== false
@@ -3979,8 +4051,22 @@ hello@theslidebee.com`;
                         onClick={async () => {
                           const nextVal = !tpl.is_credit_eligible;
                           const nextIsPremium = nextVal ? 0 : 1;
-                          await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
                           setTemplates(templates.map(t => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal, is_premium: nextIsPremium } : t));
+                          const authToken = session?.access_token || "";
+                          const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+                          try {
+                            await fetch("/api/admin-template", {
+                              method: "PUT",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                                ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
+                              },
+                              body: JSON.stringify({ id: tpl.id, is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }),
+                            });
+                          } catch (err) {
+                            await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
+                          }
                         }}
                         className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
                           tpl.is_credit_eligible

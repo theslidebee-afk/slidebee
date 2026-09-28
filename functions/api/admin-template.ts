@@ -35,7 +35,7 @@ function getCorsHeaders(request: Request) {
   const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, x-slidebee-admin-key",
     "Vary": "Origin",
   };
@@ -48,21 +48,54 @@ export async function onRequestOptions(context: any) {
   });
 }
 
-function isAuthorizedAdmin(request: Request, env: Env): boolean {
+async function isAuthorizedAdmin(request: Request, env: Env): Promise<boolean> {
   const adminSecret = env?.SLIDEBEE_ADMIN_SECRET;
-  if (!adminSecret) return false;
-
   const authHeader = request.headers.get("Authorization");
   const adminKeyHeader = request.headers.get("x-slidebee-admin-key");
 
-  if (adminKeyHeader && adminKeyHeader === adminSecret) {
-    return true;
+  if (adminSecret) {
+    if (adminKeyHeader && adminKeyHeader === adminSecret) {
+      return true;
+    }
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7).trim();
+      if (token === adminSecret) {
+        return true;
+      }
+    }
   }
 
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7).trim();
-    if (token === adminSecret) {
-      return true;
+  // Authorize via active Cloudflare D1 admin session
+  if (env?.DB) {
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (adminKeyHeader) {
+      token = adminKeyHeader.trim();
+    }
+
+    if (token) {
+      try {
+        const activeSession = await env.DB.prepare(
+          `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+        ).bind(token).first();
+
+        if (activeSession) {
+          const sessionEmail = String(activeSession.email || "").toLowerCase().trim();
+          if (
+            activeSession.role === "admin" ||
+            activeSession.role === "super_admin" ||
+            sessionEmail === "admin@theslidebee.com" ||
+            sessionEmail === "admin@slidebee.com" ||
+            sessionEmail.startsWith("admin@")
+          ) {
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn("D1 admin session check notice:", e);
+      }
     }
   }
 
@@ -100,7 +133,7 @@ export async function onRequestDelete(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
-  if (!isAuthorizedAdmin(request, env)) {
+  if (!(await isAuthorizedAdmin(request, env))) {
     return new Response(
       JSON.stringify({
         success: false,
@@ -240,3 +273,227 @@ export async function onRequestDelete(context: { request: Request; env: Env }) {
     );
   }
 }
+
+// PUT /api/admin-template: Update existing template record in Cloudflare D1
+export async function onRequestPut(context: { request: Request; env: Env }) {
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
+
+  if (!(await isAuthorizedAdmin(request, env))) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Unauthorized: Admin authorization required to update templates.",
+      }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!env?.DB) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Database not available" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const body: any = await request.json();
+    const templateId = body?.id;
+
+    if (!templateId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing required parameter: id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const existing: any = await env.DB.prepare("SELECT * FROM templates WHERE id = ?").bind(templateId).first();
+    if (!existing) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Template not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const allowedFields = [
+      "title", "slug", "code", "category", "price_inr", "price_usd", "original_price_inr",
+      "image_url", "thumbnail_url", "slides_count", "rating", "downloads", "formats", "slides",
+      "description", "features", "download_url", "file_name", "file_size", "is_credit_eligible",
+      "is_featured", "is_published", "is_premium"
+    ];
+
+    const updates: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) {
+        let val = body[key];
+        if (key === "formats" || key === "slides" || key === "features") {
+          if (typeof val === "object") {
+            val = JSON.stringify(val);
+          }
+        } else if (key === "is_published" || key === "is_credit_eligible" || key === "is_premium" || key === "is_featured") {
+          val = val ? 1 : 0;
+        } else if (key === "price_inr" || key === "price_usd" || key === "original_price_inr") {
+          val = Number(val) || 0;
+        } else if (key === "slides_count") {
+          val = Number(val) || 1;
+        }
+        updates[key] = val;
+      }
+    }
+
+    if (body.slide_count !== undefined && updates.slides_count === undefined) {
+      updates.slides_count = Number(body.slide_count) || 1;
+    }
+
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No fields provided to update" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const setClauses = updateKeys.map((k) => `${k} = ?`).join(", ");
+    const params = updateKeys.map((k) => updates[k]);
+    params.push(templateId);
+
+    await env.DB.prepare(`UPDATE templates SET ${setClauses} WHERE id = ?`).bind(...params).run();
+
+    const updatedTemplate: any = await env.DB.prepare("SELECT * FROM templates WHERE id = ?").bind(templateId).first();
+
+    if (updatedTemplate) {
+      for (const col of ["formats", "slides", "features"]) {
+        if (typeof updatedTemplate[col] === "string") {
+          try {
+            updatedTemplate[col] = JSON.parse(updatedTemplate[col]);
+          } catch {}
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Template updated successfully.",
+        template: updatedTemplate,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ success: false, error: err.message || "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// POST /api/admin-template: Create a new template record in Cloudflare D1
+export async function onRequestPost(context: { request: Request; env: Env }) {
+  const { request, env } = context;
+  const corsHeaders = getCorsHeaders(request);
+
+  if (!(await isAuthorizedAdmin(request, env))) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Unauthorized: Admin authorization required to create templates.",
+      }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!env?.DB) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Database not available" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const body: any = await request.json();
+    const title = String(body?.title || "").trim();
+
+    if (!title) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing required parameter: title" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const templateId = body?.id || crypto.randomUUID();
+    const slug = body?.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const code = body?.code || `SLD-${Math.floor(100 + Math.random() * 900)}`;
+
+    const effectiveSlides = Array.isArray(body?.slides) && body.slides.length > 0
+      ? body.slides
+      : (body?.thumbnail_url ? [body.thumbnail_url] : []);
+    const effectiveSlidesCount = Number(body?.slides_count || body?.slide_count) || (effectiveSlides.length > 0 ? effectiveSlides.length : 25);
+
+    const priceInr = Number(body?.price_inr) || 0;
+    const priceUsd = Number(body?.price_usd) || 0;
+
+    const row = {
+      id: templateId,
+      slug,
+      code,
+      title,
+      category: body?.category || "Business",
+      price_inr: priceInr,
+      price_usd: priceUsd,
+      original_price_inr: Number(body?.original_price_inr) || (priceInr * 2),
+      image_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
+      thumbnail_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
+      slides_count: effectiveSlidesCount,
+      rating: Number(body?.rating) || 4.9,
+      downloads: Number(body?.downloads) || 0,
+      formats: JSON.stringify(body?.formats || ["Master PowerPoint (.pptx)"]),
+      slides: JSON.stringify(effectiveSlides),
+      description: body?.description || "Executive presentation deck layout.",
+      features: JSON.stringify(body?.features || [
+        `${effectiveSlidesCount}+ High-Impact Slides`,
+        "16:9 Widescreen Layout",
+        "Master PowerPoint (.pptx)"
+      ]),
+      download_url: body?.download_url || "",
+      file_name: body?.file_name || "Master_Deck.pptx",
+      file_size: body?.file_size || "4.5 MB",
+      is_credit_eligible: body?.is_credit_eligible ? 1 : 0,
+      is_featured: body?.is_featured ? 1 : 0,
+      is_published: body?.is_published !== false ? 1 : 0,
+      is_premium: priceInr > 0 ? 1 : 0,
+    };
+
+    const keys = Object.keys(row);
+    const placeholders = keys.map(() => "?").join(", ");
+    const sql = `INSERT INTO templates (${keys.join(", ")}) VALUES (${placeholders})`;
+    const params = keys.map((k) => (row as any)[k]);
+
+    await env.DB.prepare(sql).bind(...params).run();
+
+    const createdTemplate: any = await env.DB.prepare("SELECT * FROM templates WHERE id = ?").bind(templateId).first();
+    if (createdTemplate) {
+      for (const col of ["formats", "slides", "features"]) {
+        if (typeof createdTemplate[col] === "string") {
+          try {
+            createdTemplate[col] = JSON.parse(createdTemplate[col]);
+          } catch {}
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Template created successfully.",
+        template: createdTemplate,
+      }),
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ success: false, error: err.message || "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
