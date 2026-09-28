@@ -2,6 +2,25 @@
  * SlideBee Email Dispatch Service powered by Resend
  */
 
+export function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function sanitizeExternalUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return '';
+}
+
 interface SendEmailParams {
   to: string | string[];
   subject: string;
@@ -48,6 +67,11 @@ export async function sendOrderConfirmationEmail({
   rushDelivery: boolean;
   driveLink?: string;
 }) {
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeServiceType = escapeHtml(serviceType);
+  const safeSlideCount = escapeHtml(slideCount);
+  const safeDriveLink = sanitizeExternalUrl(driveLink);
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -58,17 +82,17 @@ export async function sendOrderConfirmationEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
         <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Presentation Brief</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
           Thank you for choosing SlideBee. A senior art director is currently reviewing your project requirements and asset links.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #FCBF14;">
           <h3 style="font-size: 13px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 10px;">Brief Summary</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
-            <li><strong>Service Tier:</strong> ${serviceType}</li>
-            <li><strong>Total Slides:</strong> ${slideCount} Slides</li>
+            <li><strong>Service Tier:</strong> ${safeServiceType}</li>
+            <li><strong>Total Slides:</strong> ${safeSlideCount} Slides</li>
             <li><strong>Turnaround Priority:</strong> ${rushDelivery ? '24h Rush Guarantee' : 'Standard 48h Delivery'}</li>
-            ${driveLink ? `<li><strong>Assets / Draft Link:</strong> <a href="${driveLink}" style="color: #936610; font-weight: 700;">View Uploaded Files</a></li>` : ''}
+            ${safeDriveLink ? `<li><strong>Assets / Draft Link:</strong> <a href="${safeDriveLink}" target="_blank" rel="noopener noreferrer" style="color: #936610; font-weight: 700;">View Uploaded Files</a></li>` : ''}
           </ul>
         </div>
 
@@ -92,7 +116,7 @@ export async function sendOrderConfirmationEmail({
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
     replyTo: 'design@theslidebee.com',
-    subject: `Brief Received: ${serviceType} (${slideCount} Slides) — SlideBee Studio`,
+    subject: `Brief Received: ${safeServiceType} (${safeSlideCount} Slides) — SlideBee Studio`,
     html,
   });
 }
@@ -109,6 +133,9 @@ export async function sendWelcomeEmail({
   clientEmail: string;
   company?: string;
 }) {
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeCompany = company ? escapeHtml(company) : '';
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -119,8 +146,8 @@ export async function sendWelcomeEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
         <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">Account Confirmed</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
-          Your SlideBee client account is now active${company ? ` for <strong>${company}</strong>` : ''}.
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
+          Your SlideBee client account is now active${safeCompany ? ` for <strong>${safeCompany}</strong>` : ''}.
         </p>
 
         <p style="font-size: 13px; color: #4B5563; line-height: 1.6;">
@@ -219,6 +246,10 @@ export async function sendContactNotificationEmail({
   subject: string;
   message: string;
 }) {
+  const safeName = escapeHtml(name || 'there');
+  const safeSubject = escapeHtml(subject || 'General Inquiry');
+  const safeMessage = escapeHtml(message || '');
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -229,13 +260,13 @@ export async function sendContactNotificationEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
         <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Message</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${name || 'there'}</strong>,<br/><br/>
+          Hi <strong>${safeName}</strong>,<br/><br/>
           Thank you for reaching out to SlideBee Studio. Our design leads review every project note and will reply within <strong>2 hours</strong>.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 14px; border-radius: 8px; margin: 18px 0; border: 1px solid #FCBF14;">
-          <p style="font-size: 12px; font-weight: bold; color: #936610; margin: 0 0 6px 0;">SUBJECT: ${subject}</p>
-          <p style="font-size: 13px; color: #111111; margin: 0; white-space: pre-wrap;">${message}</p>
+          <p style="font-size: 12px; font-weight: bold; color: #936610; margin: 0 0 6px 0;">SUBJECT: ${safeSubject}</p>
+          <p style="font-size: 13px; color: #111111; margin: 0; white-space: pre-wrap;">${safeMessage}</p>
         </div>
       </div>
     </div>
@@ -246,7 +277,7 @@ export async function sendContactNotificationEmail({
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
     replyTo: 'hello@theslidebee.com',
-    subject: `We Received Your Note: ${subject} — SlideBee Studio`,
+    subject: `We Received Your Note: ${safeSubject} — SlideBee Studio`,
     html,
   });
 }
@@ -271,6 +302,13 @@ export async function sendTemplatePurchaseReceiptEmail({
   amountPaid: number;
   currency?: string;
 }) {
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeTemplateTitle = escapeHtml(templateTitle);
+  const safeTemplateCode = escapeHtml(templateCode);
+  const safeDownloadUrl = sanitizeExternalUrl(downloadUrl) || '#';
+  const safeCurrency = currency === 'USD' ? '$' : '₹';
+  const safeAmount = Number(amountPaid) || 0;
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -281,18 +319,18 @@ export async function sendTemplatePurchaseReceiptEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
         <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">Your Master Presentation Files Are Ready</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
-          Thank you for purchasing <strong>${templateTitle}</strong> (${templateCode}). Your commercial license is active.
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
+          Thank you for purchasing <strong>${safeTemplateTitle}</strong> (${safeTemplateCode}). Your commercial license is active.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #FCBF14;">
           <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
             <span><strong>Item:</strong></span>
-            <span>${templateTitle} (${templateCode})</span>
+            <span>${safeTemplateTitle} (${safeTemplateCode})</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
             <span><strong>Amount Paid:</strong></span>
-            <span>${currency === 'USD' ? '$' : '₹'}${amountPaid}</span>
+            <span>${safeCurrency}${safeAmount}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
             <span><strong>License:</strong></span>
@@ -301,7 +339,7 @@ export async function sendTemplatePurchaseReceiptEmail({
         </div>
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="${downloadUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="${safeDownloadUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Download Master Presentation (.pptx)
           </a>
         </div>
@@ -323,7 +361,7 @@ export async function sendTemplatePurchaseReceiptEmail({
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
     replyTo: 'design@theslidebee.com',
-    subject: `Your Master Presentation Files: ${templateTitle} (${templateCode}) — SlideBee`,
+    subject: `Your Master Presentation Files: ${safeTemplateTitle} (${safeTemplateCode}) — SlideBee`,
     html,
   });
 }
@@ -350,8 +388,13 @@ export async function sendProGrantedEmail({
   senderEmail?: string;
   subject?: string;
 }) {
-  const durationLabel = durationMonths >= 999 ? "Indefinite / Lifetime" : `${durationMonths} Months`;
-  const defaultSubject = `VIP Pro Membership Activated (${slideQuota} Slides/mo) — SlideBee Design Studio`;
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeClientEmail = escapeHtml(clientEmail);
+  const safeSlideQuota = Number(slideQuota) || 15;
+  const safePartnershipReason = escapeHtml(partnershipReason);
+  const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
+  const durationLabel = durationMonths >= 999 ? "Indefinite / Lifetime" : `${Number(durationMonths) || 12} Months`;
+  const defaultSubject = `VIP Pro Membership Activated (${safeSlideQuota} Slides/mo) — SlideBee Design Studio`;
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
@@ -366,26 +409,26 @@ export async function sendProGrantedEmail({
         </div>
         <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Complimentary Pro Access Is Now Active</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
           We are pleased to inform you that our leadership team has granted your account complimentary <strong>SlideBee Pro Studio Membership</strong>.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 12px;">Your Pro Membership Privileges</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
-            <li><strong>Monthly Download Quota:</strong> ${slideQuota} Full Presentation Template Downloads / month</li>
+            <li><strong>Monthly Download Quota:</strong> ${safeSlideQuota} Full Presentation Template Downloads / month</li>
             <li><strong>Unrestricted Catalog Access:</strong> All presentation decks in our store are 100% unlocked for you</li>
             <li><strong>Complimentary Duration:</strong> ${durationLabel}</li>
-            <li><strong>Membership Justification:</strong> ${partnershipReason}</li>
+            <li><strong>Membership Justification:</strong> ${safePartnershipReason}</li>
             <li><strong>Direct WhatsApp Studio Hotline:</strong> Unlocked in your portal dashboard</li>
             <li><strong>VIP Deck Review:</strong> Priority turnaround on bespoke presentation briefs</li>
           </ul>
         </div>
 
-        ${customMessage ? `
+        ${safeCustomMessage ? `
           <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
             <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Note from SlideBee Studio Team:</p>
-            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${safeCustomMessage}</p>
           </div>
         ` : ''}
 
@@ -396,7 +439,7 @@ export async function sendProGrantedEmail({
         </div>
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center; margin: 0;">
-          Simply sign in with <strong>${clientEmail}</strong> to begin downloading up to ${slideQuota} full master presentation decks this month.
+          Simply sign in with <strong>${safeClientEmail}</strong> to begin downloading up to ${safeSlideQuota} full master presentation decks this month.
         </p>
       </div>
 
@@ -438,8 +481,13 @@ export async function sendCreditsAdjustedEmail({
   senderEmail?: string;
   subject?: string;
 }) {
-  const isAddition = creditsAdded > 0;
-  const defaultSubject = `Slide Credits Updated: ${isAddition ? `+${creditsAdded}` : creditsAdded} Credits — SlideBee Studio`;
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeCreditsAdded = Number(creditsAdded) || 0;
+  const safeNewBalance = Number(newBalance) || 0;
+  const safeReason = escapeHtml(reason);
+  const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
+  const isAddition = safeCreditsAdded > 0;
+  const defaultSubject = `Slide Credits Updated: ${isAddition ? `+${safeCreditsAdded}` : safeCreditsAdded} Credits — SlideBee Studio`;
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
@@ -451,29 +499,29 @@ export async function sendCreditsAdjustedEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
         <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">Your Slide Download Credits Have Been Updated</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
           Your SlideBee slide download credit balance has been modified by the studio operations team.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px;">
             <span><strong>Credit Adjustment:</strong></span>
-            <span style="font-weight: 800; color: ${isAddition ? '#059669' : '#DC2626'};">${isAddition ? `+${creditsAdded}` : creditsAdded} Credits</span>
+            <span style="font-weight: 800; color: ${isAddition ? '#059669' : '#DC2626'};">${isAddition ? `+${safeCreditsAdded}` : safeCreditsAdded} Credits</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px;">
             <span><strong>New Balance:</strong></span>
-            <span style="font-weight: 800; color: #111111;">${newBalance} Available Credits</span>
+            <span style="font-weight: 800; color: #111111;">${safeNewBalance} Available Credits</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
             <span><strong>Reason / Program:</strong></span>
-            <span style="color: #4B5563;">${reason}</span>
+            <span style="color: #4B5563;">${safeReason}</span>
           </div>
         </div>
 
-        ${customMessage ? `
+        ${safeCustomMessage ? `
           <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
             <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Studio Notes:</p>
-            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${safeCustomMessage}</p>
           </div>
         ` : ''}
 
@@ -522,6 +570,10 @@ export async function sendAccountDeletionEmail({
   senderEmail?: string;
   subject?: string;
 }) {
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeClientEmail = escapeHtml(clientEmail);
+  const safeReason = escapeHtml(reason);
+  const safeCustomNotes = customNotes ? escapeHtml(customNotes) : '';
   const defaultSubject = `Account Deletion & Data Privacy Confirmation — SlideBee Studio`;
 
   const html = `
@@ -534,14 +586,14 @@ export async function sendAccountDeletionEmail({
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
         <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">Account Deletion Confirmed</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || 'there'}</strong>,<br/><br/>
-          This notice confirms that your SlideBee client account associated with <strong>${clientEmail}</strong> has been successfully closed and purged from our active ledger.
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
+          This notice confirms that your SlideBee client account associated with <strong>${safeClientEmail}</strong> has been successfully closed and purged from our active ledger.
         </p>
 
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <div style="font-size: 13px; margin-bottom: 8px;">
             <strong style="color: #936610; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 4px;">Reason for Deletion:</strong>
-            <span style="color: #111111; font-weight: 600;">${reason}</span>
+            <span style="color: #111111; font-weight: 600;">${safeReason}</span>
           </div>
           <div style="font-size: 13px;">
             <strong style="color: #936610; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 4px;">Data Privacy Status:</strong>
@@ -549,10 +601,10 @@ export async function sendAccountDeletionEmail({
           </div>
         </div>
 
-        ${customNotes ? `
+        ${safeCustomNotes ? `
           <div style="background-color: #F9FAFB; padding: 16px; border-radius: 8px; border-left: 4px solid #FCBF14; margin-bottom: 20px;">
             <p style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin: 0 0 6px 0;">Additional Notes:</p>
-            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customNotes}</p>
+            <p style="font-size: 13px; color: #111111; line-height: 1.6; margin: 0; white-space: pre-wrap;">${safeCustomNotes}</p>
           </div>
         ` : ''}
 
@@ -599,7 +651,11 @@ export async function sendProExpiringSoonEmail({
   subject?: string;
   customMessage?: string;
 }) {
-  const defaultSubject = `Reminder: Your SlideBee Pro Membership Expires in ${daysRemaining} Days`;
+  const safeClientName = escapeHtml(clientName || "there");
+  const safeDaysRemaining = Number(daysRemaining) || 7;
+  const safeRemainingQuota = Number(remainingQuota) || 15;
+  const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
+  const defaultSubject = `Reminder: Your SlideBee Pro Membership Expires in ${safeDaysRemaining} Days`;
   const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "in 7 days";
 
   const html = `
@@ -611,25 +667,25 @@ export async function sendProExpiringSoonEmail({
 
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
         <div style="display: inline-block; background-color: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 12px;">
-          Expiring Soon (${daysRemaining} Days Left)
+          Expiring Soon (${safeDaysRemaining} Days Left)
         </div>
         <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Pro Membership Concludes on ${formattedExpiry}</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || "there"}</strong>,<br/><br/>
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
           This is a friendly reminder that your SlideBee Pro Studio Membership is scheduled to conclude on <strong>${formattedExpiry}</strong>.
         </p>
 
-        ${customMessage ? `
+        ${safeCustomMessage ? `
         <div style="background-color: #FFF9E8; border-left: 4px solid #FCBF14; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #111111; line-height: 1.6;">
           <strong>Personal Note from Studio Desk:</strong><br/>
-          ${customMessage.replace(/\n/g, '<br/>')}
+          ${safeCustomMessage.replace(/\n/g, '<br/>')}
         </div>
         ` : ''}
 
         <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
           <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 10px;">Cycle Summary</h3>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
-            <li><strong>Remaining Template Downloads:</strong> ${remainingQuota} master presentation decks</li>
+            <li><strong>Remaining Template Downloads:</strong> ${safeRemainingQuota} master presentation decks</li>
             <li><strong>Expiration Date:</strong> ${formattedExpiry}</li>
             <li><strong>Perks At Stake:</strong> Unrestricted marketplace template downloads and direct WhatsApp Studio hotline</li>
           </ul>
@@ -680,6 +736,8 @@ export async function sendProExpiredEmail({
   subject?: string;
   customMessage?: string;
 }) {
+  const safeClientName = escapeHtml(clientName || "there");
+  const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
   const defaultSubject = `Your SlideBee Pro Membership Has Concluded`;
   const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "recently";
 
@@ -696,14 +754,14 @@ export async function sendProExpiredEmail({
         </div>
         <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your Pro Membership Ended on ${formattedExpiry}</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
-          Hi <strong>${clientName || "there"}</strong>,<br/><br/>
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
           Your SlideBee Pro Studio Membership ended on <strong>${formattedExpiry}</strong>. Your account has safely transitioned to our standard Free Tier.
         </p>
 
-        ${customMessage ? `
+        ${safeCustomMessage ? `
         <div style="background-color: #FFF9E8; border-left: 4px solid #FCBF14; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #111111; line-height: 1.6;">
           <strong>Personal Note from Studio Desk:</strong><br/>
-          ${customMessage.replace(/\n/g, '<br/>')}
+          ${safeCustomMessage.replace(/\n/g, '<br/>')}
         </div>
         ` : ''}
 

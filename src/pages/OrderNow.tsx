@@ -258,9 +258,16 @@ export default function OrderNow() {
       return;
     }
 
+    if (formData.driveLink.trim() && !/^https?:\/\//i.test(formData.driveLink.trim())) {
+      setFormError("Please provide a valid asset link starting with https:// or http://");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const generatedId = `SB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const randomArray = new Uint32Array(1);
+    crypto.getRandomValues(randomArray);
+    const generatedId = `SB-${100000 + (randomArray[0] % 900000)}`;
 
     try {
       // 1. Save to Supabase

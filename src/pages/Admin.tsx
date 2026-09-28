@@ -115,6 +115,15 @@ export function getMilestoneIndex(status: string | undefined): number {
   return 0;
 }
 
+export function getSafeExternalUrl(url?: string): string {
+  if (!url) return "#";
+  const trimmed = String(url).trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return "#";
+}
+
 export const DEFAULT_TESTIMONIALS = [
   {
     name: "Rohan Mehta",
@@ -373,31 +382,37 @@ export default function Admin() {
           setSession(null);
           return;
         }
-        const localPinAuth = localStorage.getItem("slidebee_admin_session");
-        if (localPinAuth === "true") {
-          const email = localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
-          setSession({ user: { email, role: "super_admin" } });
-        } else {
-          setSession(null);
-        }
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          const userEmail = session?.user?.email?.toLowerCase().trim() || "";
+          const isSuperOrAdmin =
+            userEmail === "superadmin@theslidebee.com" ||
+            userEmail === "admin@theslidebee.com" ||
+            userEmail.startsWith("admin@") ||
+            userEmail.startsWith("superadmin@") ||
+            session?.user?.user_metadata?.role === "admin" ||
+            session?.user?.user_metadata?.role === "super_admin";
+
+          if (session && isSuperOrAdmin) {
+            setSession(session);
+          } else {
+            setSession(null);
+          }
+        });
       }
     );
 
-    const localPinAuth = localStorage.getItem("slidebee_admin_session");
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const userEmail = session?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
-        session?.user.email === "superadmin@theslidebee.com" ||
-        session?.user.email?.startsWith("admin@") ||
-        session?.user.email?.startsWith("superadmin@") ||
-        session?.user.user_metadata?.role === "admin" ||
-        session?.user.user_metadata?.role === "super_admin";
+        userEmail === "superadmin@theslidebee.com" ||
+        userEmail === "admin@theslidebee.com" ||
+        userEmail.startsWith("admin@") ||
+        userEmail.startsWith("superadmin@") ||
+        session?.user?.user_metadata?.role === "admin" ||
+        session?.user?.user_metadata?.role === "super_admin";
 
-      if (session && (isSuperOrAdmin || localPinAuth === "true")) {
-        const email = session.user.email || localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
-        setSession({ ...session, user: { ...session.user, email, role: "super_admin" } });
-      } else if (localPinAuth === "true") {
-        const email = localStorage.getItem("slidebee_admin_email") || "superadmin@theslidebee.com";
-        setSession({ user: { email, role: "super_admin" } });
+      if (session && isSuperOrAdmin) {
+        setSession(session);
       } else {
         setSession(null);
       }
@@ -407,16 +422,19 @@ export default function Admin() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      const userEmail = session?.user?.email?.toLowerCase().trim() || "";
+      const isSuperOrAdmin =
+        userEmail === "superadmin@theslidebee.com" ||
+        userEmail === "admin@theslidebee.com" ||
+        userEmail.startsWith("admin@") ||
+        userEmail.startsWith("superadmin@") ||
+        session?.user?.user_metadata?.role === "admin" ||
+        session?.user?.user_metadata?.role === "super_admin";
+
+      if (session && isSuperOrAdmin) {
         setSession(session);
       } else {
-        const localPin = localStorage.getItem("slidebee_admin_session");
-        if (localPin === "true") {
-          const email = localStorage.getItem("slidebee_admin_email") || "admin@theslidebee.com";
-          setSession({ user: { email, role: "super_admin" } });
-        } else {
-          setSession(null);
-        }
+        setSession(null);
       }
     });
 
@@ -3588,7 +3606,7 @@ hello@theslidebee.com`;
                               <div className="flex items-center justify-end gap-2">
                                 {ord.drive_link && (
                                   <a
-                                    href={ord.drive_link}
+                                    href={getSafeExternalUrl(ord.drive_link)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="hex-pill-sm bg-white border border-[#111111]/12 hover:border-primary text-[#111111] font-bold px-2.5 py-1.5 inline-flex items-center gap-1 text-[11px] shadow-sm"
@@ -9526,7 +9544,7 @@ hello@theslidebee.com`;
                       </span>
                     </div>
                     <a
-                      href={selectedOrderForModal.drive_link}
+                      href={getSafeExternalUrl(selectedOrderForModal.drive_link)}
                       target="_blank"
                       rel="noreferrer"
                       className="rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black text-xs px-3.5 py-1.5 flex items-center gap-1.5 shrink-0 shadow-sm"

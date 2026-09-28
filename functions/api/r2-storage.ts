@@ -43,9 +43,11 @@ function getCorsHeaders(request: Request) {
 }
 
 function sanitizeFileKey(rawKey: string): string {
-  return rawKey
-    .replace(/\\/g, "/")
-    .replace(/\.\./g, "")
+  let cleaned = rawKey.replace(/\\/g, "/");
+  while (cleaned.includes("..")) {
+    cleaned = cleaned.replace(/\.\./g, "");
+  }
+  return cleaned
     .replace(/^\/+/, "")
     .replace(/[^a-zA-Z0-9_\-\.\/]/g, "_");
 }
@@ -295,7 +297,7 @@ export async function onRequestGet(context: any) {
 function isAuthorizedAdmin(request: Request, env?: any): boolean {
   const adminKey = request.headers.get("x-slidebee-admin-key");
   const authHeader = request.headers.get("Authorization");
-  const expectedSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
+  const expectedSecret = env?.SLIDEBEE_ADMIN_SECRET;
 
   if (!expectedSecret) return false;
 

@@ -68,12 +68,20 @@ export async function onRequestPost(context: any) {
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
     const clientToken = (appToken?.trim() || bearerToken) ?? null;
 
-    const expectedAppToken = env?.SLIDEBEE_APP_TOKEN || "slidebee_internal_app_2026";
-    const expectedAdminSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
+    const expectedAppToken = env?.SLIDEBEE_APP_TOKEN;
+    const expectedAdminSecret = env?.SLIDEBEE_ADMIN_SECRET;
+
+    if (!expectedAppToken && !expectedAdminSecret) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error: Email authorization credentials not configured." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const isAuthorized =
       Boolean(clientToken) &&
-      (clientToken === expectedAppToken || clientToken === expectedAdminSecret);
+      ((expectedAppToken && clientToken === expectedAppToken) ||
+       (expectedAdminSecret && clientToken === expectedAdminSecret));
 
     if (!isAuthorized) {
       return new Response(
