@@ -110,7 +110,8 @@ export async function sendOrderConfirmationEmail({
     </div>
   `;
 
-  return sendEmail({
+  // 1. Client confirmation email
+  const clientResult = await sendEmail({
     to: clientEmail,
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
@@ -118,6 +119,38 @@ export async function sendOrderConfirmationEmail({
     subject: `Brief Received: ${safeServiceType} (${safeSlideCount} Slides) — SlideBee Studio`,
     html,
   });
+
+  // 2. Studio admin notification email (alert design team of new brief)
+  const studioNotificationHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
+      <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
+        NEW PROJECT BRIEF — ACTION REQUIRED
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">New Brief Received: ${safeServiceType}</h2>
+      <div style="background-color: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333333; margin-bottom: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e0e0e0; line-height: 1.8;">
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 140px;">Client Name:</td><td>${safeClientName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Client Email:</td><td><a href="mailto:${clientEmail}" style="color: #FCBF14;">${clientEmail}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Service:</td><td>${safeServiceType}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Slide Count:</td><td>${safeSlideCount} Slides</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Priority:</td><td>${rushDelivery ? '24h RUSH — HIGH PRIORITY' : 'Standard 48h Delivery'}</td></tr>
+          ${safeDriveLink ? `<tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Assets Link:</td><td><a href="${safeDriveLink}" target="_blank" rel="noopener noreferrer" style="color: #FCBF14; font-weight: 700;">View Uploaded Files</a></td></tr>` : ''}
+        </table>
+      </div>
+      <p style="font-size: 12px; color: #999999; margin: 0;">Reply directly to this email to contact the client, or open the admin panel to manage the brief.</p>
+    </div>
+  `;
+
+  sendEmail({
+    to: 'design@theslidebee.com',
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Brief Alert',
+    replyTo: clientEmail,
+    subject: `[NEW BRIEF] ${safeServiceType} — ${safeClientName} (${safeSlideCount} Slides)${rushDelivery ? ' — RUSH' : ''}`,
+    html: studioNotificationHtml,
+  }).catch(err => console.warn('Studio brief notification dispatch:', err));
+
+  return clientResult;
 }
 
 /**
@@ -271,7 +304,8 @@ export async function sendContactNotificationEmail({
     </div>
   `;
 
-  return sendEmail({
+  // 1. Client confirmation
+  const clientResult = await sendEmail({
     to: email,
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
@@ -279,6 +313,36 @@ export async function sendContactNotificationEmail({
     subject: `We Received Your Note: ${safeSubject} — SlideBee Studio`,
     html,
   });
+
+  // 2. Studio notification
+  const studioAlertHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
+      <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
+        NEW CONTACT INQUIRY
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">Contact Form: ${safeSubject}</h2>
+      <div style="background-color: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333333; margin-bottom: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e0e0e0; line-height: 1.8;">
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 100px;">From:</td><td>${safeName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Email:</td><td><a href="mailto:${email}" style="color: #FCBF14;">${email}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Subject:</td><td>${safeSubject}</td></tr>
+        </table>
+        <div style="margin-top: 14px; padding: 14px; background-color: #222222; border-radius: 8px; font-size: 13px; color: #e0e0e0; white-space: pre-wrap;">${safeMessage}</div>
+      </div>
+      <p style="font-size: 12px; color: #999999; margin: 0;">Reply to this email to respond directly to ${safeName}.</p>
+    </div>
+  `;
+
+  sendEmail({
+    to: 'hello@theslidebee.com',
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Contact Alert',
+    replyTo: email,
+    subject: `[CONTACT] ${safeSubject} — from ${safeName}`,
+    html: studioAlertHtml,
+  }).catch(err => console.warn('Studio contact notification dispatch:', err));
+
+  return clientResult;
 }
 
 /**

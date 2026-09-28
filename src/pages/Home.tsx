@@ -503,11 +503,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
-                <div className="hex-pill bg-[#111111] group-hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md group-hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10 pointer-events-none">
-                  <span>{homeBanner1.ctaText || "Get Started"}</span>
-                  <ArrowRight size={15} className="text-[#FCBF14] group-hover:translate-x-0.5 transition-transform" />
-                </div>
               </Link>
             ) : (
               <div
@@ -554,11 +549,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
-                <div className="hex-pill bg-[#111111] group-hover:bg-black text-white text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md group-hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center relative z-10 pointer-events-none">
-                  <span>{homeBanner1.ctaText || "Get Started"}</span>
-                  <ArrowRight size={15} className="text-[#FCBF14] group-hover:translate-x-0.5 transition-transform" />
-                </div>
               </div>
             )}
 
@@ -598,11 +588,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
-                <div className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 group-hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center pointer-events-none relative z-10">
-                  <span>{homeBanner2.ctaText || "Explore Now"}</span>
-                  <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
               </Link>
             ) : (
               <div
@@ -641,11 +626,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
-                <div className="hex-pill bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] text-xs sm:text-sm font-black px-5 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 transition-all shadow-md shadow-[#FCBF14]/25 group-hover:scale-105 shrink-0 self-stretch sm:self-auto justify-center pointer-events-none relative z-10">
-                  <span>{homeBanner2.ctaText || "Explore Now"}</span>
-                  <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
               </div>
             )}
 
@@ -655,14 +635,6 @@ export default function Home() {
           <div
             className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-5 sm:p-7 lg:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left"
           >
-            {/* Top Bee Mascot perched at border */}
-            <div className="absolute -top-5 left-6 sm:left-10 z-20">
-              <img
-                src="/slidebee_icon.png"
-                alt="SlideBee Mascot"
-                className="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-md select-none"
-              />
-            </div>
 
             {/* Row 1: Section Heading & Deliverable Badge */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-4 sm:mb-5 pt-1">
