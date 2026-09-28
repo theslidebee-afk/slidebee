@@ -222,7 +222,7 @@ export default function Navbar() {
         </a>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+        <nav className="hidden lg:flex items-center gap-4 xl:gap-8">
           {navLinks.map((link) => {
             const isActive = link.isHash 
               ? location.hash === "#templates"
@@ -235,7 +235,7 @@ export default function Navbar() {
                   type="button"
                   onClick={(e) => handleNavClick(e, link)}
                   className={clsx(
-                    "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer bg-transparent border-none",
+                    "text-sm xl:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer bg-transparent border-none whitespace-nowrap",
                     isActive
                       ? "text-[#FCBF14]"
                       : "text-white/85 hover:text-[#FCBF14]"
@@ -257,7 +257,7 @@ export default function Navbar() {
                 key={link.name}
                 to={link.path}
                 className={clsx(
-                  "text-[15px] lg:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer",
+                  "text-sm xl:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer whitespace-nowrap",
                   isActive
                     ? "text-[#FCBF14]"
                     : "text-white/85 hover:text-[#FCBF14]"
@@ -276,7 +276,7 @@ export default function Navbar() {
         </nav>
 
         {/* Right CTA */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-3 xl:gap-4">
           {isAdmin ? (
             /* Admin Logged-in State */
             <div className="flex items-center gap-3">
@@ -338,7 +338,7 @@ export default function Navbar() {
 
         {/* Mobile Hamburger Button (44px Minimum Touch Target) */}
         <button
-          className="md:hidden z-50 min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-white hover:text-[#FCBF14] transition-colors rounded-xl cursor-pointer"
+          className="lg:hidden z-50 min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-white hover:text-[#FCBF14] transition-colors rounded-xl cursor-pointer"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -353,7 +353,7 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 h-[100dvh] bg-[#111111]/98 backdrop-blur-xl z-40 md:hidden flex flex-col justify-start px-6 pt-24 pb-safe overflow-y-auto no-scrollbar"
+            className="fixed inset-0 h-[100dvh] bg-[#111111]/98 backdrop-blur-xl z-40 lg:hidden flex flex-col justify-start px-6 pt-24 pb-safe overflow-y-auto no-scrollbar"
           >
             <nav className="flex flex-col gap-3 text-center my-auto pb-6">
               {navLinks.map((link) => {
