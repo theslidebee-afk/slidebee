@@ -2665,6 +2665,70 @@ hello@theslidebee.com`;
     setConfigSaving(false);
   };
 
+  const formatUploadedDate = (dateStr?: string): string => {
+    if (!dateStr) return "N/A";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const sortedAndFilteredTemplates = useMemo(() => {
+    const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
+
+    return templates
+      .filter((t) => {
+        if (adminTemplateFilter === "published" && t.is_published === false) return false;
+        if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
+        if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
+        if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
+        if (effectiveSearch) {
+          const match =
+            t.title?.toLowerCase().includes(effectiveSearch) ||
+            t.code?.toLowerCase().includes(effectiveSearch) ||
+            t.category?.toLowerCase().includes(effectiveSearch) ||
+            t.description?.toLowerCase().includes(effectiveSearch);
+          if (!match) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        switch (adminTemplateSort) {
+          case "date_desc": {
+            const timeA = new Date(a.created_at || 0).getTime();
+            const timeB = new Date(b.created_at || 0).getTime();
+            return timeB - timeA;
+          }
+          case "date_asc": {
+            const timeA = new Date(a.created_at || 0).getTime();
+            const timeB = new Date(b.created_at || 0).getTime();
+            return timeA - timeB;
+          }
+          case "title_asc":
+            return (a.title || "").localeCompare(b.title || "");
+          case "title_desc":
+            return (b.title || "").localeCompare(a.title || "");
+          case "price_desc":
+            return (b.price_inr || b.price_usd || 0) - (a.price_inr || a.price_usd || 0);
+          case "price_asc":
+            return (a.price_inr || a.price_usd || 0) - (b.price_inr || b.price_usd || 0);
+          case "downloads_desc":
+            return (b.downloads || 0) - (a.downloads || 0);
+          case "slides_desc":
+            return (b.slides_count || b.slide_count || 0) - (a.slides_count || a.slide_count || 0);
+          default:
+            return 0;
+        }
+      });
+  }, [templates, adminTemplateFilter, adminTemplateCategory, adminTemplateSearch, searchTerm, adminTemplateSort]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center text-[#111111]">
@@ -2744,70 +2808,6 @@ hello@theslidebee.com`;
 
   const proConversionRate = registeredClientsCount > 0 ? Math.min(100, Math.round((activeProSubscribers.length / registeredClientsCount) * 100)) : 0;
   const proOffset = gaugeCircumference - (proConversionRate / 100) * gaugeCircumference;
-
-  const formatUploadedDate = (dateStr?: string): string => {
-    if (!dateStr) return "N/A";
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const sortedAndFilteredTemplates = useMemo(() => {
-    const effectiveSearch = (adminTemplateSearch || searchTerm).trim().toLowerCase();
-
-    return templates
-      .filter((t) => {
-        if (adminTemplateFilter === "published" && t.is_published === false) return false;
-        if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
-        if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
-        if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
-        if (effectiveSearch) {
-          const match =
-            t.title?.toLowerCase().includes(effectiveSearch) ||
-            t.code?.toLowerCase().includes(effectiveSearch) ||
-            t.category?.toLowerCase().includes(effectiveSearch) ||
-            t.description?.toLowerCase().includes(effectiveSearch);
-          if (!match) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        switch (adminTemplateSort) {
-          case "date_desc": {
-            const timeA = new Date(a.created_at || 0).getTime();
-            const timeB = new Date(b.created_at || 0).getTime();
-            return timeB - timeA;
-          }
-          case "date_asc": {
-            const timeA = new Date(a.created_at || 0).getTime();
-            const timeB = new Date(b.created_at || 0).getTime();
-            return timeA - timeB;
-          }
-          case "title_asc":
-            return (a.title || "").localeCompare(b.title || "");
-          case "title_desc":
-            return (b.title || "").localeCompare(a.title || "");
-          case "price_desc":
-            return (b.price_inr || b.price_usd || 0) - (a.price_inr || a.price_usd || 0);
-          case "price_asc":
-            return (a.price_inr || a.price_usd || 0) - (b.price_inr || b.price_usd || 0);
-          case "downloads_desc":
-            return (b.downloads || 0) - (a.downloads || 0);
-          case "slides_desc":
-            return (b.slides_count || b.slide_count || 0) - (a.slides_count || a.slide_count || 0);
-          default:
-            return 0;
-        }
-      });
-  }, [templates, adminTemplateFilter, adminTemplateCategory, adminTemplateSearch, searchTerm, adminTemplateSort]);
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-20 pb-16">
