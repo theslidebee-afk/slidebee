@@ -37,15 +37,25 @@ export interface R2Telemetry {
   error?: string;
 }
 
+function getR2AdminHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (typeof window !== "undefined") {
+    const adminKey = localStorage.getItem("slidebee_admin_key") || sessionStorage.getItem("slidebee_admin_key");
+    if (adminKey) {
+      headers["x-slidebee-admin-key"] = adminKey;
+      headers["Authorization"] = `Bearer ${adminKey}`;
+    }
+  }
+  return headers;
+}
+
 /**
  * Fetch real-time Cloudflare R2 bucket telemetry and file inventory
  */
 export async function fetchR2Telemetry(): Promise<R2Telemetry> {
   try {
     const res = await fetch("/api/r2-storage", {
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers: getR2AdminHeaders(),
     });
     if (!res.ok) {
       throw new Error(`R2 telemetry request failed: ${res.statusText}`);
@@ -188,7 +198,7 @@ export async function uploadToR2(
     }
 
     const headers: Record<string, string> = {
-      "x-slidebee-admin-key": "slidebee_master_admin_2026",
+      ...getR2AdminHeaders(),
     };
     try {
       const authData = localStorage.getItem("sb-pcuacwvyfxvxszqgspxk-auth-token");
@@ -242,9 +252,7 @@ export async function deleteFromR2(key: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/r2-storage?key=${encodeURIComponent(key)}`, {
       method: "DELETE",
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers: getR2AdminHeaders(),
     });
     const json = await res.json();
     return Boolean(json.success);

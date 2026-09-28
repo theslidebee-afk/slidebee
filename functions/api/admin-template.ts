@@ -49,7 +49,9 @@ export async function onRequestOptions(context: any) {
 }
 
 function isAuthorizedAdmin(request: Request, env: Env): boolean {
-  const adminSecret = env?.SLIDEBEE_ADMIN_SECRET || "slidebee_master_admin_2026";
+  const adminSecret = env?.SLIDEBEE_ADMIN_SECRET;
+  if (!adminSecret) return false;
+
   const authHeader = request.headers.get("Authorization");
   const adminKeyHeader = request.headers.get("x-slidebee-admin-key");
 

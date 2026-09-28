@@ -962,8 +962,8 @@ support@theslidebee.com`
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-slidebee-app-token": "slidebee_internal_app_2026",
-            "x-slidebee-admin-key": "slidebee_master_admin_2026",
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            ...(localStorage.getItem("slidebee_admin_key") ? { "x-slidebee-admin-key": localStorage.getItem("slidebee_admin_key")! } : {}),
           },
           body: JSON.stringify({
             targetEmail: deleteAccountTarget.email,
@@ -1771,16 +1771,17 @@ support@theslidebee.com`
 
     try {
       let isDeleted = false;
-      const adminSecret = "slidebee_master_admin_2026";
 
       // 1. Try serverless backend endpoint with master admin authorization
       try {
+        const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+        const authToken = session?.access_token || "";
         const res = await fetch(`/api/admin-template?id=${encodeURIComponent(String(tplId))}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            "x-slidebee-admin-key": adminSecret,
-            Authorization: `Bearer ${adminSecret}`,
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
           },
         });
         if (res.ok) {
@@ -1957,7 +1958,7 @@ SlideBee Design Studio`
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-slidebee-app-token": "slidebee_internal_app_2026",
+          ...(localStorage.getItem("slidebee_admin_key") ? { "x-slidebee-admin-key": localStorage.getItem("slidebee_admin_key")! } : {}),
         },
         body: JSON.stringify({
           to: order.client_email.trim(),
@@ -2116,7 +2117,7 @@ hello@theslidebee.com`;
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-slidebee-app-token": "slidebee_internal_app_2026",
+          ...(localStorage.getItem("slidebee_admin_key") ? { "x-slidebee-admin-key": localStorage.getItem("slidebee_admin_key")! } : {}),
         },
         body: JSON.stringify({
           to: order.client_email.trim(),

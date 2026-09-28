@@ -78,12 +78,15 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const isAuthorized =
+    const origin = request.headers.get("Origin") || "";
+    const isFromAllowedOrigin = isOriginAllowed(origin);
+
+    const isTokenAuthorized =
       Boolean(clientToken) &&
       ((expectedAppToken && clientToken === expectedAppToken) ||
        (expectedAdminSecret && clientToken === expectedAdminSecret));
 
-    if (!isAuthorized) {
+    if (!isFromAllowedOrigin && !isTokenAuthorized) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized: Invalid application authentication token." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }

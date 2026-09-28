@@ -364,7 +364,7 @@ export default function Login() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-slidebee-app-token": "slidebee_internal_app_2026",
+          ...(currentUser?.id ? { Authorization: `Bearer ${currentUser.id}` } : {}),
         },
         body: JSON.stringify({
           targetEmail: currentUser.email,

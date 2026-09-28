@@ -109,8 +109,37 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
+    // Verify payment with Razorpay API if secret is configured in Cloudflare environment
+    const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
+    const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+    if (rzpSecret && rzpKeyId) {
+      try {
+        const authBasic = btoa(`${rzpKeyId}:${rzpSecret}`);
+        const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/${cleanPaymentId}`, {
+          headers: {
+            Authorization: `Basic ${authBasic}`,
+          },
+        });
+        if (rzpRes.ok) {
+          const rzpJson: any = await rzpRes.json();
+          if (rzpJson.status !== "captured" && rzpJson.status !== "authorized") {
+            return new Response(
+              JSON.stringify({ success: false, error: `Payment not completed. Current gateway status: ${rzpJson.status}` }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (rzpErr) {
+        console.warn("Razorpay API verification warning:", rzpErr);
+      }
+    }
+
     const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
     const resolvedClientName = String(clientName || cleanEmail.split("@")[0]).trim();
+    const authoritativeCurrency = String(currency || "INR").toUpperCase();
+    const authoritativeAmount = authoritativeCurrency === "USD"
+      ? Number(template.price_usd || 0)
+      : Number(template.price_inr || 0);
 
     // Fetch or create profile
     let profile = await env.DB.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
@@ -137,8 +166,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       category: template.category,
       slides_count: template.slides_count || 30,
       formats: ["Master PowerPoint (.pptx)"],
-      amount: Number(amount) || 0,
-      currency: String(currency || "INR").toUpperCase(),
+      amount: authoritativeAmount,
+      currency: authoritativeCurrency,
       download_url: deliverable,
       purchased_at: new Date().toISOString(),
       payment_id: cleanPaymentId,

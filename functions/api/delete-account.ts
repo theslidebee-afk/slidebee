@@ -4,6 +4,7 @@
 interface Env {
   DB?: any;
   SLIDEBEE_ADMIN_SECRET?: string;
+  SLIDEBEE_APP_TOKEN?: string;
 }
 
 const ALLOWED_ORIGINS = [
@@ -54,6 +55,34 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return new Response(
         JSON.stringify({ success: false, error: "Valid client email address is required for deletion." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Authorization Check: Only authorized admin or the account owner can delete the account
+    const adminKey = request.headers.get("x-slidebee-admin-key");
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
+    const isSecretAdmin = Boolean(env?.SLIDEBEE_ADMIN_SECRET && (adminKey === env.SLIDEBEE_ADMIN_SECRET || token === env.SLIDEBEE_ADMIN_SECRET));
+
+    let isAuthorized = isSecretAdmin;
+
+    if (!isAuthorized && env?.DB && token) {
+      const activeSession = await env.DB.prepare(
+        `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+      ).bind(token).first();
+
+      if (activeSession) {
+        const sessionEmail = String(activeSession.email || "").toLowerCase().trim();
+        if (sessionEmail === cleanEmail || activeSession.role === "admin" || activeSession.role === "super_admin") {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: You do not have permission to delete this account." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -134,7 +163,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-slidebee-app-token": "slidebee_internal_app_2026",
+            "x-slidebee-app-token": env?.SLIDEBEE_APP_TOKEN || "",
+            "x-slidebee-admin-key": env?.SLIDEBEE_ADMIN_SECRET || "",
           },
           body: JSON.stringify({
             to: cleanEmail,
