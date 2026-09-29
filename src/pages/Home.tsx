@@ -39,75 +39,18 @@ export default function Home() {
   const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.85]);
   const templatesSlideUpY = useTransform(scrollY, [0, 420], [80, 0]);
 
-  // Real executive slide sets for rich preview variety matching SlideEgg showcase
-  const portfolioSlideSets = [
-    [
-      "/portfolio/case_study_a_1.png",
-      "/portfolio/case_study_a_2.png",
-      "/portfolio/case_study_a_3.png",
-      "/portfolio/case_study_a_4.png",
-      "/portfolio/case_study_a_5.png",
-      "/portfolio/case_study_a_6.png",
-      "/portfolio/case_study_a_7.png",
-      "/portfolio/case_study_a_8.png",
-      "/portfolio/case_study_a_9.png",
-    ],
-    [
-      "/portfolio/global_brands_1.png",
-      "/portfolio/global_brands_2.png",
-      "/portfolio/global_brands_3.png",
-      "/portfolio/global_brands_4.png",
-      "/portfolio/global_brands_5.png",
-      "/portfolio/global_brands_6.png",
-      "/portfolio/global_brands_7.png",
-      "/portfolio/global_brands_8.png",
-      "/portfolio/global_brands_9.png",
-    ],
-    [
-      "/portfolio/nike_hsbc_cvs_1.png",
-      "/portfolio/nike_hsbc_cvs_2.png",
-      "/portfolio/nike_hsbc_cvs_3.png",
-      "/portfolio/nike_hsbc_cvs_4.png",
-      "/portfolio/nike_hsbc_cvs_5.png",
-      "/portfolio/nike_hsbc_cvs_6.png",
-      "/portfolio/nike_hsbc_cvs_7.png",
-      "/portfolio/nike_hsbc_cvs_8.png",
-      "/portfolio/nike_hsbc_cvs_9.png",
-    ],
-    [
-      "/portfolio/levis_yuengling_1.png",
-      "/portfolio/levis_yuengling_2.png",
-      "/portfolio/levis_yuengling_3.png",
-      "/portfolio/levis_yuengling_4.png",
-      "/portfolio/levis_yuengling_5.png",
-      "/portfolio/levis_yuengling_6.png",
-      "/portfolio/levis_yuengling_7.png",
-      "/portfolio/levis_yuengling_8.png",
-      "/portfolio/levis_yuengling_9.png",
-    ],
-  ];
 
   // Helper to extract inner preview slide thumbnails for SlideEgg-style showcase cards
+  // Only returns real uploaded slides — never pads with portfolio placeholders
   const getPreviewSlides = (template: any, count = 6) => {
     const rawSlides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
-    if (rawSlides.length >= count) {
+    if (rawSlides.length > 0) {
       return rawSlides.slice(0, count);
     }
-    const idSeed = String(template?.id || template?.title || "deck")
-      .split("")
-      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const chosenSet = portfolioSlideSets[idSeed % portfolioSlideSets.length];
-
-    if (rawSlides.length > 0) {
-      const merged = [...rawSlides];
-      for (let i = 0; i < chosenSet.length && merged.length < count; i++) {
-        if (!merged.includes(chosenSet[i])) {
-          merged.push(chosenSet[i]);
-        }
-      }
-      return merged.slice(0, count);
-    }
-    return chosenSet.slice(0, count);
+    // If no slides array but has a cover image, show that
+    const cover = template?.image_url || template?.thumbnail_url;
+    if (cover) return [cover];
+    return [];
   };
 
   // Determine dynamic mini-slide counts (0, 3, 6, 9) for magnet masonry variation
@@ -137,6 +80,7 @@ export default function Home() {
 
   // Filtering & Continuous Scroll State
   const [visibleCount, setVisibleCount] = useState<number>(24);
+  const [showStickySearch, setShowStickySearch] = useState(false);
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
@@ -176,6 +120,21 @@ export default function Home() {
         document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" });
       }, 150);
     }
+  }, []);
+
+  // Show sticky search bar once user scrolls past the hero section
+  useEffect(() => {
+    const onScroll = () => {
+      const heroEl = document.getElementById("hero-stage");
+      if (heroEl) {
+        const bottom = heroEl.getBoundingClientRect().bottom;
+        setShowStickySearch(bottom < 60);
+      } else {
+        setShowStickySearch(window.scrollY > 440);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -445,9 +404,80 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
       {/* ========================================================================= */}
+      {/* STICKY SEARCH BAR (appears when user scrolls past hero)                   */}
+      {/* ========================================================================= */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-[90] transition-all duration-300 ${
+          showStickySearch
+            ? "translate-y-0 opacity-100 pointer-events-auto"
+            : "-translate-y-full opacity-0 pointer-events-none"
+        }`}
+        style={{ top: "var(--navbar-height, 56px)" }}
+      >
+        <div className="bg-[#111111]/95 backdrop-blur-xl border-b border-white/10 shadow-2xl px-4 py-2.5">
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#FCBF14]" />
+              <input
+                type="text"
+                placeholder="Search templates..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleCount(24);
+                }}
+                className="w-full bg-white/10 border border-white/20 focus:border-[#FCBF14] rounded-xl pl-10 pr-10 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none transition-all font-medium"
+                autoComplete="off"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-white/60 hover:text-white cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {/* Active filter badges */}
+            <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+              {activeSidebarCategory !== "all" && (
+                <span className="bg-[#FCBF14] text-[#111111] text-[10px] font-black px-2.5 py-1 rounded-full">
+                  {activeSidebarCategory}
+                </span>
+              )}
+              {tierFilter !== "all" && (
+                <span className="bg-white/15 text-white text-[10px] font-bold px-2.5 py-1 rounded-full capitalize">
+                  {tierFilter}
+                </span>
+              )}
+              {(activeSidebarCategory !== "all" || tierFilter !== "all" || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setActiveSidebarCategory("all");
+                    setTierFilter("all");
+                    setVisibleCount(24);
+                  }}
+                  className="text-white/50 hover:text-white text-[10px] font-bold cursor-pointer transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            {/* Result count */}
+            <span className="shrink-0 text-[11px] font-bold text-white/60 hidden md:block">
+              {filteredCatalog.length} result{filteredCatalog.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
       {/* 1 & 2. UNIFIED HERO STAGE                                                 */}
       {/* ========================================================================= */}
       <section
+        id="hero-stage"
         ref={heroRef}
         className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
       >
