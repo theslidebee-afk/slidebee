@@ -239,6 +239,25 @@ export default function Home() {
     }
   };
 
+  // Scroll to templates after a short delay (lets React re-render filtered list first)
+  const scrollToTemplatesDelayed = (ms = 120) => {
+    setTimeout(() => {
+      const el = document.getElementById("templates");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, ms);
+  };
+
+  // Only auto-scroll if the user is still in the hero section (above templates grid)
+  const shouldAutoScrollToTemplates = () => {
+    const templatesEl = document.getElementById("templates");
+    if (!templatesEl) return false;
+    const rect = templatesEl.getBoundingClientRect();
+    return rect.top > 60; // user hasn't scrolled past the templates section yet
+  };
+
+
   // Dynamic category pills combined from site_config and allTemplates
   const allCategoryPills = useMemo(() => {
     const set = new Set<string>(categoriesList);
@@ -669,6 +688,9 @@ export default function Home() {
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setVisibleCount(24);
+                    if (shouldAutoScrollToTemplates()) {
+                      scrollToTemplatesDelayed(150);
+                    }
                   }}
                   className="w-full bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] focus:bg-white border border-[#111111]/12 focus:border-[#FCBF14] rounded-xl pl-10 pr-16 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all font-medium"
                 />
@@ -688,6 +710,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("all");
                     setVisibleCount(24);
+                    scrollToTemplatesDelayed(120);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tierFilter === "all"
@@ -701,6 +724,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("free");
                     setVisibleCount(24);
+                    scrollToTemplatesDelayed(120);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "free"
@@ -715,6 +739,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("premium");
                     setVisibleCount(24);
+                    scrollToTemplatesDelayed(120);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "premium"
@@ -736,6 +761,7 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("all");
                   setVisibleCount(24);
+                  scrollToTemplatesDelayed(120);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "all"
@@ -753,6 +779,7 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("trending");
                   setVisibleCount(24);
+                  scrollToTemplatesDelayed(120);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "trending"
@@ -774,6 +801,7 @@ export default function Home() {
                     onClick={() => {
                       setActiveSidebarCategory(cat);
                       setVisibleCount(24);
+                      scrollToTemplatesDelayed(120);
                     }}
                     className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       isCatActive
