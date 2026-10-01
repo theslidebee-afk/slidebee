@@ -330,11 +330,8 @@ export default function Navbar() {
                             <ShoppingBag size={18} className="text-[#FCBF14] group-hover:text-[#111111]" />
                           </div>
                           <div>
-                            <div className="text-sm font-extrabold text-white group-hover:text-[#FCBF14] transition-colors flex items-center gap-2">
+                            <div className="text-sm font-extrabold text-white group-hover:text-[#FCBF14] transition-colors">
                               E-Commerce Development
-                              <span className="text-[9px] font-black uppercase bg-[#FCBF14] text-[#111111] px-1.5 py-0.5 rounded">
-                                ₹25K
-                              </span>
                             </div>
                             <div className="text-[11px] text-gray-400 font-medium leading-tight mt-0.5">
                               Full-stack store, 500 products, Razorpay & accounts
@@ -491,7 +488,7 @@ export default function Navbar() {
                           onClick={() => setIsMobileMenuOpen(false)}
                           className="text-xs font-bold text-gray-200 hover:text-white py-2 px-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center gap-2"
                         >
-                          <ShoppingBag size={14} className="text-[#FCBF14]" /> E-Commerce Website Dev <span className="text-[9px] bg-[#FCBF14] text-[#111111] font-black px-1.5 rounded">₹25K</span>
+                          <ShoppingBag size={14} className="text-[#FCBF14]" /> E-Commerce Website Development
                         </Link>
                       </div>
                     </div>

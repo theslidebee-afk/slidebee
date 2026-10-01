@@ -13,7 +13,6 @@ import {
   LayoutGrid, 
   Palette,
   ArrowRight,
-  ChevronDown,
   Layers,
   ShoppingBag,
   CreditCard,
@@ -302,74 +301,13 @@ export default function Services() {
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden">
       
-      {/* 0. SERVICE LINE DROPDOWN & SWITCHER HEADER */}
-      <section className="bg-[#111111] text-white border-b border-[#FCBF14]/30 pt-24 sm:pt-28 pb-6 px-4">
-        <div className="w-[90%] max-w-[1760px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-left">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#FCBF14] bg-[#FCBF14]/15 px-3 py-1 rounded-full border border-[#FCBF14]/30 inline-block mb-1.5">
-              Service Catalog
-            </span>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-heading font-black text-white">
-              {activeCategory === "presentation" 
-                ? "Executive Presentation Design Services" 
-                : "E-Commerce Website Development Package"}
-            </h1>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-            {/* Interactive Dropdown Selector */}
-            <div className="relative w-full sm:w-auto">
-              <label htmlFor="service-category-select" className="sr-only">Select Service Line</label>
-              <div className="relative">
-                <select
-                  id="service-category-select"
-                  value={activeCategory}
-                  onChange={(e) => handleSelectCategory(e.target.value as "presentation" | "ecommerce")}
-                  className="w-full sm:w-72 bg-[#1c1c1c] text-[#FCBF14] font-black text-xs sm:text-sm px-4 py-2.5 pr-10 rounded-xl border border-[#FCBF14]/40 focus:outline-hidden focus:border-[#FCBF14] cursor-pointer appearance-none shadow-sm"
-                >
-                  <option value="presentation">Presentation Design Services</option>
-                  <option value="ecommerce">E-Commerce Website Dev (₹25,000)</option>
-                </select>
-                <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#FCBF14] pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Segmented Pill Toggle */}
-            <div className="bg-white/10 p-1 rounded-xl border border-white/15 flex items-center gap-1 w-full sm:w-auto justify-center">
-              <button
-                type="button"
-                onClick={() => handleSelectCategory("presentation")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  activeCategory === "presentation"
-                    ? "bg-[#FCBF14] text-[#111111] shadow-sm"
-                    : "text-gray-300 hover:text-white"
-                }`}
-              >
-                <Layers size={14} /> PPT Design
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectCategory("ecommerce")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  activeCategory === "ecommerce"
-                    ? "bg-[#FCBF14] text-[#111111] shadow-sm"
-                    : "text-gray-300 hover:text-white"
-                }`}
-              >
-                <ShoppingBag size={14} /> E-Commerce <span className="text-[9px] bg-[#111111] text-[#FCBF14] px-1 rounded">₹25K</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ========================================================================= */}
       {/* OPTION A: PRESENTATION DESIGN STUDIO SERVICES VIEW */}
       {/* ========================================================================= */}
       {activeCategory === "presentation" && (
         <>
           {/* 1. HERO SECTION WITH TWO-LINED 3D SUSPENDED PERSPECTIVE CAROUSEL */}
-          <section className="relative bg-[#FFF9E8] pt-12 pb-16 border-b border-primary/20 large-hex-grid overflow-hidden">
+          <section className="relative bg-[#FFF9E8] pt-24 sm:pt-28 pb-16 border-b border-primary/20 large-hex-grid overflow-hidden">
             {/* Soft Golden Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#FCBF14]/12 rounded-full blur-[160px] pointer-events-none" />
 
@@ -597,7 +535,7 @@ export default function Services() {
       {/* OPTION B: E-COMMERCE WEBSITE DEVELOPMENT SERVICE VIEW */}
       {/* ========================================================================= */}
       {activeCategory === "ecommerce" && (
-        <section className="py-12 bg-[#FFF9E8] large-hex-grid">
+        <section className="pt-28 pb-16 bg-[#FFF9E8] large-hex-grid">
           <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
 
             {/* Hero Banner */}
