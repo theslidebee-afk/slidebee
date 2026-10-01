@@ -113,6 +113,29 @@ export default function Home() {
       window.removeEventListener("resize", calculateOffset);
     };
   }, [isSearching]);
+
+  // Option A: Outside-Click Dismissal
+  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus and query
+  useEffect(() => {
+    if (!isSearching) return;
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const cardEl = document.getElementById("hero-search-card");
+      const templatesEl = document.getElementById("templates");
+      if (cardEl?.contains(target) || templatesEl?.contains(target)) return;
+      setIsSearchFocused(false);
+      setSearchQuery("");
+      setVisibleCount(24);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isSearching]);
   const [categoriesList, setCategoriesList] = useState<string[]>([
     "Pitch Decks",
     "Business",
@@ -626,28 +649,15 @@ export default function Home() {
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 pt-1">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider">
-                      {heroConfig?.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
-                    </span>
-                    <span className="text-xs font-bold text-[#726F6D]">
-                      Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
-                    </span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
-                    {heroConfig?.headline || "Explore Executive Presentation Templates"}
-                  </h2>
+              <div className="pt-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold text-[#726F6D]">
+                    Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
+                  </span>
                 </div>
-
-                {/* Master Format Deliverable Badge */}
-                <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-2 rounded-xl border border-[#111111]/10 shadow-xs">
-                    <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-                    <span>Master PowerPoint (.pptx) & Google Slides</span>
-                  </div>
-                </div>
+                <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
+                  {heroConfig?.headline || "Explore Executive Presentation Templates"}
+                </h2>
               </div>
             </motion.div>
 
@@ -692,6 +702,11 @@ export default function Home() {
                     if (e.key === "Enter") {
                       (e.target as HTMLInputElement).blur();
                     }
+                    if (e.key === "Escape") {
+                      setSearchQuery("");
+                      setIsSearchFocused(false);
+                      (e.target as HTMLInputElement).blur();
+                    }
                   }}
                   className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
                     isSearchFocused
@@ -709,6 +724,7 @@ export default function Home() {
                       type="button"
                       onClick={() => {
                         setSearchQuery("");
+                        setIsSearchFocused(false);
                         setVisibleCount(24);
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold bg-[#111111]/8 hover:bg-[#111111]/15 text-[#111111] px-2.5 py-1 rounded-md cursor-pointer transition-colors"
@@ -772,8 +788,8 @@ export default function Home() {
 
             </div>
 
-            {/* Row 3: Horizontal Scrollable Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {/* Row 3: Multi-Line Category Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2 py-1">
               {/* All Templates */}
               <button
                 onClick={() => {
