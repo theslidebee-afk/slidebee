@@ -281,7 +281,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const googleClientId =
         (env as any)?.GOOGLE_CLIENT_ID ||
         (env as any)?.GOOGLE_ID ||
-        (env as any)?.VITE_GOOGLE_CLIENT_ID;
+        (env as any)?.VITE_GOOGLE_CLIENT_ID ||
+        "442338061739-uhlto1rvjjp36m67erc3q1b2ljn6kl1b.apps.googleusercontent.com";
 
       if (provider === "google") {
         if (googleClientId) {
@@ -339,7 +340,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const clientId =
         env.GOOGLE_CLIENT_ID ||
         (env as any)?.GOOGLE_ID ||
-        (env as any)?.VITE_GOOGLE_CLIENT_ID;
+        (env as any)?.VITE_GOOGLE_CLIENT_ID ||
+        "442338061739-uhlto1rvjjp36m67erc3q1b2ljn6kl1b.apps.googleusercontent.com";
 
       if (body.code && clientSecret) {
         try {

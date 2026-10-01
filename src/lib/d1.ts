@@ -271,16 +271,15 @@ const edgeAuth = {
         window.location.href = json.data.url;
         return { data: json.data, error: null };
       }
-      if (json?.error) {
-        return { data: null, error: json.error };
+
+      if (provider === 'google') {
+        const clientId = '442338061739-uhlto1rvjjp36m67erc3q1b2ljn6kl1b.apps.googleusercontent.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token%20id_token&scope=openid%20email%20profile&nonce=${crypto.randomUUID()}`;
+        window.location.href = authUrl;
+        return { data: { url: authUrl }, error: null };
       }
 
-      return {
-        data: null,
-        error: {
-          message: 'Google Sign-In is configured. Please provide GOOGLE_CLIENT_ID in your Cloudflare environment variables to activate one-click redirect, or sign in directly using your email and password.',
-        },
-      };
+      return { data: null, error: { message: `OAuth provider ${provider} not supported.` } };
     } catch (err: any) {
       return { data: null, error: { message: err?.message || 'Google OAuth failed' } };
     }
