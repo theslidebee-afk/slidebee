@@ -123,6 +123,13 @@ export default function Login() {
     const email = hashParams.get("email") || searchParams.get("email");
     if (token) sessionStorage.setItem("slidebee_recovery_token", token);
     if (email) sessionStorage.setItem("slidebee_recovery_email", email);
+
+    // If OAuth tokens or callback present, clear stale recovery and do not enter reset mode
+    if (url.includes("id_token") || url.includes("access_token") || url.includes("auth/callback") || url.includes("code=")) {
+      sessionStorage.removeItem("slidebee_password_recovery");
+      return false;
+    }
+
     return (
       url.includes("action=reset") ||
       url.includes("type=recovery") ||
@@ -149,6 +156,13 @@ export default function Login() {
       const email = hashParams.get("email") || searchParams.get("email");
       if (token) sessionStorage.setItem("slidebee_recovery_token", token);
       if (email) sessionStorage.setItem("slidebee_recovery_email", email);
+
+      if (url.includes("id_token") || url.includes("access_token") || url.includes("auth/callback") || url.includes("code=")) {
+        sessionStorage.removeItem("slidebee_password_recovery");
+        setIsResetMode(false);
+        return;
+      }
+
       if (
         url.includes("action=reset") ||
         url.includes("type=recovery") ||

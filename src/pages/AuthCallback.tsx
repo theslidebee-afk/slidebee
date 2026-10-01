@@ -10,6 +10,10 @@ export default function AuthCallback() {
       try {
         if (typeof window === "undefined") return;
 
+        sessionStorage.removeItem("slidebee_password_recovery");
+        sessionStorage.removeItem("slidebee_recovery_token");
+        sessionStorage.removeItem("slidebee_recovery_email");
+
         const hash = window.location.hash || "";
         const search = window.location.search || "";
 

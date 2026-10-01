@@ -3,12 +3,35 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-// Auto-redirect direct browser paths to HashRouter format and capture Supabase recovery tokens
+// Auto-redirect direct browser paths to HashRouter format and capture recovery tokens
 if (typeof window !== 'undefined') {
   const hash = window.location.hash;
   const search = window.location.search;
+  const pathname = window.location.pathname;
 
-  if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('action=reset') || search.includes('action=reset') || search.includes('token=') || hash.includes('token=')) {
+  const isOAuthCallback =
+    pathname.startsWith('/auth/callback') ||
+    pathname === '/auth/callback' ||
+    hash.includes('/auth/callback') ||
+    hash.includes('id_token=') ||
+    hash.includes('access_token=') ||
+    search.includes('id_token=') ||
+    search.includes('access_token=') ||
+    search.includes('code=');
+
+  if (isOAuthCallback) {
+    // Clear any stale recovery flags from previous aborted attempts
+    sessionStorage.removeItem('slidebee_password_recovery');
+    sessionStorage.removeItem('slidebee_recovery_token');
+    sessionStorage.removeItem('slidebee_recovery_email');
+  } else if (
+    hash.includes('type=recovery') ||
+    search.includes('type=recovery') ||
+    hash.includes('action=reset') ||
+    search.includes('action=reset') ||
+    /(?:^|[?&#])token=[^&]+/.test(hash) ||
+    /(?:^|[?&#])token=[^&]+/.test(search)
+  ) {
     sessionStorage.setItem('slidebee_password_recovery', 'true');
     const searchParams = new URLSearchParams(search);
     const hashQuery = hash.includes('?') ? hash.split('?')[1] : '';
@@ -21,8 +44,8 @@ if (typeof window !== 'undefined') {
     if (!hash.startsWith('#/login')) {
       window.history.replaceState(null, '', target);
     }
-  } else if (window.location.pathname && window.location.pathname !== '/' && !window.location.hash) {
-    const target = '/#' + window.location.pathname + window.location.search;
+  } else if (pathname && pathname !== '/' && !window.location.hash) {
+    const target = '/#' + pathname + window.location.search;
     window.history.replaceState(null, '', target);
   }
 }
