@@ -2,6 +2,8 @@
 
 This project enforces strict development standards across all code generation and pair-programming tasks.
 
+> **CRITICAL**: When starting any new session, first read `PROJECT_CONTEXT.md` in the repository root for the full architectural context, current feature state, deployment targets, and recent decisions.
+
 ## Mandatory Rules
 
 1. **NO EMOJIS ANYWHERE**:
