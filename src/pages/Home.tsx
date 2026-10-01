@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   Zap,
+  Users,
+  Gift,
   Infinity as InfinityIcon,
   ArrowRight,
   Search,
@@ -181,23 +183,6 @@ export default function Home() {
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
     }
-  };
-
-  // Scroll to search stage so search controls and template cards are both visible at top of viewport
-  const scrollToSearchStage = (ms = 40) => {
-    setTimeout(() => {
-      const searchCard = document.getElementById("hero-search-card");
-      if (searchCard) {
-        const navOffset = 108; // 80px fixed navbar height + 28px top breathing room
-        const cardTop = searchCard.getBoundingClientRect().top + window.pageYOffset;
-        const targetY = Math.max(0, cardTop - navOffset);
-        if (Math.abs(window.pageYOffset - targetY) > 8) {
-          window.scrollTo({ top: targetY, behavior: "smooth" });
-        }
-      } else {
-        document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" });
-      }
-    }, ms);
   };
 
 
@@ -393,7 +378,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full overflow-hidden flex flex-col items-center bg-[#111111] pt-20 sm:pt-24 lg:pt-28 pb-6 sm:pb-8"
+        className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -594,25 +579,93 @@ export default function Home() {
 
           </div>
           
-          {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
+          {/* Central Translucent Frosted Glass Card */}
           <div
-            id="hero-search-card"
-            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-5 sm:p-7 lg:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left scroll-mt-24"
+            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/85 sm:bg-[#FFFDF5]/90 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[48px] py-8 sm:py-12 lg:py-14 px-6 sm:px-12 lg:px-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.24)] flex flex-col items-center justify-center transition-all"
           >
+            
+            {/* Eyebrow */}
+            <div className="mb-3 sm:mb-4">
+              <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
+                {heroConfig.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
+              </span>
+            </div>
 
-            {/* Row 1: Section Heading & Deliverable Badge */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-4 sm:mb-5 pt-1">
-              <div>
-                <span className="text-xs font-bold text-[#726F6D] block mb-1">
-                  Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
+            {/* Bold Display Headline */}
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-heading font-black text-[#111111] leading-[1.08] tracking-tight mb-4 max-w-3xl whitespace-pre-line">
+              {heroConfig.title || "Ideas Deserve\nBetter Slides."}
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-xs sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-3xl mx-auto mb-6 sm:mb-7 whitespace-pre-line">
+              {heroConfig.subtitle || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."}
+            </p>
+
+            {/* Trust Indicators Row */}
+            <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-8 pt-5 border-t border-[#111111]/10 w-full">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber fill-[#FCBF14]" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Professional Quality
                 </span>
-                <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
-                  {heroConfig?.headline || "Explore Executive Presentation Templates"}
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#111111]" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Trusted by Creators & Teams
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber" />
+                <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                  Save Time. Present Better.
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Playful Note Beneath Hero Stage */}
+          <div className="mt-4 sm:mt-5 text-center">
+            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
+              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
+              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
+              </svg>
+            </span>
+          </div>
+
+        </motion.div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
+      {/* ========================================================================= */}
+      <motion.section
+        id="templates"
+        style={{ y: templatesSlideUpY }}
+        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-8 sm:-mt-14"
+      >
+        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
+          
+          {/* Top Catalog Header & Filter Navigation Bar with Animated Search */}
+          <div className="mb-8 sm:mb-10 space-y-4 sm:space-y-5">
+            
+            {/* Row 1: Section Heading & Summary */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold text-[#726F6D]">
+                    Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
+                  </span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-black text-[#111111] tracking-tight">
+                  Explore Executive Presentation Templates
                 </h2>
               </div>
 
               {/* Master Format Deliverable Badge */}
-              <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+              <div className="flex items-center gap-2 self-start md:self-auto">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-2 rounded-xl border border-[#111111]/10 shadow-xs">
                   <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
                   <span>Master PowerPoint (.pptx) & Google Slides</span>
@@ -621,7 +674,7 @@ export default function Home() {
             </div>
 
             {/* Row 2: Live Search Input & Access Tier Toggles Strip */}
-            <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4 transition-all duration-300">
+            <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 transition-all duration-300">
               
               {/* Live Search Input - Kinetic Expansion on Focus */}
               <motion.div
@@ -646,25 +699,13 @@ export default function Home() {
                   value={searchQuery}
                   onFocus={() => {
                     setIsSearchFocused(true);
-                    if (window.scrollY < 280) {
-                      scrollToSearchStage(20);
-                    }
                   }}
                   onBlur={() => {
                     setIsSearchFocused(false);
                   }}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setSearchQuery(val);
+                    setSearchQuery(e.target.value);
                     setVisibleCount(24);
-                    if (val.trim().length > 0 && window.scrollY < 260) {
-                      scrollToSearchStage(40);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      scrollToSearchStage(30);
-                    }
                   }}
                   className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
                     isSearchFocused
@@ -704,7 +745,6 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("all");
                     setVisibleCount(24);
-                    scrollToSearchStage(50);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tierFilter === "all"
@@ -718,7 +758,6 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("free");
                     setVisibleCount(24);
-                    scrollToSearchStage(50);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "free"
@@ -733,7 +772,6 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("premium");
                     setVisibleCount(24);
-                    scrollToSearchStage(50);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "premium"
@@ -755,7 +793,6 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("all");
                   setVisibleCount(24);
-                  scrollToSearchStage(80);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "all"
@@ -773,7 +810,6 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("trending");
                   setVisibleCount(24);
-                  scrollToSearchStage(80);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "trending"
@@ -795,7 +831,6 @@ export default function Home() {
                     onClick={() => {
                       setActiveSidebarCategory(cat);
                       setVisibleCount(24);
-                      scrollToSearchStage(80);
                     }}
                     className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       isCatActive
@@ -810,50 +845,6 @@ export default function Home() {
               })}
             </div>
 
-          </div>
-
-        </motion.div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
-      {/* ========================================================================= */}
-      <motion.section
-        id="templates"
-        style={{ y: templatesSlideUpY }}
-        className="scroll-mt-24 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[48px] border-t-2 border-[#FCBF14]/40 shadow-[0_-25px_60px_rgba(0,0,0,0.22)] pt-6 sm:pt-8 pb-20 -mt-2 sm:-mt-4"
-      >
-        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
-          
-          {/* Quick Active Filter Status Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-[#111111]/8">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#726F6D]">
-              <span>Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates</span>
-              {activeSidebarCategory !== "all" && (
-                <span className="bg-[#111111] text-[#FCBF14] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">
-                  {activeSidebarCategory}
-                </span>
-              )}
-              {tierFilter !== "all" && (
-                <span className="bg-[#FCBF14]/30 text-[#111111] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">
-                  {tierFilter}
-                </span>
-              )}
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="bg-gray-100 hover:bg-gray-200 text-[#111111] px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  Clear search: "{searchQuery}" ×
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-1.5 rounded-xl border border-[#111111]/10 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-              <span>Master PowerPoint (.pptx) & Google Slides</span>
-            </div>
           </div>
 
           {/* Catalog Content (6-Column Magnet Masonry or Loading / Empty States) */}
