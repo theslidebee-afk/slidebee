@@ -116,6 +116,7 @@ export default function Footer() {
               <li><Link to="/services?service=keynote" onClick={scrollToTop} className="hover:text-primary transition-colors">Executive Keynotes</Link></li>
               <li><Link to="/services?service=data" onClick={scrollToTop} className="hover:text-primary transition-colors">Data Visualization</Link></li>
               <li><Link to="/services?service=template" onClick={scrollToTop} className="hover:text-primary transition-colors">Custom Templates</Link></li>
+              <li><Link to="/ecommerce" onClick={scrollToTop} className="hover:text-primary transition-colors text-white font-medium">Ecommerce Store (₹25K)</Link></li>
             </ul>
           </div>
 
@@ -139,12 +140,16 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-          <p>&copy; {currentYear} {footerConfig.copyrightText || "SlideBee. All rights reserved."}</p>
-          <div className="flex gap-6">
-            <Link to="/privacy" onClick={scrollToTop} className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms" onClick={scrollToTop} className="hover:text-white transition-colors">Terms of Service</Link>
-            <Link to="/login" onClick={scrollToTop} className="hover:text-white transition-colors">Admin & Client Login</Link>
+        {/* Legal & Razorpay Compliance Bar */}
+        <div className="border-t border-white/10 pt-8 flex flex-col lg:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400">
+          <p>&copy; {currentYear} {footerConfig.copyrightText || "SlideBee. All rights reserved."} • SlideBee Design Studio (Registered in India)</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
+            <Link to="/privacy" onClick={scrollToTop} className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link to="/terms" onClick={scrollToTop} className="hover:text-primary transition-colors">Terms & Conditions</Link>
+            <Link to="/refund-policy" onClick={scrollToTop} className="hover:text-primary transition-colors font-medium text-white">Cancellation & Refund Policy</Link>
+            <Link to="/shipping-delivery-policy" onClick={scrollToTop} className="hover:text-primary transition-colors font-medium text-white">Shipping & Delivery Policy</Link>
+            <Link to="/contact" onClick={scrollToTop} className="hover:text-primary transition-colors">Contact Us</Link>
+            <Link to="/login" onClick={scrollToTop} className="hover:text-white transition-colors opacity-70">Client Portal</Link>
           </div>
         </div>
       </div>

@@ -23,6 +23,9 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import RefundPolicy from "./pages/RefundPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import EcommerceDevelopment from "./pages/EcommerceDevelopment";
 import ThankYou from "./pages/ThankYou";
 import Footer from "./components/Footer";
 import StickyMobileCTA from "./components/StickyMobileCTA";
@@ -108,9 +111,15 @@ function App() {
               <Route path="/media/blog" element={<Blog />} />
               <Route path="/media/blog/:id" element={<BlogDetail />} />
               <Route path="/videos" element={<Navigate to="/blog" replace />} />
-              <Route path="/media/videos" element={<Navigate to="/blog" replace />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/cancellation-refund-policy" element={<RefundPolicy />} />
+              <Route path="/shipping-delivery-policy" element={<ShippingPolicy />} />
+              <Route path="/delivery-policy" element={<ShippingPolicy />} />
+              <Route path="/ecommerce" element={<EcommerceDevelopment />} />
+              <Route path="/ecommerce-development" element={<EcommerceDevelopment />} />
+              <Route path="/services/ecommerce" element={<EcommerceDevelopment />} />
               <Route path="/thank-you" element={<ThankYou />} />
               <Route path="*" element={<NotFound />} />
             </Route>

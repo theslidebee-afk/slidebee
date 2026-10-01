@@ -285,6 +285,26 @@ export function useClientLedger() {
     return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
+  // Google OAuth One-Click Sign In
+  const signInWithGoogle = async () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://theslidebee.com";
+    const redirectTo = `${origin}/#/account`;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+    if (error) {
+      throw error;
+    }
+    return data;
+  };
+
   // Sign Up with Free Tier Provisioning & Anti-Abuse Protection
   const signUp = async (
     emailInput: string,
@@ -611,6 +631,7 @@ export function useClientLedger() {
     purchasedItems: userProfile?.purchased_items ?? [],
     usageHistory: userProfile?.usage_history ?? [],
     signIn,
+    signInWithGoogle,
     signUp,
     logout,
     requestPasswordReset,

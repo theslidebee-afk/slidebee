@@ -257,6 +257,39 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
     }
 
+    // 2.5 OAuth URL Generator (Google Sign-In)
+    if (action === "oauth_url") {
+      const provider = String(body.provider || "google").toLowerCase();
+      const redirectUri = String(body.redirectTo || `${ALLOWED_ORIGINS[0]}/#/account`);
+      const googleClientId = (env as any)?.GOOGLE_CLIENT_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID;
+
+      if (provider === "google") {
+        if (googleClientId) {
+          const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token%20id_token&scope=openid%20email%20profile&nonce=${crypto.randomUUID()}`;
+          return new Response(JSON.stringify({ data: { url: authUrl } }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: "Google OAuth is ready to connect. Please add GOOGLE_CLIENT_ID to your Cloudflare Pages environment variables, or sign in directly with your email and password below."
+            }
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      return new Response(JSON.stringify({ error: { message: `OAuth provider ${provider} not supported.` } }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 3. User Signup Action
     if (action === "signup") {
       if (!cleanEmail || !password) {

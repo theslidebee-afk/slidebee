@@ -251,8 +251,9 @@ export default function Terms() {
             </p>
             <ul className="list-disc pl-5 space-y-2 text-[#726F6D] mb-4">
               <li><strong className="text-[#111111]">Currency & Checkout:</strong> All prices are displayed in USD ($) or INR (₹) according to your localized currency toggle. Payments are processed securely via certified gateway partners (Razorpay).</li>
-              <li><strong className="text-[#111111]">Digital Template Purchases:</strong> Due to the immediate download delivery of proprietary Microsoft PowerPoint (.pptx) source files, template sales are final and non-refundable once the download link has been generated.</li>
-              <li><strong className="text-[#111111]">Custom Design Services:</strong> Cancellations made prior to initial draft production will receive a full refund minus a 10% administrative onboarding fee. Once design drafting has commenced, fees are non-refundable due to dedicated studio labor, but are fully protected by our 2-round revision guarantee until satisfaction.</li>
+              <li><strong className="text-[#111111]">Digital Template Purchases:</strong> Due to immediate digital delivery of proprietary PowerPoint (.pptx) source files, template sales are final once the download link has been generated. Technical defects are resolved with verified replacements or 100% refunds within 24h.</li>
+              <li><strong className="text-[#111111]">Cancellation & Refund Windows:</strong> Pre-draft custom project cancellations receive full refunds. Once drafting has commenced, fees are backed by our 2-round revision guarantee. Approved refunds reflect in your original bank account/card in 5–7 business days via Razorpay.</li>
+              <li><strong className="text-[#111111]">Dedicated Policies:</strong> Please review our standalone <Link to="/refund-policy" className="text-primary-amber font-bold underline">Cancellation & Refund Policy</Link> and <Link to="/shipping-delivery-policy" className="text-primary-amber font-bold underline">Digital Delivery SLA Policy</Link> for detailed banking timelines and grievance contacts.</li>
             </ul>
           </section>
 

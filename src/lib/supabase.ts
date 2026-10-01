@@ -256,6 +256,36 @@ const edgeAuth = {
     }
   },
 
+  async signInWithOAuth({ provider, options }: { provider: string; options?: { redirectTo?: string; queryParams?: any; scopes?: string } }) {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://theslidebee.com';
+      const redirectUri = options?.redirectTo || `${origin}/#/account`;
+
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'oauth_url', provider, redirectTo: redirectUri }),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.data?.url) {
+        window.location.href = json.data.url;
+        return { data: json.data, error: null };
+      }
+      if (json?.error) {
+        return { data: null, error: json.error };
+      }
+
+      return {
+        data: null,
+        error: {
+          message: 'Google Sign-In is configured. Please provide GOOGLE_CLIENT_ID in your Cloudflare environment variables to activate one-click redirect, or sign in directly using your email and password.',
+        },
+      };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'Google OAuth failed' } };
+    }
+  },
+
   async signOut(_options?: any) {
     try {
       const rawStored = localStorage.getItem('slidebee_edge_session');

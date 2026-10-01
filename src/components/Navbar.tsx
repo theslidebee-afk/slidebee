@@ -156,6 +156,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "Templates", path: "/#templates", isHash: true },
     { name: "Services", path: "/services" },
+    { name: "Ecommerce", path: "/ecommerce" },
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/portfolio" },
     { name: "Blog", path: "/blog" },

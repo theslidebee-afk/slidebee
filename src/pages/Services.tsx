@@ -364,6 +364,33 @@ export default function Services() {
         </div>
       </section>
 
+      {/* 3.5 ECOMMERCE LAUNCH SPECIAL FEATURE */}
+      <section className="py-12 bg-[#FFFDF5] border-t border-primary/20">
+        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-[#111111] via-[#1a1a1a] to-[#111111] text-white rounded-3xl border-2 border-[#FCBF14]/40 p-6 sm:p-10 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8 relative overflow-hidden">
+            <div className="space-y-3 max-w-2xl">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#FCBF14] bg-[#FCBF14]/15 px-3 py-1 rounded-full border border-[#FCBF14]/30 inline-block">
+                NEW DEVELOPMENT SPECIAL
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-heading font-black text-white">
+                Need a Complete Ecommerce Website for Your Brand?
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-medium">
+                Get an all-inclusive online store for <strong>₹25,000 one-time</strong>. Includes up to 500 products, Razorpay checkout, customer accounts with Google Sign-In, Cloudflare hosting, Zoho email, and 30-day post-launch support.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <Link
+                to="/ecommerce"
+                className="bg-[#FCBF14] hover:bg-[#FFE270] text-[#111111] font-extrabold px-6 py-3.5 rounded-full text-xs sm:text-sm transition-all shadow-md hover:scale-105 inline-flex items-center justify-center gap-1.5"
+              >
+                View Ecommerce Package (₹25K) <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. BOTTOM ACTION BANNER */}
       <section className="py-16 bg-[#111111] text-white text-center px-4 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FCBF14]/10 rounded-full blur-[140px] pointer-events-none" />
