@@ -84,12 +84,13 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
-  const isSearching = isSearchFocused || searchQuery.trim().length > 0;
+  const isFilterActive = isSearchFocused || searchQuery.trim().length > 0 || activeSidebarCategory !== "all";
+  const isSearching = isFilterActive;
   const [dockOffset, setDockOffset] = useState<number>(320);
 
   // Measure exact resting distance so templates sheet rises up and docks seamlessly below the better presentation slogan
   useEffect(() => {
-    if (isSearching) return;
+    if (isFilterActive) return;
     const calculateOffset = () => {
       const heroEl = heroRef.current;
       const sloganEl = document.getElementById("hero-slogan-note");
@@ -98,9 +99,9 @@ export default function Home() {
         const sloganRect = sloganEl.getBoundingClientRect();
         const diff = heroRect.bottom - sloganRect.bottom;
         if (diff > 0) {
-          // In search mode, headline row collapses by ~54px.
-          // We dock templates with 20px breathing room below the better presentation slogan:
-          setDockOffset(Math.round(diff + 34));
+          // When banners (~135px) and headline (~45px) collapse in filter mode,
+          // the slogan moves up by ~180px. We dock templates snugly below the slogan:
+          setDockOffset(Math.round(diff + 175));
         }
       }
     };
@@ -112,12 +113,12 @@ export default function Home() {
       clearTimeout(timer);
       window.removeEventListener("resize", calculateOffset);
     };
-  }, [isSearching]);
+  }, [isFilterActive]);
 
   // Option A: Outside-Click Dismissal
-  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus and query
+  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus, query, and category filter
   useEffect(() => {
-    if (!isSearching) return;
+    if (!isFilterActive) return;
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
       if (!target) return;
@@ -126,6 +127,7 @@ export default function Home() {
       if (cardEl?.contains(target) || templatesEl?.contains(target)) return;
       setIsSearchFocused(false);
       setSearchQuery("");
+      setActiveSidebarCategory("all");
       setVisibleCount(24);
     };
 
@@ -135,7 +137,7 @@ export default function Home() {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
     };
-  }, [isSearching]);
+  }, [isFilterActive]);
   const [categoriesList, setCategoriesList] = useState<string[]>([
     "Pitch Decks",
     "Business",
@@ -455,7 +457,16 @@ export default function Home() {
         >
           
           {/* Top Split Promotion Banners (Center aligned with central card) */}
-          <div className="w-full max-w-5xl lg:max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
+          <motion.div
+            animate={{
+              height: isFilterActive ? 0 : "auto",
+              opacity: isFilterActive ? 0 : 1,
+              marginBottom: isFilterActive ? 0 : 20,
+            }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden w-full max-w-5xl lg:max-w-6xl mx-auto"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 pb-1">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
             {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (
@@ -628,6 +639,7 @@ export default function Home() {
             )}
 
             </div>
+          </motion.div>
           
           {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
           <motion.div
@@ -705,6 +717,7 @@ export default function Home() {
                     if (e.key === "Escape") {
                       setSearchQuery("");
                       setIsSearchFocused(false);
+                      setActiveSidebarCategory("all");
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
@@ -725,6 +738,7 @@ export default function Home() {
                       onClick={() => {
                         setSearchQuery("");
                         setIsSearchFocused(false);
+                        setActiveSidebarCategory("all");
                         setVisibleCount(24);
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold bg-[#111111]/8 hover:bg-[#111111]/15 text-[#111111] px-2.5 py-1 rounded-md cursor-pointer transition-colors"
@@ -812,6 +826,9 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("trending");
                   setVisibleCount(24);
+                  if (window.scrollY > 40) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "trending"
@@ -833,6 +850,9 @@ export default function Home() {
                     onClick={() => {
                       setActiveSidebarCategory(cat);
                       setVisibleCount(24);
+                      if (window.scrollY > 40) {
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
                     }}
                     className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       isCatActive
@@ -877,7 +897,9 @@ export default function Home() {
           damping: 26,
           mass: 0.85,
         }}
-        className="scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-6 sm:pt-8 pb-20"
+        className={`scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] ${
+          isFilterActive ? "pt-3 sm:pt-4" : "pt-6 sm:pt-8"
+        } pb-20`}
       >
         <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
 
