@@ -87,18 +87,20 @@ export default function Home() {
   const isSearching = isSearchFocused || searchQuery.trim().length > 0;
   const [dockOffset, setDockOffset] = useState<number>(320);
 
-  // Measure exact resting distance so templates sheet rises up and docks seamlessly below the search card
+  // Measure exact resting distance so templates sheet rises up and docks seamlessly below the better presentation slogan
   useEffect(() => {
     if (isSearching) return;
     const calculateOffset = () => {
       const heroEl = heroRef.current;
-      if (heroEl) {
-        // In search mode, the compact search card sits at pt-20/pt-24 (~88px) and is ~136px tall.
-        // So the card bottom is at ~224px from the top of hero.
-        // To dock right beneath it, templates must bridge the remaining height of the hero stage:
-        const targetOffset = heroEl.offsetHeight - 224;
-        if (targetOffset > 0) {
-          setDockOffset(Math.round(targetOffset + 12));
+      const sloganEl = document.getElementById("hero-slogan-note");
+      if (heroEl && sloganEl) {
+        const heroRect = heroEl.getBoundingClientRect();
+        const sloganRect = sloganEl.getBoundingClientRect();
+        const diff = heroRect.bottom - sloganRect.bottom;
+        if (diff > 0) {
+          // In search mode, headline row collapses by ~54px.
+          // We dock templates with 20px breathing room below the better presentation slogan:
+          setDockOffset(Math.round(diff + 34));
         }
       }
     };
@@ -430,17 +432,7 @@ export default function Home() {
         >
           
           {/* Top Split Promotion Banners (Center aligned with central card) */}
-          <motion.div
-            animate={{
-              opacity: isSearching ? 0 : 1,
-              y: isSearching ? -28 : 0,
-              height: isSearching ? 0 : "auto",
-              marginBottom: isSearching ? 0 : 20,
-            }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-5xl lg:max-w-6xl mx-auto overflow-hidden"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
+          <div className="w-full max-w-5xl lg:max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
             {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (
@@ -613,7 +605,6 @@ export default function Home() {
             )}
 
             </div>
-          </motion.div>
           
           {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
           <motion.div
@@ -843,22 +834,14 @@ export default function Home() {
           </motion.div>
 
           {/* Playful Note Beneath Hero Stage */}
-          <motion.div
-            animate={{
-              opacity: isSearching ? 0 : 1,
-              height: isSearching ? 0 : "auto",
-              marginTop: isSearching ? 0 : 16,
-            }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden text-center"
-          >
+          <div id="hero-slogan-note" className="mt-4 sm:mt-5 text-center">
             <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
               {heroConfig.slogan || "Better Presentations Brighter Ideas"}
               <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
                 <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
               </svg>
             </span>
-          </motion.div>
+          </div>
 
         </motion.div>
       </section>
