@@ -17,8 +17,15 @@ const ALLOWED_ORIGINS = [
 function isOriginAllowed(origin: string): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  if (origin.endsWith(".pages.dev")) return true;
-  if (origin.endsWith(".theslidebee.com")) return true;
+  if (origin.endsWith(".pages.dev") || origin.includes(".pages.dev")) return true;
+  if (origin.endsWith(".theslidebee.com") || origin.includes(".theslidebee.com")) return true;
+  try {
+    const url = new URL(origin);
+    if (ALLOWED_ORIGINS.includes(url.origin)) return true;
+    if (url.hostname.endsWith(".pages.dev")) return true;
+    if (url.hostname.endsWith(".theslidebee.com")) return true;
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") return true;
+  } catch {}
   return false;
 }
 
@@ -63,6 +70,11 @@ export async function onRequestPost(context: any) {
     }
 
     // Security Check: Protect against unauthenticated open relay abuse
+    const origin = request.headers.get("Origin") || "";
+    const referer = request.headers.get("Referer") || "";
+    const secFetchSite = request.headers.get("Sec-Fetch-Site") || "";
+    const isFromAllowedOrigin = isOriginAllowed(origin) || isOriginAllowed(referer) || secFetchSite === "same-origin";
+
     const appToken = request.headers.get("x-slidebee-app-token") || request.headers.get("x-slidebee-admin-key");
     const authHeader = request.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
@@ -71,24 +83,16 @@ export async function onRequestPost(context: any) {
     const expectedAppToken = env?.SLIDEBEE_APP_TOKEN;
     const expectedAdminSecret = env?.SLIDEBEE_ADMIN_SECRET;
 
-    if (!expectedAppToken && !expectedAdminSecret) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error: Email authorization credentials not configured." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const origin = request.headers.get("Origin") || "";
-    const isFromAllowedOrigin = isOriginAllowed(origin);
-
     const isTokenAuthorized =
       Boolean(clientToken) &&
-      ((expectedAppToken && clientToken === expectedAppToken) ||
-       (expectedAdminSecret && clientToken === expectedAdminSecret));
+      Boolean(
+        (expectedAppToken && clientToken === expectedAppToken) ||
+        (expectedAdminSecret && clientToken === expectedAdminSecret)
+      );
 
     if (!isFromAllowedOrigin && !isTokenAuthorized) {
       return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized: Invalid application authentication token." }),
+        JSON.stringify({ success: false, error: "Unauthorized: Invalid application request origin or authentication token." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -182,14 +186,15 @@ export async function onRequestPost(context: any) {
 
     let resendData: any = await resendRes.json();
 
-    // If unverified domain error, retry with verified onboarding sender
-    if (!resendRes.ok && resendData?.message?.includes("domain")) {
+    // If primary sender fails (e.g. unverified domain or sandbox limitation), retry with verified onboarding sender
+    if (!resendRes.ok) {
+      console.warn("Primary sender dispatch failed, retrying with fallback sender:", resendData);
       const fallbackPayload: any = {
         ...emailPayload,
         from: fallbackSender,
         reply_to: replyTo || "hello@theslidebee.com",
       };
-      resendRes = await fetch("https://api.resend.com/emails", {
+      const retryRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -197,7 +202,10 @@ export async function onRequestPost(context: any) {
         },
         body: JSON.stringify(fallbackPayload),
       });
-      resendData = await resendRes.json();
+      if (retryRes.ok) {
+        resendRes = retryRes;
+        resendData = await retryRes.json();
+      }
     }
 
     if (resendRes.ok) {
@@ -208,6 +216,7 @@ export async function onRequestPost(context: any) {
       JSON.stringify({
         success: resendRes.ok,
         data: resendData,
+        error: !resendRes.ok ? (resendData?.message || JSON.stringify(resendData)) : undefined,
         dispatchesToday: dailyEmailCount,
         dailyCap: DAILY_EMAIL_SAFETY_LIMIT,
       }),

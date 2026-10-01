@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Lock, 
   Mail, 
@@ -25,13 +25,27 @@ import { usePageSEO } from "../hooks/usePageSEO";
 import { WHATSAPP_CONFIG } from "../config/whatsapp";
 
 export default function Login() {
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Read incoming order tracking and prefill parameters from search or hash
+  const incomingParams = useMemo(() => {
+    if (typeof window === "undefined") return { orderRef: "", email: "", name: "", action: "" };
+    const search = window.location.search || "";
+    const hash = window.location.hash || "";
+    const searchParams = new URLSearchParams(search);
+    const hashParams = new URLSearchParams(hash.includes("?") ? hash.split("?")[1] : "");
+    return {
+      orderRef: searchParams.get("orderRef") || searchParams.get("ref") || hashParams.get("orderRef") || hashParams.get("ref") || "",
+      email: searchParams.get("email") || hashParams.get("email") || "",
+      name: searchParams.get("name") || hashParams.get("name") || "",
+      action: searchParams.get("action") || hashParams.get("action") || ""
+    };
+  }, []);
 
+  const [isSignUp, setIsSignUp] = useState<boolean>(() => Boolean(incomingParams.orderRef));
 
   // Form State
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState<string>(() => incomingParams.email || "");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [fullName, setFullName] = useState<string>(() => incomingParams.name || "");
   const [company, setCompany] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -742,6 +756,23 @@ export default function Login() {
                   : "Manage your active presentation projects & templates"}
               </p>
             </div>
+
+            {/* Live SLA Project Tracker Welcome Banner */}
+            {incomingParams.orderRef && (
+              <div className="mb-6 bg-gradient-to-r from-[#FCBF14]/20 via-[#FFE270]/25 to-[#FCBF14]/15 border-2 border-[#FCBF14] p-4 sm:p-5 rounded-2xl shadow-sm text-left">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-[#111111] text-[#FCBF14] px-2.5 py-0.5 rounded-full">
+                    Reference: {incomingParams.orderRef}
+                  </span>
+                  <span className="text-xs font-black text-[#111111] flex items-center gap-1">
+                    <CheckCircle2 size={13} className="text-[#111111]" /> Project Brief Linked
+                  </span>
+                </div>
+                <p className="text-xs text-[#111111]/85 font-medium leading-relaxed">
+                  Your presentation request is queued. {isSignUp ? "Set your password below to create your client account," : "Sign in below to"} monitor live SLA turnaround milestones, preview presentation drafts, and download deliverables.
+                </p>
+              </div>
+            )}
 
             {/* Session Displacement Security Notice */}
             {sessionDisplacedInfo.displaced && (

@@ -80,7 +80,6 @@ export default function Home() {
 
   // Filtering & Continuous Scroll State
   const [visibleCount, setVisibleCount] = useState<number>(24);
-  const [showStickySearch, setShowStickySearch] = useState(false);
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
@@ -120,21 +119,6 @@ export default function Home() {
         document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" });
       }, 150);
     }
-  }, []);
-
-  // Show sticky search bar once user scrolls past the hero section
-  useEffect(() => {
-    const onScroll = () => {
-      const heroEl = document.getElementById("hero-stage");
-      if (heroEl) {
-        const bottom = heroEl.getBoundingClientRect().bottom;
-        setShowStickySearch(bottom < 60);
-      } else {
-        setShowStickySearch(window.scrollY > 440);
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -198,22 +182,16 @@ export default function Home() {
     }
   };
 
-  // Scroll to templates after a short delay (lets React re-render filtered list first)
-  const scrollToTemplatesDelayed = (ms = 120) => {
+  // Scroll to search stage so search controls and template cards are both visible at top of viewport
+  const scrollToSearchStage = (ms = 100) => {
     setTimeout(() => {
-      const el = document.getElementById("templates");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      const searchCard = document.getElementById("hero-search-card");
+      if (searchCard) {
+        searchCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        document.getElementById("templates")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, ms);
-  };
-
-  // Only auto-scroll if the user is still in the hero section (above templates grid)
-  const shouldAutoScrollToTemplates = () => {
-    const templatesEl = document.getElementById("templates");
-    if (!templatesEl) return false;
-    const rect = templatesEl.getBoundingClientRect();
-    return rect.top > 60; // user hasn't scrolled past the templates section yet
   };
 
 
@@ -403,76 +381,6 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       
-      {/* ========================================================================= */}
-      {/* STICKY SEARCH BAR (appears when user scrolls past hero)                   */}
-      {/* ========================================================================= */}
-      <div
-        className={`fixed top-0 left-0 right-0 z-[90] transition-all duration-300 ${
-          showStickySearch
-            ? "translate-y-0 opacity-100 pointer-events-auto"
-            : "-translate-y-full opacity-0 pointer-events-none"
-        }`}
-        style={{ top: "var(--navbar-height, 56px)" }}
-      >
-        <div className="bg-[#111111]/95 backdrop-blur-xl border-b border-white/10 shadow-2xl px-4 py-2.5">
-          <div className="max-w-5xl mx-auto flex items-center gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#FCBF14]" />
-              <input
-                type="text"
-                placeholder="Search templates..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setVisibleCount(24);
-                }}
-                className="w-full bg-white/10 border border-white/20 focus:border-[#FCBF14] rounded-xl pl-10 pr-10 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none transition-all font-medium"
-                autoComplete="off"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-white/60 hover:text-white cursor-pointer"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            {/* Active filter badges */}
-            <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-              {activeSidebarCategory !== "all" && (
-                <span className="bg-[#FCBF14] text-[#111111] text-[10px] font-black px-2.5 py-1 rounded-full">
-                  {activeSidebarCategory}
-                </span>
-              )}
-              {tierFilter !== "all" && (
-                <span className="bg-white/15 text-white text-[10px] font-bold px-2.5 py-1 rounded-full capitalize">
-                  {tierFilter}
-                </span>
-              )}
-              {(activeSidebarCategory !== "all" || tierFilter !== "all" || searchQuery) && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setActiveSidebarCategory("all");
-                    setTierFilter("all");
-                    setVisibleCount(24);
-                  }}
-                  className="text-white/50 hover:text-white text-[10px] font-bold cursor-pointer transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-            {/* Result count */}
-            <span className="shrink-0 text-[11px] font-bold text-white/60 hidden md:block">
-              {filteredCatalog.length} result{filteredCatalog.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* ========================================================================= */}
       {/* 1 & 2. UNIFIED HERO STAGE                                                 */}
       {/* ========================================================================= */}
@@ -682,6 +590,7 @@ export default function Home() {
           
           {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
           <div
+            id="hero-search-card"
             className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] p-5 sm:p-7 lg:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left"
           >
 
@@ -718,8 +627,10 @@ export default function Home() {
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setVisibleCount(24);
-                    if (shouldAutoScrollToTemplates()) {
-                      scrollToTemplatesDelayed(150);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      scrollToSearchStage(50);
                     }
                   }}
                   className="w-full bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] focus:bg-white border border-[#111111]/12 focus:border-[#FCBF14] rounded-xl pl-10 pr-16 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all font-medium"
@@ -740,7 +651,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("all");
                     setVisibleCount(24);
-                    scrollToTemplatesDelayed(120);
+                    scrollToSearchStage(80);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tierFilter === "all"
@@ -754,7 +665,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("free");
                     setVisibleCount(24);
-                    scrollToTemplatesDelayed(120);
+                    scrollToSearchStage(80);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "free"
@@ -769,7 +680,7 @@ export default function Home() {
                   onClick={() => {
                     setTierFilter("premium");
                     setVisibleCount(24);
-                    scrollToTemplatesDelayed(120);
+                    scrollToSearchStage(80);
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     tierFilter === "premium"
@@ -791,7 +702,7 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("all");
                   setVisibleCount(24);
-                  scrollToTemplatesDelayed(120);
+                  scrollToSearchStage(80);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "all"
@@ -809,7 +720,7 @@ export default function Home() {
                 onClick={() => {
                   setActiveSidebarCategory("trending");
                   setVisibleCount(24);
-                  scrollToTemplatesDelayed(120);
+                  scrollToSearchStage(80);
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "trending"
@@ -831,7 +742,7 @@ export default function Home() {
                     onClick={() => {
                       setActiveSidebarCategory(cat);
                       setVisibleCount(24);
-                      scrollToTemplatesDelayed(120);
+                      scrollToSearchStage(80);
                     }}
                     className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       isCatActive

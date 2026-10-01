@@ -377,12 +377,21 @@ export default function OrderNow() {
               </div>
             </div>
 
+            <div className="bg-[#FCBF14]/15 border-2 border-[#FCBF14] rounded-2xl p-4 text-center max-w-lg mx-auto mb-6">
+              <span className="text-[11px] font-black uppercase tracking-widest text-[#111111] block mb-1">
+                Live SLA & Milestone Tracking Active
+              </span>
+              <p className="text-xs text-[#111111]/85 font-medium">
+                Your order is linked to your email. Sign in to your client portal to monitor design milestones, request revisions, and download your deliverables.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to={`/thank-you?type=order&ref=${orderId}`}
+                to={`/login?email=${encodeURIComponent(formData.email.trim())}&orderRef=${orderId}&name=${encodeURIComponent(formData.name.trim())}&action=track_sla`}
                 className="bg-primary hover:bg-primary-dark text-[#111111] font-extrabold px-6 py-3.5 rounded-full text-xs sm:text-sm shadow-md hover:scale-105 transition-all inline-flex items-center justify-center gap-1.5"
               >
-                Track SLA & Next Steps <ArrowRight size={14} />
+                Track Live SLA in Client Portal <ArrowRight size={14} />
               </Link>
               <Link
                 to="/"
