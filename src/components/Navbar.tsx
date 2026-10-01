@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, ArrowRight, Shield, LogOut } from "lucide-react";
+import { Menu, X, User, ArrowRight, Shield, LogOut, ChevronDown, Layers, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
@@ -153,10 +153,11 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
+
   const navLinks = [
     { name: "Templates", path: "/#templates", isHash: true },
-    { name: "Services", path: "/services" },
-    { name: "Ecommerce", path: "/ecommerce" },
+    { name: "Services", path: "/services", hasDropdown: true },
     { name: "Pricing", path: "/pricing" },
     { name: "Portfolio", path: "/portfolio" },
     { name: "Blog", path: "/blog" },
@@ -250,6 +251,100 @@ export default function Navbar() {
                     />
                   )}
                 </button>
+              );
+            }
+
+            if ((link as any).hasDropdown) {
+              const isServicesActive = location.pathname.startsWith("/services");
+              return (
+                <div
+                  key={link.name}
+                  className="relative"
+                  onMouseEnter={() => setServicesDropdownOpen(true)}
+                  onMouseLeave={() => setServicesDropdownOpen(false)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate("/services");
+                      setServicesDropdownOpen(false);
+                    }}
+                    className={clsx(
+                      "text-sm xl:text-base font-extrabold tracking-tight transition-all relative py-1 cursor-pointer whitespace-nowrap flex items-center gap-1.5 bg-transparent border-none",
+                      isServicesActive
+                        ? "text-[#FCBF14]"
+                        : "text-white/85 hover:text-[#FCBF14]"
+                    )}
+                  >
+                    {link.name}
+                    <ChevronDown
+                      size={14}
+                      className={clsx(
+                        "transition-transform duration-200",
+                        servicesDropdownOpen && "rotate-180 text-[#FCBF14]"
+                      )}
+                    />
+                    {isServicesActive && (
+                      <motion.div
+                        layoutId="navbar-indicator"
+                        className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#FCBF14] rounded-full"
+                      />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {servicesDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-0 mt-2 w-80 bg-[#161616]/98 backdrop-blur-xl border border-white/15 rounded-2xl p-2.5 shadow-2xl z-50 text-left"
+                      >
+                        <Link
+                          to="/services?type=presentation"
+                          onClick={() => setServicesDropdownOpen(false)}
+                          className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/10 transition-colors group"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#FCBF14] transition-colors">
+                            <Layers size={18} className="text-[#FCBF14] group-hover:text-[#111111]" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-extrabold text-white group-hover:text-[#FCBF14] transition-colors">
+                              Presentation Design Services
+                            </div>
+                            <div className="text-[11px] text-gray-400 font-medium leading-tight mt-0.5">
+                              Investor pitch decks, keynotes, board decks & polish
+                            </div>
+                          </div>
+                        </Link>
+
+                        <div className="my-1 border-t border-white/10" />
+
+                        <Link
+                          to="/services?type=ecommerce"
+                          onClick={() => setServicesDropdownOpen(false)}
+                          className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/10 transition-colors group"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#FCBF14] transition-colors">
+                            <ShoppingBag size={18} className="text-[#FCBF14] group-hover:text-[#111111]" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-extrabold text-white group-hover:text-[#FCBF14] transition-colors flex items-center gap-2">
+                              E-Commerce Development
+                              <span className="text-[9px] font-black uppercase bg-[#FCBF14] text-[#111111] px-1.5 py-0.5 rounded">
+                                ₹25K
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-gray-400 font-medium leading-tight mt-0.5">
+                              Full-stack store, 500 products, Razorpay & accounts
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               );
             }
 
@@ -373,6 +468,36 @@ export default function Navbar() {
                     </button>
                   );
                 }
+                if ((link as any).hasDropdown) {
+                  return (
+                    <div key={link.name} className="flex flex-col items-center py-1">
+                      <Link
+                        to="/services"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="min-h-[44px] flex items-center justify-center text-xl font-heading font-extrabold text-white hover:text-[#FCBF14] transition-colors cursor-pointer"
+                      >
+                        {link.name}
+                      </Link>
+                      <div className="flex flex-col gap-1.5 w-full max-w-xs text-center pb-2 pt-1">
+                        <Link
+                          to="/services?type=presentation"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-xs font-bold text-gray-200 hover:text-white py-2 px-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center gap-2"
+                        >
+                          <Layers size={14} className="text-[#FCBF14]" /> PPT Designing Services
+                        </Link>
+                        <Link
+                          to="/services?type=ecommerce"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-xs font-bold text-gray-200 hover:text-white py-2 px-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center gap-2"
+                        >
+                          <ShoppingBag size={14} className="text-[#FCBF14]" /> E-Commerce Website Dev <span className="text-[9px] bg-[#FCBF14] text-[#111111] font-black px-1.5 rounded">₹25K</span>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={link.name}

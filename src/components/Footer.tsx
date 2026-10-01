@@ -116,7 +116,7 @@ export default function Footer() {
               <li><Link to="/services?service=keynote" onClick={scrollToTop} className="hover:text-primary transition-colors">Executive Keynotes</Link></li>
               <li><Link to="/services?service=data" onClick={scrollToTop} className="hover:text-primary transition-colors">Data Visualization</Link></li>
               <li><Link to="/services?service=template" onClick={scrollToTop} className="hover:text-primary transition-colors">Custom Templates</Link></li>
-              <li><Link to="/ecommerce" onClick={scrollToTop} className="hover:text-primary transition-colors text-white font-medium">Ecommerce Store (₹25K)</Link></li>
+              <li><Link to="/services?type=ecommerce" onClick={scrollToTop} className="hover:text-primary transition-colors text-white font-medium">Ecommerce Store (₹25K)</Link></li>
             </ul>
           </div>
 
