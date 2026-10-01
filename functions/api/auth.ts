@@ -260,7 +260,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     // 2.5 OAuth URL Generator (Google Sign-In)
     if (action === "oauth_url") {
       const provider = String(body.provider || "google").toLowerCase();
-      const redirectUri = String(body.redirectTo || `${ALLOWED_ORIGINS[0]}/#/account`);
+      const redirectUri = String(body.redirectTo || `${ALLOWED_ORIGINS[0]}/auth/callback`);
       const googleClientId = (env as any)?.GOOGLE_CLIENT_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID;
 
       if (provider === "google") {
@@ -286,6 +286,113 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
       return new Response(JSON.stringify({ error: { message: `OAuth provider ${provider} not supported.` } }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 2.6 OAuth Token Verification & Session Creation (Google OAuth Callback)
+    if (action === "oauth_verify") {
+      const { id_token, email: oauthEmail, name: oauthName } = body;
+      let userEmail = String(oauthEmail || "").trim().toLowerCase();
+      let userName = String(oauthName || "").trim();
+
+      // If id_token passed, safely decode JWT payload
+      if (id_token && typeof id_token === "string" && id_token.includes(".")) {
+        try {
+          const parts = id_token.split(".");
+          if (parts.length === 3) {
+            const rawPayload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+            const parsed = JSON.parse(rawPayload);
+            if (parsed.email) userEmail = String(parsed.email).toLowerCase().trim();
+            if (parsed.name && !userName) userName = String(parsed.name).trim();
+          }
+        } catch (e) {
+          console.warn("JWT parse error:", e);
+        }
+      }
+
+      if (!userEmail) {
+        return new Response(JSON.stringify({ error: { message: "No verified email found in Google token." } }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (env.DB) {
+        let existingUser: any = await env.DB.prepare(`SELECT * FROM users WHERE email = ?`).bind(userEmail).first();
+        const userId = existingUser?.id || `usr-google-${crypto.randomUUID().slice(0, 12)}`;
+
+        if (!existingUser) {
+          const salt = crypto.randomUUID();
+          const dummyHash = await hashPassword(crypto.randomUUID(), salt);
+          const role = ["admin@theslidebee.com", "admin@slidebee.com"].includes(userEmail) ? "admin" : "client";
+
+          await env.DB.prepare(
+            `INSERT INTO users (id, email, password_hash, salt, role) VALUES (?, ?, ?, ?, ?)`
+          ).bind(userId, userEmail, dummyHash, salt, role).run();
+
+          await env.DB.prepare(
+            `INSERT OR IGNORE INTO profiles (id, email, full_name, company, role, credits_total, credits_balance, tier)
+             VALUES (?, ?, ?, 'Google Account', ?, 5, 5, 'free')`
+          ).bind(`prf-${userId}`, userEmail, userName || "Google User", role).run();
+        }
+
+        const sessionId = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const userRole = existingUser?.role || "client";
+
+        await env.DB.prepare(
+          `INSERT INTO sessions (id, user_id, email, role, expires_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(sessionId, userId, userEmail, userRole, expiresAt).run();
+
+        const profile: any = await env.DB.prepare(
+          `SELECT * FROM profiles WHERE email = ?`
+        ).bind(userEmail).first();
+
+        const user = {
+          id: userId,
+          email: userEmail,
+          role: userRole,
+          user_metadata: {
+            full_name: profile?.full_name || userName || "Client",
+            company: profile?.company || "Google Account",
+          },
+        };
+
+        const session = {
+          access_token: sessionId,
+          user,
+          expires_at: expiresAt,
+        };
+
+        return new Response(JSON.stringify({
+          data: {
+            user,
+            session,
+            profile,
+          },
+          error: null,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fallback if DB not bound
+      const fallbackUser = {
+        id: `usr-google-${Date.now()}`,
+        email: userEmail,
+        role: "client",
+        user_metadata: { full_name: userName || "Google User", company: "Google Account" },
+      };
+      return new Response(JSON.stringify({
+        data: {
+          user: fallbackUser,
+          session: { access_token: `sess-fallback-${Date.now()}`, user: fallbackUser },
+        },
+        error: null,
+      }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

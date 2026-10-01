@@ -259,7 +259,7 @@ const edgeAuth = {
   async signInWithOAuth({ provider, options }: { provider: string; options?: { redirectTo?: string; queryParams?: any; scopes?: string } }) {
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://theslidebee.com';
-      const redirectUri = options?.redirectTo || `${origin}/#/account`;
+      const redirectUri = options?.redirectTo || `${origin}/auth/callback`;
 
       const res = await fetch('/api/auth', {
         method: 'POST',

@@ -25,6 +25,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import RefundPolicy from "./pages/RefundPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy";
+import AuthCallback from "./pages/AuthCallback";
 import ThankYou from "./pages/ThankYou";
 import Footer from "./components/Footer";
 import StickyMobileCTA from "./components/StickyMobileCTA";
@@ -54,6 +55,10 @@ const isOfficialProductionDomain =
    window.location.hostname === "slidebee.pages.dev");
 
 function App() {
+  if (typeof window !== "undefined" && (window.location.pathname.startsWith("/auth/callback") || window.location.pathname === "/auth/callback")) {
+    return <AuthCallback />;
+  }
+
   if (isOfficialProductionDomain) {
     return (
       <CurrencyProvider>
@@ -119,6 +124,7 @@ function App() {
               <Route path="/ecommerce" element={<Navigate to="/services?type=ecommerce" replace />} />
               <Route path="/ecommerce-development" element={<Navigate to="/services?type=ecommerce" replace />} />
               <Route path="/services/ecommerce" element={<Navigate to="/services?type=ecommerce" replace />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/thank-you" element={<ThankYou />} />
               <Route path="*" element={<NotFound />} />
             </Route>

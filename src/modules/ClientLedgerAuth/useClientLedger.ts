@@ -288,7 +288,7 @@ export function useClientLedger() {
   // Google OAuth One-Click Sign In
   const signInWithGoogle = async () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://theslidebee.com";
-    const redirectTo = `${origin}/#/account`;
+    const redirectTo = `${origin}/auth/callback`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
