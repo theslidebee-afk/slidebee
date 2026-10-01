@@ -184,13 +184,16 @@ export default function Home() {
   };
 
   // Scroll to search stage so search controls and template cards are both visible at top of viewport
-  const scrollToSearchStage = (ms = 50) => {
+  const scrollToSearchStage = (ms = 40) => {
     setTimeout(() => {
       const searchCard = document.getElementById("hero-search-card");
       if (searchCard) {
-        const navOffset = 96; // Generous cushion ensuring search card top border & rounded corners are 100% visible below navbar
+        const navOffset = 108; // 80px fixed navbar height + 28px top breathing room
         const cardTop = searchCard.getBoundingClientRect().top + window.pageYOffset;
-        window.scrollTo({ top: Math.max(0, cardTop - navOffset), behavior: "smooth" });
+        const targetY = Math.max(0, cardTop - navOffset);
+        if (Math.abs(window.pageYOffset - targetY) > 8) {
+          window.scrollTo({ top: targetY, behavior: "smooth" });
+        }
       } else {
         document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" });
       }
@@ -390,7 +393,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full overflow-hidden flex flex-col items-center bg-[#111111] pt-18 sm:pt-22 lg:pt-24 pb-4 sm:pb-6"
+        className="relative w-full overflow-hidden flex flex-col items-center bg-[#111111] pt-20 sm:pt-24 lg:pt-28 pb-6 sm:pb-8"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -643,6 +646,9 @@ export default function Home() {
                   value={searchQuery}
                   onFocus={() => {
                     setIsSearchFocused(true);
+                    if (window.scrollY < 280) {
+                      scrollToSearchStage(20);
+                    }
                   }}
                   onBlur={() => {
                     setIsSearchFocused(false);
