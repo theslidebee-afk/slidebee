@@ -63,6 +63,21 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const { action = "session", email, password, full_name, company, sessionId, deviceInfo } = body;
     const cleanEmail = String(email || "").trim().toLowerCase();
 
+    // Diagnostic check for OAuth environment configuration
+    if (action === "diag_env") {
+      const allKeys = Object.keys(env || {});
+      const hasClientId = Boolean((env as any)?.GOOGLE_CLIENT_ID || (env as any)?.GOOGLE_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID);
+      const hasClientSecret = Boolean((env as any)?.GOOGLE_CLIENT_SECRET || (env as any)?.GOOGLE_SECRET || (env as any)?.VITE_GOOGLE_CLIENT_SECRET);
+      return new Response(JSON.stringify({
+        hasClientId,
+        hasClientSecret,
+        configuredKeys: allKeys.map(k => k.includes("SECRET") || k.includes("KEY") || k.includes("PASSWORD") ? `${k}(secured)` : k),
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 1. Session Validation Action
     if (action === "session") {
       const token = sessionId || request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
