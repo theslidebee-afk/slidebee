@@ -20,6 +20,7 @@ export default function AuthCallback() {
 
         const idToken = hashParams.get("id_token") || searchParams.get("id_token");
         const accessToken = hashParams.get("access_token") || searchParams.get("access_token");
+        const authCode = searchParams.get("code") || hashParams.get("code");
 
         // Decode JWT payload if id_token exists
         let userEmail = "";
@@ -44,7 +45,7 @@ export default function AuthCallback() {
           }
         }
 
-        if (!idToken && !accessToken && !userEmail) {
+        if (!idToken && !accessToken && !authCode && !userEmail) {
           // Check if session already exists
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
@@ -69,6 +70,7 @@ export default function AuthCallback() {
             action: "oauth_verify",
             id_token: idToken,
             access_token: accessToken,
+            code: authCode,
             email: userEmail,
             name: userName,
           }),

@@ -7,6 +7,8 @@ interface Env {
   SLIDEBEE_ADMIN_SECRET?: string;
   SLIDEBEE_APP_TOKEN?: string;
   SLIDEBEE_ADMIN_PASSWORD?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 const ALLOWED_ORIGINS = [
@@ -308,6 +310,38 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           }
         } catch (e) {
           console.warn("JWT parse error:", e);
+        }
+      }
+
+      // If authorization code is provided, exchange with Google using GOOGLE_CLIENT_SECRET
+      if (body.code && env.GOOGLE_CLIENT_SECRET) {
+        try {
+          const clientId = env.GOOGLE_CLIENT_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID;
+          const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              code: String(body.code),
+              client_id: String(clientId || ""),
+              client_secret: String(env.GOOGLE_CLIENT_SECRET),
+              redirect_uri: String(body.redirect_uri || `${ALLOWED_ORIGINS[0]}/auth/callback`),
+              grant_type: "authorization_code",
+            }),
+          });
+          if (tokenRes.ok) {
+            const tokenJson: any = await tokenRes.json();
+            if (tokenJson.id_token) {
+              const parts = tokenJson.id_token.split(".");
+              if (parts.length === 3) {
+                const rawPayload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+                const parsed = JSON.parse(rawPayload);
+                if (parsed.email) userEmail = String(parsed.email).toLowerCase().trim();
+                if (parsed.name && !userName) userName = String(parsed.name).trim();
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Google code exchange error:", e);
         }
       }
 
