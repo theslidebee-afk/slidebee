@@ -934,8 +934,8 @@ export default function Home() {
             </div>
           ) : (
             <>
-              {/* 6-Column Magnet Masonry Layout with Live Pop-Up Physics */}
-              <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3.5 sm:gap-4">
+              {/* 6-Column Structured Grid Layout with Live Pop-Up Physics */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4 items-start">
                 <AnimatePresence mode="popLayout">
                   {displayedContinuousTemplates.map((item) => (
                     <motion.div
@@ -950,7 +950,7 @@ export default function Home() {
                         damping: 24,
                         mass: 0.8,
                       }}
-                      className="break-inside-avoid mb-4 sm:mb-5"
+                      className="w-full"
                     >
                       {renderShowcaseCard(item)}
                     </motion.div>
