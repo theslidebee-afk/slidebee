@@ -3,8 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   Zap,
-  Users,
-  Gift,
   Infinity as InfinityIcon,
   ArrowRight,
   Search,
@@ -32,14 +30,14 @@ export default function Home() {
 
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
+  const templatesRef = useRef<HTMLElement>(null);
 
-  // Window scroll-driven motion: templates slide up in direct 1:1 sync with scroll
+  // Window scroll-driven motion
   const { scrollY } = useScroll();
   const heroCardY = useTransform(scrollY, [0, 480], [0, -30]);
   const heroCardOpacity = useTransform(scrollY, [0, 450], [1, 0.7]);
   const videoScale = useTransform(scrollY, [0, 500], [1, 0.98]);
   const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.85]);
-  const templatesSlideUpY = useTransform(scrollY, [0, 420], [80, 0]);
 
 
   // Helper to extract inner preview slide thumbnails for SlideEgg-style showcase cards
@@ -86,6 +84,33 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
+  const isSearching = isSearchFocused || searchQuery.trim().length > 0;
+  const [dockOffset, setDockOffset] = useState<number>(320);
+
+  // Measure exact resting distance so templates sheet rises up and docks seamlessly below the search card
+  useEffect(() => {
+    if (isSearching) return;
+    const calculateOffset = () => {
+      const heroEl = heroRef.current;
+      if (heroEl) {
+        // In search mode, the compact search card sits at pt-20/pt-24 (~88px) and is ~136px tall.
+        // So the card bottom is at ~224px from the top of hero.
+        // To dock right beneath it, templates must bridge the remaining height of the hero stage:
+        const targetOffset = heroEl.offsetHeight - 224;
+        if (targetOffset > 0) {
+          setDockOffset(Math.round(targetOffset + 12));
+        }
+      }
+    };
+
+    calculateOffset();
+    const timer = setTimeout(calculateOffset, 250);
+    window.addEventListener("resize", calculateOffset);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", calculateOffset);
+    };
+  }, [isSearching]);
   const [categoriesList, setCategoriesList] = useState<string[]>([
     "Pitch Decks",
     "Business",
@@ -378,7 +403,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
+        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#111111] pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-14 transition-all duration-300"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -405,7 +430,17 @@ export default function Home() {
         >
           
           {/* Top Split Promotion Banners (Center aligned with central card) */}
-          <div className="w-full max-w-5xl lg:max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
+          <motion.div
+            animate={{
+              opacity: isSearching ? 0 : 1,
+              y: isSearching ? -28 : 0,
+              height: isSearching ? 0 : "auto",
+              marginBottom: isSearching ? 0 : 20,
+            }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-5xl lg:max-w-6xl mx-auto overflow-hidden"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5 sm:mb-6">
             
             {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
             {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (
@@ -577,111 +612,63 @@ export default function Home() {
               </div>
             )}
 
-          </div>
+            </div>
+          </motion.div>
           
-          {/* Central Translucent Frosted Glass Card */}
-          <div
-            className="w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/85 sm:bg-[#FFFDF5]/90 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[48px] py-8 sm:py-12 lg:py-14 px-6 sm:px-12 lg:px-16 text-center shadow-[0_30px_90px_rgba(0,0,0,0.24)] flex flex-col items-center justify-center transition-all"
+          {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
+          <motion.div
+            id="hero-search-card"
+            layout
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className={`w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
+              isSearching ? "p-4 sm:p-5" : "p-5 sm:p-7 lg:p-8"
+            }`}
           >
-            
-            {/* Eyebrow */}
-            <div className="mb-3 sm:mb-4">
-              <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-5 py-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-xs">
-                {heroConfig.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
-              </span>
-            </div>
 
-            {/* Bold Display Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-heading font-black text-[#111111] leading-[1.08] tracking-tight mb-4 max-w-3xl whitespace-pre-line">
-              {heroConfig.title || "Ideas Deserve\nBetter Slides."}
-            </h1>
-
-            {/* Subtitle */}
-            <p className="text-xs sm:text-base lg:text-lg text-[#555250] font-medium leading-relaxed max-w-3xl mx-auto mb-6 sm:mb-7 whitespace-pre-line">
-              {heroConfig.subtitle || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."}
-            </p>
-
-            {/* Trust Indicators Row */}
-            <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-8 pt-5 border-t border-[#111111]/10 w-full">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber fill-[#FCBF14]" />
-                <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                  Professional Quality
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#111111]" />
-                <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                  Trusted by Creators & Teams
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-primary-amber" />
-                <span className="text-xs sm:text-sm font-bold text-[#111111]">
-                  Save Time. Present Better.
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Playful Note Beneath Hero Stage */}
-          <div className="mt-4 sm:mt-5 text-center">
-            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
-              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
-              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
-              </svg>
-            </span>
-          </div>
-
-        </motion.div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
-      {/* ========================================================================= */}
-      <motion.section
-        id="templates"
-        style={{ y: templatesSlideUpY }}
-        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-8 sm:-mt-14"
-      >
-        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
-          
-          {/* Top Catalog Header & Filter Navigation Bar with Animated Search */}
-          <div className="mb-8 sm:mb-10 space-y-4 sm:space-y-5">
-            
             {/* Row 1: Section Heading & Summary */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-[#726F6D]">
-                    Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
-                  </span>
+            <motion.div
+              animate={{
+                opacity: isSearching ? 0 : 1,
+                height: isSearching ? 0 : "auto",
+                marginBottom: isSearching ? 0 : 16,
+              }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 pt-1">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="hex-pill inline-block bg-white/90 border border-primary/40 text-primary-amber px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider">
+                      {heroConfig?.badge || "PRESENTATIONS FOR A BRIGHTER TOMORROW"}
+                    </span>
+                    <span className="text-xs font-bold text-[#726F6D]">
+                      Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
+                    </span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
+                    {heroConfig?.headline || "Explore Executive Presentation Templates"}
+                  </h2>
                 </div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-black text-[#111111] tracking-tight">
-                  Explore Executive Presentation Templates
-                </h2>
-              </div>
 
-              {/* Master Format Deliverable Badge */}
-              <div className="flex items-center gap-2 self-start md:self-auto">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-2 rounded-xl border border-[#111111]/10 shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
-                  <span>Master PowerPoint (.pptx) & Google Slides</span>
+                {/* Master Format Deliverable Badge */}
+                <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3.5 py-2 rounded-xl border border-[#111111]/10 shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-[#FCBF14]" />
+                    <span>Master PowerPoint (.pptx) & Google Slides</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Row 2: Live Search Input & Access Tier Toggles Strip */}
-            <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 transition-all duration-300">
+            <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-3.5 transition-all duration-300">
               
               {/* Live Search Input - Kinetic Expansion on Focus */}
               <motion.div
                 layout
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 className={`relative flex-1 transition-all duration-300 ${
-                  isSearchFocused || searchQuery.trim().length > 0 ? "md:flex-[2.8]" : "md:flex-1"
+                  isSearching ? "md:flex-[2.8]" : "md:flex-1"
                 }`}
               >
                 <Search
@@ -699,6 +686,9 @@ export default function Home() {
                   value={searchQuery}
                   onFocus={() => {
                     setIsSearchFocused(true);
+                    if (window.scrollY > 40) {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
                   }}
                   onBlur={() => {
                     setIsSearchFocused(false);
@@ -706,6 +696,11 @@ export default function Home() {
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setVisibleCount(24);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
                   }}
                   className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
                     isSearchFocused
@@ -733,7 +728,7 @@ export default function Home() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Access Tier Filter Pills - Gentle contract when search is focused */}
+              {/* Access Tier Filter Pills */}
               <motion.div
                 layout
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
@@ -845,7 +840,47 @@ export default function Home() {
               })}
             </div>
 
-          </div>
+          </motion.div>
+
+          {/* Playful Note Beneath Hero Stage */}
+          <motion.div
+            animate={{
+              opacity: isSearching ? 0 : 1,
+              height: isSearching ? 0 : "auto",
+              marginTop: isSearching ? 0 : 16,
+            }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden text-center"
+          >
+            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
+              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
+              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
+              </svg>
+            </span>
+          </motion.div>
+
+        </motion.div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
+      {/* ========================================================================= */}
+      <motion.section
+        id="templates"
+        ref={templatesRef}
+        animate={{
+          marginTop: isSearching ? -dockOffset : -32,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 230,
+          damping: 26,
+          mass: 0.85,
+        }}
+        className="scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-6 sm:pt-8 pb-20"
+      >
+        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
 
           {/* Catalog Content (6-Column Magnet Masonry or Loading / Empty States) */}
           {loading ? (
