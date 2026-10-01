@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { d1 as supabase } from "../lib/d1";
+import { sendWelcomeEmail } from "../lib/email";
 
 export default function AuthCallback() {
   const [status, setStatus] = useState("Verifying Google authorization...");
@@ -85,6 +86,15 @@ export default function AuthCallback() {
           if (json?.data?.session) {
             localStorage.setItem("slidebee_edge_session", JSON.stringify(json.data.session));
             localStorage.setItem("slidebee_client_user", JSON.stringify(json.data.user));
+
+            if (json?.data?.is_new_user) {
+              sendWelcomeEmail({
+                clientName: userName || userEmail.split("@")[0],
+                clientEmail: userEmail,
+                company: "Google Account",
+              }).catch((err) => console.warn("Welcome email notice:", err));
+            }
+
             setStatus("Success! Entering your Client Portal...");
             setTimeout(() => {
               window.location.replace("/#/account");

@@ -382,6 +382,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
       if (env.DB) {
         let existingUser: any = await env.DB.prepare(`SELECT * FROM users WHERE email = ?`).bind(userEmail).first();
+        const isNewUser = !existingUser;
         const userId = existingUser?.id || `usr-google-${crypto.randomUUID().slice(0, 12)}`;
 
         if (!existingUser) {
@@ -397,6 +398,16 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
             `INSERT OR IGNORE INTO profiles (id, email, full_name, company, role, credits_total, credits_balance, tier)
              VALUES (?, ?, ?, 'Google Account', ?, 5, 5, 'free')`
           ).bind(`prf-${userId}`, userEmail, userName || "Google User", role).run();
+
+          // Log registration event in auth_logs
+          await env.DB.prepare(
+            `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'SIGNUP', ?)`
+          ).bind(crypto.randomUUID(), userEmail, JSON.stringify({ provider: "google" })).run();
+        } else {
+          // Log login event in auth_logs
+          await env.DB.prepare(
+            `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'LOGIN', ?)`
+          ).bind(crypto.randomUUID(), userEmail, JSON.stringify({ provider: "google" })).run();
         }
 
         const sessionId = crypto.randomUUID();
@@ -432,6 +443,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
             user,
             session,
             profile,
+            is_new_user: isNewUser,
           },
           error: null,
         }), {
