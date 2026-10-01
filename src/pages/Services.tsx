@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 as supabase } from "../lib/d1";
 import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { Suspended3DCarousel } from "../components/Suspended3DCarousel";
 import { 

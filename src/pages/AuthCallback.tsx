@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { d1 as supabase } from "../lib/d1";
 
 export default function AuthCallback() {
   const [status, setStatus] = useState("Verifying Google authorization...");

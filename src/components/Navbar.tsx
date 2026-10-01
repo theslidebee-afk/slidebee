@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
-import { supabase } from "../lib/supabase";
+import { d1 as supabase } from "../lib/d1";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 as supabase } from "../../lib/d1";
 import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
 import { sendWelcomeEmail } from "../../lib/email";
 import { isDisposableEmail, getDeviceFingerprint } from "../../lib/deviceFingerprint";
