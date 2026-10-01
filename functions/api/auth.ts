@@ -263,7 +263,10 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     if (action === "oauth_url") {
       const provider = String(body.provider || "google").toLowerCase();
       const redirectUri = String(body.redirectTo || `${ALLOWED_ORIGINS[0]}/auth/callback`);
-      const googleClientId = (env as any)?.GOOGLE_CLIENT_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID;
+      const googleClientId =
+        (env as any)?.GOOGLE_CLIENT_ID ||
+        (env as any)?.GOOGLE_ID ||
+        (env as any)?.VITE_GOOGLE_CLIENT_ID;
 
       if (provider === "google") {
         if (googleClientId) {
@@ -314,16 +317,24 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
 
       // If authorization code is provided, exchange with Google using GOOGLE_CLIENT_SECRET
-      if (body.code && env.GOOGLE_CLIENT_SECRET) {
+      const clientSecret =
+        env.GOOGLE_CLIENT_SECRET ||
+        (env as any)?.GOOGLE_SECRET ||
+        (env as any)?.VITE_GOOGLE_CLIENT_SECRET;
+      const clientId =
+        env.GOOGLE_CLIENT_ID ||
+        (env as any)?.GOOGLE_ID ||
+        (env as any)?.VITE_GOOGLE_CLIENT_ID;
+
+      if (body.code && clientSecret) {
         try {
-          const clientId = env.GOOGLE_CLIENT_ID || (env as any)?.VITE_GOOGLE_CLIENT_ID;
           const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
               code: String(body.code),
               client_id: String(clientId || ""),
-              client_secret: String(env.GOOGLE_CLIENT_SECRET),
+              client_secret: String(clientSecret),
               redirect_uri: String(body.redirect_uri || `${ALLOWED_ORIGINS[0]}/auth/callback`),
               grant_type: "authorization_code",
             }),
