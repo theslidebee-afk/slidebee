@@ -184,11 +184,11 @@ export default function Home() {
   };
 
   // Scroll to search stage so search controls and template cards are both visible at top of viewport
-  const scrollToSearchStage = (ms = 70) => {
+  const scrollToSearchStage = (ms = 50) => {
     setTimeout(() => {
       const searchCard = document.getElementById("hero-search-card");
       if (searchCard) {
-        const navOffset = 76; // Accommodate fixed top navbar
+        const navOffset = 96; // Generous cushion ensuring search card top border & rounded corners are 100% visible below navbar
         const cardTop = searchCard.getBoundingClientRect().top + window.pageYOffset;
         window.scrollTo({ top: Math.max(0, cardTop - navOffset), behavior: "smooth" });
       } else {
@@ -390,7 +390,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center bg-[#111111] pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14"
+        className="relative w-full overflow-hidden flex flex-col items-center bg-[#111111] pt-18 sm:pt-22 lg:pt-24 pb-4 sm:pb-6"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -604,7 +604,7 @@ export default function Home() {
                   Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
                 </span>
                 <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
-                  Explore Executive Presentation Templates
+                  {heroConfig?.headline || "Explore Executive Presentation Templates"}
                 </h2>
               </div>
 
@@ -648,8 +648,12 @@ export default function Home() {
                     setIsSearchFocused(false);
                   }}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
+                    const val = e.target.value;
+                    setSearchQuery(val);
                     setVisibleCount(24);
+                    if (val.trim().length > 0 && window.scrollY < 260) {
+                      scrollToSearchStage(40);
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -802,16 +806,6 @@ export default function Home() {
 
           </div>
 
-          {/* Playful Note Beneath Hero Stage */}
-          <div className="mt-4 sm:mt-5 text-center">
-            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
-              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
-              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
-              </svg>
-            </span>
-          </div>
-
         </motion.div>
       </section>
 
@@ -821,12 +815,12 @@ export default function Home() {
       <motion.section
         id="templates"
         style={{ y: templatesSlideUpY }}
-        className="scroll-mt-16 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] pt-12 sm:pt-16 pb-20 -mt-8 sm:-mt-14"
+        className="scroll-mt-24 relative z-10 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[48px] border-t-2 border-[#FCBF14]/40 shadow-[0_-25px_60px_rgba(0,0,0,0.22)] pt-6 sm:pt-8 pb-20 -mt-2 sm:-mt-4"
       >
         <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
           
           {/* Quick Active Filter Status Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-[#111111]/10">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-[#111111]/8">
             <div className="flex items-center gap-2 text-xs font-bold text-[#726F6D]">
               <span>Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates</span>
               {activeSidebarCategory !== "all" && (
@@ -887,19 +881,28 @@ export default function Home() {
             </div>
           ) : (
             <>
-              {/* 6-Column Magnet Masonry Layout */}
+              {/* 6-Column Magnet Masonry Layout with Live Pop-Up Physics */}
               <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3.5 sm:gap-4">
-                {displayedContinuousTemplates.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="break-inside-avoid mb-4 sm:mb-5"
-                  >
-                    {renderShowcaseCard(item)}
-                  </motion.div>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {displayedContinuousTemplates.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.88, y: 16 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.88, y: 16 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 24,
+                        mass: 0.8,
+                      }}
+                      className="break-inside-avoid mb-4 sm:mb-5"
+                    >
+                      {renderShowcaseCard(item)}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
               {/* Continuous / Endless Load More Button */}
