@@ -1,52 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import ScrollToTop from "./components/ScrollToTop";
-import { useSessionEnforcer } from "./hooks/useSessionEnforcer";
-import Navbar from "./components/Navbar";
-
-function SessionGuardWatcher() {
-  useSessionEnforcer();
-  return null;
-}
-import Home from "./pages/Home";
-import TemplateDetail from "./pages/TemplateDetail";
-import Services from "./pages/Services";
-import OrderNow from "./pages/OrderNow";
-import Examples from "./pages/Examples";
-import About from "./pages/About";
-import Pricing from "./pages/Pricing";
-import Contact from "./pages/Contact";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import ComingSoon from "./pages/ComingSoon";
+import Admin from "./pages/Admin";
+import { CurrencyProvider } from "./context/CurrencyContext";
+
 import Blog from "./pages/Blog";
 import BlogDetail from "./pages/BlogDetail";
-import Login from "./pages/Login";
-import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import RefundPolicy from "./pages/RefundPolicy";
-import ShippingPolicy from "./pages/ShippingPolicy";
-import AuthCallback from "./pages/AuthCallback";
-import ThankYou from "./pages/ThankYou";
-import Footer from "./components/Footer";
-import StickyMobileCTA from "./components/StickyMobileCTA";
-import CookieBanner from "./components/CookieBanner";
-import { CurrencyProvider } from "./context/CurrencyContext";
-import { BeeCursorProvider } from "./context/BeeCursorContext";
-import { CustomBeeCursor } from "./components/CustomBeeCursor";
-
-function PublicLayout() {
-  return (
-    <>
-      <Navbar />
-      <main className="flex-grow">
-        <Outlet />
-      </main>
-      <Footer />
-      <StickyMobileCTA />
-      <CookieBanner />
-    </>
-  );
-}
 
 function App() {
   if (typeof window !== "undefined" && (window.location.pathname.startsWith("/auth/callback") || window.location.pathname === "/auth/callback")) {
@@ -62,48 +20,15 @@ function App() {
           <SessionGuardWatcher />
           <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
           <Routes>
-            {/* 1. Admin Studio (no public Navbar or Footer) */}
+            {/* 1. Admin Studio Portal */}
             <Route path="/admin/*" element={<Admin />} />
 
-            {/* 2. Coming Soon (available via explicit URL) */}
-            <Route path="/coming-soon" element={<ComingSoon />} />
+            {/* 2. SEO Playbook Blogs (Indexed by Google) */}
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogDetail />} />
 
-            {/* 3. Full Platform Pages with Public Layout */}
-            <Route element={<PublicLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/templates" element={<Navigate to="/#templates" replace />} />
-              <Route path="/templates/:id" element={<TemplateDetail />} />
-              <Route path="/template/:id" element={<TemplateDetail />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/ordernow" element={<OrderNow />} />
-              <Route path="/order" element={<OrderNow />} />
-              <Route path="/examples" element={<Examples />} />
-              <Route path="/portfolio" element={<Examples />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/account" element={<Login />} />
-              <Route path="/reset-password" element={<Login />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:id" element={<BlogDetail />} />
-              <Route path="/media/blog" element={<Blog />} />
-              <Route path="/media/blog/:id" element={<BlogDetail />} />
-              <Route path="/videos" element={<Navigate to="/blog" replace />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/refund-policy" element={<RefundPolicy />} />
-              <Route path="/cancellation-refund-policy" element={<RefundPolicy />} />
-              <Route path="/shipping-delivery-policy" element={<ShippingPolicy />} />
-              <Route path="/delivery-policy" element={<ShippingPolicy />} />
-              <Route path="/ecommerce" element={<Navigate to="/services?type=ecommerce" replace />} />
-              <Route path="/ecommerce-development" element={<Navigate to="/services?type=ecommerce" replace />} />
-              <Route path="/services/ecommerce" element={<Navigate to="/services?type=ecommerce" replace />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/thank-you" element={<ThankYou />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
+            {/* 3. Production Launch Gate: Coming Soon Only (Until Client Handover) */}
+            <Route path="*" element={<ComingSoon />} />
           </Routes>
         </div>
       </Router>
