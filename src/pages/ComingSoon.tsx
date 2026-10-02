@@ -8,8 +8,26 @@ import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function ComingSoon() {
   usePageSEO({
-    title: "SlideBee | Early Access & Private Studio Updates",
-    description: "Join the SlideBee community for early access to curated executive PowerPoint templates, quarterly pitch deck drops, and bespoke slide design.",
+    title: "SlideBee | Executive PowerPoint Presentation Templates & Bespoke Design Studio",
+    description: "SlideBee is an executive presentation design studio and curated template marketplace for PowerPoint (.pptx) and Google Slides. Early access and studio waitlist.",
+    keywords: [
+      "SlideBee",
+      "presentation design",
+      "pitch deck design",
+      "PowerPoint templates",
+      "executive presentation studio",
+      "Google Slides template",
+      "keynote presentation design"
+    ],
+    canonicalUrl: "https://theslidebee.com/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://theslidebee.com/",
+      "name": "SlideBee",
+      "alternateName": ["Slide Bee", "TheSlideBee", "theslidebee.com"],
+      "description": "Executive PowerPoint Presentation Templates & Bespoke Slide Design Studio"
+    }
   });
 
   const [email, setEmail] = useState("");
