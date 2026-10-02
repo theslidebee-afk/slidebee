@@ -3,6 +3,9 @@ import ComingSoon from "./pages/ComingSoon";
 import Admin from "./pages/Admin";
 import { CurrencyProvider } from "./context/CurrencyContext";
 
+import Blog from "./pages/Blog";
+import BlogDetail from "./pages/BlogDetail";
+
 function App() {
   return (
     <CurrencyProvider>
@@ -12,7 +15,11 @@ function App() {
             {/* 1. Admin Studio Portal */}
             <Route path="/admin/*" element={<Admin />} />
 
-            {/* 2. Production Launch Gate: Coming Soon Only (Until Client Handover) */}
+            {/* 2. SEO Playbook Blogs (Indexed by Google) */}
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogDetail />} />
+
+            {/* 3. Production Launch Gate: Coming Soon Only (Until Client Handover) */}
             <Route path="*" element={<ComingSoon />} />
           </Routes>
         </div>
