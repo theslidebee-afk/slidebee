@@ -30,6 +30,7 @@ export function usePageSEO({ title, description, canonicalUrl, ogType = "website
     setMetaTag("property", "og:title", formattedTitle);
     setMetaTag("property", "og:description", description);
     setMetaTag("property", "og:type", ogType);
+    setMetaTag("property", "og:site_name", "SlideBee");
     setMetaTag("property", "twitter:title", formattedTitle);
     setMetaTag("property", "twitter:description", description);
 
