@@ -8,8 +8,8 @@ import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function ComingSoon() {
   usePageSEO({
-    title: "SlideBee | The Executive Presentation Studio (Opening Soon)",
-    description: "SlideBee is launching soon. Join the exclusive waitlist for early access to executive PowerPoint templates and bespoke slide design.",
+    title: "SlideBee | Early Access & Private Studio Updates",
+    description: "Join the SlideBee community for early access to curated executive PowerPoint templates, quarterly pitch deck drops, and bespoke slide design.",
   });
 
   const [email, setEmail] = useState("");

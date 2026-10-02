@@ -24,8 +24,19 @@ import { d1 } from "../lib/d1";
 
 export default function Home() {
   usePageSEO({
-    title: "SlideBee | Ideas Deserve Better Slides | Executive PowerPoint Templates & Design Studio",
-    description: "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact. Browse our continuous template marketplace or hire an executive presentation designer.",
+    title: "SlideBee | Executive PowerPoint Presentation Templates & Bespoke Design Studio",
+    description: "SlideBee is a premier presentation design studio and marketplace for PowerPoint (.pptx) and Google Slides. Investor pitch decks, business templates, and bespoke slide design.",
+    keywords: [
+      "presentation design",
+      "powerpoint templates",
+      "pitch deck design",
+      "google slides templates",
+      "executive presentation studio",
+      "investor deck design",
+      "infographic slides",
+      "business presentation templates"
+    ],
+    canonicalUrl: "https://theslidebee.com/"
   });
 
   const navigate = useNavigate();

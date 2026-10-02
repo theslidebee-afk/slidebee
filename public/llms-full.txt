@@ -52,9 +52,13 @@
 8. **Data Visualization in Presentations: Turning Complex Spreadsheets into Persuasive Charts** (`https://theslidebee.com/blog/8`):
    - Decluttering data-ink ratios, waterfall chart reconciliations, cohort heatmaps, and isolating hero metrics.
 9. **The Anatomy of a High-Converting B2B Sales Deck** (`https://theslidebee.com/blog/9`):
-   - The 5-part consensus framework: Undeniable Shift, Winners vs Losers, Promised Land, Magic Gifts, and Verifiable Proof.
+   - Category: Strategy. The 5-part consensus framework: Undeniable Shift, Winners vs Losers, Promised Land, Magic Gifts, and Verifiable Proof.
 10. **Essential SEO & Digital Storefront Checklist for Growing Businesses in 2026** (`https://theslidebee.com/blog/10`):
-    - Technical SEO audit covering Google Search Console, JSON-LD Schema, XML sitemaps, and Core Web Vitals (LCP, INP, CLS).
+    - Category: Marketing. Technical SEO audit covering Google Search Console, JSON-LD Schema, XML sitemaps, and Core Web Vitals (LCP, INP, CLS).
+11. **Corporate Board Deck Architecture: How C-Suites Communicate Strategic Execution** (`https://theslidebee.com/blog/11`):
+    - Category: Corporate. Frameworks for executive committee updates, quarterly risk registers, governance alignment, and strategic KPI scorecards.
+12. **Mastering Financial Modeling Presentations: Bridging DCFs, EBITDA, and Capital Allocation** (`https://theslidebee.com/blog/12`):
+    - Category: Finance. Transform complex valuation models, unit economics bridges, sensitivity analyses, and capital expenditure decks into crisp investor slides.
 
 ## Official Canonical Links
 - Home: https://theslidebee.com/

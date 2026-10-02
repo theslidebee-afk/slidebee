@@ -17,17 +17,19 @@
 - Dedicated Designer Retainer: $1,490 / ₹1,19,000 per month (pause/cancel anytime)
 - Complete Ecommerce Storefront: ₹25,000 one-time (500 products, Razorpay, Cloudflare, Zoho email)
 
-## Presentation Playbook & Strategy Guides
-- [The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade](https://theslidebee.com/blog/1): Ex-McKinsey focal points and cognitive load reduction.
-- [How to Design a Series A Pitch Deck That Secures Partner Meetings](https://theslidebee.com/blog/2): The 12-slide venture capital fundraising framework.
-- [Building an Enterprise Master Template System That Teams Actually Use](https://theslidebee.com/blog/3): Layout locking and modular drag-and-drop slide architecture.
-- [Top 10 Presentation Design Best Practices for High-Stakes Keynotes](https://theslidebee.com/blog/4): Contrast, 30-foot visibility, and stage visual direction.
-- [PowerPoint vs Google Slides vs Keynote: Which is Best for Executives?](https://theslidebee.com/blog/5): Tool comparison across typography, collaboration, and enterprise policies.
-- [How Much Does Professional Presentation Design Cost in 2026?](https://theslidebee.com/blog/6): Agency pricing breakdown, freelance risks, and studio SLAs.
-- [Complete Ecommerce Website Development Guide for Modern Brands](https://theslidebee.com/blog/7): The ₹25,000 all-inclusive launch architecture.
-- [Data Visualization in Presentations: Turning Complex Spreadsheets into Persuasive Charts](https://theslidebee.com/blog/8): Decluttering data-ink and isolating hero metrics.
-- [The Anatomy of a High-Converting B2B Sales Deck](https://theslidebee.com/blog/9): 5-part consultative consensus framework.
-- [Essential SEO & Digital Storefront Checklist for Growing Businesses in 2026](https://theslidebee.com/blog/10): Technical SEO, Schema.org rich snippets, XML sitemaps, and INP metrics.
+## Presentation Playbook & Category Guides
+- [Strategy: The 3-Second Rule: Why Most C-Suite Strategy Slides Fail to Persuade](https://theslidebee.com/blog/1): Ex-McKinsey focal points and strategic slide problem solving.
+- [Pitch Decks: How to Design a Series A Pitch Deck That Secures Partner Meetings](https://theslidebee.com/blog/2): The 12-slide venture capital fundraising framework in PowerPoint & Google Slides.
+- [Corporate: Building an Enterprise Corporate Presentation Template System That Teams Actually Use](https://theslidebee.com/blog/3): Layout locking and modular slide master architecture for 500+ employee teams.
+- [Business: Top 10 Executive Business Presentation Best Practices for High-Stakes Keynotes](https://theslidebee.com/blog/4): Boardroom contrast, 30-foot visibility, and executive visual direction.
+- [Business: PowerPoint vs Google Slides vs Keynote: The Enterprise Executive Comparison](https://theslidebee.com/blog/5): Tool comparison across typography, collaboration, and enterprise policies.
+- [Finance: Financial Presentation Design: How to Present Unit Economics, M&A & Models](https://theslidebee.com/blog/6): Waterfall charts, margin bridges, and CFO financial storytelling.
+- [Business: Complete Ecommerce Website Development Guide for Modern Brands](https://theslidebee.com/blog/7): The ₹25,000 all-inclusive launch architecture.
+- [Infographics: Infographic Presentation Design: Turning Complex Data & Workflows into Slides](https://theslidebee.com/blog/8): Process flow diagrams, swimlane visualizers, and circular roadmaps.
+- [Marketing: Designing High-Impact Marketing Presentation Decks for Product Launches & GTM](https://theslidebee.com/blog/9): Go-to-market slides, positioning wedge, and campaign KPI visualizers.
+- [Strategy: The Anatomy of a High-Converting B2B Strategic Proposal Deck](https://theslidebee.com/blog/10): 5-part consultative consensus framework for enterprise committees.
+- [Finance: How Much Does Professional Presentation Design Cost in 2026?](https://theslidebee.com/blog/11): Agency pricing breakdown, per-slide costs, and global ROI comparisons.
+- [Corporate: Essential Technical SEO, GEO & Digital Discovery Architecture for Modern Presentation Studios](https://theslidebee.com/blog/12): Google Search Console indexing, Schema.org WebSite snippets, XML sitemaps, and Core Web Vitals.
 
 ## Contacts & Studio Inquiries
 - Official Website: https://theslidebee.com

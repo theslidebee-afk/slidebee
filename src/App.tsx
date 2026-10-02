@@ -48,34 +48,9 @@ function PublicLayout() {
   );
 }
 
-const isOfficialProductionDomain =
-  typeof window !== "undefined" &&
-  (window.location.hostname === "theslidebee.com" ||
-   window.location.hostname === "www.theslidebee.com" ||
-   window.location.hostname === "slidebee.pages.dev");
-
 function App() {
   if (typeof window !== "undefined" && (window.location.pathname.startsWith("/auth/callback") || window.location.pathname === "/auth/callback")) {
     return <AuthCallback />;
-  }
-
-  if (isOfficialProductionDomain) {
-    return (
-      <CurrencyProvider>
-        <Router>
-          <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
-            <Routes>
-              {/* 1. Admin Studio Portal & Login Access */}
-              <Route path="/admin/*" element={<Admin />} />
-              <Route path="/login" element={<Login />} />
-
-              {/* 2. Official Production Launch Gate: Strictly Coming Soon until client approves */}
-              <Route path="*" element={<ComingSoon />} />
-            </Routes>
-          </div>
-        </Router>
-      </CurrencyProvider>
-    );
   }
 
   return (
