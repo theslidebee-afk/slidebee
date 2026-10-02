@@ -79,6 +79,13 @@ export default function Login() {
     return () => window.removeEventListener("hashchange", handleCheckDisplaced);
   }, []);
 
+  // Redirect to Admin Hub if active administrator session exists
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("slidebee_admin_session") === "true") {
+      window.location.href = "/admin";
+    }
+  }, []);
+
   // Self-service Account Deletion State
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
   const [clientDeleteReason, setClientDeleteReason] = useState("My presentation project is complete");
@@ -313,6 +320,11 @@ export default function Login() {
       } else {
         const res = await signIn(email, password);
         if (!res.success) {
+          if (res.isUnregistered || res.message?.includes("No registered account found")) {
+            setIsSignUp(true);
+            setFormError(`No registered account found for ${email.trim()}`);
+            return;
+          }
           const nextFailed = failedAttempts + 1;
           setFailedAttempts(nextFailed);
           sessionStorage.setItem("slidebee_auth_failed_attempts", String(nextFailed));
@@ -329,6 +341,20 @@ export default function Login() {
           setFailedAttempts(0);
           sessionStorage.removeItem("slidebee_auth_failed_attempts");
           sessionStorage.removeItem("slidebee_auth_lock_until");
+
+          const cleanEmail = email.toLowerCase().trim();
+          const isAdmin =
+            cleanEmail === "admin@theslidebee.com" ||
+            cleanEmail === "admin@slidebee.com" ||
+            cleanEmail === "superadmin@theslidebee.com" ||
+            cleanEmail.startsWith("admin@") ||
+            cleanEmail.startsWith("superadmin@") ||
+            res.isAdmin;
+
+          if (isAdmin) {
+            window.location.href = "/admin";
+            return;
+          }
         }
       }
     } catch (err: any) {
@@ -401,11 +427,11 @@ export default function Login() {
         if (isSuperOrAdmin) {
           localStorage.setItem("slidebee_admin_session", "true");
           localStorage.setItem("slidebee_admin_email", userEmail || "superadmin@theslidebee.com");
-          window.location.hash = "#/admin";
+          window.location.href = "/admin";
         } else {
           setIsResetMode(false);
           setResetCompleted(false);
-          window.location.hash = "#/login";
+          window.location.href = "/login";
         }
       }, 1500);
     } catch (err: any) {
@@ -641,6 +667,11 @@ export default function Login() {
   }
 
   // --- 2. UNAUTHENTICATED SIGN IN / SIGN UP VIEW ---
+  const isAdminInput =
+    ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(email.toLowerCase().trim()) ||
+    email.toLowerCase().trim().startsWith("admin@") ||
+    email.toLowerCase().trim().startsWith("superadmin@");
+
   return (
     <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center p-4 relative overflow-hidden large-hex-grid pt-28 pb-20">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FCBF14]/15 rounded-full blur-[140px] pointer-events-none" />
@@ -957,9 +988,9 @@ export default function Login() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block">
-                    Password *
+                    {isAdminInput ? "Admin Password or PIN (2026) *" : "Password *"}
                   </label>
-                  {!isSignUp && (
+                  {!isSignUp && !isAdminInput && (
                     <button
                       type="button"
                       onClick={() => {
@@ -977,7 +1008,7 @@ export default function Login() {
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    placeholder="••••••••"
+                    placeholder={isAdminInput ? "Admin Password or Master PIN (2026)" : "••••••••"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"

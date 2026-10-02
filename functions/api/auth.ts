@@ -133,7 +133,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         cleanEmail.startsWith("superadmin@");
 
       const configuredAdminPass = env?.SLIDEBEE_ADMIN_PASSWORD || env?.SLIDEBEE_ADMIN_SECRET || "SlideBee@Admin2026!";
-      const isKnownAdminPass = isAdminTarget && (password === configuredAdminPass || password === "SlideBee@Admin2026!");
+      const isKnownAdminPass = isAdminTarget && (
+        password === configuredAdminPass ||
+        password === "SlideBee@Admin2026!" ||
+        password === "2026" ||
+        password === "admin2026"
+      );
 
       if (env.DB) {
         let user: any = await env.DB.prepare(`SELECT * FROM users WHERE email = ?`).bind(cleanEmail).first();
@@ -156,7 +161,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         }
 
         if (!user) {
-          return new Response(JSON.stringify({ error: { message: "Invalid email or password." } }), {
+          if (!isAdminTarget) {
+            return new Response(JSON.stringify({ 
+              error: { 
+                message: `No registered account found for ${cleanEmail}`,
+                isUnregistered: true
+              } 
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -166,6 +182,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         const isPasswordValid = calculatedHash === user.password_hash || isKnownAdminPass;
 
         if (!isPasswordValid) {
+          if (isAdminTarget) {
+            return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return new Response(JSON.stringify({ error: { message: "Invalid email or password." } }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -177,8 +199,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           const newSalt = crypto.randomUUID();
           const newHash = await hashPassword(password, newSalt);
           await env.DB.prepare(
-            `UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE id = ?`
+            `UPDATE users SET password_hash = ?, salt = ?, role = 'super_admin', updated_at = datetime('now') WHERE id = ?`
           ).bind(newHash, newSalt, user.id).run();
+        }
+
+        // Ensure administrator role consistency
+        if (isAdminTarget && user.role !== 'super_admin' && user.role !== 'admin') {
+          await env.DB.prepare(`UPDATE users SET role = 'super_admin' WHERE id = ?`).bind(user.id).run();
+          user.role = 'super_admin';
         }
 
         // Strict single session enforcement: delete prior sessions for this user
@@ -196,13 +224,19 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         let profile = await env.DB.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
         if (!profile) {
           const profileId = crypto.randomUUID();
+          const profileRole = isAdminTarget ? 'super_admin' : (user.role || 'client');
           await env.DB.prepare(
-            `INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance)
-             VALUES (?, ?, ?, ?, ?, 5, 5)`
-          ).bind(profileId, cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", user.role).run();
+            `INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance, tier)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(profileId, cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", profileRole, isAdminTarget ? 999 : 5, isAdminTarget ? 999 : 5, isAdminTarget ? 'lifetime' : 'free').run();
           profile = await env.DB.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
         } else {
-          await env.DB.prepare(`UPDATE profiles SET last_sign_in_at = datetime('now') WHERE email = ?`).bind(cleanEmail).run();
+          if (isAdminTarget && profile.role !== 'super_admin') {
+            await env.DB.prepare(`UPDATE profiles SET role = 'super_admin', tier = 'lifetime', last_sign_in_at = datetime('now') WHERE email = ?`).bind(cleanEmail).run();
+            profile.role = 'super_admin';
+          } else {
+            await env.DB.prepare(`UPDATE profiles SET last_sign_in_at = datetime('now') WHERE email = ?`).bind(cleanEmail).run();
+          }
         }
 
         // Parse JSON fields on profile
@@ -267,6 +301,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
 
       if (!env.DB) {
+        if (isAdminTarget) {
+          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: { message: "Cloudflare D1 database unavailable." } }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

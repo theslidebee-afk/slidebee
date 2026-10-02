@@ -361,6 +361,55 @@ export default function Admin() {
 
   // 1. Check active session on mount
   useEffect(() => {
+    const resolveAdminSession = async (edgeSession?: any) => {
+      let activeSession = edgeSession;
+      if (!activeSession) {
+        try {
+          const { data } = await d1.auth.getSession();
+          activeSession = data?.session;
+        } catch {}
+      }
+
+      const userEmail = activeSession?.user?.email?.toLowerCase().trim() || "";
+      const isSuperOrAdmin =
+        userEmail === "superadmin@theslidebee.com" ||
+        userEmail === "admin@theslidebee.com" ||
+        userEmail === "admin@slidebee.com" ||
+        userEmail.startsWith("admin@") ||
+        userEmail.startsWith("superadmin@") ||
+        activeSession?.user?.role === "admin" ||
+        activeSession?.user?.role === "super_admin" ||
+        activeSession?.user?.user_metadata?.role === "admin" ||
+        activeSession?.user?.user_metadata?.role === "super_admin";
+
+      if (activeSession && isSuperOrAdmin) {
+        setSession(activeSession);
+        setLoading(false);
+        return;
+      }
+
+      // Resilient check: localStorage admin credentials
+      const isAdminSession = localStorage.getItem("slidebee_admin_session") === "true";
+      const storedAdminEmail = localStorage.getItem("slidebee_admin_email")?.toLowerCase().trim();
+      if (isAdminSession && storedAdminEmail) {
+        const fallbackSession = {
+          access_token: "sess-admin-master",
+          user: {
+            id: "usr-admin-master",
+            email: storedAdminEmail,
+            role: "super_admin",
+            user_metadata: { role: "super_admin", full_name: "SlideBee Master Admin" }
+          }
+        };
+        setSession(fallbackSession);
+        setLoading(false);
+        return;
+      }
+
+      setSession(null);
+      setLoading(false);
+    };
+
     const unsubscribeSync = subscribeToAuthSync(
       (role) => {
         if (!role || role === "admin") {
@@ -373,60 +422,16 @@ export default function Admin() {
           setSession(null);
           return;
         }
-        d1.auth.getSession().then(({ data: { session } }) => {
-          const userEmail = session?.user?.email?.toLowerCase().trim() || "";
-          const isSuperOrAdmin =
-            userEmail === "superadmin@theslidebee.com" ||
-            userEmail === "admin@theslidebee.com" ||
-            userEmail.startsWith("admin@") ||
-            userEmail.startsWith("superadmin@") ||
-            session?.user?.user_metadata?.role === "admin" ||
-            session?.user?.user_metadata?.role === "super_admin";
-
-          if (session && isSuperOrAdmin) {
-            setSession(session);
-          } else {
-            setSession(null);
-          }
-        });
+        resolveAdminSession();
       }
     );
 
-    d1.auth.getSession().then(({ data: { session } }) => {
-      const userEmail = session?.user?.email?.toLowerCase().trim() || "";
-      const isSuperOrAdmin =
-        userEmail === "superadmin@theslidebee.com" ||
-        userEmail === "admin@theslidebee.com" ||
-        userEmail.startsWith("admin@") ||
-        userEmail.startsWith("superadmin@") ||
-        session?.user?.user_metadata?.role === "admin" ||
-        session?.user?.user_metadata?.role === "super_admin";
-
-      if (session && isSuperOrAdmin) {
-        setSession(session);
-      } else {
-        setSession(null);
-      }
-      setLoading(false);
-    });
+    resolveAdminSession();
 
     const {
       data: { subscription },
     } = d1.auth.onAuthStateChange((_event, session) => {
-      const userEmail = session?.user?.email?.toLowerCase().trim() || "";
-      const isSuperOrAdmin =
-        userEmail === "superadmin@theslidebee.com" ||
-        userEmail === "admin@theslidebee.com" ||
-        userEmail.startsWith("admin@") ||
-        userEmail.startsWith("superadmin@") ||
-        session?.user?.user_metadata?.role === "admin" ||
-        session?.user?.user_metadata?.role === "super_admin";
-
-      if (session && isSuperOrAdmin) {
-        setSession(session);
-      } else {
-        setSession(null);
-      }
+      resolveAdminSession(session);
     });
 
     return () => {

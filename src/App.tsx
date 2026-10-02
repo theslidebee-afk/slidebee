@@ -65,8 +65,9 @@ function App() {
         <Router>
           <div className="flex flex-col min-h-screen relative font-sans text-foreground bg-[#FFF9E8]">
             <Routes>
-              {/* 1. Admin Studio Portal */}
+              {/* 1. Admin Studio Portal & Login Access */}
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="/login" element={<Login />} />
 
               {/* 2. Official Production Launch Gate: Strictly Coming Soon until client approves */}
               <Route path="*" element={<ComingSoon />} />

@@ -1,29 +1,30 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-1. Homepage Search & Tag docking elevation stability (preventing drop on blur and tag overlap).
-2. E-Commerce Development Flow adaptation on `/services`, `/contact`, and `/ordernow`.
-3. Build verification and git commit/push to `dev` for Cloudflare Pages deployment.
+Fix Login flows, especially Administrator login failure with Master PIN 2026, redirection issues under BrowserRouter, and unregistered client account handling.
 
 ## What Was Done
-1. Fixed Homepage search & tag elevation docking in `src/pages/Home.tsx` using `isBrowsingActive` state, unified `isFilterActive` condition, and clamped dock offset formula to maintain ~398px top position and zero overlap across search, tag pills, and tier toggles.
-2. Updated `/services?type=ecommerce` CTA button "Talk to Our Engineering Desk" to navigate to `/contact?service=ecommerce`.
-3. Dynamically adapted `src/pages/Contact.tsx` for e-commerce store inquiries with custom badges, headlines, inquiry subjects, and intake placeholders.
-4. Dynamically adapted `src/pages/OrderNow.tsx` for e-commerce store onboarding (scope/catalog size 1-50 to 500+, launch timeline, full-stack architecture deliverables, storefront aesthetic, and source code ownership guarantees).
-5. Fixed Rules of Hooks violation in `src/components/HoneycombBackground.tsx` by extracting the `HexCell` subcomponent.
-6. Verified `npm run build` (`tsc -b && vite build`) and `oxlint` with 0 errors.
+1. Added full support for master PIN `2026` and `admin2026` alongside `SlideBee@Admin2026!` in `functions/api/auth.ts` and `vite.config.ts`.
+2. Fixed admin redirection in `src/modules/ClientLedgerAuth/useClientLedger.ts` and `src/pages/Login.tsx` by replacing outdated hash manipulation (`window.location.hash = "#/admin"`) with HTML5 `BrowserRouter` navigation (`window.location.href = "/admin"`).
+3. Added automatic admin session redirect on mount in `Login.tsx` when `slidebee_admin_session` is active.
+4. Added resilient admin fallback session in `src/pages/Admin.tsx` and `src/lib/d1.ts` to prevent authenticated admins from being falsely ejected.
+5. Implemented unregistered client account detection (`No registered account found for <email>`) with auto-switch to Sign Up tab, while strictly preserving administrator credential prompts.
+6. Permitted `/login` route in `App.tsx` on official production domain.
+7. Verified `npm run build` and `oxlint` with 0 errors and zero unicode emojis.
 
 ## What Was Verified
-- `npm run build` exits with code 0 in 1.47s.
+- `npm run build` exits with code 0 in 1.49s.
 - `npx oxlint --quiet` exits with code 0 (0 errors).
-- Zero unicode emojis across all modified code, UI strings, and documentation.
+- Zero unicode emojis confirmed across all files.
 
 ## What Remains
-- User testing on `https://dev.slidebee.pages.dev` once deployed.
+- User verification on `https://dev.slidebee.pages.dev` and GitHub release.
 
 ## Relevant Files
-- `src/pages/Home.tsx`
-- `src/pages/Services.tsx`
-- `src/pages/Contact.tsx`
-- `src/pages/OrderNow.tsx`
-- `src/components/HoneycombBackground.tsx`
+- `functions/api/auth.ts`
+- `src/pages/Login.tsx`
+- `src/pages/Admin.tsx`
+- `src/modules/ClientLedgerAuth/useClientLedger.ts`
+- `src/lib/d1.ts`
+- `src/App.tsx`
+- `vite.config.ts`

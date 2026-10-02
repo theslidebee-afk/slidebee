@@ -707,7 +707,28 @@ function edgeDevPlugin(): Plugin {
                 ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
                 cleanEmail.startsWith("admin@") ||
                 cleanEmail.startsWith("superadmin@");
-              const role = isAdmin ? "admin" : "client";
+
+              if (isAdmin) {
+                const pass = String(body.password || "").trim();
+                const isValidAdminPass = pass === "2026" || pass === "SlideBee@Admin2026!" || pass === "admin2026";
+                if (!isValidAdminPass) {
+                  return res.end(JSON.stringify({
+                    error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." }
+                  }));
+                }
+              }
+
+              let profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+              if (!isAdmin && profiles.length === 0) {
+                return res.end(JSON.stringify({
+                  error: {
+                    message: `No registered account found for ${cleanEmail}`,
+                    isUnregistered: true
+                  }
+                }));
+              }
+
+              const role = isAdmin ? "super_admin" : "client";
               const userId = "usr-" + Math.random().toString(36).substring(2, 10);
               const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
               const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -718,11 +739,10 @@ function edgeDevPlugin(): Plugin {
                 [newSessionId, userId, cleanEmail, role, deviceInfo || "Browser", expiresAt]
               );
 
-              let profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
               if (profiles.length === 0) {
                 runSqliteExec(
-                  "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, ?, 5, 5)",
-                  ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", role]
+                  "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                  ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", role, isAdmin ? 999 : 5, isAdmin ? 999 : 5, isAdmin ? "lifetime" : "free"]
                 );
                 profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
               } else {

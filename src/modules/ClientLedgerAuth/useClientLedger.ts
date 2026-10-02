@@ -50,6 +50,7 @@ export interface ClientAuthResult {
   message?: string;
   unregisteredPrompt?: string;
   isUnregistered?: boolean;
+  isAdmin?: boolean;
 }
 
 /**
@@ -246,6 +247,7 @@ export function useClientLedger() {
       const isUserAdmin =
         authData.user.email === "superadmin@theslidebee.com" ||
         authData.user.email === "admin@theslidebee.com" ||
+        authData.user.email === "admin@slidebee.com" ||
         authData.user.email?.startsWith("admin@") ||
         authData.user.email?.startsWith("superadmin@") ||
         authData.user.user_metadata?.role === "admin" ||
@@ -260,8 +262,8 @@ export function useClientLedger() {
         setUserProfile(null);
         setUserOrders([]);
         broadcastAuthEvent("LOGIN", "admin");
-        window.location.hash = "#/admin";
-        return { success: true };
+        window.location.href = "/admin";
+        return { success: true, isAdmin: true };
       }
 
       await registerActiveSession(cleanEmail);
@@ -278,7 +280,8 @@ export function useClientLedger() {
     if (authErr) {
       return {
         success: false,
-        message: "Invalid email or password. Please verify your credentials and try again."
+        message: authErr.message || "Invalid email or password. Please verify your credentials and try again.",
+        isUnregistered: Boolean((authErr as any)?.isUnregistered || authErr.message?.includes("No registered account found"))
       };
     }
 
