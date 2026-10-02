@@ -17,7 +17,7 @@ import {
   Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { d1 as supabase } from "../lib/d1";
+import { d1 } from "../lib/d1";
 import { useClientLedger } from "../modules/ClientLedgerAuth";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import UserModernDashboard from "../components/UserModernDashboard";
@@ -174,7 +174,7 @@ export default function Login() {
     };
     checkRecovery();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = d1.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsResetMode(true);
         sessionStorage.setItem("slidebee_password_recovery", "true");
@@ -229,7 +229,7 @@ export default function Login() {
 
   useEffect(() => {
     if (currentUser?.email) {
-      supabase
+      d1
         .from("subscriptions")
         .select("*")
         .eq("user_email", currentUser.email)
@@ -243,7 +243,7 @@ export default function Login() {
   const [studioWhatsapp, setStudioWhatsapp] = useState<string>(WHATSAPP_CONFIG.phoneNumber || "919876543210");
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "contact_cms")
@@ -387,7 +387,7 @@ export default function Login() {
       sessionStorage.removeItem("slidebee_recovery_token");
       sessionStorage.removeItem("slidebee_recovery_email");
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await d1.auth.getSession();
       const userEmail = session?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
         userEmail === "superadmin@theslidebee.com" ||
@@ -432,7 +432,7 @@ export default function Login() {
       const finalReason = clientDeleteCustomReason.trim() || clientDeleteReason;
 
       // Retrieve current session token from edge session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData } = await d1.auth.getSession();
       const authToken = sessionData?.session?.access_token || "";
       const userId = currentUser?.id || sessionData?.session?.user?.id || "";
 

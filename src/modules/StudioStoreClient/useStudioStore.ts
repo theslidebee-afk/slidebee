@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 import { normalizeR2Url } from "../../lib/r2";
 
 export interface StoreTemplate {
@@ -59,7 +59,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
     setError(null);
     try {
       // 1. Fetch site_config metrics toggle
-      const { data: configData } = await supabase
+      const { data: configData } = await d1
         .from("site_config")
         .select("value")
         .eq("key", "show_template_metrics")
@@ -71,7 +71,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
       }
 
       // 2. Fetch full catalog from Deep Module view v_storefront_catalog
-      const { data: catalogData, error: catErr } = await supabase
+      const { data: catalogData, error: catErr } = await d1
         .from("v_storefront_catalog")
         .select("*")
         .order("created_at", { ascending: false });

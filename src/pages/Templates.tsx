@@ -5,7 +5,7 @@ import { Search, Download, Eye, ArrowRight, Star, FileText, Crown, Check } from 
 import { useCurrency } from "../context/CurrencyContext";
 import { useStudioStore, type StoreTemplate } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 
 export type { StoreTemplate as TemplateItem };
 
@@ -45,11 +45,11 @@ export default function Templates() {
         } catch (e) {}
       }
       if (!email) {
-        const { data } = await supabase.auth.getUser();
+        const { data } = await d1.auth.getUser();
         if (data?.user?.email) email = data.user.email;
       }
       if (email) {
-        const { data: profile } = await supabase
+        const { data: profile } = await d1
           .from("profiles")
           .select("tier")
           .eq("email", email.toLowerCase().trim())
@@ -63,7 +63,7 @@ export default function Templates() {
           }
         }
 
-        const { data: sub } = await supabase
+        const { data: sub } = await d1
           .from("subscriptions")
           .select("status, current_period_end")
           .eq("user_email", email.toLowerCase().trim())

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Calendar, ArrowLeft, ArrowRight, Share2, Check, Layers } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -13,6 +13,15 @@ const defaultArticles: Record<string, any> = {
     date: "September 2026",
     imageUrl: "/portfolio/case_study_a_14.png",
     readTime: "4 min read",
+    keywords: [
+      "presentation design",
+      "c-suite slide structure",
+      "3 second rule slides",
+      "mckinsey presentation framework",
+      "executive keynote design",
+      "executive slide layout"
+    ],
+    metaDescription: "Learn the Ex-McKinsey 3-Second Rule for structuring high-impact executive presentation slides that persuade boardrooms and C-suite decision-makers.",
     content: `When presenting to senior executive stakeholders, dense walls of bullet points force the audience to read instead of listen. In high-stakes meetings with board members and C-level leaders, attention is the scarcest currency in the room.
 
 ### The Cognitive Cost of Bullet Points
@@ -38,6 +47,15 @@ By treating each slide as an argumentative unit rather than an information bucke
     date: "August 2026",
     imageUrl: "/portfolio/global_brands_1.png",
     readTime: "6 min read",
+    keywords: [
+      "series a pitch deck",
+      "pitch deck design",
+      "investor pitch deck template",
+      "vc presentation structure",
+      "tam sam som visualizer",
+      "fundraising deck agency"
+    ],
+    metaDescription: "The essential 12-slide venture capital pitch deck structure that secures partner meetings, models TAM/SAM/SOM market size, and visualizes unit economics.",
     content: `Venture capitalists review hundreds of pitch decks every single week. Most partners spend less than 2 minutes and 40 seconds on an initial deck review before deciding whether to pass or schedule an introductory partner meeting.
 
 ### The Essential 12-Slide VC Narrative
@@ -65,6 +83,15 @@ Investors do not fund projections; they fund momentum. Replace generic stock gra
     date: "August 2026",
     imageUrl: "/portfolio/levis_yuengling_6.png",
     readTime: "5 min read",
+    keywords: [
+      "enterprise master template",
+      "corporate slide templates",
+      "powerpoint layout locking",
+      "brand slide system",
+      "presentation template agency",
+      "powerpoint slide masters"
+    ],
+    metaDescription: "Discover how to architect scalable corporate PowerPoint master slide systems with layout locking, modular drag-and-drop components, and brand consistency.",
     content: `Why do corporate slide templates break within weeks of launch? In organizations with 500+ employees, standard PowerPoint files quickly degenerate into misaligned typefaces, clashing brand colors, and stretched vector graphics.
 
 ### The Failure of Traditional Template Design
@@ -86,6 +113,14 @@ A truly successful enterprise template balances uncompromising brand consistency
     date: "September 2026",
     imageUrl: "/portfolio/nike_hsbc_cvs_1.png",
     readTime: "6 min read",
+    keywords: [
+      "keynote presentation design",
+      "high stakes keynote best practices",
+      "stage presentation design",
+      "conference slide design",
+      "ceo keynote slides"
+    ],
+    metaDescription: "Master the 10 executive presentation design principles trusted by Fortune 500 CEOs for summits, product launches, and high-contrast stage keynotes.",
     content: `When a CEO takes the stage at a global summit, product launch, or industry keynote, the presentation slides serve an entirely different purpose than an internal memo or boardroom briefing.
 
 ### 1. Design for the Back Row (The 30-Foot Test)
@@ -110,6 +145,14 @@ Always rehearse with a physical presentation remote. Animation triggers must be 
     date: "July 2026",
     imageUrl: "/portfolio/case_study_a_3.png",
     readTime: "5 min read",
+    keywords: [
+      "powerpoint vs google slides",
+      "best presentation tool for executives",
+      "google slides vs keynote",
+      "enterprise presentation software",
+      "boardroom presentation tool"
+    ],
+    metaDescription: "An executive comparison of Microsoft PowerPoint, Google Slides, and Apple Keynote across typographic control, team collaboration, and boardroom reliability.",
     content: `Choosing the right presentation tool impacts everything from layout fidelity and font rendering to cross-team collaboration and boardroom reliability.
 
 ### Microsoft PowerPoint: The Enterprise Standard
@@ -135,6 +178,14 @@ At SlideBee, our master decks are crafted natively in Microsoft PowerPoint (.ppt
     date: "July 2026",
     imageUrl: "/portfolio/global_brands_4.png",
     readTime: "7 min read",
+    keywords: [
+      "presentation design cost",
+      "presentation design agency pricing",
+      "how much does pitch deck design cost",
+      "presentation designer hourly rate",
+      "slide design packages"
+    ],
+    metaDescription: "Complete 2026 pricing guide for presentation design studios, freelance marketplaces, and brand agencies with turnaround SLAs and cost comparisons.",
     content: `Whether you are preparing a $5M Series A pitch deck, an executive keynote, or a 100-slide corporate template system, understanding agency pricing prevents expensive surprises.
 
 ### The 3 Tiers of Presentation Design
@@ -160,6 +211,14 @@ Transparent pricing with clear turnaround SLAs delivers the highest return on in
     date: "September 2026",
     imageUrl: "/portfolio/case_study_a_8.png",
     readTime: "8 min read",
+    keywords: [
+      "ecommerce website development",
+      "ecommerce package 25000",
+      "razorpay storefront design",
+      "small business ecommerce development",
+      "direct to consumer website setup"
+    ],
+    metaDescription: "A complete guide to launching an online store with 500 product capacity, Razorpay checkout, Cloudflare deployment, and Zoho business email for ₹25,000.",
     content: `For emerging direct-to-consumer (D2C) brands, boutique retailers, and small businesses, launching an online store historically meant choosing between overpriced agency quotes or confusing DIY page builders.
 
 ### The All-Inclusive ₹25,000 Launch Architecture
@@ -182,6 +241,14 @@ By consolidating design, development, and infrastructure setup into a single ₹
     date: "June 2026",
     imageUrl: "/portfolio/nike_hsbc_cvs_4.png",
     readTime: "6 min read",
+    keywords: [
+      "data visualization presentations",
+      "financial data visualization slides",
+      "how to visualize complex spreadsheets",
+      "executive chart design",
+      "waterfall charts presentation"
+    ],
+    metaDescription: "Learn how to transform dense spreadsheets into high-impact waterfall charts, cohort heatmaps, and executive board presentations.",
     content: `When executives view complex financial models, dense spreadsheets create analysis paralysis. The goal of executive data visualization is not to display all the data, but to highlight the governing conclusion.
 
 ### 1. Declutter the Canvas (Reduce Data-Ink Ratio)
@@ -204,6 +271,14 @@ By pairing clean typography with strict color contrast, data transforms from a b
     date: "June 2026",
     imageUrl: "/portfolio/levis_yuengling_2.png",
     readTime: "5 min read",
+    keywords: [
+      "b2b sales deck design",
+      "high converting sales deck",
+      "consultative sales presentation framework",
+      "b2b slide deck template",
+      "enterprise sales deck structure"
+    ],
+    metaDescription: "Structure an enterprise B2B sales presentation using the 5-part consensus framework that positions urgent customer pain before product features.",
     content: `Traditional sales presentations open with 5 slides about the seller: company history, office locations, and leadership awards. Prospects do not care about your history; they care about their urgent business pain.
 
 ### The 5-Part Consensus Framework
@@ -222,12 +297,20 @@ This narrative architecture turns defensive product demos into consultative exec
     date: "May 2026",
     imageUrl: "/portfolio/global_brands_8.png",
     readTime: "7 min read",
+    keywords: [
+      "technical seo checklist 2026",
+      "digital storefront seo",
+      "schema org rich snippets",
+      "google search console indexing",
+      "inp core web vitals optimization"
+    ],
+    metaDescription: "A step-by-step technical SEO checklist for 2026 covering Google Search Console indexing, JSON-LD Schema.org rich snippets, XML sitemaps, and INP optimization.",
     content: `Building a beautiful website or ecommerce store is only half the battle. If search engines cannot crawl, comprehend, and index your storefront, organic traffic remains zero.
 
 ### 1. Google Search Console & Index Verification
 - Verify your domain via DNS TXT records.
 - Submit clean XML sitemaps containing all primary product and service URLs.
-- Monitor Core Web Vitals (LCP, FID, CLS) to ensure sub-2-second mobile load times.
+- Monitor Core Web Vitals (LCP, INP, CLS) to ensure sub-2-second mobile load times and instant touch interactivity.
 
 ### 2. Schema.org Structured Data
 Incorporate JSON-LD rich snippets:
@@ -246,16 +329,69 @@ export default function BlogDetail() {
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const activeArticleId = article?.id || id || "1";
+  const articleKeywords = article?.keywords || [
+    "presentation design",
+    "pitch deck strategy",
+    "powerpoint templates",
+    "executive keynote design",
+  ];
+
+  const cleanDescription = article?.metaDescription || (article?.content
+    ? article.content.replace(/#{1,6}\s+/g, "").replace(/\*\*|\*/g, "").slice(0, 155) + "..."
+    : "Expert guides on presentation design, pitch decks, and executive storytelling.");
+
+  const ogImageUrl = article?.imageUrl
+    ? (article.imageUrl.startsWith("http") ? article.imageUrl : `https://theslidebee.com${article.imageUrl}`)
+    : "https://theslidebee.com/slidebee_logo_light.png";
+
+  const canonicalUrl = `https://theslidebee.com/blog/${activeArticleId}`;
+
+  const blogJsonLd = article ? {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": article.title,
+    "description": cleanDescription,
+    "image": [ogImageUrl],
+    "datePublished": "2026-09-01T00:00:00Z",
+    "dateModified": "2026-10-01T00:00:00Z",
+    "author": {
+      "@type": "Organization",
+      "name": "SlideBee Presentation Studio",
+      "url": "https://theslidebee.com"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "SlideBee",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://theslidebee.com/slidebee_logo_light.png"
+      }
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": canonicalUrl
+    }
+  } : undefined;
+
   usePageSEO({
     title: article ? `${article.title} | SlideBee Insights` : "Presentation Insights | SlideBee Blog",
-    description: article?.content ? article.content.slice(0, 160) : "Expert guides on presentation design and executive keynotes.",
+    description: cleanDescription,
+    keywords: articleKeywords,
+    canonicalUrl,
+    ogType: "article",
+    ogImage: ogImageUrl,
+    ogUrl: canonicalUrl,
+    twitterCard: "summary_large_image",
+    twitterImage: ogImageUrl,
+    jsonLd: blogJsonLd,
   });
 
   useEffect(() => {
     async function loadArticle() {
       setLoading(true);
       try {
-        const { data } = await supabase
+        const { data } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "blog_cms")

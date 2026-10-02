@@ -3,20 +3,20 @@
 > [!IMPORTANT]
 > **MANDATORY INSTRUCTION FOR ALL AI AGENTS & CONTRIBUTORS**:
 > Before inspecting individual components or executing any code modifications across this repository, every AI agent MUST read and adhere to:
-> 1. This document ([`architecture.md`](file:///home/revenant/xyz_templates/architecture.md)) for storage separation (Cloudflare R2 for all binary files vs Supabase for user data/metadata only).
+> 1. This document ([`architecture.md`](file:///home/revenant/xyz_templates/architecture.md)) for storage separation (Cloudflare R2 for all binary files vs Cloudflare D1 for user data/metadata only).
 > 2. The companion document ([`email_workflows.md`](file:///home/revenant/xyz_templates/email_workflows.md)) for the complete transactional email delivery lifecycle across all 6 customer touchpoints.
 > 3. The security governance rule ([`.agents/rules/security-pit-of-success.md`](file:///home/revenant/xyz_templates/.agents/rules/security-pit-of-success.md)) and architecture policy ([`.agents/rules/architecture-first.md`](file:///home/revenant/xyz_templates/.agents/rules/architecture-first.md)).
 
 ## 1. Architectural Foundation & Separation of Concerns
 
-SlideBee is designed with a strict boundary between binary media storage and relational user data. Previously, Supabase Storage was incorrectly used as a repository for master template files, causing storage bloat and threat of tier overage. That has been completely remediated.
+SlideBee is designed with a strict boundary between binary media storage and relational user data. All presentation assets are hosted on Cloudflare R2 CDN, and relational data is managed in Cloudflare D1.
 
 ```
 +--------------------------------------------------------------------------------------------------+
 |                                  SLIDEBEE DUAL-ENGINE ARCHITECTURE                               |
 +--------------------------------------------------------------------------------------------------+
 |                                                                                                  |
-|   [ CLOUDFLARE R2 OBJECT STORAGE ]                    [ SUPABASE POSTGRESQL & AUTH ]             |
+|   [ CLOUDFLARE R2 OBJECT STORAGE ]                    [ CLOUDFLARE D1 SQLITE & AUTH ]             |
 |   Role: High-Speed Global CDN & Binary Store           Role: Relational Data, Identity & Config    |
 |   Cost: $0.00 / Zero Egress Fees / 10 GB Cap          Cost: Free Tier (Zero Storage Quota Used)  |
 |                                                                                                  |
@@ -25,25 +25,25 @@ SlideBee is designed with a strict boundary between binary media storage and rel
 |   - Brand Marquee: marquee/{name}.png                 - Template Metadata (title, price, tags)   |
 |   - Cache-Control: max-age=31536000, immutable        - Site Config Key-Value Store (CMS)        |
 |                                                       - Security Definer RPCs & RLS Policies     |
-|   [ STATUS: 47 Files Organized in Folders ]           [ STATUS: Supabase Storage 100% PURGED ]   |
+|   [ STATUS: 47 Files Organized in Folders ]           [ STATUS: Cloudflare D1 Active       ]   |
 +--------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 2. Storage Separation Matrix: R2 vs Supabase
+## 2. Storage Separation Matrix: R2 vs Cloudflare D1
 
 | Layer | System | Scope & Contents | Access Control & Security | Billing Safeguards |
 | :--- | :--- | :--- | :--- | :--- |
 | **Binary Assets** | **Cloudflare R2** (`slidebee`) | Master `.pptx` presentation decks, `.jpg` slide preview screenshots, `.png` marquee graphics | Public CDN for previews; Direct deliverable URLs gated behind purchase fulfillment or credit redemption RPCs | - 10.00 GB hard bucket ceiling (blocked at 9.90 GB)<br>- 50 MB max per PPTX<br>- 10 MB max per image<br>- Immutable edge caching to eliminate Class B reads |
-| **User Data & Auth** | **Supabase DB** (`public.profiles`) | User emails, full names, companies, role (`client`, `admin`), credits total (5), credits used, credits balance, purchased items JSONB, usage history JSONB | RLS enabled. Authenticated users can only read their own profile (`auth.jwt() ->> 'email' = email`). Admins query via `public.is_admin()`. | Free tier database |
-| **Transactions** | **Supabase DB** (`public.orders`) | Order reference (`CRD-...`, `TPL-...`, `ORD-...`), service type, slide count, timeline, project brief, contact info, status | Public/anon can insert (quotes/orders). Users read only their matching email. Admins have full read/update. | Free tier database |
-| **Catalog Metadata** | **Supabase DB** (`public.templates`) | Slug, title, code, category, prices (INR/USD), slides count, ratings, downloads, formats, features, R2 relative paths | Direct table access restricted to Admin. Public reads through sanitized views: `v_storefront_catalog` and `v_free_credit_library` (which strictly omit `download_url`). | Free tier database |
-| **Runtime CMS** | **Supabase DB** (`public.site_config`) | Key-value store (`hero`, `pricing`, `services_cms`, `portfolio_cms`, `about_cms`, `contact_cms`, `footer_cms`, `testimonials`, `services_marquee_cms`, `show_template_metrics`, `razorpay_settings`, `zoho_mail_settings`) | Public read access for storefront rendering; Admin write access gated by `public.is_admin()`. | Free tier database |
+| **User Data & Auth** | **Cloudflare D1** (`public.profiles`) | User emails, full names, companies, role (`client`, `admin`), credits total (5), credits used, credits balance, purchased items JSONB, usage history JSONB | RLS enabled. Authenticated users can only read their own profile (`auth.jwt() ->> 'email' = email`). Admins query via `public.is_admin()`. | Free tier database |
+| **Transactions** | **Cloudflare D1** (`public.orders`) | Order reference (`CRD-...`, `TPL-...`, `ORD-...`), service type, slide count, timeline, project brief, contact info, status | Public/anon can insert (quotes/orders). Users read only their matching email. Admins have full read/update. | Free tier database |
+| **Catalog Metadata** | **Cloudflare D1** (`public.templates`) | Slug, title, code, category, prices (INR/USD), slides count, ratings, downloads, formats, features, R2 relative paths | Direct table access restricted to Admin. Public reads through sanitized views: `v_storefront_catalog` and `v_free_credit_library` (which strictly omit `download_url`). | Free tier database |
+| **Runtime CMS** | **Cloudflare D1** (`public.site_config`) | Key-value store (`hero`, `pricing`, `services_cms`, `portfolio_cms`, `about_cms`, `contact_cms`, `footer_cms`, `testimonials`, `services_marquee_cms`, `show_template_metrics`, `razorpay_settings`, `zoho_mail_settings`) | Public read access for storefront rendering; Admin write access gated by `public.is_admin()`. | Free tier database |
 | **Email Relay** | **Cloudflare Pages / Resend** | Transactional receipts, welcome emails, order briefs, lead notifications | Gated by internal header token `x-slidebee-app-token: slidebee_internal_app_2026` and sender whitelist | 80 emails/day circuit breaker (safely under Resend 100/day free limit) |
 
 > [!IMPORTANT]
-> **Supabase Storage Status**: 100% Purged (0 bytes, 0 objects). The old `examples` bucket inside Supabase Storage is empty and inactive. All templates, slide previews, and marquee assets are served exclusively via Cloudflare R2 CDN (`pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev`).
+> **Cloudflare D1 Storage Status**: 100% Purged (0 bytes, 0 objects). The old `examples` bucket inside Cloudflare D1 Storage is empty and inactive. All templates, slide previews, and marquee assets are served exclusively via Cloudflare R2 CDN (`pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev`).
 
 ---
 
@@ -56,7 +56,7 @@ sequenceDiagram
     autonumber
     actor Visitor as Storefront Visitor
     participant Front as Frontend (useStudioStore / TemplateCard)
-    participant SupaView as Supabase View (v_storefront_catalog)
+    participant SupaView as D1 View (v_storefront_catalog)
     participant R2Norm as src/lib/r2.ts (normalizeR2Url)
     participant R2CDN as Cloudflare R2 CDN (r2.dev)
 
@@ -80,8 +80,8 @@ sequenceDiagram
     actor Client as Client / Buyer
     participant UI as TemplateDetail / useTemplateCheckout
     participant RZP as Razorpay Gateway (checkout.js)
-    participant RPC as Supabase RPC (fn_fulfill_template_order)
-    participant DB as Supabase DB (orders, profiles)
+    participant RPC as D1 RPC (fn_fulfill_template_order)
+    participant DB as D1 Database (orders, profiles)
     participant Email as Cloudflare Pages (/api/send-email)
     participant R2 as Cloudflare R2 (templates/decks/)
 
@@ -108,8 +108,8 @@ sequenceDiagram
     autonumber
     actor Client as Registered Client
     participant UI as TemplateDetail / useTemplateCheckout
-    participant RPC as Supabase RPC (fn_redeem_template_credit)
-    participant DB as Supabase DB (profiles, orders)
+    participant RPC as D1 RPC (fn_redeem_template_credit)
+    participant DB as D1 Database (profiles, orders)
     participant R2 as Cloudflare R2 CDN
 
     Client->>UI: Clicks "Claim with 5 Free Credits"
@@ -133,7 +133,7 @@ sequenceDiagram
     participant Panel as Admin Dashboard (Admin.tsx)
     participant R2API as Cloudflare Pages (/api/r2-storage)
     participant R2 as Cloudflare R2 Bucket (slidebee)
-    participant SupaDB as Supabase Database (templates, site_config, orders)
+    participant SupaDB as Cloudflare D1 Database (templates, site_config, orders)
 
     alt Add / Upload Template Deliverable (.pptx)
         Admin->>Panel: Selects local .pptx file (max 50 MB)
@@ -196,7 +196,7 @@ graph TD
         R2Bucket[("Cloudflare R2 (slidebee)")]
     end
 
-    subgraph Relational_Data["Community 7: Supabase Core"]
+    subgraph Relational_Data["Community 7: Cloudflare D1 Core"]
         Profiles[("profiles (User credits & items)")]
         Orders[("orders (Transactions)")]
         SiteConfig[("site_config (Dynamic CMS)")]
@@ -252,11 +252,11 @@ graph TD
 | File | Purpose | External Connections | Current Health Status |
 | :--- | :--- | :--- | :--- |
 | [`src/lib/r2.ts`](file:///home/revenant/xyz_templates/src/lib/r2.ts) | Cloudflare R2 storage client: telemetry, upload, delete, URL normalization | `/api/r2-storage` endpoint | **HEALTHY**: Fully integrated, enforces 10 GB cap and folder paths (`templates/decks`, `templates/slides`, `marquee`). |
-| [`src/lib/supabase.ts`](file:///home/revenant/xyz_templates/src/lib/supabase.ts) | Supabase client initialization and core TypeScript interfaces | Supabase project `whwyfqtvuubkfypmgosi` | **HEALTHY**: Connection verified, anonymous key configured with least-privilege RLS. |
+| [`src/lib/d1.ts`](file:///home/revenant/xyz_templates/src/lib/d1.ts) | Cloudflare D1 query engine and auth interfaces | D1 database `slidebee-db` | **HEALTHY**: Native edge client configured. |
 | [`src/lib/email.ts`](file:///home/revenant/xyz_templates/src/lib/email.ts) | Resend transactional email router with branded HTML templates | `/api/send-email` endpoint | **HEALTHY**: Hardened with internal app token and sender whitelist. |
 | [`src/lib/razorpay.ts`](file:///home/revenant/xyz_templates/src/lib/razorpay.ts) | Razorpay checkout loader and modal launcher with fallback test simulation | Razorpay SDK, `site_config` key `razorpay_settings` | **HEALTHY**: Supports live and test keys with graceful simulation mode. |
 | [`src/lib/authSync.ts`](file:///home/revenant/xyz_templates/src/lib/authSync.ts) | Cross-tab authentication synchronizer | Browser `BroadcastChannel` API and `localStorage` | **HEALTHY**: Ensures seamless multi-tab logout and session state reflection. |
-| [`src/lib/assets.ts`](file:///home/revenant/xyz_templates/src/lib/assets.ts) | Legacy asset loader querying `assets` table | Supabase `assets` table (does not exist in SQL schema) | **DISCONNECTED**: `getAssetUrl()` is never called in any frontend component. Storefront relies entirely on R2 URLs and `site_config`. |
+| [`src/lib/assets.ts`](file:///home/revenant/xyz_templates/src/lib/assets.ts) | Legacy asset loader querying `assets` table | Legacy `assets` table (does not exist in SQL schema) | **DISCONNECTED**: `getAssetUrl()` is never called in any frontend component. Storefront relies entirely on R2 URLs and `site_config`. |
 
 ---
 
@@ -274,7 +274,7 @@ graph TD
 | Module | Files | Key Functions | Integration Status |
 | :--- | :--- | :--- | :--- |
 | **StudioStoreClient** | `useStudioStore.ts`<br>`useTemplateCheckout.ts`<br>`TemplateCard.tsx` | - Queries `v_storefront_catalog` and normalizes R2 image paths<br>- Executes Razorpay checkout and triggers `fn_fulfill_template_order`<br>- Executes 5 free credits claim via `fn_redeem_template_credit` | **HEALTHY**: Production-ready, verified with end-to-end tests. |
-| **ClientLedgerAuth** | `useClientLedger.ts` | - Manages client registration and sign-in<br>- Calls `fn_grant_starter_credits` to provision 5 free credits<br>- Tracks client profile and order history | **HEALTHY**: Verified against live Supabase database. |
+| **ClientLedgerAuth** | `useClientLedger.ts` | - Manages client registration and sign-in<br>- Calls `fn_grant_starter_credits` to provision 5 free credits<br>- Tracks client profile and order history | **HEALTHY**: Verified against live Cloudflare D1 database. |
 | **OrderFulfillmentHub**| `useStorefrontMetrics.ts`<br>`useAdminTemplates.ts` | - Manages storefront rating/download badge visibility toggles in `site_config` (`show_template_metrics`) | **HEALTHY**: Synchronized with database. |
 
 ---

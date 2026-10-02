@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { 
   Mail, 
   MessageSquare, 
@@ -7,45 +8,65 @@ import {
   ShieldCheck,
   Phone
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { sendContactNotificationEmail } from "../lib/email";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Contact() {
+  const [searchParams] = useSearchParams();
+  const serviceParam = searchParams.get("service") || searchParams.get("type");
+  const isEcommerce = !!(
+    serviceParam?.toLowerCase().includes("ecommerce") ||
+    serviceParam?.toLowerCase().includes("engineering")
+  );
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(
+    isEcommerce ? "Ecommerce Store Development (₹25,000) Inquiry" : ""
+  );
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [contactConfig, setContactConfig] = useState<any>({
-    headline: "Let’s Talk About Your Next Presentation.",
-    subheadline: "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.",
+    headline: isEcommerce ? "Talk to Our Lead Engineering Desk." : "Let’s Talk About Your Next Presentation.",
+    subheadline: isEcommerce
+      ? "Have questions about your product catalog, payment integration, or Cloudflare store architecture? Send us a message and our lead engineer will get back to you within 2 hours."
+      : "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.",
     generalEmail: "hello@theslidebee.com",
     supportEmail: "support@theslidebee.com",
     phone: "+91 98765 43210",
     whatsapp: "+91 98765 43210",
-    responseGuarantee: "2-Hour Response Time",
-    availabilityNotice: "Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.",
+    responseGuarantee: isEcommerce ? "Engineering Desk — 2-Hour Response Time" : "2-Hour Response Time",
+    availabilityNotice: isEcommerce
+      ? "Our engineering desk builds and supports full-stack Cloudflare serverless storefronts with direct WhatsApp escalation."
+      : "Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.",
     address: "SlideBee Design Studio, Bengaluru, Karnataka 560001, India (Hubs: Singapore & San Francisco)"
   });
 
-  usePageSEO({
-    title: "Contact SlideBee | 2-Hour Response Time | Presentation Studio",
-    description: "Connect with SlideBee executive presentation design studio. Submit pitch deck briefs, get bespoke quotes, or message our directors directly.",
-  });
+  usePageSEO(
+    isEcommerce
+      ? {
+          title: "Talk to Engineering Desk | Ecommerce Store Development | SlideBee",
+          description: "Connect with SlideBee lead engineering desk. Inquire about our ₹25,000 full-stack ecommerce website development package, payment gateways, and custom store architecture.",
+        }
+      : {
+          title: "Contact SlideBee | 2-Hour Response Time | Presentation Studio",
+          description: "Connect with SlideBee executive presentation design studio. Submit pitch deck briefs, get bespoke quotes, or message our directors directly.",
+        }
+  );
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "contact_cms")
       .single()
       .then(({ data }) => {
-        if (data?.value) setContactConfig(data.value);
+        if (data?.value && !isEcommerce) setContactConfig(data.value);
       });
-  }, []);
+  }, [isEcommerce]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +77,7 @@ export default function Contact() {
     setErrorMsg("");
 
     try {
-      const { error } = await supabase.from("waitlist").insert([
+      const { error } = await d1.from("waitlist").insert([
         {
           email: cleanEmail,
           source: `contact_form: ${name || "Anonymous"} | Sub: ${subject || "General Inquiry"} | Msg: ${message}`
@@ -176,10 +197,12 @@ export default function Contact() {
             {/* Client NDA & Confidentiality Guarantee */}
             <div className="hex-card-dark bg-[#111111] border-2 border-primary text-white p-6 shadow-xl">
               <div className="flex items-center gap-2 text-primary text-xs font-black uppercase tracking-wider mb-2">
-                <ShieldCheck size={16} className="text-primary" /> Mutual NDA & Confidentiality
+                <ShieldCheck size={16} className="text-primary" /> {isEcommerce ? "Mutual NDA & IP Protection" : "Mutual NDA & Confidentiality"}
               </div>
               <p className="text-xs text-gray-300 font-medium leading-relaxed">
-                All client presentations, briefs, and commercial assets are protected under strict non-disclosure terms with enterprise-grade data privacy.
+                {isEcommerce
+                  ? "All client product data, catalog CSVs, source code, and commercial specifications are protected under strict non-disclosure terms with enterprise-grade privacy."
+                  : "All client presentations, briefs, and commercial assets are protected under strict non-disclosure terms with enterprise-grade data privacy."}
               </p>
             </div>
 
@@ -198,14 +221,16 @@ export default function Contact() {
                     Message Received!
                   </h3>
                   <p className="text-[#726F6D] text-xs sm:text-sm font-medium max-w-md mx-auto mb-6">
-                    Thank you for reaching out. A senior design director will review your message and reply to <strong>{email}</strong> within 2 hours.
+                    {isEcommerce
+                      ? <>Thank you for reaching out. Our lead engineer will review your store requirements and reply to <strong>{email}</strong> within 2 hours.</>
+                      : <>Thank you for reaching out. A senior design director will review your message and reply to <strong>{email}</strong> within 2 hours.</>}
                   </p>
                   <button
                     onClick={() => {
                       setIsSuccess(false);
                       setName("");
                       setEmail("");
-                      setSubject("");
+                      setSubject(isEcommerce ? "Ecommerce Store Development (₹25,000) Inquiry" : "");
                       setMessage("");
                     }}
                     className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs"
@@ -216,7 +241,7 @@ export default function Contact() {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <h3 className="text-lg font-heading font-extrabold text-[#111111] mb-2">
-                    Send Us a Project Note
+                    {isEcommerce ? "Send Us a Store Engineering Note" : "Send Us a Project Note"}
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -254,7 +279,11 @@ export default function Contact() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Series A Pitch Deck / 24h Keynote Redesign"
+                      placeholder={
+                        isEcommerce
+                          ? "e.g. 500-Product Storefront / Razorpay Integration"
+                          : "e.g. Series A Pitch Deck / 24h Keynote Redesign"
+                      }
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors"
@@ -263,12 +292,16 @@ export default function Contact() {
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                      Tell Us About Your Project *
+                      {isEcommerce ? "Tell Us About Your Store Requirements *" : "Tell Us About Your Project *"}
                     </label>
                     <textarea
                       required
                       rows={5}
-                      placeholder="Share details about your deck, number of slides, target presentation date, and any link to draft slides..."
+                      placeholder={
+                        isEcommerce
+                          ? "Tell us about your brand, product categories, payment requirements (Razorpay, Stripe, Cashfree, COD), target launch date, or any existing website URL..."
+                          : "Share details about your deck, number of slides, target presentation date, and any link to draft slides..."
+                      }
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-primary/30 hex-card p-4 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors resize-none"
@@ -284,7 +317,7 @@ export default function Contact() {
                     disabled={isSubmitting}
                     className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 disabled:opacity-50"
                   >
-                    {isSubmitting ? "Sending..." : "Submit Project Inquiry"} <Send size={15} />
+                    {isSubmitting ? "Sending..." : isEcommerce ? "Submit Engineering Inquiry" : "Submit Project Inquiry"} <Send size={15} />
                   </button>
                 </form>
               )}

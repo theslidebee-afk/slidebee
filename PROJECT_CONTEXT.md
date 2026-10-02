@@ -35,13 +35,17 @@ This document serves as the single source of truth for Antigravity agents and de
 
 ## 3. Technology Stack & Deployment
 
-* **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide React
-* **Router**: React Router DOM (`v6`)
+* **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Framer Motion, Lucide React
+* **Router**: React Router DOM (`v7`, HTML5 `BrowserRouter`)
 * **Hosting**: Cloudflare Pages (Project: `slidebee`, Branch: `dev`)
   * Deploy command: `npx wrangler pages deploy dist --project-name slidebee --branch dev`
-* **Backend & Database**: Supabase (`site_config`, `templates`, `orders`, `profiles`)
-  * Client: `src/lib/supabase.ts`
-* **Edge Functions / Serverless**: Cloudflare Pages Functions (`functions/api/`)
+* **Database**: Cloudflare D1 SQLite (`binding = "DB"`, database `slidebee-db`)
+  * Data Engine: Cloudflare Pages Function `/api/data` (`functions/api/data.ts`)
+  * Client: `src/lib/d1.ts` (`d1.from(...)`)
+* **Storage**: Cloudflare R2 (`R2_BUCKET = "slidebee"`, public CDN `pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev`)
+  * Client: `src/lib/r2.ts`, `/api/r2-storage`
+* **Authentication**: Cloudflare Pages Functions `/api/auth` backed by D1 `users` & `sessions` tables
+* **Architecture Mandate**: 100% Cloudflare Edge native (D1 SQLite, R2 object storage, Pages Functions). Direct imports from `src/lib/d1.ts`.
 
 ---
 
@@ -55,7 +59,7 @@ This document serves as the single source of truth for Antigravity agents and de
 * `src/pages/Admin.tsx`: Storefront management, hero/banner toggles, template CRUD, and site config.
 * `src/components/Navbar.tsx`: Sticky navigation with service links, template search, and quote CTA.
 * `src/components/Footer.tsx`: Universal footer with copyright, links, and guarantee badges.
-* `src/modules/StudioStoreClient/useStudioStore.ts`: Template catalog state, filtering, and Supabase data fetcher.
+* `src/modules/StudioStoreClient/useStudioStore.ts`: Template catalog state, filtering, and Cloudflare D1 data fetcher.
 
 ---
 

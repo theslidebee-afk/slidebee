@@ -18,8 +18,8 @@ This project enforces strict development standards across all code generation an
    - Maintain high-end presentation studio aesthetic. No cartoonish or noisy visual elements.
    - Consult `rules/brand-and-design-system.md`.
 
-3. **SUPABASE STORAGE & DATA**:
-   - All presentation assets and slide previews must use full Supabase Storage CDN URLs from the `examples` bucket.
+3. **Cloudflare D1 STORAGE & DATA**:
+   - All presentation assets and slide previews must use full Cloudflare D1 Storage CDN URLs from the `examples` bucket.
    - Dynamic marketing content must read from `site_config`.
    - Consult `rules/database-and-storage.md`.
 

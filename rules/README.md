@@ -14,7 +14,7 @@ All human developers and AI pair programmers working on this repository MUST con
 | [terminology-and-copywriting.md](./terminology-and-copywriting.md) | Differentiates internal technical jargon from executive client-facing language. | **Enforced** |
 | [templates-and-deliverables.md](./templates-and-deliverables.md) | Exclusive .pptx format, single/spreadsheet upload rules, and metrics visibility toggles. | **Enforced** |
 | [brand-and-design-system.md](./brand-and-design-system.md) | Color palette, typography, visual hierarchy, luxury aesthetic, and layout rules. | **Enforced** |
-| [database-and-storage.md](./database-and-storage.md) | Supabase schema standards, CDN storage bucket usage, RLS policies, and asset conventions. | **Enforced** |
+| [database-and-storage.md](./database-and-storage.md) | Cloudflare D1 database standards, Cloudflare R2 object storage usage, edge policies, and asset conventions. | **Enforced** |
 | [authentication-and-roles.md](./authentication-and-roles.md) | Auth flow, master PIN bypass, role permissions, client credits, and error handling. | **Enforced** |
 | [future-rules-template.md](./future-rules-template.md) | Standardized template and procedure for documenting new rules. | **Template** |
 

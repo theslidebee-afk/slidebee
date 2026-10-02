@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: /api/fulfill-order
 // Server-side verification and fulfillment of template purchases via Cloudflare D1
-// 100% Edge native with zero Supabase dependency
+// 100% Edge native serverless service
 
 interface Env {
   DB?: any;

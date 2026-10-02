@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { d1 } from "./d1";
 import { performGlobalLogout } from "./authSync";
 
 const SESSION_STORAGE_ID_KEY = "slidebee_session_id";
@@ -52,7 +52,7 @@ export async function registerActiveSession(email: string): Promise<string> {
 
   // 1. Update user_metadata as native fallback
   try {
-    await supabase.auth.updateUser({
+    await d1.auth.updateUser({
       data: {
         active_session_id: newSessionId,
         active_device_info: deviceLabel,
@@ -116,7 +116,7 @@ export async function verifyActiveSession(email: string): Promise<{ valid: boole
 
   // 2. Fallback check via GoTrue user metadata
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await d1.auth.getUser();
     if (user && user.user_metadata?.active_session_id) {
       if (user.user_metadata.active_session_id !== localId) {
         return {

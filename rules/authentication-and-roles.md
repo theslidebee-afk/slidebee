@@ -7,7 +7,7 @@
 ## 1. Master Admin Credentials & Access
 
 - **Admin Account Recognition**: Both `admin@theslidebee.com` and `admin@slidebee.com` (and any email starting with `admin@`) are recognized as administrator accounts.
-- **Admin Authentication**: Admins authenticate securely via GoTrue with administrator credentials, gaining immediate access to the Studio Hub (`#/admin`).
+- **Admin Authentication**: Admins authenticate securely via edge auth with administrator credentials, gaining immediate access to the Studio Hub (`#/admin`).
 - **Profile Persistence**: Admin accounts must always have persistent rows in `public.profiles` with `role = 'super_admin'` so database operations and role checks succeed.
 
 ---
@@ -25,4 +25,4 @@
 ## 3. Session Synchronization
 
 - Multi-tab authentication events must be synchronized via `BroadcastChannel` in `src/lib/authSync.ts`.
-- When logging out, clear both Supabase session and local keys (`slidebee_client_user`, `slidebee_admin_session`, `slidebee_admin_email`).
+- When logging out, clear both edge auth session and local keys (`slidebee_client_user`, `slidebee_admin_session`, `slidebee_admin_email`).

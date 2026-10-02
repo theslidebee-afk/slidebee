@@ -14,7 +14,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Terms() {
@@ -33,7 +33,7 @@ export default function Terms() {
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "contact_cms")

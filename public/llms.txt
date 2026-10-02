@@ -3,19 +3,34 @@
 > SlideBee is a premier presentation design studio engineered for venture-backed founders, C-suite executives, and enterprise brands. We craft investor pitch decks, board meeting keynotes, and sales presentations with guaranteed 24h to 48h turnaround, strict NDAs, and 100% editable PowerPoint (.pptx), Google Slides, and Keynote deliverables.
 
 ## Core Capabilities & Services
-- [Presentation Redesign & Polish](https://theslidebee.com/#/services): Overhauling raw, unformatted decks into executive visual narratives.
-- [Venture Pitch Decks](https://theslidebee.com/#/services): 12-slide VC-grade investor narrative structure with unit economics and TAM visualizers.
-- [Executive Stage Keynotes](https://theslidebee.com/#/services): High-contrast keynote decks for global conferences, annual summits, and boardrooms.
-- [PowerPoint Templates](https://theslidebee.com/#/templates): Master slide systems built for enterprise marketing and sales teams.
-- [Monthly Designer Retainer](https://theslidebee.com/#/pricing): Embedded presentation art director with same-day turns and direct Slack integration.
+- [Presentation Redesign & Polish](https://theslidebee.com/services): Overhauling raw, unformatted decks into executive visual narratives.
+- [Venture Pitch Decks](https://theslidebee.com/services): 12-slide VC-grade investor narrative structure with unit economics and TAM visualizers.
+- [Executive Stage Keynotes](https://theslidebee.com/services): High-contrast keynote decks for global conferences, annual summits, and boardrooms.
+- [PowerPoint Templates](https://theslidebee.com/templates): Master slide systems built for enterprise marketing and sales teams.
+- [Ecommerce Website Development](https://theslidebee.com/services?type=ecommerce): All-inclusive ₹25,000 storefront architecture with 500 product capacity, Razorpay checkout, and Cloudflare deployment.
+- [Monthly Designer Retainer](https://theslidebee.com/pricing): Embedded presentation art director with same-day turns and direct Slack integration.
 
 ## Transparent Pricing
 - Presentation Redesign: $19 / ₹1,499 per slide (24h–48h turnaround)
 - Venture Pitch Deck: $29 / ₹2,299 per slide (48h–72h turnaround, unlimited revisions, signed NDA)
 - Executive & Stage Keynote: $49 / ₹3,899 per slide (24h priority guarantee, master template included)
 - Dedicated Designer Retainer: $1,490 / ₹1,19,000 per month (pause/cancel anytime)
+- Complete Ecommerce Storefront: ₹25,000 one-time (500 products, Razorpay, Cloudflare, Zoho email)
+
+## Presentation Playbook & Strategy Guides
+- [The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade](https://theslidebee.com/blog/1): Ex-McKinsey focal points and cognitive load reduction.
+- [How to Design a Series A Pitch Deck That Secures Partner Meetings](https://theslidebee.com/blog/2): The 12-slide venture capital fundraising framework.
+- [Building an Enterprise Master Template System That Teams Actually Use](https://theslidebee.com/blog/3): Layout locking and modular drag-and-drop slide architecture.
+- [Top 10 Presentation Design Best Practices for High-Stakes Keynotes](https://theslidebee.com/blog/4): Contrast, 30-foot visibility, and stage visual direction.
+- [PowerPoint vs Google Slides vs Keynote: Which is Best for Executives?](https://theslidebee.com/blog/5): Tool comparison across typography, collaboration, and enterprise policies.
+- [How Much Does Professional Presentation Design Cost in 2026?](https://theslidebee.com/blog/6): Agency pricing breakdown, freelance risks, and studio SLAs.
+- [Complete Ecommerce Website Development Guide for Modern Brands](https://theslidebee.com/blog/7): The ₹25,000 all-inclusive launch architecture.
+- [Data Visualization in Presentations: Turning Complex Spreadsheets into Persuasive Charts](https://theslidebee.com/blog/8): Decluttering data-ink and isolating hero metrics.
+- [The Anatomy of a High-Converting B2B Sales Deck](https://theslidebee.com/blog/9): 5-part consultative consensus framework.
+- [Essential SEO & Digital Storefront Checklist for Growing Businesses in 2026](https://theslidebee.com/blog/10): Technical SEO, Schema.org rich snippets, XML sitemaps, and INP metrics.
 
 ## Contacts & Studio Inquiries
 - Official Website: https://theslidebee.com
+- Portfolio & Case Studies: https://theslidebee.com/examples
 - Inquiries: hello@theslidebee.com
 - Support & Briefs: support@theslidebee.com

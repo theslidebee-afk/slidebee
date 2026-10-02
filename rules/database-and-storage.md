@@ -1,24 +1,23 @@
 # Database and Storage Architectural Rules
 
-**Scope**: Supabase tables, storage buckets, migration scripts, and frontend data fetching.
+**Scope**: Cloudflare D1 tables, Cloudflare R2 storage bucket, migration scripts, and edge data fetching.
 
 ---
 
-## 1. Supabase Storage Standards
+## 1. Cloudflare R2 Storage Standards
 
-- **Bucket Organization**: Public presentation assets must be stored in the dedicated public bucket `examples`.
-- **Direct CDN Delivery**: All slide preview images, thumbnails, and portfolio case studies must be referenced via full CDN URLs:
-  `https://whwyfqtvuubkfypmgosi.supabase.co/storage/v1/object/public/examples/<asset-name>.jpg`
-- **Never Rely on Local Relative Paths**: Do not reference `/examples/*.jpg` expecting local static bundling, as CDN-hosted assets avoid Cloudflare Pages bundle limits and ensure instantaneous global caching.
+- **Bucket Organization**: Public presentation slide images, thumbnails, and portfolio case studies are stored in the dedicated bucket `slidebee` (`R2_PUBLIC_BASE_URL: https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev`).
+- **Direct CDN Delivery**: All slide preview images, thumbnails, and master presentation decks (.pptx) are referenced via Cloudflare R2 CDN URLs.
+- **Never Rely on Local Relative Paths**: Do not reference `/examples/*.jpg` expecting local static bundling, as CDN-hosted assets avoid Cloudflare Pages bundle limits and ensure instantaneous global edge caching.
+- **Zero Egress Fees**: Cloudflare R2 provides 10 GB free tier with $0 egress bandwidth costs.
 - **Image Formats**: Use high-definition 16:9 widescreen images (`1920x1080` JPEG or WebP) optimized for fast loading under 250 KB per slide.
 
 ---
 
-## 2. Supabase Database Rules
+## 2. Cloudflare D1 Database Rules
 
-- **Dynamic CMS via `site_config`**: All marketing copy, portfolio decks (`portfolio_cms`), services marquees (`services_marquee_cms`), and hero settings must be dynamic and stored in `public.site_config`. Never hardcode static portfolio or pricing data in component files.
-- **Row-Level Security (RLS)**:
-  - `profiles`: Public read for authentication validation, user-restricted update.
-  - `orders`: Authenticated or admin-only inspection.
-  - `site_config`: Public read, authenticated/admin write.
-- **Auditing**: Authentication actions (logins, registrations) must be safely recorded in `public.auth_logs`.
+- **Database Engine**: Cloudflare D1 SQLite (`binding = "DB"`, database `slidebee-db`).
+- **Data Engine Layer**: Client interactions run through `functions/api/data.ts` and `src/lib/d1.ts` (`d1.from(table)`).
+- **Dynamic CMS via `site_config`**: All marketing copy, portfolio decks, promotional banners, and hero settings must be dynamic and stored in table `site_config`. Never hardcode static portfolio or pricing data in component files.
+- **Security & Authorization**: Access is guarded server-side in Cloudflare Pages Functions (`/api/auth`, `/api/session-guard`, `/api/data`).
+- **Serverless Edge Mandate**: The platform runs 100% on Cloudflare D1 and Cloudflare R2. Do not introduce external vendor databases or SDKs.

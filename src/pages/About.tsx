@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 
 const DEFAULT_ABOUT_CONFIG = {
   teamEyebrow: "OUR TEAM",
@@ -36,7 +36,7 @@ export default function About() {
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "about_cms")

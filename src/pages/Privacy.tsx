@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Shield, Lock, Eye, Database, Globe, Mail, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function Privacy() {
@@ -17,7 +17,7 @@ export default function Privacy() {
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "contact_cms")
@@ -112,7 +112,7 @@ export default function Privacy() {
             </p>
             <ul className="list-disc pl-5 space-y-2 text-[#726F6D]">
               <li><strong className="text-[#111111]">Razorpay Gateway:</strong> Card processing, UPI, and international wire transfers are handled by PCI-DSS Level 1 certified processors. Payment information is tokenized and never touches our internal application servers.</li>
-              <li><strong className="text-[#111111]">Supabase Authentication & Database:</strong> User accounts, orders, and authentication states are protected by PostgreSQL Row-Level Security (RLS) policies.</li>
+              <li><strong className="text-[#111111]">Cloudflare D1 & Edge Authentication:</strong> User accounts, orders, and authentication states are protected by secure encrypted edge database isolation and tokenized sessions.</li>
               <li><strong className="text-[#111111]">No Third-Party Ad Selling:</strong> We never sell, rent, monetize, or disclose client email addresses or deck contents to advertising networks or third-party data brokers.</li>
             </ul>
           </section>

@@ -1,6 +1,6 @@
 // Cloudflare Edge & D1 Query Engine Client for SlideBee
 // 100% Serverless Edge Data & Auth Engine backed by Cloudflare D1
-// Zero Supabase dependency, zero inactivity pause, instant cold starts.
+// Zero external vendor dependency, zero inactivity pause, instant cold starts.
 
 export interface OrderRecord {
   id?: string;
@@ -413,8 +413,6 @@ export const d1 = {
 
 export const d1Client = d1;
 export const d1Auth = edgeAuth;
+export const db = d1;
 
-// Backward-compatibility aliases for legacy code
-export const supabase = d1;
-export const rawSupabase = d1;
 export default d1;

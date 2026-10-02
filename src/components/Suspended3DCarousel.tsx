@@ -10,7 +10,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useStudioStore } from "../modules/StudioStoreClient";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 
 interface SlideItem {
   id: string;
@@ -118,7 +118,7 @@ export function Suspended3DCarousel({ onSelectService }: Suspended3DCarouselProp
 
   // Fetch custom slides if configured via Admin Services Carousel selector
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "services_carousel_slides")

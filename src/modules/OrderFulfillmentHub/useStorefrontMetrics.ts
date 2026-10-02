@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 
 export interface MetricsConfig {
   show_stars: boolean;
@@ -13,7 +13,7 @@ export interface MetricsConfig {
  * - metrics: Current config { show_stars, show_downloads }
  * - loading: Loading state boolean
  * - saving: Saving state boolean
- * - updateMetrics(partial): Saves toggle changes to Supabase site_config
+ * - updateMetrics(partial): Saves toggle changes to D1 site_config
  */
 export function useStorefrontMetrics() {
   const [metrics, setMetrics] = useState<MetricsConfig>({
@@ -26,7 +26,7 @@ export function useStorefrontMetrics() {
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data } = await d1
         .from("site_config")
         .select("value")
         .eq("key", "show_template_metrics")
@@ -53,7 +53,7 @@ export function useStorefrontMetrics() {
     setSaving(true);
     const updated: MetricsConfig = { ...metrics, ...newMetrics };
     try {
-      const { error } = await supabase
+      const { error } = await d1
         .from("site_config")
         .upsert(
           [

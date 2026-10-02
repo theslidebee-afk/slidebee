@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
 import { MagneticButton } from "./MagneticButton";
-import { d1 as supabase } from "../lib/d1";
+import { d1 } from "../lib/d1";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 
 export default function Navbar() {
@@ -21,7 +21,7 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await d1.auth.getSession();
 
     if (!session?.user) {
       setIsAdmin(false);
@@ -57,7 +57,7 @@ export default function Navbar() {
 
     if (email) {
       try {
-        const { data: profile } = await supabase
+        const { data: profile } = await d1
           .from("profiles")
           .select("tier, role")
           .eq("email", email)
@@ -82,8 +82,8 @@ export default function Navbar() {
   useEffect(() => {
     checkAuth();
 
-    // Listen to live Supabase auth state transitions
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    // Listen to live edge auth state transitions
+    const { data: authListener } = d1.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || !session) {
         setIsAdmin(false);
         setClientUser(null);

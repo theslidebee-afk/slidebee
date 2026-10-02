@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: /api/redeem-pro-template
 // Server-side verification and fulfillment of Pro template downloads using Cloudflare D1
-// 100% Edge native with zero Supabase dependency
+// 100% Edge native serverless service
 
 interface Env {
   DB?: any;

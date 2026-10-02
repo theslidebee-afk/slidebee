@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { openRazorpayCheckout } from "../../lib/razorpay";
 import { sendTemplatePurchaseReceiptEmail } from "../../lib/email";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 import { type StoreTemplate } from "./useStudioStore";
 
 export interface CheckoutResult {
@@ -137,9 +137,9 @@ export function useTemplateCheckout() {
       }
 
       if (!usedEdgeApi) {
-        // Fallback directly via Supabase client for dev or direct environments
+        // Fallback directly via D1 client for dev or direct environments
         const cleanEmail = clientEmail.trim().toLowerCase();
-        const { data: sub } = await supabase
+        const { data: sub } = await d1
           .from("subscriptions")
           .select("*")
           .eq("user_email", cleanEmail)
@@ -148,7 +148,7 @@ export function useTemplateCheckout() {
           .limit(1)
           .maybeSingle();
 
-        const { data: profile } = await supabase
+        const { data: profile } = await d1
           .from("profiles")
           .select("*")
           .eq("email", cleanEmail)
@@ -175,7 +175,7 @@ export function useTemplateCheckout() {
 
         // Increment quota used
         if (sub?.id) {
-          await supabase
+          await d1
             .from("subscriptions")
             .update({
               slides_used: quotaUsed + 1,
@@ -208,7 +208,7 @@ export function useTemplateCheckout() {
         ];
 
         if (profile?.id) {
-          await supabase
+          await d1
             .from("profiles")
             .update({
               downloads_this_month: quotaUsed + 1,
@@ -333,9 +333,9 @@ export function useTemplateCheckout() {
             console.warn("Backend order fulfillment notice, falling back to direct RPC:", apiErr);
           }
 
-          // 2. Direct Supabase RPC fallback
+          // 2. Direct D1 RPC fallback
           if (!fulfilled) {
-            const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
+            const { data: fulfillData, error: fulfillErr } = await d1.rpc("fn_fulfill_template_order", {
               p_order_ref: orderRef,
               p_payment_id: payment.razorpay_payment_id,
               p_template_id: template.id,

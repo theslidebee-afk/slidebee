@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { d1 } from '../lib/d1';
 import { sendOrderConfirmationEmail } from '../lib/email';
 import { 
   Send, 
@@ -138,17 +138,19 @@ function SlideBeeSelect({
 
 export default function OrderNow() {
   const [searchParams] = useSearchParams();
+  const serviceParam = searchParams.get('service') || searchParams.get('ref') || searchParams.get('type');
+  const isEcommerce = (serviceParam?.toLowerCase().includes('ecommerce')) ?? false;
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     company: '',
-    service: 'Presentation Redesign',
-    slideCount: '10–25 Slides',
-    timeline: '48h Fast Turnaround',
-    format: 'Master PowerPoint (.pptx)',
-    stylePreference: 'Modern & High-Impact',
+    service: isEcommerce ? 'Full-Stack Ecommerce Store (₹25,000 Package)' : 'Presentation Redesign',
+    slideCount: isEcommerce ? '50–200 Products (Standard Store)' : '10–25 Slides',
+    timeline: isEcommerce ? '7-Day Fast Launch' : '48h Fast Turnaround',
+    format: isEcommerce ? 'Full-Stack Store + Razorpay Checkout + Admin Hub' : 'Master PowerPoint (.pptx)',
+    stylePreference: isEcommerce ? 'Modern & High-Conversion (Clean & Bold)' : 'Modern & High-Impact',
     driveLink: '',
     projectNotes: '',
   });
@@ -158,12 +160,19 @@ export default function OrderNow() {
   const [orderId, setOrderId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  usePageSEO({
-    title: "Order Custom Presentation Design | SlideBee",
-    description: "Submit your presentation design brief. 24h–48h turnaround, senior art director assignment, signed NDA, 100% editable PPTX.",
-  });
+  usePageSEO(
+    isEcommerce
+      ? {
+          title: "Launch Your Ecommerce Store (₹25,000) | SlideBee",
+          description: "Submit your ecommerce store brief. Full-stack store with 500 products, Razorpay checkout, Cloudflare deployment, and admin dashboard.",
+        }
+      : {
+          title: "Order Custom Presentation Design | SlideBee",
+          description: "Submit your presentation design brief. 24h–48h turnaround, senior art director assignment, signed NDA, 100% editable PPTX.",
+        }
+  );
 
-  const services = [
+  const presentationServices = [
     'Presentation Redesign',
     'Investor Pitch Decks',
     'Executive & Board Keynotes',
@@ -172,6 +181,15 @@ export default function OrderNow() {
     'Sales & Marketing Collateral'
   ];
 
+  const ecommerceServices = [
+    'Full-Stack Ecommerce Store (₹25,000 Package)',
+    'Custom Headless Storefront & Edge API',
+    'Shopify / WooCommerce to Cloudflare Migration',
+    'Multi-Vendor Marketplace & Custom Backend'
+  ];
+
+  const services = isEcommerce ? ecommerceServices : presentationServices;
+
   const slideRanges = [
     '1–10 Slides (Micro Deck)',
     '10–25 Slides (Standard Pitch / Keynote)',
@@ -179,40 +197,86 @@ export default function OrderNow() {
     '50+ Slides (Enterprise Deck)'
   ];
 
-  const timelines = [
+  const ecommerceCatalogRanges = [
+    '1–50 Products (Starter Catalog)',
+    '50–200 Products (Standard Store)',
+    '200–500 Products (Full-Scale Catalog)',
+    '500+ Products (Enterprise Store)'
+  ];
+
+  const activeScopeOptions = isEcommerce ? ecommerceCatalogRanges : slideRanges;
+
+  const presentationTimelines = [
     'Urgent 24-Hour Rush',
     '48h Fast Turnaround',
     '3–5 Business Days',
     'Flexible / Milestone Based'
   ];
 
-  const formats = [
+  const ecommerceTimelines = [
+    '7-Day Fast Launch',
+    '14-Day Standard Rollout',
+    '3–4 Weeks Custom Build',
+    'Flexible / Milestone Based'
+  ];
+
+  const activeTimelineOptions = isEcommerce ? ecommerceTimelines : presentationTimelines;
+
+  const presentationFormats = [
     'Master PowerPoint (.pptx)',
     'Master PowerPoint (.pptx) + High-Res PDF',
     'Enterprise Master Template (.potx)'
   ];
 
-  const stylePreferences = [
+  const ecommerceDeliverables = [
+    'Full-Stack Store + Razorpay Checkout + Admin Hub',
+    'Headless Edge Storefront + Custom Domain + Zoho Mail',
+    'Custom D1 SQLite / Postgres DB + Automated Invoicing'
+  ];
+
+  const activeFormatOptions = isEcommerce ? ecommerceDeliverables : presentationFormats;
+
+  const presentationStyles = [
     'Modern & High-Impact (Clean & Bold)',
     'Executive & Formal (McKinsey / BCG Style)',
     'Tech & Minimalist (Dark/Glass/Sleek)',
     'Vibrant & Creative (Custom Vector / 3D)'
   ];
 
+  const ecommerceStyles = [
+    'Modern & High-Conversion (Clean & Bold)',
+    'Luxury & Boutique (Minimalist Elegance)',
+    'Vibrant Lifestyle & D2C (Rich Visuals)',
+    'Wholesale / B2B Catalog (Structured & Clean)'
+  ];
+
+  const activeStyleOptions = isEcommerce ? ecommerceStyles : presentationStyles;
+
   useEffect(() => {
-    const serviceParam = searchParams.get('service') || searchParams.get('ref');
+    if (isEcommerce) {
+      setFormData(prev => ({
+        ...prev,
+        service: 'Full-Stack Ecommerce Store (₹25,000 Package)',
+        slideCount: '50–200 Products (Standard Store)',
+        timeline: '7-Day Fast Launch',
+        format: 'Full-Stack Store + Razorpay Checkout + Admin Hub',
+        stylePreference: 'Modern & High-Conversion (Clean & Bold)',
+      }));
+      return;
+    }
+
     const tierParam = searchParams.get('tier');
 
     if (serviceParam) {
       const paramDecoded = decodeURIComponent(serviceParam).trim();
       const paramLower = paramDecoded.toLowerCase();
       // 1. Exact match
-      const exactMatch = services.find(s => s.toLowerCase() === paramLower);
+      const exactMatch = presentationServices.find(s => s.toLowerCase() === paramLower);
       if (exactMatch) {
         setFormData(prev => ({ ...prev, service: exactMatch }));
       } else {
         // 2. Keyword-based intelligent match
-        const matched = services.find(s => {
+        const matched = presentationServices.find(s => {
           const sLower = s.toLowerCase();
           return sLower.includes(paramLower) || paramLower.includes(sLower) ||
             (paramLower.includes('pitch') && sLower.includes('pitch')) ||
@@ -241,7 +305,7 @@ export default function OrderNow() {
         setFormData(prev => ({ ...prev, slideCount: '50+ Slides (Enterprise Deck)', service: 'Master Branded Template Systems' }));
       }
     }
-  }, [searchParams]);
+  }, [searchParams, isEcommerce, serviceParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,8 +334,8 @@ export default function OrderNow() {
     const generatedId = `SB-${100000 + (randomArray[0] % 900000)}`;
 
     try {
-      // 1. Save to Supabase
-      const { error: sbError } = await supabase.from('orders').insert([
+      // 1. Save to D1
+      const { error: sbError } = await d1.from('orders').insert([
         {
           order_reference: generatedId,
           service_type: formData.service,
@@ -290,7 +354,7 @@ export default function OrderNow() {
       ]);
 
       if (sbError) {
-        console.warn('Supabase orders notice:', sbError.message);
+        console.warn('D1 orders notice:', sbError.message);
       }
 
       // 2. Dispatch Automated Confirmation Email via Resend
@@ -326,13 +390,15 @@ export default function OrderNow() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block mb-2">
-            SlideBee Project Request & Quote Intake
+            {isEcommerce ? "SlideBee Engineering Desk & Store Launch Intake" : "SlideBee Project Request & Quote Intake"}
           </span>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] mb-3 leading-tight">
-            Start Your Presentation Project
+            {isEcommerce ? "Launch Your Ecommerce Store (₹25,000)" : "Start Your Presentation Project"}
           </h1>
           <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-xl mx-auto">
-            Provide your project details below. Our senior art director will review your scope and send a confirmed proposal and quote within 2 hours.
+            {isEcommerce
+              ? "Provide your store requirements, catalog size, and branding below. Our lead full-stack engineer will review your brief and send your deployment blueprint within 2 hours."
+              : "Provide your project details below. Our senior art director will review your scope and send a confirmed proposal and quote within 2 hours."}
           </p>
         </div>
 
@@ -351,11 +417,19 @@ export default function OrderNow() {
             </span>
 
             <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111] mt-4 mb-3">
-              Project Request Received
+              {isEcommerce ? "Ecommerce Project Scope Received" : "Project Request Received"}
             </h2>
 
             <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-lg mx-auto mb-8 leading-relaxed">
-              Thank you, <strong className="text-[#111111]">{formData.name}</strong>. We've queued your project for <strong>{formData.service}</strong>. A designated presentation lead has been assigned and will email you at <strong className="text-[#111111]">{formData.email}</strong> shortly.
+              {isEcommerce ? (
+                <>
+                  Thank you, <strong className="text-[#111111]">{formData.name}</strong>. We've queued your store development for <strong>{formData.service}</strong>. A dedicated full-stack engineering lead has been assigned and will email you at <strong className="text-[#111111]">{formData.email}</strong> with your architecture roadmap shortly.
+                </>
+              ) : (
+                <>
+                  Thank you, <strong className="text-[#111111]">{formData.name}</strong>. We've queued your project for <strong>{formData.service}</strong>. A designated presentation lead has been assigned and will email you at <strong className="text-[#111111]">{formData.email}</strong> shortly.
+                </>
+              )}
             </p>
 
             <div className="bg-[#FFF9E8] border border-[#111111]/5 rounded-2xl p-6 text-left max-w-lg mx-auto mb-8 space-y-2.5 text-xs text-[#111111]">
@@ -364,7 +438,7 @@ export default function OrderNow() {
                 <span className="font-bold">{formData.service}</span>
               </div>
               <div className="flex justify-between border-b border-[#111111]/5 pb-2">
-                <span className="text-[#726F6D]">Scope:</span>
+                <span className="text-[#726F6D]">{isEcommerce ? "Catalog Scale:" : "Scope:"}</span>
                 <span className="font-bold">{formData.slideCount}</span>
               </div>
               <div className="flex justify-between border-b border-[#111111]/5 pb-2">
@@ -379,10 +453,12 @@ export default function OrderNow() {
 
             <div className="bg-[#FCBF14]/15 border-2 border-[#FCBF14] rounded-2xl p-4 text-center max-w-lg mx-auto mb-6">
               <span className="text-[11px] font-black uppercase tracking-widest text-[#111111] block mb-1">
-                Live SLA & Milestone Tracking Active
+                {isEcommerce ? "Live Sprint & Deployment Tracking Active" : "Live SLA & Milestone Tracking Active"}
               </span>
               <p className="text-xs text-[#111111]/85 font-medium">
-                Your order is linked to your email. Sign in to your client portal to monitor design milestones, request revisions, and download your deliverables.
+                {isEcommerce
+                  ? "Your order is linked to your email. Sign in to your client portal to monitor development sprint milestones, preview staging builds, and manage DNS/payment keys."
+                  : "Your order is linked to your email. Sign in to your client portal to monitor design milestones, request revisions, and download your deliverables."}
               </p>
             </div>
 
@@ -427,10 +503,10 @@ export default function OrderNow() {
                 </div>
                 <div>
                   <h3 className="font-heading font-extrabold text-lg text-[#111111]">
-                    Project Scope & Objectives
+                    {isEcommerce ? "Store Scope & Catalog Specifications" : "Project Scope & Objectives"}
                   </h3>
                   <p className="text-xs text-[#726F6D] font-medium">
-                    What type of presentation do you need crafted?
+                    {isEcommerce ? "What scale and architecture do you envision for your online store?" : "What type of presentation do you need crafted?"}
                   </p>
                 </div>
               </div>
@@ -438,19 +514,19 @@ export default function OrderNow() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 {/* Service Selection */}
                 <SlideBeeSelect
-                  label="Primary Service *"
+                  label={isEcommerce ? "Ecommerce Package *" : "Primary Service *"}
                   value={formData.service}
                   onChange={(val) => setFormData({ ...formData, service: val })}
                   options={services}
                   name="service"
                 />
 
-                {/* Slide Count */}
+                {/* Slide Count / Catalog Size */}
                 <SlideBeeSelect
-                  label="Estimated Slide Count *"
+                  label={isEcommerce ? "Catalog Size / Estimated Products *" : "Estimated Slide Count *"}
                   value={formData.slideCount}
                   onChange={(val) => setFormData({ ...formData, slideCount: val })}
-                  options={slideRanges}
+                  options={activeScopeOptions}
                   name="slideCount"
                 />
               </div>
@@ -458,19 +534,19 @@ export default function OrderNow() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Timeline */}
                 <SlideBeeSelect
-                  label="Desired Delivery Timeline *"
+                  label={isEcommerce ? "Target Launch Timeline *" : "Desired Delivery Timeline *"}
                   value={formData.timeline}
                   onChange={(val) => setFormData({ ...formData, timeline: val })}
-                  options={timelines}
+                  options={activeTimelineOptions}
                   name="timeline"
                 />
 
-                {/* Output Format */}
+                {/* Output Format / Architecture Deliverables */}
                 <SlideBeeSelect
-                  label="Deliverable Format *"
+                  label={isEcommerce ? "Architecture & Deliverables *" : "Deliverable Format *"}
                   value={formData.format}
                   onChange={(val) => setFormData({ ...formData, format: val })}
-                  options={formats}
+                  options={activeFormatOptions}
                   name="format"
                 />
               </div>
@@ -484,10 +560,10 @@ export default function OrderNow() {
                 </div>
                 <div>
                   <h3 className="font-heading font-extrabold text-lg text-[#111111]">
-                    Design Style & Project Files
+                    {isEcommerce ? "Storefront Aesthetics & Catalog Files" : "Design Style & Project Files"}
                   </h3>
                   <p className="text-xs text-[#726F6D] font-medium">
-                    Share your visual preferences and existing draft materials.
+                    {isEcommerce ? "Share your brand identity, visual style, and product catalog files." : "Share your visual preferences and existing draft materials."}
                   </p>
                 </div>
               </div>
@@ -495,24 +571,24 @@ export default function OrderNow() {
               <div className="space-y-5">
                 {/* Visual Style */}
                 <SlideBeeSelect
-                  label="Design & Visual Style"
+                  label={isEcommerce ? "Storefront Visual Aesthetic" : "Design & Visual Style"}
                   value={formData.stylePreference}
                   onChange={(val) => setFormData({ ...formData, stylePreference: val })}
-                  options={stylePreferences}
+                  options={activeStyleOptions}
                   name="stylePreference"
                 />
 
-                {/* Cloud Link for Draft Slides */}
+                {/* Cloud Link for Draft Slides or Catalog Files */}
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 flex items-center justify-between">
-                    <span>Draft Slides / Brand Asset Link (Google Drive / Dropbox)</span>
+                    <span>{isEcommerce ? "Product Catalog & Brand Assets (Drive / Dropbox / Notion / CSV)" : "Draft Slides / Brand Asset Link (Google Drive / Dropbox)"}</span>
                     <span className="text-[10px] text-[#726F6D] font-normal">Optional</span>
                   </label>
                   <div className="relative">
                     <UploadCloud className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#726F6D]" />
                     <input
                       type="url"
-                      placeholder="https://drive.google.com/drive/folders/..."
+                      placeholder={isEcommerce ? "https://drive.google.com/drive/folders/... or Notion URL" : "https://drive.google.com/drive/folders/..."}
                       value={formData.driveLink}
                       onChange={(e) => setFormData({ ...formData, driveLink: e.target.value })}
                       className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary"
@@ -523,12 +599,12 @@ export default function OrderNow() {
                 {/* Detailed Brief */}
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
-                    Project Brief & Key Requirements *
+                    {isEcommerce ? "Store Requirements, Payment Gateway & Target Audience *" : "Project Brief & Key Requirements *"}
                   </label>
                   <textarea
                     required
                     rows={4}
-                    placeholder="Describe your audience, key message, brand guidelines, or specific slides you want to emphasize..."
+                    placeholder={isEcommerce ? "Describe your product niche, payment gateways needed (Razorpay/Stripe), custom shipping rules, or reference stores you admire..." : "Describe your audience, key message, brand guidelines, or specific slides you want to emphasize..."}
                     value={formData.projectNotes}
                     onChange={(e) => setFormData({ ...formData, projectNotes: e.target.value })}
                     className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl p-4 text-xs sm:text-sm text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-primary resize-none"
@@ -545,10 +621,10 @@ export default function OrderNow() {
                 </div>
                 <div>
                   <h3 className="font-heading font-extrabold text-lg text-[#111111]">
-                    Contact & Proposal Delivery
+                    {isEcommerce ? "Founder / Contact & Architecture Delivery" : "Contact & Proposal Delivery"}
                   </h3>
                   <p className="text-xs text-[#726F6D] font-medium">
-                    Where should we send the proposal and custom quote?
+                    {isEcommerce ? "Where should we send your full-stack deployment plan and onboarding blueprint?" : "Where should we send the proposal and custom quote?"}
                   </p>
                 </div>
               </div>
@@ -622,7 +698,7 @@ export default function OrderNow() {
                   <Clock size={14} className="text-primary-amber" /> Guaranteed 2-Hour Response Time
                 </div>
                 <div className="flex items-center gap-2">
-                  <Layers size={14} className="text-primary-amber" /> Unlimited Revisions & Editable Source Files
+                  <Layers size={14} className="text-primary-amber" /> {isEcommerce ? "Full Source Code Ownership & Edge Deployment" : "Unlimited Revisions & Editable Source Files"}
                 </div>
               </div>
 
@@ -633,11 +709,11 @@ export default function OrderNow() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="animate-spin" size={18} /> Submitting Project...
+                    <Loader2 className="animate-spin" size={18} /> {isEcommerce ? "Submitting Store Brief..." : "Submitting Project..."}
                   </>
                 ) : (
                   <>
-                    <Send size={18} /> Submit Project Request & Get Quote
+                    <Send size={18} /> {isEcommerce ? "Submit Store Brief & Get Blueprint" : "Submit Project Request & Get Quote"}
                   </>
                 )}
               </button>

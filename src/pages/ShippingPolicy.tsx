@@ -10,7 +10,7 @@ import {
   FileText
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { usePageSEO } from "../hooks/usePageSEO";
 
 export default function ShippingPolicy() {
@@ -27,7 +27,7 @@ export default function ShippingPolicy() {
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "contact_cms")
@@ -183,7 +183,7 @@ export default function ShippingPolicy() {
               Every custom order generates a unique reference ID (e.g. <code>SB-XXXXXX</code>). You can track real-time delivery milestones anytime:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-[#726F6D] mb-4">
-              <li><strong className="text-[#111111]">Client Portal:</strong> Sign in at <Link to="/login" className="text-primary-amber font-bold underline">theslidebee.com/#/login</Link> to monitor draft reviews, revisions, and download finalized files.</li>
+              <li><strong className="text-[#111111]">Client Portal:</strong> Sign in at <Link to="/login" className="text-primary-amber font-bold underline">theslidebee.com/login</Link> to monitor draft reviews, revisions, and download finalized files.</li>
               <li><strong className="text-[#111111]">Email Notifications:</strong> Milestone alerts are automatically dispatched to your registered email from <code>design@theslidebee.com</code> and <code>hello@theslidebee.com</code>.</li>
             </ul>
           </section>

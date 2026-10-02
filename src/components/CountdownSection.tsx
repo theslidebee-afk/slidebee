@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { Mail, CheckCircle2, Clock } from "lucide-react";
 
 // Launch date: 30 days from October 1, 2026
@@ -64,7 +64,7 @@ export default function CountdownSection() {
     if (!email) return;
     setStatus("loading");
     try {
-      const { error } = await supabase.from("waitlist").insert([
+      const { error } = await d1.from("waitlist").insert([
         {
           email,
           source: "countdown_section"

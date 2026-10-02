@@ -40,13 +40,12 @@ if (typeof window !== 'undefined') {
       searchParams.set(k, v);
     }
     searchParams.set('action', 'reset');
-    const target = '/#/login?' + searchParams.toString();
-    if (!hash.startsWith('#/login')) {
-      window.history.replaceState(null, '', target);
-    }
-  } else if (pathname && pathname !== '/' && !window.location.hash) {
-    const target = '/#' + pathname + window.location.search;
+    const target = '/login?' + searchParams.toString();
     window.history.replaceState(null, '', target);
+  } else if (hash.startsWith('#/')) {
+    // Gracefully normalize legacy hash URLs (e.g. /#/blog/1 -> /blog/1)
+    const cleanPath = hash.slice(1);
+    window.history.replaceState(null, '', cleanPath);
   }
 }
 

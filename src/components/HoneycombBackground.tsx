@@ -8,6 +8,56 @@ interface HoneycombBackgroundProps {
 // Flat-top hexagon clip path
 const HEX_CLIP_PATH = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
 
+interface HexCellProps {
+  hex: {
+    id: string;
+    x: number;
+    y: number;
+    isCenter: boolean;
+  };
+  index: number;
+  total: number;
+  scrollYProgress: MotionValue<number>;
+}
+
+const HexCell: React.FC<HexCellProps> = ({ hex, index, total, scrollYProgress }) => {
+  // Calculate when this specific hexagon should appear based on its order in the array
+  const startProgress = (index / total) * 0.8; // Use 80% of scroll for the build-up
+  const endProgress = startProgress + 0.1;
+
+  // Map the scroll progress to scale and opacity
+  const scale = useTransform(scrollYProgress, [startProgress, endProgress], [0, 1]);
+  const opacity = useTransform(scrollYProgress, [startProgress, endProgress], [0, 1]);
+
+  const isBrandColor = index % 5 === 0;
+
+  return (
+    <motion.div
+      key={hex.id}
+      style={{
+        position: 'absolute',
+        left: hex.x,
+        top: hex.y,
+        width: 100,
+        height: 115.47,
+        clipPath: HEX_CLIP_PATH,
+        scale,
+        opacity,
+      }}
+      className={`${
+        hex.isCenter ? 'bg-primary' : 
+        isBrandColor ? 'bg-primary/40' : 'bg-white/10'
+      } backdrop-blur-sm transition-colors duration-500`}
+    >
+      {/* Inner border/styling to make it look like a wireframe filled in */}
+      <div 
+        className="absolute inset-[2px] bg-[#0b0f19]/80"
+        style={{ clipPath: HEX_CLIP_PATH }}
+      />
+    </motion.div>
+  );
+};
+
 export const HoneycombBackground: React.FC<HoneycombBackgroundProps> = ({ scrollYProgress }) => {
   // Generate hexagon grid positions
   const hexGrid = useMemo(() => {
@@ -68,43 +118,15 @@ export const HoneycombBackground: React.FC<HoneycombBackgroundProps> = ({ scroll
 
       {/* 2. Scroll-Triggered Honeycomb Grid (Direction 1 concept) */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[675px] h-[950px] opacity-20 mix-blend-screen md:opacity-30">
-        {hexGrid.map((hex, index) => {
-          // Calculate when this specific hexagon should appear based on its order in the array
-          const startProgress = index / hexGrid.length * 0.8; // Use 80% of scroll for the build-up
-          const endProgress = startProgress + 0.1;
-
-          // Map the scroll progress to scale and opacity
-          const scale = useTransform(scrollYProgress, [startProgress, endProgress], [0, 1]);
-          const opacity = useTransform(scrollYProgress, [startProgress, endProgress], [0, 1]);
-          
-          const isBrandColor = index % 5 === 0;
-
-          return (
-            <motion.div
-              key={hex.id}
-              style={{
-                position: 'absolute',
-                left: hex.x,
-                top: hex.y,
-                width: 100,
-                height: 115.47,
-                clipPath: HEX_CLIP_PATH,
-                scale,
-                opacity,
-              }}
-              className={`${
-                hex.isCenter ? 'bg-primary' : 
-                isBrandColor ? 'bg-primary/40' : 'bg-white/10'
-              } backdrop-blur-sm transition-colors duration-500`}
-            >
-              {/* Inner border/styling to make it look like a wireframe filled in */}
-              <div 
-                className="absolute inset-[2px] bg-[#0b0f19]/80"
-                style={{ clipPath: HEX_CLIP_PATH }}
-              />
-            </motion.div>
-          );
-        })}
+        {hexGrid.map((hex, index) => (
+          <HexCell
+            key={hex.id}
+            hex={hex}
+            index={index}
+            total={hexGrid.length}
+            scrollYProgress={scrollYProgress}
+          />
+        ))}
       </div>
     </div>
   );

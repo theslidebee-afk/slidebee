@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 
 export interface NewTemplatePayload {
   title: string;
@@ -31,7 +31,7 @@ export interface NewTemplatePayload {
  * - bulkImportTemplates(templatesArray): Inserts array of parsed templates
  * - deleteTemplate(id): Deletes template from database
  * - toggleCreditEligibility(id, isEligible): Toggles free community deck library membership
- * - refetch(): Re-reads templates from Supabase
+ * - refetch(): Re-reads templates from D1 database
  */
 export function useAdminTemplates() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -42,7 +42,7 @@ export function useAdminTemplates() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
+      const { data, error: err } = await d1
         .from("templates")
         .select("*")
         .order("created_at", { ascending: false });
@@ -92,7 +92,7 @@ export function useAdminTemplates() {
       is_published: payload.is_published ?? true
     };
 
-    const { data, error: insertErr } = await supabase
+    const { data, error: insertErr } = await d1
       .from("templates")
       .insert([dbRecord])
       .select();
@@ -112,7 +112,7 @@ export function useAdminTemplates() {
       is_credit_eligible: Boolean(item.is_credit_eligible)
     }));
 
-    const { data, error: bulkErr } = await supabase
+    const { data, error: bulkErr } = await d1
       .from("templates")
       .insert(formatted)
       .select();
@@ -126,7 +126,7 @@ export function useAdminTemplates() {
   };
 
   const deleteTemplate = async (id: string) => {
-    const { error: delErr } = await supabase
+    const { error: delErr } = await d1
       .from("templates")
       .delete()
       .eq("id", id);
@@ -136,7 +136,7 @@ export function useAdminTemplates() {
   };
 
   const toggleCreditEligibility = async (id: string, isEligible: boolean) => {
-    const { error: updErr } = await supabase
+    const { error: updErr } = await d1
       .from("templates")
       .update({ is_credit_eligible: isEligible })
       .eq("id", id);

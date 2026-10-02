@@ -19,7 +19,7 @@ import {
   ShoppingBag
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url } from "../lib/r2";
 import { sendTemplatePurchaseReceiptEmail } from "../lib/email";
 import { useTemplateCheckout, type StoreTemplate } from "../modules/StudioStoreClient";
@@ -77,7 +77,7 @@ export default function TemplateDetail() {
 
   useEffect(() => {
     if (client?.email) {
-      supabase
+      d1
         .from("subscriptions")
         .select("*")
         .eq("user_email", client.email)
@@ -88,7 +88,7 @@ export default function TemplateDetail() {
           if (data) setClientSub(data);
         });
 
-      supabase
+      d1
         .from("profiles")
         .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
         .eq("email", client.email)
@@ -123,7 +123,7 @@ export default function TemplateDetail() {
     setLoading(true);
 
     // 1. Fetch site_config metrics toggle
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "show_template_metrics")
@@ -141,7 +141,7 @@ export default function TemplateDetail() {
         let matched: any = null;
 
         // Try v_storefront_catalog first
-        const { data, error } = await supabase
+        const { data, error } = await d1
           .from("v_storefront_catalog")
           .select("*")
           .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
@@ -151,7 +151,7 @@ export default function TemplateDetail() {
           matched = data;
         } else {
           // Fallback to direct templates table lookup
-          const { data: tData } = await supabase
+          const { data: tData } = await d1
             .from("templates")
             .select("*")
             .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
@@ -211,7 +211,7 @@ export default function TemplateDetail() {
   // 2. Fetch similar / related templates from v_storefront_catalog
   useEffect(() => {
     if (!template?.id) return;
-    supabase
+    d1
       .from("v_storefront_catalog")
       .select("*")
       .neq("id", template.id)
@@ -366,7 +366,7 @@ export default function TemplateDetail() {
     } else if (result.success) {
       // Re-sync subscription quota and profile in state
       if (client.email) {
-        supabase
+        d1
           .from("subscriptions")
           .select("*")
           .eq("user_email", client.email)
@@ -377,7 +377,7 @@ export default function TemplateDetail() {
             if (data) setClientSub(data);
           });
 
-        supabase
+        d1
           .from("profiles")
           .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
           .eq("email", client.email)
@@ -459,7 +459,7 @@ export default function TemplateDetail() {
       setFreeDownloadsToday(nextCount);
 
       try {
-        await supabase
+        await d1
           .from("profiles")
           .update({
             purchased_items: updatedPurchases,

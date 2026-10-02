@@ -193,7 +193,7 @@ export async function sendWelcomeEmail({
         </ul>
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="https://theslidebee.com/#/account" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 12px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://theslidebee.com/account" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 12px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Access Client Portal
           </a>
         </div>
@@ -409,7 +409,7 @@ export async function sendTemplatePurchaseReceiptEmail({
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center;">
           Need help customizing or want our designers to tailor this deck to your branding?<br/>
-          Reply to this email or submit a quick redesign order on <a href="https://theslidebee.com/#/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
+          Reply to this email or submit a quick redesign order on <a href="https://theslidebee.com/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
         </p>
       </div>
 
@@ -496,7 +496,7 @@ export async function sendProGrantedEmail({
         ` : ''}
 
         <div style="text-align: center; margin: 28px 0 16px 0;">
-          <a href="https://theslidebee.com/#/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://theslidebee.com/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Browse & Download Templates
           </a>
         </div>
@@ -589,7 +589,7 @@ export async function sendCreditsAdjustedEmail({
         ` : ''}
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="https://theslidebee.com/#/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://theslidebee.com/templates" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Browse Master Presentation Catalog
           </a>
         </div>
@@ -672,7 +672,7 @@ export async function sendAccountDeletionEmail({
         ` : ''}
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; margin-top: 20px;">
-          If this action was taken in error or if you wish to commission new presentation decks in the future, you may register a new account anytime at <a href="https://theslidebee.com/#/login" style="color: #936610; font-weight: bold;">theslidebee.com</a>.
+          If this action was taken in error or if you wish to commission new presentation decks in the future, you may register a new account anytime at <a href="https://theslidebee.com/login" style="color: #936610; font-weight: bold;">theslidebee.com</a>.
         </p>
       </div>
 
@@ -759,7 +759,7 @@ export async function sendProExpiringSoonEmail({
         </p>
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="https://theslidebee.com/#/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://theslidebee.com/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Renew Pro Membership
           </a>
         </div>
@@ -838,7 +838,7 @@ export async function sendProExpiredEmail({
         </div>
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="https://theslidebee.com/#/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          <a href="https://theslidebee.com/pricing" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
             Reactivate Pro Membership
           </a>
         </div>

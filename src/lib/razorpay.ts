@@ -3,7 +3,7 @@
  * Supports Razorpay Test & Live modes with dynamic script loading and admin config.
  */
 
-import { supabase } from "./supabase";
+import { d1 } from "./d1";
 
 declare global {
   interface Window {
@@ -45,9 +45,9 @@ export async function getRazorpayKey(): Promise<string> {
   const envKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
   if (envKey && envKey.trim()) return envKey.trim();
 
-  // 3. Supabase site_config
+  // 3. D1 site_config
   try {
-    const { data } = await supabase
+    const { data } = await d1
       .from("site_config")
       .select("value")
       .eq("key", "razorpay_settings")

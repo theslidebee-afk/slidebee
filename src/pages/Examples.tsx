@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { X, ArrowRight, Search, ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -249,7 +249,7 @@ export default function Examples() {
 
     async function fetchPortfolio() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "portfolio_cms")

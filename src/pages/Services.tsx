@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
-import { d1 as supabase } from "../lib/d1";
+import { d1 } from "../lib/d1";
 import { HexProcessInfographic } from "../components/HexProcessInfographic";
 import { Suspended3DCarousel } from "../components/Suspended3DCarousel";
 import { 
@@ -80,7 +80,7 @@ export default function Services() {
   }, [serviceParam]);
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "services_cms")
@@ -796,7 +796,7 @@ export default function Services() {
                   Get Started for ₹25,000 <ArrowRight size={14} />
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/contact?service=ecommerce"
                   className="w-full sm:w-auto bg-white hover:bg-gray-50 text-[#111111] font-bold px-6 py-3.5 rounded-full text-xs sm:text-sm border border-[#111111]/20 transition-all"
                 >
                   Talk to Our Engineering Desk

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { verifyActiveSession, triggerSessionDisplacement } from "../lib/sessionGuard";
 
 /**
@@ -30,7 +30,7 @@ export function useSessionEnforcer() {
       }
 
       if (!activeEmail) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await d1.auth.getSession();
         activeEmail = session?.user?.email || "";
       }
 

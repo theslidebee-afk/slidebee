@@ -20,7 +20,7 @@ import {
 import { useStudioStore } from "../modules/StudioStoreClient";
 import { MagneticButton } from "../components/MagneticButton";
 import { usePageSEO } from "../hooks/usePageSEO";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 
 export default function Home() {
   usePageSEO({
@@ -32,12 +32,13 @@ export default function Home() {
   const heroRef = useRef<HTMLDivElement>(null);
   const templatesRef = useRef<HTMLElement>(null);
 
-  // Window scroll-driven motion
+  // Window scroll-driven motion for hero dissolve and template slide-up
   const { scrollY } = useScroll();
-  const heroCardY = useTransform(scrollY, [0, 480], [0, -30]);
-  const heroCardOpacity = useTransform(scrollY, [0, 450], [1, 0.7]);
-  const videoScale = useTransform(scrollY, [0, 500], [1, 0.98]);
-  const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.85]);
+  const heroCardY = useTransform(scrollY, [0, 420], [0, -40]);
+  const heroCardOpacity = useTransform(scrollY, [0, 360], [1, 0]);
+  const videoScale = useTransform(scrollY, [0, 480], [1, 0.94]);
+  const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.1]);
+  const templatesSlideUpY = useTransform(scrollY, [0, 420], [0, -75]);
 
 
   // Helper to extract inner preview slide thumbnails for SlideEgg-style showcase cards
@@ -84,30 +85,55 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
-  const isFilterActive = isSearchFocused || searchQuery.trim().length > 0 || activeSidebarCategory !== "all";
+  const [isBrowsingActive, setIsBrowsingActive] = useState<boolean>(false);
+
+  const isFilterActive =
+    isBrowsingActive ||
+    isSearchFocused ||
+    searchQuery.trim().length > 0 ||
+    activeSidebarCategory !== "all" ||
+    tierFilter !== "all";
   const isSearching = isFilterActive;
-  const [dockOffset, setDockOffset] = useState<number>(320);
+  const [dockOffset, setDockOffset] = useState<number>(505);
+
+  const resetToResting = () => {
+    setIsBrowsingActive(false);
+    setIsSearchFocused(false);
+    setSearchQuery("");
+    setActiveSidebarCategory("all");
+    setTierFilter("all");
+    setVisibleCount(24);
+  };
 
   // Measure exact resting distance so templates sheet rises up and docks seamlessly below the better presentation slogan
   useEffect(() => {
-    if (isFilterActive) return;
     const calculateOffset = () => {
       const heroEl = heroRef.current;
       const sloganEl = document.getElementById("hero-slogan-note");
       if (heroEl && sloganEl) {
         const heroRect = heroEl.getBoundingClientRect();
         const sloganRect = sloganEl.getBoundingClientRect();
-        const diff = heroRect.bottom - sloganRect.bottom;
-        if (diff > 0) {
-          // When banners (~135px) and headline (~45px) collapse in filter mode,
-          // the slogan moves up by ~180px. We dock templates snugly below the slogan:
-          setDockOffset(Math.round(diff + 175));
+        
+        let targetOffset: number;
+        if (isFilterActive) {
+          // Banners & headline are already collapsed: slogan is at its elevated position.
+          // We dock #templates with ~65px breathing room below the slogan:
+          targetOffset = heroRect.bottom - (sloganRect.bottom + 65);
+        } else {
+          // Resting state: banners (~135px) and headline (~45px) are expanded (~175px total).
+          // When filter activates, slogan will lift ~175px higher:
+          const restingDiff = heroRect.bottom - sloganRect.bottom;
+          targetOffset = restingDiff + 175;
         }
+
+        // Safety clamp: offset should stay between 340px and 525px to prevent extreme overlap or gap
+        const safeOffset = Math.max(340, Math.min(525, Math.round(targetOffset)));
+        setDockOffset(safeOffset);
       }
     };
 
     calculateOffset();
-    const timer = setTimeout(calculateOffset, 250);
+    const timer = setTimeout(calculateOffset, 200);
     window.addEventListener("resize", calculateOffset);
     return () => {
       clearTimeout(timer);
@@ -115,8 +141,8 @@ export default function Home() {
     };
   }, [isFilterActive]);
 
-  // Option A: Outside-Click Dismissal
-  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus, query, and category filter
+  // Outside-Click Dismissal
+  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus, query, and filters back to resting state
   useEffect(() => {
     if (!isFilterActive) return;
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
@@ -125,10 +151,7 @@ export default function Home() {
       const cardEl = document.getElementById("hero-search-card");
       const templatesEl = document.getElementById("templates");
       if (cardEl?.contains(target) || templatesEl?.contains(target)) return;
-      setIsSearchFocused(false);
-      setSearchQuery("");
-      setActiveSidebarCategory("all");
-      setVisibleCount(24);
+      resetToResting();
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -178,7 +201,7 @@ export default function Home() {
 
   useEffect(() => {
     // Fetch dynamic template categories
-    supabase
+    d1
       .from("site_config")
       .select("*")
       .eq("key", "template_categories")
@@ -190,7 +213,7 @@ export default function Home() {
       });
 
     // Fetch testimonials configuration
-    supabase
+    d1
       .from("site_config")
       .select("*")
       .eq("key", "testimonials")
@@ -202,7 +225,7 @@ export default function Home() {
       });
 
     // Fetch dynamic hero, promotional banners, and curated trending templates
-    supabase
+    d1
       .from("site_config")
       .select("*")
       .in("key", ["hero", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
@@ -430,7 +453,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#111111] pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-14 transition-all duration-300"
+        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-14 transition-all duration-300"
       >
         {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
         <motion.div
@@ -446,9 +469,12 @@ export default function Home() {
             playsInline
             className="w-full h-full min-w-full min-h-full object-cover object-center select-none"
           />
-          {/* Crisp, clean overlay without heavy darkening or opacity haze */}
-          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+          {/* Subtle warm ambient tint without any dark black underlayer or haze */}
+          <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
         </motion.div>
+
+        {/* Seamless Bottom Gradient Feather into Templates Section */}
+        <div className="absolute bottom-0 left-0 right-0 h-44 sm:h-64 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
 
         {/* Central Stage Container */}
         <motion.div
@@ -464,7 +490,7 @@ export default function Home() {
               marginBottom: isFilterActive ? 0 : 20,
             }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden w-full max-w-5xl lg:max-w-6xl mx-auto"
+            className="overflow-hidden w-full max-w-5xl lg:max-w-6xl mx-auto relative z-20"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 pb-1">
             
@@ -473,7 +499,7 @@ export default function Home() {
               <Link
                 to={homeBanner1.ctaLink}
                 data-bee-state="quote"
-                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
+                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_30px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
               >
                 {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
                 <div className="absolute -bottom-10 -left-10 w-52 h-52 pointer-events-none opacity-35">
@@ -519,7 +545,7 @@ export default function Home() {
                 tabIndex={0}
                 onClick={scrollToTemplates}
                 data-bee-state="quote"
-                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
+                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_30px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
               >
                 {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
                 <div className="absolute -bottom-10 -left-10 w-52 h-52 pointer-events-none opacity-35">
@@ -561,24 +587,24 @@ export default function Home() {
               </div>
             )}
 
-            {/* Banner 2: Black - Get Unlimited Downloads */}
+            {/* Banner 2: Obsidian Gold - Get Unlimited Downloads */}
             {homeBanner2.ctaLink && homeBanner2.ctaLink !== "#templates" && !homeBanner2.ctaLink.startsWith("#") ? (
               <Link
                 to={homeBanner2.ctaLink}
-                className="group bg-[#0D0D0D]/95 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.30)] border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
+                className="group bg-[#161616]/92 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_40px_rgba(252,191,20,0.18)] border border-[#FCBF14]/35 hover:border-[#FCBF14] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
               >
                 {/* Organic Flowing Contour Texture 1 (Top Left) */}
-                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-40">
+                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-30">
                   <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#1C1C1C" />
-                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#242424" />
+                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#242424" />
+                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#2a2a2a" />
                   </svg>
                 </div>
 
                 {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-30">
+                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-25">
                   <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#1F1F1F" />
+                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#262626" />
                   </svg>
                 </div>
 
@@ -592,7 +618,7 @@ export default function Home() {
                     <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
                       {homeBanner2.title || "Get Unlimited Downloads"}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#A0A0A0] font-medium mt-0.5">
+                    <p className="text-xs sm:text-sm text-[#D4D4D4] font-medium mt-0.5">
                       {homeBanner2.subtitle || "Access all templates. No limits."}
                     </p>
                   </div>
@@ -603,20 +629,20 @@ export default function Home() {
                 role="button"
                 tabIndex={0}
                 onClick={scrollToTemplates}
-                className="group bg-[#0D0D0D]/95 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.30)] border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
+                className="group bg-[#161616]/92 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_40px_rgba(252,191,20,0.18)] border border-[#FCBF14]/35 hover:border-[#FCBF14] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
               >
                 {/* Organic Flowing Contour Texture 1 (Top Left) */}
-                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-40">
+                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-30">
                   <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#1C1C1C" />
-                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#242424" />
+                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#242424" />
+                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#2a2a2a" />
                   </svg>
                 </div>
 
                 {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-30">
+                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-25">
                   <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#1F1F1F" />
+                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#262626" />
                   </svg>
                 </div>
 
@@ -630,7 +656,7 @@ export default function Home() {
                     <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
                       {homeBanner2.title || "Get Unlimited Downloads"}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#A0A0A0] font-medium mt-0.5">
+                    <p className="text-xs sm:text-sm text-[#D4D4D4] font-medium mt-0.5">
                       {homeBanner2.subtitle || "Access all templates. No limits."}
                     </p>
                   </div>
@@ -699,6 +725,7 @@ export default function Home() {
                   value={searchQuery}
                   onFocus={() => {
                     setIsSearchFocused(true);
+                    setIsBrowsingActive(true);
                     if (window.scrollY > 40) {
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }
@@ -708,6 +735,7 @@ export default function Home() {
                   }}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
+                    setIsBrowsingActive(true);
                     setVisibleCount(24);
                   }}
                   onKeyDown={(e) => {
@@ -715,9 +743,7 @@ export default function Home() {
                       (e.target as HTMLInputElement).blur();
                     }
                     if (e.key === "Escape") {
-                      setSearchQuery("");
-                      setIsSearchFocused(false);
-                      setActiveSidebarCategory("all");
+                      resetToResting();
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
@@ -737,8 +763,6 @@ export default function Home() {
                       type="button"
                       onClick={() => {
                         setSearchQuery("");
-                        setIsSearchFocused(false);
-                        setActiveSidebarCategory("all");
                         setVisibleCount(24);
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold bg-[#111111]/8 hover:bg-[#111111]/15 text-[#111111] px-2.5 py-1 rounded-md cursor-pointer transition-colors"
@@ -759,6 +783,7 @@ export default function Home() {
               >
                 <button
                   onClick={() => {
+                    setIsBrowsingActive(true);
                     setTierFilter("all");
                     setVisibleCount(24);
                   }}
@@ -772,6 +797,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => {
+                    setIsBrowsingActive(true);
                     setTierFilter("free");
                     setVisibleCount(24);
                   }}
@@ -786,6 +812,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => {
+                    setIsBrowsingActive(true);
                     setTierFilter("premium");
                     setVisibleCount(24);
                   }}
@@ -807,8 +834,13 @@ export default function Home() {
               {/* All Templates */}
               <button
                 onClick={() => {
+                  setIsBrowsingActive(true);
                   setActiveSidebarCategory("all");
+                  setSearchQuery("");
                   setVisibleCount(24);
+                  if (window.scrollY > 40) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
                 }}
                 className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSidebarCategory === "all"
@@ -824,7 +856,9 @@ export default function Home() {
               {/* Trending */}
               <button
                 onClick={() => {
+                  setIsBrowsingActive(true);
                   setActiveSidebarCategory("trending");
+                  setSearchQuery("");
                   setVisibleCount(24);
                   if (window.scrollY > 40) {
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -848,7 +882,9 @@ export default function Home() {
                   <button
                     key={cat}
                     onClick={() => {
+                      setIsBrowsingActive(true);
                       setActiveSidebarCategory(cat);
+                      setSearchQuery("");
                       setVisibleCount(24);
                       if (window.scrollY > 40) {
                         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -888,6 +924,9 @@ export default function Home() {
       <motion.section
         id="templates"
         ref={templatesRef}
+        style={{
+          y: isFilterActive ? 0 : templatesSlideUpY,
+        }}
         animate={{
           marginTop: isSearching ? -dockOffset : -32,
         }}
@@ -921,12 +960,7 @@ export default function Home() {
                 No templates match "{searchQuery}" under the current filters.
               </p>
               <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveSidebarCategory("all");
-                  setTierFilter("all");
-                  setVisibleCount(24);
-                }}
+                onClick={resetToResting}
                 className="hex-pill bg-primary text-[#111111] font-black px-6 py-2.5 text-xs cursor-pointer"
               >
                 Reset All Filters

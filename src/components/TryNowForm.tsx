@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { Send, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -25,7 +25,7 @@ export default function TryNowForm() {
     setError("");
 
     try {
-      const { error: insertError } = await supabase.from("orders").insert([
+      const { error: insertError } = await d1.from("orders").insert([
         {
           client_name: formData.name,
           client_email: formData.email,

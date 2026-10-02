@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 import { useSessionEnforcer } from "./hooks/useSessionEnforcer";
 import Navbar from "./components/Navbar";

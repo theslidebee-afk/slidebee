@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import SlideBeeLogo from "./SlideBeeLogo";
 
 export default function Footer() {
@@ -19,7 +19,7 @@ export default function Footer() {
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "footer_cms")

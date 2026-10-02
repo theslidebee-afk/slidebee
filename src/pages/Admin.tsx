@@ -57,7 +57,7 @@ import {
   ArrowUp,
   ArrowDown
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import { uploadToR2, fetchR2Telemetry, deleteFromR2, normalizeR2Url, convertGoogleDriveUrl, R2_PUBLIC_BASE_URL } from "../lib/r2";
 import { 
@@ -373,7 +373,7 @@ export default function Admin() {
           setSession(null);
           return;
         }
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        d1.auth.getSession().then(({ data: { session } }) => {
           const userEmail = session?.user?.email?.toLowerCase().trim() || "";
           const isSuperOrAdmin =
             userEmail === "superadmin@theslidebee.com" ||
@@ -392,7 +392,7 @@ export default function Admin() {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    d1.auth.getSession().then(({ data: { session } }) => {
       const userEmail = session?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
         userEmail === "superadmin@theslidebee.com" ||
@@ -412,7 +412,7 @@ export default function Admin() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = d1.auth.onAuthStateChange((_event, session) => {
       const userEmail = session?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
         userEmail === "superadmin@theslidebee.com" ||
@@ -455,11 +455,11 @@ export default function Admin() {
         configRes,
         r2Data
       ] = await Promise.all([
-        supabase.from("orders").select("*").order("created_at", { ascending: false }),
-        supabase.from("templates").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
-        supabase.from("site_config").select("*"),
+        d1.from("orders").select("*").order("created_at", { ascending: false }),
+        d1.from("templates").select("*").order("created_at", { ascending: false }),
+        d1.from("profiles").select("*").order("created_at", { ascending: false }),
+        d1.from("subscriptions").select("*").order("created_at", { ascending: false }),
+        d1.from("site_config").select("*"),
         fetchR2Telemetry().catch((err) => {
           console.warn("Cloudflare R2 telemetry fetch error:", err);
           return null;
@@ -498,7 +498,7 @@ export default function Admin() {
         setTemplates(templatesRes.data);
       } else {
         // Resilient fallback for PIN / local admin session or catalog view
-        const { data: catalogData } = await supabase
+        const { data: catalogData } = await d1
           .from("v_storefront_catalog")
           .select("*")
           .order("created_at", { ascending: false });
@@ -574,7 +574,7 @@ export default function Admin() {
     navigate("/login");
   };
 
-  // Handle Status Update on Order (Optimistic + Supabase persistence)
+  // Handle Status Update on Order (Optimistic + D1 persistence)
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     // 1. Optimistic update in state immediately so UI advances smoothly without delay
     setOrders((prev) => {
@@ -592,18 +592,18 @@ export default function Admin() {
       prev && prev.id === orderId ? { ...prev, status: newStatus } : prev
     );
 
-    // 2. Persist to Supabase if possible
+    // 2. Persist to D1 if possible
     try {
-      const { error } = await supabase
+      const { error } = await d1
         .from("orders")
         .update({ status: newStatus })
         .eq("id", orderId);
 
       if (error) {
-        console.warn("Supabase order status update notice (local state maintained):", error.message);
+        console.warn("D1 order status update notice (local state maintained):", error.message);
       }
     } catch (err) {
-      console.warn("Supabase network error:", err);
+      console.warn("D1 network error:", err);
     }
   };
 
@@ -637,7 +637,7 @@ export default function Admin() {
     setIsProcessingProAction(true);
     try {
       if (revokeNoticeType === "immediate") {
-        const { error } = await supabase.from("subscriptions").update({
+        const { error } = await d1.from("subscriptions").update({
           status: "canceled",
           updated_at: new Date().toISOString(),
         }).eq("id", revokeProTarget.subId);
@@ -828,7 +828,7 @@ export default function Admin() {
         tier_expires_at: expiresAt,
         updated_at: new Date().toISOString(),
       };
-      const { error: profileErr } = await supabase
+      const { error: profileErr } = await d1
         .from("profiles")
         .update(profilePatch)
         .eq("email", clientEmail);
@@ -838,7 +838,7 @@ export default function Admin() {
       const existingSub = subscriptions.find((s) => s.user_email?.toLowerCase() === clientEmail);
       if (newTier === "free") {
         if (existingSub?.id) {
-          await supabase.from("subscriptions").update({
+          await d1.from("subscriptions").update({
             status: "canceled",
             updated_at: new Date().toISOString(),
           }).eq("id", existingSub.id);
@@ -861,9 +861,9 @@ export default function Admin() {
           updated_at: new Date().toISOString(),
         };
         if (existingSub?.id) {
-          await supabase.from("subscriptions").update(subPayload).eq("id", existingSub.id);
+          await d1.from("subscriptions").update(subPayload).eq("id", existingSub.id);
         } else {
-          await supabase.from("subscriptions").insert([subPayload]);
+          await d1.from("subscriptions").insert([subPayload]);
         }
       }
 
@@ -971,13 +971,13 @@ support@theslidebee.com`
         console.warn("Server delete-account call notice:", apiErr);
       }
 
-      // 2. Direct Supabase deletion guarantee
-      await supabase.from("subscriptions").delete().eq("user_email", deleteAccountTarget.email);
+      // 2. Direct D1 deletion guarantee
+      await d1.from("subscriptions").delete().eq("user_email", deleteAccountTarget.email);
       if (deleteAccountTarget.id) {
-        await supabase.from("profiles").delete().eq("id", deleteAccountTarget.id);
-        await supabase.from("users").delete().eq("id", deleteAccountTarget.id);
+        await d1.from("profiles").delete().eq("id", deleteAccountTarget.id);
+        await d1.from("users").delete().eq("id", deleteAccountTarget.id);
       }
-      await supabase.from("users").delete().eq("email", deleteAccountTarget.email);
+      await d1.from("users").delete().eq("email", deleteAccountTarget.email);
 
       // 3. Fallback direct email dispatch if sendEmail is checked
       if (deleteAccountSendEmail) {
@@ -1398,7 +1398,7 @@ support@theslidebee.com`
     setBulkModalTab("csv");
   };
 
-  // Execute Bulk Insertion into Supabase with Automated Asset Ingestion
+  // Execute Bulk Insertion into D1 with Automated Asset Ingestion
   const handleExecuteBulkImport = async () => {
     if (parsedBulkTemplates.length === 0) return;
     setIsImportingBulk(true);
@@ -1477,7 +1477,7 @@ support@theslidebee.com`
     }
 
     setIngestStatus("Saving templates to storefront catalog...");
-    const { data, error } = await supabase
+    const { data, error } = await d1
       .from("templates")
       .insert(templatesToInsert)
       .select();
@@ -1494,7 +1494,7 @@ support@theslidebee.com`
         setIngestStatus(null);
       }, 2500);
     } else if (error) {
-      console.warn("Supabase bulk insert warning:", error.message);
+      console.warn("D1 bulk insert warning:", error.message);
       const fallbackTemplates = templatesToInsert.map((item, idx) => ({
         id: `bulk-${Date.now()}-${idx}`,
         ...item
@@ -1602,7 +1602,7 @@ support@theslidebee.com`
 
     if (!createdRecord) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await d1
           .from("templates")
           .insert([payload])
           .select();
@@ -1662,7 +1662,7 @@ support@theslidebee.com`
     setIsEditTemplateOpen(true);
   };
 
-  // Save Template Edits to Supabase
+  // Save Template Edits to D1
   const handleSaveEditTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     setEditTemplateWarning("");
@@ -1739,9 +1739,9 @@ support@theslidebee.com`
         console.warn("Backend /api/admin-template PUT notice:", apiErr);
       }
 
-      // 2. Fallback edge query via supabase/data client
+      // 2. Fallback edge query via d1/data client
       if (!isUpdated) {
-        const { data, error } = await supabase
+        const { data, error } = await d1
           .from("templates")
           .update(payload)
           .eq("id", editingTemplate.id);
@@ -1783,7 +1783,7 @@ support@theslidebee.com`
     setCategoriesList(updated);
     setNewCategoryInput("");
     try {
-      await supabase.from("site_config").upsert({
+      await d1.from("site_config").upsert({
         key: "template_categories",
         value: updated,
         updated_at: new Date().toISOString()
@@ -1801,7 +1801,7 @@ support@theslidebee.com`
     const updated = categoriesList.filter(c => c.toLowerCase() !== catToDelete.toLowerCase());
     setCategoriesList(updated);
     try {
-      await supabase.from("site_config").upsert({
+      await d1.from("site_config").upsert({
         key: "template_categories",
         value: updated,
         updated_at: new Date().toISOString()
@@ -1845,9 +1845,9 @@ support@theslidebee.com`
         console.warn("Backend admin-template API call notice, attempting direct database fallback:", apiErr);
       }
 
-      // 2. Direct Supabase client fallback
+      // 2. Direct D1 client fallback
       if (!isDeleted) {
-        const { error } = await supabase
+        const { error } = await d1
           .from("templates")
           .delete()
           .eq("id", tplId);
@@ -2226,9 +2226,9 @@ hello@theslidebee.com`;
           );
         }
 
-        // 3. Persist to Supabase
+        // 3. Persist to D1
         try {
-          await supabase
+          await d1
             .from("orders")
             .update({
               status: "completed",
@@ -2236,7 +2236,7 @@ hello@theslidebee.com`;
             })
             .eq("id", order.id);
         } catch (dbErr) {
-          console.warn("Supabase deliverable update warning:", dbErr);
+          console.warn("D1 deliverable update warning:", dbErr);
         }
 
         setDeliverableSuccessMsg(
@@ -2643,7 +2643,7 @@ hello@theslidebee.com`;
     setConfigSaving(true);
     setConfigSavedSuccess(false);
 
-    const { error } = await supabase
+    const { error } = await d1
       .from("site_config")
       .upsert([
         {
@@ -2763,7 +2763,7 @@ hello@theslidebee.com`;
 
 
 
-  // Storage Stats (10 GB Free Tier Quota - Live Supabase Bucket Telemetry)
+  // Storage Stats (10 GB Free Tier Quota - Live Cloudflare R2 Bucket Telemetry)
   const totalR2QuotaMB = 10240; // 10 GB
   const actualUsedMB = storageStats.totalUsedMB;
   const remainingMB = Math.max(0, totalR2QuotaMB - actualUsedMB);
@@ -4204,7 +4204,7 @@ hello@theslidebee.com`;
                                         body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
                                       });
                                     } catch (err) {
-                                      await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                                      await d1.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
                                     }
                                   }}
                                   className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
@@ -4356,7 +4356,7 @@ hello@theslidebee.com`;
                                 body: JSON.stringify({ id: tpl.id, is_published: nextVal ? 1 : 0 }),
                               });
                             } catch (err) {
-                              await supabase.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
+                              await d1.from("templates").update({ is_published: nextVal }).eq("id", tpl.id);
                             }
                           }}
                           className={`hex-pill text-[10px] font-black px-3 py-1 transition-all flex items-center gap-1 cursor-pointer ${
@@ -4401,7 +4401,7 @@ hello@theslidebee.com`;
                                 body: JSON.stringify({ id: tpl.id, is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }),
                               });
                             } catch (err) {
-                              await supabase.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
+                              await d1.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
                             }
                           }}
                           className={`hex-pill text-[9px] font-black px-2.5 py-1 transition-all cursor-pointer ${
@@ -4601,19 +4601,13 @@ hello@theslidebee.com`;
                   <button
                     onClick={() => {
                       const current = siteConfigs["hero"] || {};
-                      const badge = current.badge || current.badgeText || "PRESENTATIONS FOR A BRIGHTER TOMORROW";
                       const title = current.title || current.headline || "Ideas Deserve\nBetter Slides.";
-                      const subtitle = current.subtitle || current.subheadline || "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.";
-                      const guarantee = current.guarantee || "24–48hr turnaround · Venture-grade polish";
+                      const slogan = current.slogan || "Better Presentations Brighter Ideas";
                       const synchronizedHero = {
                         ...current,
-                        badge,
-                        badgeText: badge,
                         title,
                         headline: title,
-                        subtitle,
-                        subheadline: subtitle,
-                        guarantee
+                        slogan,
                       };
                       handleSaveConfig("hero", synchronizedHero);
                     }}
@@ -4627,18 +4621,19 @@ hello@theslidebee.com`;
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#111111] block mb-1">
-                      Hero Badge / Eyebrow Text
+                      Central Card Display Headline (Title)
                     </label>
-                    <input
-                      type="text"
-                      value={siteConfigs["hero"]?.badge || siteConfigs["hero"]?.badgeText || ""}
+                    <textarea
+                      rows={2}
+                      value={siteConfigs["hero"]?.title || siteConfigs["hero"]?.headline || ""}
                       onChange={(e) => setSiteConfigs({
                         ...siteConfigs,
-                        hero: { ...(siteConfigs["hero"] || {}), badge: e.target.value, badgeText: e.target.value }
+                        hero: { ...(siteConfigs["hero"] || {}), title: e.target.value, headline: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
-                      placeholder="e.g. PRESENTATIONS FOR A BRIGHTER TOMORROW"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-bold text-[#111111]"
+                      placeholder={"e.g. Ideas Deserve\nBetter Slides."}
                     />
+                    <p className="text-[10px] text-[#726F6D] mt-1">Controls the main headline on the frosted card atop the marketplace.</p>
                   </div>
 
                   <div>
@@ -4652,43 +4647,17 @@ hello@theslidebee.com`;
                         ...siteConfigs,
                         hero: { ...(siteConfigs["hero"] || {}), slogan: e.target.value }
                       })}
-                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2 text-xs font-bold text-[#111111]"
+                      className="w-full bg-[#FFF9E8] border border-[#111111]/15 hex-pill px-4 py-2.5 text-xs font-bold text-[#111111]"
                       placeholder="e.g. Better Presentations Brighter Ideas"
                     />
+                    <p className="text-[10px] text-[#726F6D] mt-1">Controls the script italic note beneath the hero stage with the honey gold underline.</p>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Central Card Display Headline (Title)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={siteConfigs["hero"]?.title || siteConfigs["hero"]?.headline || ""}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      hero: { ...(siteConfigs["hero"] || {}), title: e.target.value, headline: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-bold text-[#111111]"
-                    placeholder={"e.g. Ideas Deserve\nBetter Slides."}
-                  />
-                  <p className="text-[10px] text-[#726F6D] mt-1">Use a line break to split the headline across lines.</p>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#111111] block mb-1">
-                    Supporting Subtitle Paragraph
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={siteConfigs["hero"]?.subtitle || siteConfigs["hero"]?.subheadline || ""}
-                    onChange={(e) => setSiteConfigs({
-                      ...siteConfigs,
-                      hero: { ...(siteConfigs["hero"] || {}), subtitle: e.target.value, subheadline: e.target.value }
-                    })}
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-xl p-3 text-xs font-medium text-[#111111]"
-                    placeholder="At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact."
-                  />
+                <div className="bg-[#FFF9E8]/80 border border-primary/20 rounded-xl p-3 text-[11px] text-[#726F6D] flex items-center justify-between">
+                  <span>
+                    <strong>Streamlined Architecture Note:</strong> The previous subtitle and eyebrow badge were retired from the layout to ensure the 6-column template cards fit above the fold without scrolling.
+                  </span>
                 </div>
 
                 {/* TRENDING TEMPLATES SELECTION ON HOMEPAGE (R2 STOREFRONT CARDS) */}
@@ -7492,7 +7461,7 @@ hello@theslidebee.com`;
                     Max Image: 10 MB
                   </span>
                   <span className="hex-pill-sm bg-green-500/20 text-green-300 border border-green-500/30 px-2.5 py-1">
-                    Supabase Storage: 0 MB (Purged)
+                    Cloudflare R2 Native: Active
                   </span>
                 </div>
               </div>
@@ -7508,7 +7477,7 @@ hello@theslidebee.com`;
                     <span>Storefront Templates & Master PPTX Inventory (Database Audit)</span>
                   </h3>
                   <p className="text-xs text-[#726F6D]">
-                    Cross-referenced with live Supabase database. All presentation deliverables & previews are hosted on Cloudflare R2 CDN.
+                    Cross-referenced with live D1 database. All presentation deliverables & previews are hosted on Cloudflare R2 CDN.
                   </p>
                 </div>
                 <div className="hex-pill bg-[#FFF9E8] border border-primary/20 text-[#111111] px-3.5 py-1.5 text-xs font-bold">
@@ -10627,7 +10596,7 @@ hello@theslidebee.com`;
                       Delete Client Account & Notice
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Permanently purge client account from Supabase with customized notice
+                      Permanently purge client account from database with customized notice
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { d1 as supabase } from "../lib/d1";
+import { d1 } from "../lib/d1";
 import { sendWelcomeEmail } from "../lib/email";
 
 export default function AuthCallback() {
@@ -52,15 +52,15 @@ export default function AuthCallback() {
 
         if (!idToken && !accessToken && !authCode && !userEmail) {
           // Check if session already exists
-          const { data: { session } } = await supabase.auth.getSession();
+          const { data: { session } } = await d1.auth.getSession();
           if (session) {
-            window.location.replace("/#/account");
+            window.location.replace("/account");
             return;
           }
 
           setErrorMessage("No Google authorization token found. Redirecting to login...");
           setTimeout(() => {
-            window.location.replace("/#/login");
+            window.location.replace("/login");
           }, 2000);
           return;
         }
@@ -97,7 +97,7 @@ export default function AuthCallback() {
 
             setStatus("Success! Entering your Client Portal...");
             setTimeout(() => {
-              window.location.replace("/#/account");
+              window.location.replace("/account");
             }, 300);
             return;
           }
@@ -122,19 +122,19 @@ export default function AuthCallback() {
           localStorage.setItem("slidebee_client_user", JSON.stringify(fallbackUser));
           setStatus("Success! Entering your Client Portal...");
           setTimeout(() => {
-            window.location.replace("/#/account");
+            window.location.replace("/account");
           }, 300);
           return;
         }
 
         setErrorMessage("Authentication failed. Please sign in directly with your email.");
         setTimeout(() => {
-          window.location.replace("/#/login");
+          window.location.replace("/login");
         }, 2500);
       } catch (err: any) {
         setErrorMessage(err?.message || "An authentication error occurred.");
         setTimeout(() => {
-          window.location.replace("/#/login");
+          window.location.replace("/login");
         }, 2500);
       }
     };

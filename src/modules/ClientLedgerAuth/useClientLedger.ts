@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { d1 as supabase } from "../../lib/d1";
+import { d1 } from "../../lib/d1";
 import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
 import { sendWelcomeEmail } from "../../lib/email";
 import { isDisposableEmail, getDeviceFingerprint } from "../../lib/deviceFingerprint";
@@ -56,7 +56,7 @@ export interface ClientAuthResult {
  * Deep Module: ClientLedgerAuth
  * 
  * Public Interface:
- * - currentUser: Supabase or localStorage user object
+ * - currentUser: D1 auth or localStorage user object
  * - userProfile: Normalized client profile and credits ledger
  * - userOrders: Client quote and template purchase orders
  * - loading: Boolean initialization state
@@ -78,7 +78,7 @@ export function useClientLedger() {
     const cleanEmail = userEmail.trim();
 
     // 1. Fetch Profile ledger
-    const { data: profile } = await supabase
+    const { data: profile } = await d1
       .from("profiles")
       .select("*")
       .ilike("email", cleanEmail)
@@ -89,7 +89,7 @@ export function useClientLedger() {
     }
 
     // 2. Fetch Orders (Case-insensitive matching to guarantee custom briefs appear in user dashboard)
-    const { data: ords } = await supabase
+    const { data: ords } = await d1
       .from("orders")
       .select("*")
       .ilike("email", cleanEmail)
@@ -122,7 +122,7 @@ export function useClientLedger() {
     setUserOrders(mergedOrders);
 
     // 3. Fetch Subscription
-    const { data: sub } = await supabase
+    const { data: sub } = await d1
       .from("subscriptions")
       .select("*")
       .ilike("user_email", cleanEmail)
@@ -145,7 +145,7 @@ export function useClientLedger() {
     }
 
     // Strict GoTrue Server-Side Session Verification (Prompts 18 & 25)
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await d1.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
         session.user.email === "superadmin@theslidebee.com" ||
@@ -215,8 +215,8 @@ export function useClientLedger() {
   // Log authentication events to auth_logs
   const recordAuthEvent = async (userEmail: string, event: "LOGIN" | "SIGNUP" | "LOGOUT" | "PASSWORD_RESET", meta: any = {}) => {
     try {
-      await supabase.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("email", userEmail);
-      await supabase.from("auth_logs").insert([
+      await d1.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("email", userEmail);
+      await d1.from("auth_logs").insert([
         {
           user_email: userEmail,
           event,
@@ -237,7 +237,7 @@ export function useClientLedger() {
     const cleanEmail = emailInput.toLowerCase().trim();
     const cleanPassword = passwordInput.trim();
 
-    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authErr } = await d1.auth.signInWithPassword({
       email: cleanEmail,
       password: cleanPassword
     });
@@ -265,7 +265,7 @@ export function useClientLedger() {
       }
 
       await registerActiveSession(cleanEmail);
-      await recordAuthEvent(cleanEmail, "LOGIN", { provider: "supabase_auth" });
+      await recordAuthEvent(cleanEmail, "LOGIN", { provider: "d1_auth" });
       localStorage.removeItem("slidebee_admin_session");
       localStorage.removeItem("slidebee_admin_email");
       setCurrentUser(authData.user);
@@ -289,7 +289,7 @@ export function useClientLedger() {
   const signInWithGoogle = async () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://theslidebee.com";
     const redirectTo = `${origin}/auth/callback`;
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await d1.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo,
@@ -353,7 +353,7 @@ export function useClientLedger() {
     }
 
     // 3. Check duplicate account
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile } = await d1
       .from("profiles")
       .select("id")
       .eq("email", cleanEmail)
@@ -363,8 +363,8 @@ export function useClientLedger() {
       throw new Error("An account with this email already exists. Please sign in instead.");
     }
 
-    // 4. Register in Supabase Auth
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
+    // 4. Register in D1 Auth
+    const { data: authData, error: authErr } = await d1.auth.signUp({
       email: cleanEmail,
       password: cleanPassword,
       options: {
@@ -382,7 +382,7 @@ export function useClientLedger() {
     // 5. Enforce trial provisioning or zero credits if already claimed
     if (trialEligible) {
       try {
-        await supabase.rpc("fn_grant_starter_credits", {
+        await d1.rpc("fn_grant_starter_credits", {
           p_email: cleanEmail,
           p_full_name: cleanName,
           p_company: cleanCompany
@@ -393,7 +393,7 @@ export function useClientLedger() {
     } else {
       // Free trial already claimed on this device/canonical email: initialize with 0 credits
       try {
-        await supabase.from("profiles").upsert({
+        await d1.from("profiles").upsert({
           email: cleanEmail,
           full_name: cleanName,
           company: cleanCompany,
@@ -473,7 +473,7 @@ export function useClientLedger() {
       return data;
     } catch (err: any) {
       // Fallback to legacy RPC
-      const { data, error } = await supabase.rpc("fn_redeem_template_credit", {
+      const { data, error } = await d1.rpc("fn_redeem_template_credit", {
         p_user_email: emailToUse,
         p_template_id: templateId
       });
@@ -497,8 +497,8 @@ export function useClientLedger() {
     }
     try {
       const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "https://dev.slidebee.pages.dev";
-      await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${redirectOrigin}/#/login?action=reset`
+      await d1.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${redirectOrigin}/login?action=reset`
       });
     } catch (err) {
       // Fail closed with uniform feedback to prevent enumeration
@@ -549,7 +549,7 @@ export function useClientLedger() {
       }
 
       // 2. Direct updateUser fallback
-      const { data, error } = await supabase.auth.updateUser({
+      const { data, error } = await d1.auth.updateUser({
         password: cleanPass,
         email
       });
@@ -557,7 +557,7 @@ export function useClientLedger() {
         return { success: false, message: error.message || "Failed to update password. Recovery link may have expired." };
       }
       if (data?.user) {
-        await recordAuthEvent(data.user.email || "unknown", "PASSWORD_RESET", { provider: "supabase_auth" });
+        await recordAuthEvent(data.user.email || "unknown", "PASSWORD_RESET", { provider: "d1_auth" });
         return { success: true, message: "Password has been successfully updated." };
       }
       return { success: true, message: "Password has been updated." };

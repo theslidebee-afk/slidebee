@@ -268,8 +268,8 @@ def seed_slidebee_data(conn):
         description="High-converting commercial presentation design studio platform with dynamic template store, client credit ledger, and admin management hub.",
         tech_stack={
             "Frontend": {"tech": "React 18, TypeScript, Vite 5, Tailwind CSS 3, Framer Motion", "notes": "Warm Milk Cream #FFF9E8, Honey Gold #FCBF14, Charcoal #111111"},
-            "Identity & Auth": {"tech": "Supabase GoTrue (PostgreSQL 15)", "notes": "Bcrypt password hashing, HS256 JWT, Refresh Tokens, cross-tab mutual exclusivity"},
-            "Database & APIs": {"tech": "Supabase PostgreSQL 15 + PostgREST", "notes": "RLS policies, SECURITY DEFINER atomic RPCs: fn_grant_starter_credits, fn_redeem_template_credit, fn_fulfill_template_order"},
+            "Identity & Auth": {"tech": "Cloudflare Pages Auth", "notes": "Bcrypt password hashing, HS256 JWT, Refresh Tokens, cross-tab mutual exclusivity"},
+            "Database & APIs": {"tech": "Cloudflare D1 SQLite", "notes": "Edge policies, atomic RPCs: fn_grant_starter_credits, fn_redeem_template_credit, fn_fulfill_template_order"},
             "Storage & CDN": {"tech": "Cloudflare R2 (S3-compatible) + Cloudflare CDN", "notes": "Zero-cost billing guardrails, 9.9 GB hard ceiling, 50MB PPTX limit, immutable edge caching"},
             "Edge Compute": {"tech": "Cloudflare Pages Functions", "notes": "Endpoints: /api/r2-storage, /api/send-email"},
             "Email Service": {"tech": "Resend API", "notes": "80 emails/day circuit breaker, verified senders hello@theslidebee.com"},
@@ -304,10 +304,10 @@ def seed_slidebee_data(conn):
         conn,
         dec_id="ADR-003",
         project_id="slidebee",
-        title="Native Supabase GoTrue Authentication with Sanitized Bundles",
+        title="Native Edge Authentication with Sanitized Bundles",
         category="security",
         context="Hardcoded admin password SlideBee@Admin2026! and PIN bypass in client bundles enabled master account takeover.",
-        decision="Removed all hardcoded credentials from client bundles. Admin and client authentication both flow through GoTrue directly with user-supplied credentials.",
+        decision="Removed all hardcoded credentials from client bundles. Admin and client authentication both flow through Edge Auth directly with user-supplied credentials.",
         consequences="Secures administrative access against static analysis of compiled JS bundles."
     )
 
@@ -388,7 +388,7 @@ Admin Login:
         title="Pre-Handoff Launch Gate and Secret Rotation Checklist",
         content="""Mandatory Actions Prior to Production Client Handoff:
 1. Secret Rotation:
-   - Supabase: Rotate service_role key and Management API token (sbp_...) in Supabase dashboard.
+   - Database: Rotate admin keys and API tokens in Cloudflare dashboard.
    - Razorpay: Rotate API Key Secret in Razorpay dashboard.
    - Resend: Revoke current API key (re_3bL...) and issue dedicated production key.
    - Cloudflare: Rotate API token for R2 bucket access.
@@ -397,7 +397,7 @@ Admin Login:
    - Verify no secrets or sensitive tokens exist in git history or committed files.
 3. Edge Environment Deployment:
    - Set production environment variables in Cloudflare Pages project settings:
-     SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_BUCKET,
+     CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_BUCKET,
      CLOUDFLARE_API_TOKEN, RESEND_API_KEY, SLIDEBEE_ADMIN_SECRET, SLIDEBEE_APP_TOKEN.
 4. Administrative Account Verification:
    - Hand off admin credentials (admin@theslidebee.com) to client with mandatory password change on first login.

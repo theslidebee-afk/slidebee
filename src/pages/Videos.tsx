@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Clock, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -45,7 +45,7 @@ export default function Videos() {
   useEffect(() => {
     async function loadVideosCms() {
       try {
-        const { data } = await supabase
+        const { data } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "videos_cms")

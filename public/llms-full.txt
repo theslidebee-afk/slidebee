@@ -1,37 +1,71 @@
 # SlideBee — Full Context Knowledge Graph for AI Agents & Search Engines
 
 ## Company Overview
-- **Name**: SlideBee (SlideBee Design Studio)
-- **Domain**: theslidebee.com
+- **Name**: SlideBee (SlideBee Presentation Design Studio)
+- **Official Domain**: theslidebee.com (also accessible via slidebee.com)
 - **Mission**: Turn complex business ideas, financial models, and strategic visions into clear, high-converting executive presentations.
 - **Audience**: Seed, Series A/B founders, C-Suite leaders, Private Equity / M&A advisors, and high-growth sales teams.
 - **Turnaround Speed**: 24h to 48h standard turnaround with 24h priority rush options.
 - **Security**: 100% mutual NDA signed on demand, encrypted private cloud storage, zero public publishing without written consent.
-- **Deliverables**: Native editable PowerPoint (.pptx), Google Slides, Keynote, and vector assets.
+- **Deliverables**: Native editable PowerPoint (.pptx), Google Slides, Keynote, and high-resolution vector assets.
 
 ## Services Detailed
-1. **Redesign & Visual Polish ($19/slide)**:
+1. **Redesign & Visual Polish ($19 / ₹1,499 per slide)**:
    - For existing drafts, rough sketches, or unformatted decks.
    - Cleans typography, visual hierarchy, alignment, tables, and branding.
-2. **Venture Pitch Deck ($29/slide)**:
+2. **Venture Pitch Deck ($29 / ₹2,299 per slide)**:
    - 12-slide standard VC framework (Problem, Solution, Product, Market Size, Traction, Business Model, Team, Financial Ask).
    - Investor-grade unit economics and cap table visualizers.
-3. **Executive Stage Keynote ($49/slide)**:
+3. **Executive Stage Keynote ($49 / ₹3,899 per slide)**:
    - For major conferences, keynote speeches, annual board meetings.
-   - Ex-McKinsey strategic framing, stage-optimized high-contrast visuals, bespoke 3D graphics.
-4. **Dedicated Designer Monthly Retainer ($1,490/month)**:
+   - Ex-McKinsey strategic framing, stage-optimized high-contrast visuals, bespoke vector graphics.
+4. **Dedicated Designer Monthly Retainer ($1,490 / ₹1,19,000 per month)**:
    - Embedded senior designer in client Slack/WhatsApp.
    - 80 slides/month capacity with same-day turns.
+5. **Full-Stack Ecommerce Development (₹25,000 one-time)**:
+   - 500 product capacity with variant and inventory tracking.
+   - Certified Razorpay payment gateway integration (UPI, cards, net banking).
+   - Customer accounts, cart drawer, discount coupon engine.
+   - Global Cloudflare edge deployment and Zoho business email setup.
 
-## Design Philosophy
+## Design Philosophy & Identity
 - Clear visual hierarchy over decorative clutter.
 - 3-second comprehension rule: if an audience cannot extract the takeaway in 3 seconds, the slide is simplified.
-- Warm Milk Cream (#FFF9E8) aesthetic with Honey Gold (#FCBF14) accents and obsidian typography (#111111).
+- Warm Milk Cream (#FFF9E8) canvas with Honey Gold (#FCBF14) accents and obsidian typography (#111111).
+- Typography: Manrope font across all titles, body copy, and metrics.
 
-## Official Links
+## Presentation Playbook & Knowledge Graph
+1. **The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade** (`https://theslidebee.com/blog/1`):
+   - Ex-McKinsey consultants structure slides with one clear lead assertion, one evidence anchor, and one strategic next step.
+2. **How to Design a Series A Pitch Deck That Secures Partner Meetings** (`https://theslidebee.com/blog/2`):
+   - 12-slide VC framework detailing bottom-up TAM/SAM/SOM market sizing, cohort retention, and milestone capital allocation.
+3. **Building an Enterprise Master Template System That Teams Actually Use** (`https://theslidebee.com/blog/3`):
+   - Layout locking via PowerPoint slide masters, restricted XML color palettes, and modular component kits.
+4. **Top 10 Presentation Design Best Practices for High-Stakes Keynotes** (`https://theslidebee.com/blog/4`):
+   - 30-foot readability test (44pt+ headlines), high-contrast dark backgrounds, and one thought per slide.
+5. **PowerPoint vs Google Slides vs Keynote: Which is Best for Executives?** (`https://theslidebee.com/blog/5`):
+   - Architectural comparison: PowerPoint enterprise dominance, Google Slides real-time collaboration, Keynote cinematic motion.
+6. **How Much Does Professional Presentation Design Cost in 2026?** (`https://theslidebee.com/blog/6`):
+   - Comprehensive cost analysis comparing $15-$40 freelance platforms, $19-$49 presentation studios, and $500+ brand agencies.
+7. **Complete Ecommerce Website Development Guide for Modern Brands** (`https://theslidebee.com/blog/7`):
+   - Launch architecture for the ₹25,000 package covering Razorpay checkout, Cloudflare Pages, and Zoho business mail.
+8. **Data Visualization in Presentations: Turning Complex Spreadsheets into Persuasive Charts** (`https://theslidebee.com/blog/8`):
+   - Decluttering data-ink ratios, waterfall chart reconciliations, cohort heatmaps, and isolating hero metrics.
+9. **The Anatomy of a High-Converting B2B Sales Deck** (`https://theslidebee.com/blog/9`):
+   - The 5-part consensus framework: Undeniable Shift, Winners vs Losers, Promised Land, Magic Gifts, and Verifiable Proof.
+10. **Essential SEO & Digital Storefront Checklist for Growing Businesses in 2026** (`https://theslidebee.com/blog/10`):
+    - Technical SEO audit covering Google Search Console, JSON-LD Schema, XML sitemaps, and Core Web Vitals (LCP, INP, CLS).
+
+## Official Canonical Links
 - Home: https://theslidebee.com/
-- Services: https://theslidebee.com/#/services
-- Pricing: https://theslidebee.com/#/pricing
-- Templates: https://theslidebee.com/#/templates
-- Portfolio: https://theslidebee.com/#/examples
-- Contact: https://theslidebee.com/#/contact
+- Services: https://theslidebee.com/services
+- Ecommerce Development: https://theslidebee.com/services?type=ecommerce
+- Order Custom Deck: https://theslidebee.com/ordernow
+- Pricing Plans: https://theslidebee.com/pricing
+- Presentation Templates: https://theslidebee.com/templates
+- Portfolio & Case Studies: https://theslidebee.com/examples
+- About Studio: https://theslidebee.com/about
+- Contact & Inquiries: https://theslidebee.com/contact
+- Insights & Blog: https://theslidebee.com/blog
+- Terms of Service: https://theslidebee.com/terms
+- Privacy Policy: https://theslidebee.com/privacy

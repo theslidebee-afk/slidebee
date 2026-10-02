@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { d1 } from "./d1";
 
 export interface MediaAsset {
   id: string;
@@ -30,7 +30,7 @@ let cachedAssets: Record<string, string> = { ...defaultAssets };
 
 export async function loadAssetsFromDatabase(): Promise<Record<string, string>> {
   try {
-    const { data, error } = await supabase.from("assets").select("key, url");
+    const { data, error } = await d1.from("assets").select("key, url");
     if (!error && data) {
       data.forEach((item: { key: string; url: string }) => {
         cachedAssets[item.key] = item.url;

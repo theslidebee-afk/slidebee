@@ -7,7 +7,7 @@ import {
   ChevronDown,
   Flame
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { openRazorpayCheckout } from "../lib/razorpay";
 import { usePageSEO } from "../hooks/usePageSEO";
 import { useCurrency } from "../context/CurrencyContext";
@@ -44,7 +44,7 @@ export default function Pricing() {
   useEffect(() => {
     async function loadPricing() {
       try {
-        const { data } = await supabase
+        const { data } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "pricing")
@@ -112,9 +112,9 @@ export default function Pricing() {
       }
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await d1.auth.getSession();
     if (!session?.user) {
-      window.location.href = `/#/login?redirect=pricing&tier=${tier}`;
+      window.location.href = `/login?redirect=pricing&tier=${tier}`;
       return;
     }
 
@@ -146,7 +146,7 @@ export default function Pricing() {
         } catch (subErr) {
           console.warn("Subscription provisioning error:", subErr);
         }
-        window.location.href = "/#/login?tier_upgraded=" + tier;
+        window.location.href = "/login?tier_upgraded=" + tier;
       },
       onFailure: (err: any) => {
         console.error("Checkout failed:", err);

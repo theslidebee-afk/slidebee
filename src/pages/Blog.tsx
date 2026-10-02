@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -10,6 +10,29 @@ export default function Blog() {
   usePageSEO({
     title: "Presentation Design Insights & Guides | SlideBee Blog",
     description: "Expert advice on venture pitch decks, executive keynote delivery, slide storytelling, and corporate master template architecture.",
+    keywords: [
+      "presentation design blog",
+      "pitch deck strategy",
+      "powerpoint templates playbook",
+      "executive keynote tips",
+      "slide design tutorials",
+      "presentation storytelling frameworks"
+    ],
+    canonicalUrl: "https://theslidebee.com/blog",
+    ogImage: "https://theslidebee.com/portfolio/case_study_a_14.png",
+    ogUrl: "https://theslidebee.com/blog",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "SlideBee Presentation Playbook & Insights",
+      "description": "Strategic guides, typography teardowns, and executive storytelling frameworks.",
+      "url": "https://theslidebee.com/blog",
+      "publisher": {
+        "@type": "Organization",
+        "name": "SlideBee",
+        "url": "https://theslidebee.com"
+      }
+    }
   });
 
   const [blogs, setBlogs] = useState<any[]>([
@@ -98,7 +121,7 @@ export default function Blog() {
   useEffect(() => {
     async function loadBlogCms() {
       try {
-        const { data } = await supabase
+        const { data } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "blog_cms")

@@ -313,7 +313,7 @@ export function convertGoogleDriveUrl(url: string | undefined | null, isImage = 
 }
 
 /**
- * Normalizes any asset URL (legacy Supabase storage, flat R2 root, Google Drive, or relative)
+ * Normalizes any asset URL (legacy storage, flat R2 root, Google Drive, or relative)
  * to its exact structured Cloudflare R2 folder CDN URL or direct media URL.
  */
 export function normalizeR2Url(url: string | undefined | null, _type: "slides" | "decks" = "slides"): string {
@@ -341,8 +341,8 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
     return url;
   }
 
-  // If pointing to old Supabase storage URL
-  if (url.includes("supabase.co/storage")) {
+  // If pointing to old legacy storage URL
+  if (url.includes("d1.co/storage")) {
     const filename = url.split("/").pop() || "";
     if (filename.endsWith(".pptx") || filename.endsWith(".ppt")) {
       return `${R2_PUBLIC_BASE_URL}/templates/decks/${filename}`;

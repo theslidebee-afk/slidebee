@@ -1,4 +1,4 @@
-# 🐝 SlideBee — Software Architecture & Master Handoff Documentation
+#  SlideBee — Software Architecture & Master Handoff Documentation
 
 > **Project Name:** SlideBee Design Studio (formerly XYZ Templates)  
 > **Repository Root:** `/home/revenant/xyz_templates`  
@@ -8,7 +8,7 @@
 
 ---
 
-## 🏛️ 1. Architecture & Tech Stack
+## ️ 1. Architecture & Tech Stack
 
 ```
                           ┌────────────────────────────────────────────────────────┐
@@ -20,7 +20,7 @@
                        │                                                             │
                        ▼                                                             ▼
      ┌────────────────────────────────────┐                        ┌────────────────────────────────────┐
-     │       Supabase (PostgreSQL)        │                        │     Cloudflare R2 & Edge CDN       │
+     │       Cloudflare D1 (SQLite)        │                        │     Cloudflare R2 & Edge CDN       │
      ├────────────────────────────────────┤                        ├────────────────────────────────────┤
      │ • Row Level Security (RLS)         │                        │ • 10 GB Free Tier Object Storage   │
      │ • Client & Admin User Auth         │                        │ • Downloadable .pptx Deck Packages │
@@ -32,7 +32,7 @@
 
 ---
 
-## 🗄️ 2. Database Schema & Tables (Supabase Cluster `whwyfqtvuubkfypmgosi`)
+## ️ 2. Database Schema & Tables (Cloudflare D1 `slidebee-db`)
 
 All tables are created, secured with Row Level Security (RLS), and active:
 
@@ -48,7 +48,7 @@ All tables are created, secured with Row Level Security (RLS), and active:
 
 ---
 
-## 🔐 3. Access Portals & Credentials
+##  3. Access Portals & Credentials
 
 ### A. Master Studio Admin Portal
 - **URL:** `http://localhost:3000/#/admin`
@@ -56,13 +56,13 @@ All tables are created, secured with Row Level Security (RLS), and active:
 - **Password:** `SlideBee@Admin2026!`
 - **Instant Studio Passkey:** `2026` *(or passkey trigger button on login screen)*
 - **Admin Capabilities:**
-  1. **📋 Project Briefs:** Review client order submissions, slide counts, rush flags, open Google Drive asset folders, and update status (`Pending` ➔ `In Progress` ➔ `Completed`).
-  2. **👥 Waitlist Leads:** View all subscribers with real-time timestamps + 1-Click **"Export to CSV"**.
-  3. **📦 Template Marketplace CMS:** Add single template, or **Bulk Import via Spreadsheet (.CSV)** with sample template download.
-  4. **🖼️ Media CMS:** Dynamically update portfolio slides, case study graphics, and before/after URLs without touching code.
-  5. **⚙️ Dynamic Rates & Site Copy CMS:** Edit per-slide rates for all tiers ($19/$29/$49 and ₹1,499/₹2,299/₹3,899), monthly retainer rates, and hero copy.
-  6. **👥 Subscriptions & Accounts:** Monitor MRR ($2,980+), active monthly retainers, client slide quota consumption, and registered client profiles.
-  7. **💽 Cloudflare R2 Storage Monitor:** Live 10 GB quota meter tracking MB usage across `.pptx` decks and preview images.
+  1. ** Project Briefs:** Review client order submissions, slide counts, rush flags, open Google Drive asset folders, and update status (`Pending`  `In Progress`  `Completed`).
+  2. ** Waitlist Leads:** View all subscribers with real-time timestamps + 1-Click **"Export to CSV"**.
+  3. ** Template Marketplace CMS:** Add single template, or **Bulk Import via Spreadsheet (.CSV)** with sample template download.
+  4. **️ Media CMS:** Dynamically update portfolio slides, case study graphics, and before/after URLs without touching code.
+  5. **️ Dynamic Rates & Site Copy CMS:** Edit per-slide rates for all tiers ($19/$29/$49 and ₹1,499/₹2,299/₹3,899), monthly retainer rates, and hero copy.
+  6. ** Subscriptions & Accounts:** Monitor MRR ($2,980+), active monthly retainers, client slide quota consumption, and registered client profiles.
+  7. ** Cloudflare R2 Storage Monitor:** Live 10 GB quota meter tracking MB usage across `.pptx` decks and preview images.
 
 ### B. Client Account Portal
 - **URL:** `http://localhost:3000/#/login`
@@ -71,7 +71,7 @@ All tables are created, secured with Row Level Security (RLS), and active:
 
 ---
 
-## 🎨 4. Design System & Brand Identity
+##  4. Design System & Brand Identity
 
 - **Background Palette:** Warm Milk Cream (`#FFF9E8`)
 - **Primary Brand Color:** Honey Gold (`#FCBF14`) / Amber (`#F59E0B`)
@@ -81,7 +81,7 @@ All tables are created, secured with Row Level Security (RLS), and active:
 
 ---
 
-## 🚀 5. How to Run Locally
+##  5. How to Run Locally
 
 ```bash
 # 1. Switch to Node 22
@@ -96,13 +96,13 @@ node serve_local.js
 
 ---
 
-## 📋 6. Priority Roadmap for Tomorrow's Session
+##  6. Priority Roadmap for Tomorrow's Session
 
-1. **📦 Template File Upload Surface in CMS:**
-   - Add direct PowerPoint `.pptx` file upload drag-and-drop to Cloudflare R2 / Supabase Storage inside the "Add Template" modal.
-2. **💳 Payment Gateway Integration (Stripe / Razorpay):**
+1. ** Template File Upload Surface in CMS:**
+   - Add direct PowerPoint `.pptx` file upload drag-and-drop to Cloudflare R2  inside the "Add Template" modal.
+2. ** Payment Gateway Integration (Stripe / Razorpay):**
    - Connect 1-click checkout for template purchases and instant retainer onboarding.
-3. **🌐 Cloudflare Subdomain & Final Production Release:**
+3. ** Cloudflare Subdomain & Final Production Release:**
    - Move from local testing to live deployment when ready (`theslidebee.com`).
 
 ---

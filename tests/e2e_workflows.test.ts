@@ -14,7 +14,7 @@
  * 10. Atomic free credit redemption on tagged template & double-spend prevention
  * 11. Admin template visibility toggle (is_published)
  * 12. Cloudflare R2 folder architecture & CDN routing
- * 13. Supabase storage purge & zero-cost billing guardrails
+ * 13. Legacy storage purge & zero-cost billing guardrails
  * 14. [TOB-SB-01] Public storefront catalog IDOR elimination (no download_url exposed)
  * 15. [TOB-SB-02] Cloudflare R2 mutation protection (unauthenticated DELETE/POST blocked with 401)
  * 16. [TOB-SB-03] Profiles table RLS hardening (PII exfiltration & privilege escalation blocked)
@@ -24,7 +24,7 @@
  * 20. [TOB-SB-07] Email relay protection (unauthenticated dispatch & domain spoofing blocked)
  */
 
-import { supabase } from "../src/lib/supabase";
+import { d1 as db } from "../src/lib/d1";
 import fs from "fs";
 
 // Load environment credentials from .env if present
@@ -76,7 +76,7 @@ async function runAllWorkflows() {
   const testEmail = `founder.eval.${testId}@theslidebee.com`;
 
   // Establish Admin Client for administrative operations
-  const adminClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const adminClient = createClient("https://theslidebee.com", "anon");
   const { error: adminAuthErr } = await adminClient.auth.signInWithPassword({
     email: "admin@theslidebee.com",
     password: "SlideBee@Admin2026!"
@@ -91,7 +91,7 @@ async function runAllWorkflows() {
   // -------------------------------------------------------------
   try {
     console.log("Running Workflow 1: Unregistered Account Sign-In Handling...");
-    const { data: profileCheck } = await supabase
+    const { data: profileCheck } = await db
       .from("profiles")
       .select("*")
       .eq("email", testEmail)
@@ -116,7 +116,7 @@ async function runAllWorkflows() {
     console.log("\nRunning Workflow 2: Client Registration & 5 Starter Credits Grant...");
     const initialCredits = 5;
 
-    const { data: rpcResult, error: rpcErr } = await supabase.rpc("fn_grant_starter_credits", {
+    const { data: rpcResult, error: rpcErr } = await db.rpc("fn_grant_starter_credits", {
       p_email: testEmail,
       p_full_name: "Test Executive",
       p_company: "Enterprise Founders Inc"
@@ -179,7 +179,7 @@ async function runAllWorkflows() {
       status: "pending"
     };
 
-    const { data: quoteOrder, error: quoteErr } = await supabase
+    const { data: quoteOrder, error: quoteErr } = await db
       .from("orders")
       .insert(customQuotePayload)
       .select()
@@ -239,7 +239,7 @@ async function runAllWorkflows() {
     console.log("\nRunning Workflow 6: PPTX Deliverable Dispatch & Fulfillment RPC Verification...");
     const orderRef = `TPL-TEST-${testId.toString().slice(-4)}`;
 
-    const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
+    const { data: fulfillData, error: fulfillErr } = await db.rpc("fn_fulfill_template_order", {
       p_order_ref: orderRef,
       p_payment_id: `pay_test_${testId}`,
       p_template_id: "investor-pitch-deck",
@@ -275,7 +275,7 @@ async function runAllWorkflows() {
   // -------------------------------------------------------------
   try {
     console.log("\nRunning Workflow 7: Admin Storefront Metrics Visibility Toggle...");
-    const { data: configRow } = await supabase
+    const { data: configRow } = await db
       .from("site_config")
       .select("value")
       .eq("key", "show_template_metrics")
@@ -298,12 +298,12 @@ async function runAllWorkflows() {
   // -------------------------------------------------------------
   try {
     console.log("\nRunning Workflow 8: Deep Module Views (v_storefront_catalog & v_free_credit_library)...");
-    const { data: catalog, error: catErr } = await supabase
+    const { data: catalog, error: catErr } = await db
       .from("v_storefront_catalog")
       .select("id, title, is_credit_eligible")
       .limit(10);
 
-    const { data: freeLibrary, error: freeErr } = await supabase
+    const { data: freeLibrary, error: freeErr } = await db
       .from("v_free_credit_library")
       .select("id, title, is_credit_eligible");
 
@@ -328,7 +328,7 @@ async function runAllWorkflows() {
   try {
     console.log("\nRunning Workflow 9: Starter Credit Rejection on Premium Ineligible Template...");
     const creditUserEmail = `client.credit.eval.${testId}@theslidebee.com`;
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const userClient = createClient("https://theslidebee.com", "anon");
     await userClient.auth.signUp({
       email: creditUserEmail,
       password: "TestPassword123!"
@@ -377,7 +377,7 @@ async function runAllWorkflows() {
   try {
     console.log("\nRunning Workflow 10: Atomic Free Credit Redemption & Double-Spend Prevention...");
     const claimEmail = `client.claim.${testId}@theslidebee.com`;
-    const claimClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const claimClient = createClient("https://theslidebee.com", "anon");
     await claimClient.auth.signUp({
       email: claimEmail,
       password: "ClaimPassword123!"
@@ -449,7 +449,7 @@ async function runAllWorkflows() {
       .eq("id", targetTpl.id);
 
     // Verify it is excluded from v_storefront_catalog
-    const { data: hiddenCheck } = await supabase
+    const { data: hiddenCheck } = await db
       .from("v_storefront_catalog")
       .select("id")
       .eq("id", targetTpl.id);
@@ -469,7 +469,7 @@ async function runAllWorkflows() {
       .eq("id", targetTpl.id);
 
     // Verify it reappears in v_storefront_catalog
-    const { data: restoredCheck } = await supabase
+    const { data: restoredCheck } = await db
       .from("v_storefront_catalog")
       .select("id")
       .eq("id", targetTpl.id);
@@ -535,10 +535,10 @@ async function runAllWorkflows() {
   }
 
   // -------------------------------------------------------------
-  // Workflow 13: Supabase Storage Purge & Zero-Cost Billing Guardrails
+  // Workflow 13: Legacy storage purge & Zero-Cost Billing Guardrails
   // -------------------------------------------------------------
   try {
-    console.log("\nRunning Workflow 13: Supabase Storage Purge & Zero-Cost Billing Guardrails...");
+    console.log("\nRunning Workflow 13: Legacy storage purge & Zero-Cost Billing Guardrails...");
     const { data: remainingFiles, error: storageErr } = await adminClient
       .storage
       .from("examples")
@@ -548,8 +548,8 @@ async function runAllWorkflows() {
 
     assert(
       isPurged,
-      "Workflow 13: Supabase Storage Purged to 0 MB",
-      `Supabase 'examples' storage bucket contains 0 files. Zero storage quota used.`
+      "Workflow 13: Legacy storage purged to 0 MB",
+      `D1 'examples' storage bucket contains 0 files. Zero storage quota used.`
     );
 
     const MAX_PPTX = 50 * 1024 * 1024;
@@ -570,7 +570,7 @@ async function runAllWorkflows() {
       `Enforced: 50 MB deck cap, 10 MB image cap, and 10.00 GB hard bucket ceiling to guarantee $0.00 billing.`
     );
   } catch (err: any) {
-    assert(false, "Workflow 13: Supabase Storage Purge & Billing Guardrails", err.message);
+    assert(false, "Workflow 13: Legacy storage purge & Billing Guardrails", err.message);
   }
 
   // -------------------------------------------------------------
@@ -578,7 +578,7 @@ async function runAllWorkflows() {
   // -------------------------------------------------------------
   try {
     console.log("\nRunning Workflow 14: [TOB-SB-01] Public Catalog IDOR Elimination...");
-    const { data: publicCatalog } = await supabase
+    const { data: publicCatalog } = await db
       .from("v_storefront_catalog")
       .select("*");
 
@@ -630,7 +630,7 @@ async function runAllWorkflows() {
     console.log("\nRunning Workflow 16: [TOB-SB-03/04/05] Row-Level Security Access Control...");
     
     // Test TOB-SB-03: Anonymous cannot read profiles
-    const { data: anonProfiles } = await supabase.from("profiles").select("*");
+    const { data: anonProfiles } = await db.from("profiles").select("*");
     const profilesBlocked = !anonProfiles || anonProfiles.length === 0;
 
     assert(
@@ -640,7 +640,7 @@ async function runAllWorkflows() {
     );
 
     // Test TOB-SB-04: Anonymous cannot read orders
-    const { data: anonOrders } = await supabase.from("orders").select("*");
+    const { data: anonOrders } = await db.from("orders").select("*");
     const ordersBlocked = !anonOrders || anonOrders.length === 0;
 
     assert(
@@ -650,7 +650,7 @@ async function runAllWorkflows() {
     );
 
     // Test TOB-SB-05: Anonymous cannot read or modify templates table
-    const { data: anonTemplates } = await supabase.from("templates").select("*");
+    const { data: anonTemplates } = await db.from("templates").select("*");
     const templatesBlocked = !anonTemplates || anonTemplates.length === 0;
 
     assert(
@@ -669,7 +669,7 @@ async function runAllWorkflows() {
     console.log("\nRunning Workflow 17: [TOB-SB-06] Credit Redemption IDOR Guard...");
     
     // 1. Anonymous call must fail
-    const { data: anonRedeem } = await supabase.rpc("fn_redeem_template_credit", {
+    const { data: anonRedeem } = await db.rpc("fn_redeem_template_credit", {
       p_user_email: "victim@theslidebee.com",
       p_template_id: "investor-pitch-deck"
     });
@@ -677,7 +677,7 @@ async function runAllWorkflows() {
     const anonBlocked = anonRedeem?.error_code === "AUTHENTICATION_REQUIRED";
 
     // 2. Cross-account tampering must fail
-    const attackerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const attackerClient = createClient("https://theslidebee.com", "anon");
     const attackerEmail = `attacker.${testId}@theslidebee.com`;
     await attackerClient.auth.signUp({
       email: attackerEmail,
