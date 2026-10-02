@@ -64,6 +64,6 @@ All AI agents and developers working in this repository must strictly adhere to 
 
 ## 6. Admin Authentication Rules
 
-- Valid admin email addresses: `admin@theslidebee.com` and `admin@slidebee.com`.
-- Never show "No registered account found" for admin emails.
+- Valid admin email address: `admin@theslidebee.com` exclusively.
+- Never show "No registered account found" for `admin@theslidebee.com`.
 - Never hardcode production secrets or tokens in documentation or client-side bundles.

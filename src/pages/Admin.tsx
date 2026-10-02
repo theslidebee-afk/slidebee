@@ -372,11 +372,7 @@ export default function Admin() {
 
       const userEmail = activeSession?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
-        userEmail === "superadmin@theslidebee.com" ||
         userEmail === "admin@theslidebee.com" ||
-        userEmail === "admin@slidebee.com" ||
-        userEmail.startsWith("admin@") ||
-        userEmail.startsWith("superadmin@") ||
         activeSession?.user?.role === "admin" ||
         activeSession?.user?.role === "super_admin" ||
         activeSession?.user?.user_metadata?.role === "admin" ||
@@ -2777,7 +2773,7 @@ hello@theslidebee.com`;
 
   // 3-Column Eduspot Layout Calculations
   const registeredClients = profiles.filter(
-    (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+    (p) => (p.role === "client" || !p.role) && p.email?.toLowerCase().trim() !== "admin@theslidebee.com"
   );
   const registeredClientsCount = registeredClients.length;
   const activeProSubscribers = subscriptions.filter((s) => s.status === "active");
@@ -3543,7 +3539,7 @@ hello@theslidebee.com`;
                       : "bg-white text-[#726F6D] hover:text-[#111111] border border-[#111111]/10"
                   }`}
                 >
-                  Free Tier ({profiles.filter(p => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@") && !subscriptions.some(s => s.user_email?.toLowerCase() === p.email?.toLowerCase() && s.status === "active")).length})
+                  Free Tier ({profiles.filter(p => (p.role === "client" || !p.role) && p.email?.toLowerCase().trim() !== "admin@theslidebee.com" && !subscriptions.some(s => s.user_email?.toLowerCase() === p.email?.toLowerCase() && s.status === "active")).length})
                 </button>
               </div>
 
@@ -7809,7 +7805,7 @@ hello@theslidebee.com`;
         {/* TAB 7: SUBSCRIPTIONS & CLIENT PROFILES */}
         {activeTab === "subscriptions" && (() => {
           const clientProfiles = profiles.filter(
-            (p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@")
+            (p) => (p.role === "client" || !p.role) && p.email?.toLowerCase().trim() !== "admin@theslidebee.com"
           );
           const isSubActive = (s: any) => s.status === "active" && (!s.current_period_end || new Date(s.current_period_end) > new Date());
           const activeSubscriptions = subscriptions.filter(isSubActive);
@@ -10372,7 +10368,7 @@ hello@theslidebee.com`;
                   >
                     <option value="">-- Choose client profile --</option>
                     {profiles
-                      .filter((p) => (p.role === "client" || !p.role) && !p.email?.toLowerCase().startsWith("admin@"))
+                      .filter((p) => (p.role === "client" || !p.role) && p.email?.toLowerCase().trim() !== "admin@theslidebee.com")
                       .map((p) => (
                         <option key={p.id} value={p.email}>
                           {p.full_name ? `${p.full_name} (${p.email})` : p.email}

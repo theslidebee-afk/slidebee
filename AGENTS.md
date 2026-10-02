@@ -106,5 +106,5 @@ Do NOT load the entire repository or all documentation at once. Follow this lean
    - **Zero Vendor Lock-in**: 100% serverless Cloudflare native stack.
 
 5. **ADMIN AUTHENTICATION**:
-   - Admin access is granted to `admin@theslidebee.com` and `admin@slidebee.com`.
-   - Never display "No registered account found" for valid admin accounts.
+   - Admin access is strictly granted only to `admin@theslidebee.com` with password `SlideBee@Admin2026!`.
+   - Never display "No registered account found" for the valid admin account.

@@ -204,10 +204,6 @@ const edgeAuth = {
 
         const isUserAdmin =
           json.data.user.email === 'admin@theslidebee.com' ||
-          json.data.user.email === 'admin@slidebee.com' ||
-          json.data.user.email === 'superadmin@theslidebee.com' ||
-          json.data.user.email?.startsWith('admin@') ||
-          json.data.user.email?.startsWith('superadmin@') ||
           json.data.user.role === 'admin' ||
           json.data.user.role === 'super_admin';
 

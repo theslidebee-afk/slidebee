@@ -343,13 +343,7 @@ export default function Login() {
           sessionStorage.removeItem("slidebee_auth_lock_until");
 
           const cleanEmail = email.toLowerCase().trim();
-          const isAdmin =
-            cleanEmail === "admin@theslidebee.com" ||
-            cleanEmail === "admin@slidebee.com" ||
-            cleanEmail === "superadmin@theslidebee.com" ||
-            cleanEmail.startsWith("admin@") ||
-            cleanEmail.startsWith("superadmin@") ||
-            res.isAdmin;
+          const isAdmin = cleanEmail === "admin@theslidebee.com" || res.isAdmin;
 
           if (isAdmin) {
             window.location.href = "/admin";
@@ -416,17 +410,14 @@ export default function Login() {
       const { data: { session } } = await d1.auth.getSession();
       const userEmail = session?.user?.email?.toLowerCase().trim() || "";
       const isSuperOrAdmin =
-        userEmail === "superadmin@theslidebee.com" ||
         userEmail === "admin@theslidebee.com" ||
-        userEmail.startsWith("admin@") ||
-        userEmail.startsWith("superadmin@") ||
         session?.user?.user_metadata?.role === "admin" ||
         session?.user?.user_metadata?.role === "super_admin";
 
       setTimeout(() => {
         if (isSuperOrAdmin) {
           localStorage.setItem("slidebee_admin_session", "true");
-          localStorage.setItem("slidebee_admin_email", userEmail || "superadmin@theslidebee.com");
+          localStorage.setItem("slidebee_admin_email", userEmail || "admin@theslidebee.com");
           window.location.href = "/admin";
         } else {
           setIsResetMode(false);
@@ -667,10 +658,7 @@ export default function Login() {
   }
 
   // --- 2. UNAUTHENTICATED SIGN IN / SIGN UP VIEW ---
-  const isAdminInput =
-    ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(email.toLowerCase().trim()) ||
-    email.toLowerCase().trim().startsWith("admin@") ||
-    email.toLowerCase().trim().startsWith("superadmin@");
+  const isAdminInput = email.toLowerCase().trim() === "admin@theslidebee.com";
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center p-4 relative overflow-hidden large-hex-grid pt-28 pb-20">
@@ -988,7 +976,7 @@ export default function Login() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block">
-                    {isAdminInput ? "Admin Password or PIN (2026) *" : "Password *"}
+                    {isAdminInput ? "Admin Password *" : "Password *"}
                   </label>
                   {!isSignUp && !isAdminInput && (
                     <button
@@ -1008,7 +996,7 @@ export default function Login() {
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    placeholder={isAdminInput ? "Admin Password or Master PIN (2026)" : "••••••••"}
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-11 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary"
@@ -1080,7 +1068,7 @@ export default function Login() {
                 Password Recovery
               </h3>
               <p className="text-xs text-[#726F6D] mb-4">
-                Enter your registered work email (clients or superadmin@theslidebee.com). If an account exists, a secure password reset link will be sent to your inbox.
+                Enter your registered work email. If an account exists, a secure password reset link will be sent to your inbox.
               </p>
 
               <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -1092,7 +1080,7 @@ export default function Login() {
                     <input
                       type="email"
                       required
-                      placeholder="sarah@hypergrowth.vc or superadmin@theslidebee.com"
+                      placeholder="sarah@hypergrowth.vc or admin@theslidebee.com"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill pl-10 pr-4 py-2.5 text-xs text-[#111111] font-medium outline-none focus:border-primary"

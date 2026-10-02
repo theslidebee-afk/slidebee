@@ -51,10 +51,9 @@ All tables are created, secured with Row Level Security (RLS), and active:
 ##  3. Access Portals & Credentials
 
 ### A. Master Studio Admin Portal
-- **URL:** `http://localhost:3000/#/admin`
+- **URL:** `http://localhost:3000/admin`
 - **Email:** `admin@theslidebee.com`
 - **Password:** `SlideBee@Admin2026!`
-- **Instant Studio Passkey:** `2026` *(or passkey trigger button on login screen)*
 - **Admin Capabilities:**
   1. ** Project Briefs:** Review client order submissions, slide counts, rush flags, open Google Drive asset folders, and update status (`Pending`  `In Progress`  `Completed`).
   2. ** Waitlist Leads:** View all subscribers with real-time timestamps + 1-Click **"Export to CSV"**.

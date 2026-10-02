@@ -16,7 +16,7 @@ This skill defines the security protocols for authentication, payment processing
 
 3. **Admin Privilege Guarding**:
    - Verify admin claims through serverless session guards (`functions/api/auth.ts`, `functions/api/session-guard.ts`).
-   - Master admin addresses: `admin@theslidebee.com` and `admin@slidebee.com`.
+   - Master admin address: `admin@theslidebee.com` exclusively.
 
 4. **Input Sanitization**:
    - Validate and sanitize order brief inputs on `/ordernow` before persisting to `orders` in D1.

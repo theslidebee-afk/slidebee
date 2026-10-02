@@ -24,8 +24,8 @@ This project enforces strict development standards across all code generation an
    - Consult `rules/database-and-storage.md`.
 
 4. **ADMIN AUTHENTICATION**:
-   - Never show "No registered account found" for admin emails.
-   - Support admin logins with `admin@theslidebee.com` and `admin@slidebee.com` and master PIN `2026`.
+   - Never show "No registered account found" for `admin@theslidebee.com`.
+   - Support admin logins strictly with `admin@theslidebee.com` and password `SlideBee@Admin2026!`.
    - Consult `rules/authentication-and-roles.md`.
 
 5. **ADDING FUTURE RULES**:

@@ -127,17 +127,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         });
       }
 
-      const isAdminTarget =
-        ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
-        cleanEmail.startsWith("admin@") ||
-        cleanEmail.startsWith("superadmin@");
+      const isAdminTarget = cleanEmail === "admin@theslidebee.com";
 
       const configuredAdminPass = env?.SLIDEBEE_ADMIN_PASSWORD || env?.SLIDEBEE_ADMIN_SECRET || "SlideBee@Admin2026!";
       const isKnownAdminPass = isAdminTarget && (
         password === configuredAdminPass ||
-        password === "SlideBee@Admin2026!" ||
-        password === "2026" ||
-        password === "admin2026"
+        password === "SlideBee@Admin2026!"
       );
 
       if (env.DB) {
@@ -172,7 +167,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
+          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password." } }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -183,7 +178,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
         if (!isPasswordValid) {
           if (isAdminTarget) {
-            return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
+            return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password." } }), {
               status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
@@ -302,7 +297,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
       if (!env.DB) {
         if (isAdminTarget) {
-          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." } }), {
+          return new Response(JSON.stringify({ error: { message: "Invalid administrator credentials. Please check your admin password." } }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -428,7 +423,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         if (!existingUser) {
           const salt = crypto.randomUUID();
           const dummyHash = await hashPassword(crypto.randomUUID(), salt);
-          const role = ["admin@theslidebee.com", "admin@slidebee.com"].includes(userEmail) ? "admin" : "client";
+          const role = userEmail === "admin@theslidebee.com" ? "admin" : "client";
 
           await env.DB.prepare(
             `INSERT INTO users (id, email, password_hash, salt, role) VALUES (?, ?, ?, ?, ?)`
@@ -532,7 +527,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         const userId = crypto.randomUUID();
         const salt = crypto.randomUUID();
         const pwdHash = await hashPassword(password, salt);
-        const role = ["admin@theslidebee.com", "admin@slidebee.com"].includes(cleanEmail) ? "admin" : "client";
+        const role = cleanEmail === "admin@theslidebee.com" ? "admin" : "client";
 
         await env.DB.prepare(
           `INSERT INTO users (id, email, password_hash, salt, role) VALUES (?, ?, ?, ?, ?)`

@@ -149,18 +149,14 @@ export function useClientLedger() {
     const { data: { session } } = await d1.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
-        session.user.email === "superadmin@theslidebee.com" ||
         session.user.email === "admin@theslidebee.com" ||
-        session.user.email === "admin@slidebee.com" ||
-        session.user.email?.startsWith("admin@") ||
-        session.user.email?.startsWith("superadmin@") ||
         session.user.user_metadata?.role === "admin" ||
         session.user.user_metadata?.role === "super_admin";
 
       if (isSessionAdmin) {
         localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
-        localStorage.setItem("slidebee_admin_email", session.user.email || "superadmin@theslidebee.com");
+        localStorage.setItem("slidebee_admin_email", session.user.email || "admin@theslidebee.com");
         setCurrentUser(null);
         setUserProfile(null);
         setUserOrders([]);
@@ -245,11 +241,7 @@ export function useClientLedger() {
 
     if (authData?.user) {
       const isUserAdmin =
-        authData.user.email === "superadmin@theslidebee.com" ||
         authData.user.email === "admin@theslidebee.com" ||
-        authData.user.email === "admin@slidebee.com" ||
-        authData.user.email?.startsWith("admin@") ||
-        authData.user.email?.startsWith("superadmin@") ||
         authData.user.user_metadata?.role === "admin" ||
         authData.user.user_metadata?.role === "super_admin";
       if (isUserAdmin) {

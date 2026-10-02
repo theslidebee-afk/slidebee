@@ -703,17 +703,14 @@ function edgeDevPlugin(): Plugin {
             }
 
             if (action === "login") {
-              const isAdmin =
-                ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
-                cleanEmail.startsWith("admin@") ||
-                cleanEmail.startsWith("superadmin@");
+              const isAdmin = cleanEmail === "admin@theslidebee.com";
 
               if (isAdmin) {
                 const pass = String(body.password || "").trim();
-                const isValidAdminPass = pass === "2026" || pass === "SlideBee@Admin2026!" || pass === "admin2026";
+                const isValidAdminPass = pass === "SlideBee@Admin2026!";
                 if (!isValidAdminPass) {
                   return res.end(JSON.stringify({
-                    error: { message: "Invalid administrator credentials. Please check your admin password or master PIN (2026)." }
+                    error: { message: "Invalid administrator credentials. Please check your admin password." }
                   }));
                 }
               }
@@ -768,10 +765,7 @@ function edgeDevPlugin(): Plugin {
             }
 
             if (action === "signup") {
-              const isAdmin =
-                ["admin@theslidebee.com", "admin@slidebee.com", "superadmin@theslidebee.com"].includes(cleanEmail) ||
-                cleanEmail.startsWith("admin@") ||
-                cleanEmail.startsWith("superadmin@");
+              const isAdmin = cleanEmail === "admin@theslidebee.com";
               const role = isAdmin ? "admin" : "client";
               const userId = "usr-" + Math.random().toString(36).substring(2, 10);
               const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);

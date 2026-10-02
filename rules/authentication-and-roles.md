@@ -6,9 +6,9 @@
 
 ## 1. Master Admin Credentials & Access
 
-- **Admin Account Recognition**: Both `admin@theslidebee.com` and `admin@slidebee.com` (and any email starting with `admin@`) are recognized as administrator accounts.
-- **Admin Authentication**: Admins authenticate securely via edge auth with administrator credentials, gaining immediate access to the Studio Hub (`#/admin`).
-- **Profile Persistence**: Admin accounts must always have persistent rows in `public.profiles` with `role = 'super_admin'` so database operations and role checks succeed.
+- **Admin Account Recognition**: Only `admin@theslidebee.com` is recognized as the administrator account. No wildcards, prefix matching, or secondary admin addresses are permitted.
+- **Admin Authentication**: Master admin authenticates securely via edge auth with password `SlideBee@Admin2026!`, gaining immediate access to the Studio Hub (`/admin`).
+- **Profile Persistence**: The admin account must always have persistent rows in `public.profiles` with `role = 'super_admin'` so database operations and role checks succeed.
 
 ---
 
@@ -18,7 +18,7 @@
 - **Unregistered Account Handling**:
   - When an unauthenticated visitor attempts login with an email not found in `profiles`, gracefully switch to the Sign Up tab and display:
     `"No registered account found for <email>"`
-  - **Exception**: NEVER display "No registered account found" for an administrator email. Always prompt for valid admin credentials or master PIN.
+  - **Exception**: NEVER display "No registered account found" for `admin@theslidebee.com`. Always prompt for valid admin credentials.
 
 ---
 

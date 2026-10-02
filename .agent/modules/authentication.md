@@ -31,7 +31,7 @@ IMPLEMENTED
 - `src/lib/deviceFingerprint.ts`
 
 ## Important Business Rules
-- Master admin accounts (`admin@theslidebee.com`, `admin@slidebee.com`) must never show "No registered account found".
+- Master admin account (`admin@theslidebee.com`) must never show "No registered account found".
 - Every authenticated user automatically receives a `public.profiles` record with plan tier defaults (`free`, `quota_remaining: 3`).
 - OAuth redirects are handled via `/auth/callback` (`AuthCallback.tsx`) and sanitized for clean HTML5 URL routing.
 

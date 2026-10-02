@@ -332,9 +332,7 @@ async function isAuthorizedAdmin(request: Request, env?: any): Promise<boolean> 
           if (
             activeSession.role === "admin" ||
             activeSession.role === "super_admin" ||
-            sessionEmail === "admin@theslidebee.com" ||
-            sessionEmail === "admin@slidebee.com" ||
-            sessionEmail.startsWith("admin@")
+            sessionEmail === "admin@theslidebee.com"
           ) {
             return true;
           }

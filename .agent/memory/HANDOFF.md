@@ -1,16 +1,14 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Fix Login flows, especially Administrator login failure with Master PIN 2026, redirection issues under BrowserRouter, and unregistered client account handling.
+Strict Single Administrator Credentials Enforcement: Restrict administrator recognition strictly to `admin@theslidebee.com` and password `SlideBee@Admin2026!` (removing all wildcards, prefix matching, secondary emails, and PIN bypasses).
 
 ## What Was Done
-1. Added full support for master PIN `2026` and `admin2026` alongside `SlideBee@Admin2026!` in `functions/api/auth.ts` and `vite.config.ts`.
-2. Fixed admin redirection in `src/modules/ClientLedgerAuth/useClientLedger.ts` and `src/pages/Login.tsx` by replacing outdated hash manipulation (`window.location.hash = "#/admin"`) with HTML5 `BrowserRouter` navigation (`window.location.href = "/admin"`).
-3. Added automatic admin session redirect on mount in `Login.tsx` when `slidebee_admin_session` is active.
-4. Added resilient admin fallback session in `src/pages/Admin.tsx` and `src/lib/d1.ts` to prevent authenticated admins from being falsely ejected.
-5. Implemented unregistered client account detection (`No registered account found for <email>`) with auto-switch to Sign Up tab, while strictly preserving administrator credential prompts.
-6. Permitted `/login` route in `App.tsx` on official production domain.
-7. Verified `npm run build` and `oxlint` with 0 errors and zero unicode emojis.
+1. Enforced strict single administrator recognition in `functions/api/auth.ts` and `vite.config.ts` (`cleanEmail === "admin@theslidebee.com"` and password `SlideBee@Admin2026!`). Removed secondary emails (`admin@slidebee.com`, `superadmin@theslidebee.com`), wildcards (`startsWith("admin@")`, `startsWith("superadmin@")`), and PIN bypasses (`2026`, `admin2026`).
+2. Updated client-side admin detection across `src/modules/ClientLedgerAuth/useClientLedger.ts`, `src/pages/Admin.tsx`, `src/pages/Login.tsx`, `src/lib/d1.ts`, `src/components/Navbar.tsx`, `functions/api/r2-storage.ts`, and `functions/api/admin-template.ts`.
+3. Cleaned up admin login UI in `src/pages/Login.tsx` (simplified password label to "Admin Password *" and placeholder to "••••••••", removing PIN 2026 references and outdated superadmin references).
+4. Synchronized all documentation and directive files (`rules/authentication-and-roles.md`, `AGENTS.md`, `GEMINI.md`, `.agent/core/RULES.md`, `.agent/modules/admin.md`, `.agent/modules/authentication.md`, `.agent/skills/security/SKILL.md`, `SOFTWARE.md`, `.agent/memory/STATE.md`).
+5. Verified `npm run build` and `oxlint` with 0 errors and zero unicode emojis.
 
 ## What Was Verified
 - `npm run build` exits with code 0 in 1.49s.

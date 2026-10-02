@@ -27,7 +27,7 @@ IMPLEMENTED
 - `src/lib/d1.ts`
 
 ## Important Business Rules
-- Access restricted to authenticated administrators (`admin@theslidebee.com`, `admin@slidebee.com`).
+- Access restricted to authenticated administrator (`admin@theslidebee.com`).
 - Uploaded slides and covers must generate CDN-accessible image URLs.
 - Dynamic homepage fields saved to `public.site_config` take effect immediately on frontend refresh.
 - Retired fields (eyebrows/subtitles) are omitted from homepage rendering to preserve modern hero proportions.
