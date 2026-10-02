@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabase";
-import { initialBlogArticles } from "./Blog";
+import { d1 } from "../lib/d1";
 import { sendWaitlistConfirmationEmail } from "../lib/email";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -12,7 +10,24 @@ export default function ComingSoon() {
   usePageSEO({
     title: "SlideBee | Executive PowerPoint Presentation Templates & Bespoke Design Studio",
     description: "SlideBee is an executive presentation design studio and curated template marketplace for PowerPoint (.pptx) and Google Slides. Early access and studio waitlist.",
+    keywords: [
+      "SlideBee",
+      "presentation design",
+      "pitch deck design",
+      "PowerPoint templates",
+      "executive presentation studio",
+      "Google Slides template",
+      "keynote presentation design"
+    ],
     canonicalUrl: "https://theslidebee.com/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://theslidebee.com/",
+      "name": "SlideBee",
+      "alternateName": ["Slide Bee", "TheSlideBee", "theslidebee.com"],
+      "description": "Executive PowerPoint Presentation Templates & Bespoke Slide Design Studio"
+    }
   });
 
   const [email, setEmail] = useState("");
@@ -135,59 +150,6 @@ export default function ComingSoon() {
               </button>
             </form>
           )}
-        </motion.div>
-
-        {/* Presentation Playbook Preview for SEO and Discovery */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-16 text-left max-w-4xl mx-auto"
-        >
-          <div className="flex items-center justify-between mb-6 pb-3 border-b border-primary/20">
-            <div>
-              <span className="hex-pill text-[10px] uppercase font-black bg-primary/20 text-[#111111] px-3 py-1">
-                Executive Insights
-              </span>
-              <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111] mt-2">
-                The Presentation <span className="text-primary-amber">Playbook</span>
-              </h2>
-            </div>
-            <Link
-              to="/blog"
-              className="text-xs font-black text-primary-amber hover:underline flex items-center gap-1.5"
-            >
-              View All 12 Guides <ArrowRight size={13} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {initialBlogArticles.slice(0, 6).map((post) => (
-              <Link
-                key={post.id}
-                to={`/blog/${post.id}`}
-                className="hex-card bg-white border border-primary/30 p-4 hover:border-primary transition-all flex flex-col group shadow-sm hover:shadow-md"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase text-primary-amber bg-primary/10 px-2.5 py-0.5 rounded-full">
-                    {post.category}
-                  </span>
-                  <span className="text-[10px] text-[#726F6D] font-bold">
-                    {post.readTime}
-                  </span>
-                </div>
-                <h3 className="text-xs sm:text-sm font-heading font-extrabold text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-2 leading-snug mb-2">
-                  {post.title}
-                </h3>
-                <p className="text-[11px] text-[#726F6D] line-clamp-2 leading-relaxed mt-auto">
-                  {post.content}
-                </p>
-                <div className="text-[11px] font-black text-primary-amber flex items-center gap-1 mt-3 group-hover:translate-x-0.5 transition-transform">
-                  Read Guide <ArrowRight size={11} />
-                </div>
-              </Link>
-            ))}
-          </div>
         </motion.div>
 
       </main>
