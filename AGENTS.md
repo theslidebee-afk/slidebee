@@ -108,3 +108,8 @@ Do NOT load the entire repository or all documentation at once. Follow this lean
 5. **ADMIN AUTHENTICATION**:
    - Admin access is strictly granted only to `admin@theslidebee.com` with password `SlideBee@Admin2026!`.
    - Never display "No registered account found" for the valid admin account.
+
+6. **TOKEN EFFICIENCY & TARGETED FILE INSPECTION (STRICT)**:
+   - Do NOT search, grep, or read across the entire codebase to diagnose single errors or bugs.
+   - The repository is modularized with specific domain folders and files for every process (e.g. `src/features/admin/`, `src/features/home/`, `src/features/auth/`, `src/features/templates/`). Inspect ONLY the specific target file or domain folder responsible for the requested feature.
+   - Never run open-ended codebase-wide scans, bulk greps, or multi-file reads without explicit prior user direction.

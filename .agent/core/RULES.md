@@ -67,3 +67,11 @@ All AI agents and developers working in this repository must strictly adhere to 
 - Valid admin email address: `admin@theslidebee.com` exclusively.
 - Never show "No registered account found" for `admin@theslidebee.com`.
 - Never hardcode production secrets or tokens in documentation or client-side bundles.
+
+---
+
+## 7. Token Efficiency & Targeted File Inspection (STRICT)
+
+- **Targeted Scope**: Every module, page, and feature is isolated under dedicated domain directories (`src/features/*`). Never scan, grep, or read across the entire codebase to investigate a single bug.
+- **Direct Access**: Inspect ONLY the exact file relevant to the requested task.
+- **Zero Wastage**: Do not run open-ended file exploration or broad searches that consume excessive context tokens.

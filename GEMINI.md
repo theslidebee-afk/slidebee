@@ -30,3 +30,7 @@ This project enforces strict development standards across all code generation an
 
 5. **ADDING FUTURE RULES**:
    - Document new rules in `rules/<rule-name>.md` following `rules/future-rules-template.md` and update `rules/README.md`.
+
+6. **TOKEN EFFICIENCY & TARGETED FILE INSPECTION**:
+   - Do NOT scan, grep, or read across the entire codebase to fix single errors.
+   - Every feature/process has dedicated files in modular domain folders (`src/features/*`). Directly inspect only the relevant target file. Never waste tokens on broad exploratory scans.
