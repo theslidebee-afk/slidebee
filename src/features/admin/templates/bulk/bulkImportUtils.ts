@@ -188,22 +188,22 @@ export function parseAndValidateCsv(
 
     const price_inr = Number(rawInr);
     const price_usd = Number(rawUsd);
-    if (isNaN(price_inr) || price_inr < 0) {
+    if (isNaN(price_inr) || price_inr <= 0) {
       errors.push({
         row: rowNum,
         code: rawCode || "—",
         title: rawTitle,
         field: "price_inr",
-        issue: `Invalid INR price "${rawInr}". Must be a valid positive number.`,
+        issue: `Price INR must be greater than 0 ("${rawInr}" given). To offer free tier access, enter standard price and set is_credit_eligible to true.`,
       });
     }
-    if (isNaN(price_usd) || price_usd < 0) {
+    if (isNaN(price_usd) || price_usd <= 0) {
       errors.push({
         row: rowNum,
         code: rawCode || "—",
         title: rawTitle,
         field: "price_usd",
-        issue: `Invalid USD price "${rawUsd}". Must be a valid positive number.`,
+        issue: `Price USD must be greater than 0 ("${rawUsd}" given). To offer free tier access, enter standard price and set is_credit_eligible to true.`,
       });
     }
 
@@ -284,6 +284,8 @@ export function parseAndValidateCsv(
       formats: parsedFormats,
       description: parts[descIdx] || "Executive master presentation deck with clean typography and corporate hierarchy.",
       features,
+      is_premium: Number(price_inr) > 0 ? 1 : 0,
+      is_published: 1,
       is_featured: false,
       is_hero: false,
       downloads_count: 0

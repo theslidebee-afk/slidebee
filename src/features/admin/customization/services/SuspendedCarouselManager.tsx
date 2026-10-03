@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Layers, Save, UploadCloud, X, Sparkles, Check } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Layers, Save, UploadCloud, X, Sparkles, Check, LayoutGrid, List, Plus } from "lucide-react";
 import { uploadToR2, normalizeR2Url } from "../../../../lib/r2";
 
 interface SuspendedCarouselManagerProps {
@@ -22,9 +22,21 @@ export const SuspendedCarouselManager: React.FC<SuspendedCarouselManagerProps> =
   const [activeMarqueeTarget, setActiveMarqueeTarget] = useState<"services_top" | "services_bottom">("services_top");
   const [isUploadingMarquee, setIsUploadingMarquee] = useState(false);
   const [marqueeManualUrl, setMarqueeManualUrl] = useState("");
+  const [templateViewMode, setTemplateViewMode] = useState<"grid" | "list">("grid");
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("");
 
   const isUpperTrack = activeMarqueeTarget !== "services_bottom";
   const activeCarouselList = isUpperTrack ? currentUpperSlides : currentLowerSlides;
+
+  const filteredTemplates = useMemo(() => {
+    if (!templateSearchQuery.trim()) return templates;
+    const q = templateSearchQuery.toLowerCase().trim();
+    return templates.filter((t: any) =>
+      t.title?.toLowerCase().includes(q) ||
+      t.code?.toLowerCase().includes(q) ||
+      t.category?.toLowerCase().includes(q)
+    );
+  }, [templates, templateSearchQuery]);
 
   const updateTrack = (updatedList: any[]) => {
     onUpdateCarouselTrack(isUpperTrack, updatedList);
@@ -204,75 +216,208 @@ export const SuspendedCarouselManager: React.FC<SuspendedCarouselManagerProps> =
 
         {/* Template Cover Images Picker */}
         <div className="pt-6 border-t border-[#111111]/10 space-y-3">
-          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
-            <Sparkles size={14} className="text-primary-amber" />
-            Select Directly from Storefront Template Cover Images
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-[380px] overflow-y-auto p-2 bg-[#FFF9E8]/50 rounded-2xl border border-primary/25">
-            {templates.map((tpl: any) => {
-              const coverImg = normalizeR2Url(
-                tpl.image_url || tpl.thumbnail_url || tpl.image || "/portfolio/case_study_a_1.png"
-              );
-              const isSelected = activeCarouselList.some((item: any) => {
-                const itemImg = typeof item === "string" ? item : item?.image;
-                return itemImg === coverImg || (item?.id && item.id === `tpl-${tpl.id}`);
-              });
-
-              const toggleTemplateCover = () => {
-                if (isSelected) {
-                  updateTrack(
-                    activeCarouselList.filter((item: any) => {
-                      const itemImg = typeof item === "string" ? item : item?.image;
-                      return itemImg !== coverImg && item?.id !== `tpl-${tpl.id}`;
-                    })
-                  );
-                } else {
-                  const newSlide = {
-                    id: `tpl-${tpl.id}`,
-                    title: tpl.title,
-                    category: tpl.category || "Keynote",
-                    image: coverImg,
-                    code: tpl.code || `SLD-${String(tpl.id).slice(0, 4)}`,
-                  };
-                  updateTrack([...activeCarouselList, newSlide]);
-                }
-              };
-
-              return (
-                <div
-                  key={tpl.id}
-                  onClick={toggleTemplateCover}
-                  className={`hex-card rounded-xl overflow-hidden border-2 cursor-pointer transition-all p-1 group flex flex-col justify-between ${
-                    isSelected
-                      ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
-                      : "border-primary/30 bg-white hover:border-primary"
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
+              <Sparkles size={14} className="text-primary-amber" />
+              Select Directly from Storefront Template Cover Images
+            </h4>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={templateSearchQuery}
+                  onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                  placeholder="Filter templates..."
+                  className="pl-3 pr-3 py-1 text-xs bg-white border border-[#111111]/15 rounded-lg outline-none focus:border-primary font-medium w-44"
+                />
+              </div>
+              <div className="flex items-center bg-white p-0.5 rounded-lg border border-[#111111]/15 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setTemplateViewMode("grid")}
+                  className={`p-1 rounded transition-all cursor-pointer ${
+                    templateViewMode === "grid" ? "bg-primary text-[#111111]" : "text-[#726F6D]"
                   }`}
+                  title="Gallery Grid"
                 >
-                  <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden relative">
-                    <img
-                      src={coverImg}
-                      alt={tpl.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      loading="lazy"
-                    />
-                    {isSelected && (
-                      <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
-                        <Check size={12} />
+                  <LayoutGrid size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplateViewMode("list")}
+                  className={`p-1 rounded transition-all cursor-pointer ${
+                    templateViewMode === "list" ? "bg-primary text-[#111111]" : "text-[#726F6D]"
+                  }`}
+                  title="List View"
+                >
+                  <List size={13} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {templateViewMode === "grid" ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-[380px] overflow-y-auto p-2 bg-[#FFF9E8]/50 rounded-2xl border border-primary/25">
+              {filteredTemplates.map((tpl: any) => {
+                const coverImg = normalizeR2Url(
+                  tpl.image_url || tpl.thumbnail_url || tpl.image || "/portfolio/case_study_a_1.png"
+                );
+                const isSelected = activeCarouselList.some((item: any) => {
+                  const itemImg = typeof item === "string" ? item : item?.image;
+                  return itemImg === coverImg || (item?.id && item.id === `tpl-${tpl.id}`);
+                });
+
+                const toggleTemplateCover = () => {
+                  if (isSelected) {
+                    updateTrack(
+                      activeCarouselList.filter((item: any) => {
+                        const itemImg = typeof item === "string" ? item : item?.image;
+                        return itemImg !== coverImg && item?.id !== `tpl-${tpl.id}`;
+                      })
+                    );
+                  } else {
+                    const newSlide = {
+                      id: `tpl-${tpl.id}`,
+                      title: tpl.title,
+                      category: tpl.category || "Keynote",
+                      image: coverImg,
+                      code: tpl.code || `SLD-${String(tpl.id).slice(0, 4)}`,
+                    };
+                    updateTrack([...activeCarouselList, newSlide]);
+                  }
+                };
+
+                return (
+                  <div
+                    key={tpl.id}
+                    onClick={toggleTemplateCover}
+                    className={`hex-card rounded-xl overflow-hidden border-2 cursor-pointer transition-all p-1 group flex flex-col justify-between ${
+                      isSelected
+                        ? "border-green-600 bg-green-50/50 ring-2 ring-green-400"
+                        : "border-primary/30 bg-white hover:border-primary"
+                    }`}
+                  >
+                    <div className="aspect-[16/10] bg-[#FFF9E8] rounded overflow-hidden relative">
+                      <img
+                        src={coverImg}
+                        alt={tpl.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        loading="lazy"
+                      />
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 bg-green-600 text-white rounded-full p-0.5 shadow">
+                          <Check size={12} />
+                        </div>
+                      )}
+                      <div className="absolute bottom-1 left-1">
+                        <span className="hex-pill-sm bg-[#111111]/85 text-primary text-[8px] font-black px-1.5 py-0.5">
+                          {tpl.code || "SLD"}
+                        </span>
                       </div>
-                    )}
-                    <div className="absolute bottom-1 left-1">
-                      <span className="hex-pill-sm bg-[#111111]/85 text-primary text-[8px] font-black px-1.5 py-0.5">
-                        {tpl.code || "SLD"}
-                      </span>
+                    </div>
+                    <div className="p-1 text-[10px] font-extrabold text-[#111111] truncate">
+                      {tpl.title}
                     </div>
                   </div>
-                  <div className="p-1 text-[10px] font-extrabold text-[#111111] truncate">
-                    {tpl.title}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-[#111111]/10 overflow-hidden shadow-2xs max-h-[380px] overflow-y-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[#FFF9E8] border-b border-[#111111]/10 text-[#726F6D] text-[10px] font-black uppercase tracking-wider sticky top-0 z-10">
+                  <tr>
+                    <th className="py-2 px-3">Active</th>
+                    <th className="py-2 px-3">Cover</th>
+                    <th className="py-2 px-3">SKU</th>
+                    <th className="py-2 px-4">Title</th>
+                    <th className="py-2 px-3">Category</th>
+                    <th className="py-2 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#111111]/6 font-medium">
+                  {filteredTemplates.map((tpl: any) => {
+                    const coverImg = normalizeR2Url(
+                      tpl.image_url || tpl.thumbnail_url || tpl.image || "/portfolio/case_study_a_1.png"
+                    );
+                    const isSelected = activeCarouselList.some((item: any) => {
+                      const itemImg = typeof item === "string" ? item : item?.image;
+                      return itemImg === coverImg || (item?.id && item.id === `tpl-${tpl.id}`);
+                    });
+
+                    const toggleTemplateCover = () => {
+                      if (isSelected) {
+                        updateTrack(
+                          activeCarouselList.filter((item: any) => {
+                            const itemImg = typeof item === "string" ? item : item?.image;
+                            return itemImg !== coverImg && item?.id !== `tpl-${tpl.id}`;
+                          })
+                        );
+                      } else {
+                        const newSlide = {
+                          id: `tpl-${tpl.id}`,
+                          title: tpl.title,
+                          category: tpl.category || "Keynote",
+                          image: coverImg,
+                          code: tpl.code || `SLD-${String(tpl.id).slice(0, 4)}`,
+                        };
+                        updateTrack([...activeCarouselList, newSlide]);
+                      }
+                    };
+
+                    return (
+                      <tr 
+                        key={tpl.id}
+                        onClick={toggleTemplateCover}
+                        className={`hover:bg-primary/5 transition-colors cursor-pointer ${
+                          isSelected ? "bg-green-50/60" : ""
+                        }`}
+                      >
+                        <td className="py-2 px-3">
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full ${
+                            isSelected ? "bg-green-600 text-white" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {isSelected ? <Check size={10} strokeWidth={3} /> : <Plus size={10} />}
+                            {isSelected ? "Track" : "Off"}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="w-10 h-7 rounded bg-gray-100 overflow-hidden border border-[#111111]/10">
+                            <img src={coverImg} alt={tpl.title} className="w-full h-full object-cover" />
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 font-mono font-bold text-[#111111] text-[10px]">
+                          {tpl.code || `SLD-${String(tpl.id).slice(0, 4)}`}
+                        </td>
+                        <td className="py-2 px-4 font-heading font-extrabold text-[#111111] max-w-xs truncate">
+                          {tpl.title}
+                        </td>
+                        <td className="py-2 px-3 text-[#726F6D] text-[11px]">
+                          {tpl.category || "Keynote"}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTemplateCover();
+                            }}
+                            className={`text-[10px] font-black px-2.5 py-1 rounded transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-red-100 hover:bg-red-200 text-red-800"
+                                : "bg-primary hover:bg-primary-dark text-[#111111]"
+                            }`}
+                          >
+                            {isSelected ? "Remove" : "+ Add"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
