@@ -1,5 +1,6 @@
 import React from "react";
 import { Coins } from "lucide-react";
+import { TemplateFeaturesField } from "./TemplateFeaturesField";
 
 interface TemplateFormInputsProps {
   title: string;
@@ -17,6 +18,8 @@ interface TemplateFormInputsProps {
   setPriceUSD: (val: number | string) => void;
   description: string;
   setDescription: (val: string) => void;
+  features?: string[];
+  setFeatures?: (val: string[]) => void;
   isCreditEligible: boolean;
   setIsCreditEligible: (val: boolean) => void;
 }
@@ -37,6 +40,8 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
   setPriceUSD,
   description,
   setDescription,
+  features = [],
+  setFeatures,
   isCreditEligible,
   setIsCreditEligible
 }) => {
@@ -126,7 +131,7 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
 
       <div className="text-left">
         <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-          Description & Features
+          Description & Layout Summary
         </label>
         <textarea
           rows={2}
@@ -136,6 +141,13 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
           className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg p-3 text-xs text-[#111111] font-medium outline-none focus:border-primary resize-none"
         />
       </div>
+
+      {setFeatures && (
+        <TemplateFeaturesField
+          features={features}
+          setFeatures={setFeatures}
+        />
+      )}
 
       <div className={`p-3.5 rounded-xl border-2 transition-all flex items-center justify-between text-left ${
         isCreditEligible 

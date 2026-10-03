@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { d1 } from "../../lib/d1";
-import { sendOrderConfirmationEmail } from "../../lib/email";
+import { sendOrderConfirmationEmail, sendEcommerceOrderConfirmationEmail } from "../../lib/email";
 import { presentationServices, type OrderFormData } from "./types";
 
 export function useOrderForm() {
@@ -137,14 +137,29 @@ export function useOrderForm() {
       }
 
       // 2. Dispatch Automated Confirmation Email via Resend
-      sendOrderConfirmationEmail({
-        clientName: formData.name,
-        clientEmail: formData.email,
-        serviceType: formData.service,
-        slideCount: formData.slideCount,
-        rushDelivery: formData.timeline.includes("24h") || formData.timeline.includes("rush"),
-        driveLink: formData.driveLink
-      }).catch((err: any) => console.warn("Email dispatch notice:", err));
+      if (isEcommerce) {
+        sendEcommerceOrderConfirmationEmail({
+          clientName: formData.name,
+          clientEmail: formData.email,
+          serviceType: formData.service,
+          catalogSize: formData.slideCount,
+          timeline: formData.timeline,
+          stylePreference: formData.stylePreference,
+          driveLink: formData.driveLink,
+          projectNotes: formData.projectNotes,
+          company: formData.company,
+          phone: formData.phone,
+        }).catch((err: any) => console.warn("Ecommerce email dispatch notice:", err));
+      } else {
+        sendOrderConfirmationEmail({
+          clientName: formData.name,
+          clientEmail: formData.email,
+          serviceType: formData.service,
+          slideCount: formData.slideCount,
+          rushDelivery: formData.timeline.includes("24h") || formData.timeline.includes("rush"),
+          driveLink: formData.driveLink
+        }).catch((err: any) => console.warn("Email dispatch notice:", err));
+      }
 
       // 3. Local backup
       const savedOrders = JSON.parse(localStorage.getItem("slidebee_orders") || "[]");

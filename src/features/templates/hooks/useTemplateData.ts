@@ -126,8 +126,8 @@ export function useTemplateData(id?: string) {
             image_url: coverImg,
             slides: slideUrls,
             slides_count: Number(matched.slides_count || matched.slide_count) || slideUrls.length || 30,
-            rating: Number(matched.rating) || 4.9,
-            downloads: Number(matched.downloads) || 120,
+            rating: matched.rating ? Number(matched.rating) : undefined,
+            downloads: matched.downloads ? Number(matched.downloads) : undefined,
             download_url: pptxUrl,
             file_name:
               matched.file_name ||

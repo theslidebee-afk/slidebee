@@ -154,6 +154,8 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
               setPriceUSD={(price_usd) => setEditingTemplate({ ...editingTemplate, price_usd })}
               description={editingTemplate.description}
               setDescription={(description) => setEditingTemplate({ ...editingTemplate, description })}
+              features={Array.isArray(editingTemplate.features) ? editingTemplate.features : []}
+              setFeatures={(features) => setEditingTemplate({ ...editingTemplate, features })}
               isCreditEligible={editingTemplate.is_credit_eligible}
               setIsCreditEligible={(is_credit_eligible) => setEditingTemplate({ ...editingTemplate, is_credit_eligible })}
             />

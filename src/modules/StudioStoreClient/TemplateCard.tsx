@@ -59,13 +59,13 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                   <Crown size={9} className="fill-[#FCBF14]" /> PREMIUM
                 </span>
               )}
-              {showStars && (
+              {showStars && template.rating != null && (
                 <span className="text-[10px] font-extrabold text-[#111111] flex items-center gap-0.5">
                   <Star className="w-3 h-3 fill-primary-amber text-primary-amber" />
                   {template.rating.toFixed(1)}
                 </span>
               )}
-              {showDownloads && (
+              {showDownloads && template.downloads != null && (
                 <span className="text-[10px] font-bold text-[#726F6D] flex items-center gap-0.5">
                   <Download className="w-3 h-3 text-[#726F6D]" />
                   {template.downloads.toLocaleString()}

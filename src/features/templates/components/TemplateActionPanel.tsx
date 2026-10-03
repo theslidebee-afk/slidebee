@@ -95,14 +95,20 @@ export function TemplateActionPanel({
         <div className="p-4 bg-[#FFF9E8] rounded-2xl border-2 border-primary/30 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div>
             <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-              {isPro && quotaRemaining > 0
+              {!template.is_premium
+                ? "Community Library • Free to Download"
+                : isPro && quotaRemaining > 0
                 ? "Included with Pro Membership"
                 : isPro && quotaRemaining <= 0
                 ? "Pro Quota Limit Reached (Commercial License Required)"
                 : "Perpetual Commercial License"}
             </span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              {isPro && quotaRemaining > 0 ? (
+              {!template.is_premium ? (
+                <span className="text-2xl sm:text-3xl font-heading font-black text-emerald-700">
+                  100% Free
+                </span>
+              ) : isPro && quotaRemaining > 0 ? (
                 <>
                   <span className="text-2xl sm:text-3xl font-heading font-black text-emerald-800">
                     Free with Pro
@@ -124,12 +130,17 @@ export function TemplateActionPanel({
                 </>
               )}
             </div>
-            {isPro && quotaRemaining > 0 && (
+            {!template.is_premium && (
+              <span className="text-[11px] text-emerald-800 font-semibold block mt-1">
+                Complimentary community deck. Free registered accounts get 3 daily downloads.
+              </span>
+            )}
+            {template.is_premium && isPro && quotaRemaining > 0 && (
               <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
                 Deducts 1 template from your {quotaLimit} monthly quota ({quotaRemaining} downloads remaining)
               </span>
             )}
-            {isPro && quotaRemaining <= 0 && (
+            {template.is_premium && isPro && quotaRemaining <= 0 && (
               <span className="text-[11px] text-amber-800 font-semibold block mt-1">
                 Your {quotaLimit} templates for this month are used ({quotaUsed}/{quotaLimit}). Buy a standalone license to continue downloading immediately.
               </span>
@@ -266,10 +277,10 @@ export function TemplateActionPanel({
                   onClick={() =>
                     navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))
                   }
-                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer hover:scale-[1.01]"
                 >
-                  <Lock size={15} />
-                  Sign In to Download Free (.pptx)
+                  <Lock size={16} />
+                  Login to get free templates for free (.pptx)
                 </button>
               ) : (
                 <button
@@ -293,57 +304,68 @@ export function TemplateActionPanel({
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Pro Upgrade Callout */}
-              <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary/70 rounded-2xl space-y-2.5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                    <Crown size={15} className="text-amber-500 fill-amber-400" />
-                    <span>Premium Master Presentation Deck</span>
-                  </div>
-                  <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
-                    PRO Exclusive
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                  This is an executive Premium Master Deck. Free tier accounts can only download community decks. Upgrade to Pro to unlock this deck and our entire presentation library.
-                </p>
-                <Link
-                  to="/pricing"
-                  className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-                >
-                  <Crown size={14} className="fill-[#111111]" />
-                  Upgrade to Pro to Unlock ({currency === "INR" ? "₹399/mo" : "$5/mo"})
-                </Link>
-              </div>
-
-              {/* Standalone Commercial Purchase Button */}
-              <div className="space-y-2">
-                <div className="text-[11px] text-center text-[#726F6D] font-bold">
-                  — or buy a standalone commercial license —
-                </div>
-                {!client ? (
+              {!client ? (
+                /* Unauthenticated Guest Flow for Premium Deck */
+                <div className="space-y-3">
                   <button
                     type="button"
                     onClick={() =>
                       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))
                     }
-                    className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                    className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer hover:scale-[1.01]"
                   >
-                    <Lock size={15} className="text-primary-amber" />
+                    <Lock size={16} className="text-[#FCBF14]" />
                     Sign In to Buy Master PPTX ({formatPrice(template.price_inr, template.price_usd)})
                   </button>
-                ) : (
+
+                  <div className="p-3.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-primary/50 rounded-2xl flex items-center justify-between gap-3 text-left">
+                    <div>
+                      <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                        <Crown size={14} className="text-amber-500 fill-amber-400" /> Need Multiple Presentations?
+                      </span>
+                      <span className="text-[11px] text-[#726F6D] font-medium block mt-0.5">
+                        Get unlimited downloads with Pro VIP Membership ({currency === "INR" ? "₹399/mo" : "$5/mo"}).
+                      </span>
+                    </div>
+                    <Link
+                      to="/pricing"
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs whitespace-nowrap shrink-0 shadow-xs"
+                    >
+                      Join Pro
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                /* Logged-In Client Flow for Premium Deck */
+                <div className="space-y-3">
                   <button
                     type="button"
                     disabled={isProcessing}
                     onClick={handleInstantDownload}
-                    className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
+                    className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
                   >
                     <ShoppingBag size={16} className="text-primary-amber" />
                     {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
                   </button>
-                )}
-              </div>
+
+                  <div className="p-3.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-primary/50 rounded-2xl flex items-center justify-between gap-3 text-left">
+                    <div>
+                      <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                        <Crown size={14} className="text-amber-500 fill-amber-400" /> Unlock with Pro VIP Membership
+                      </span>
+                      <span className="text-[11px] text-[#726F6D] font-medium block mt-0.5">
+                        Unlock this deck and our entire presentation library for {currency === "INR" ? "₹399/mo" : "$5/mo"}.
+                      </span>
+                    </div>
+                    <Link
+                      to="/pricing"
+                      className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-3.5 py-1.5 text-xs whitespace-nowrap shrink-0 shadow-xs"
+                    >
+                      Upgrade
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                 <ShieldCheck size={12} className="text-emerald-600 shrink-0" />

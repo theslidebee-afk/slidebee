@@ -43,6 +43,11 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [addTemplateWarning, setAddTemplateWarning] = useState("");
   const [newFormats, setNewFormats] = useState<string[]>(["PowerPoint"]);
+  const [newFeatures, setNewFeatures] = useState<string[]>([
+    "Capability Matrix",
+    "Process Workflow Flowchart",
+    "Enterprise RFP Deck"
+  ]);
   const [newIsCreditEligible, setNewIsCreditEligible] = useState(false);
 
   if (!isOpen) return null;
@@ -181,7 +186,7 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
       file_name: newPptFilename || "Master_Presentation.pptx",
       file_size: newPptSize || "4.5 MB",
       formats: newFormats.length > 0 ? newFormats : ["PowerPoint"],
-      features: [
+      features: newFeatures.length > 0 ? newFeatures : [
         `${effectiveSlideCount}+ High-Impact Slides`,
         "16:9 Widescreen Layout",
         "Fully Editable Vector Elements"
@@ -339,6 +344,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
               setPriceUSD={setNewPriceUSD}
               description={newDesc}
               setDescription={setNewDesc}
+              features={newFeatures}
+              setFeatures={setNewFeatures}
               isCreditEligible={newIsCreditEligible}
               setIsCreditEligible={setNewIsCreditEligible}
             />

@@ -72,7 +72,7 @@ export async function sendOrderConfirmationEmail({
     html,
   });
 
-  // 2. Studio admin notification email (alert design team of new brief)
+  // 2. Studio admin notification email (alert design team and vizhalsuresh@gmail.com of new brief)
   const studioNotificationHtml = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
       <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
@@ -93,14 +93,150 @@ export async function sendOrderConfirmationEmail({
     </div>
   `;
 
-  sendEmail({
-    to: 'design@theslidebee.com',
-    fromEmail: 'hello@theslidebee.com',
-    fromName: 'SlideBee Brief Alert',
-    replyTo: clientEmail,
-    subject: `[NEW BRIEF] ${safeServiceType} — ${safeClientName} (${safeSlideCount} Slides)${rushDelivery ? ' — RUSH' : ''}`,
-    html: studioNotificationHtml,
-  }).catch(err => console.warn('Studio brief notification dispatch:', err));
+  const adminRecipients = ['design@theslidebee.com', 'vizhalsuresh@gmail.com'];
+  for (const adminTo of adminRecipients) {
+    sendEmail({
+      to: adminTo,
+      fromEmail: 'hello@theslidebee.com',
+      fromName: 'SlideBee Brief Alert',
+      replyTo: clientEmail,
+      subject: `[NEW BRIEF] ${safeServiceType} — ${safeClientName} (${safeSlideCount} Slides)${rushDelivery ? ' — RUSH' : ''}`,
+      html: studioNotificationHtml,
+    }).catch(err => console.warn(`Brief notification dispatch to ${adminTo}:`, err));
+  }
+
+  return clientResult;
+}
+
+/**
+ * 1B. Dedicated Ecommerce Store Order Confirmation Email
+ */
+export async function sendEcommerceOrderConfirmationEmail({
+  clientName,
+  clientEmail,
+  serviceType,
+  catalogSize,
+  timeline,
+  stylePreference,
+  driveLink,
+  projectNotes,
+  company,
+  phone
+}: {
+  clientName: string;
+  clientEmail: string;
+  serviceType: string;
+  catalogSize: string | number;
+  timeline: string;
+  stylePreference?: string;
+  driveLink?: string;
+  projectNotes?: string;
+  company?: string;
+  phone?: string;
+}) {
+  const safeClientName = escapeHtml(clientName || 'there');
+  const safeServiceType = escapeHtml(serviceType || 'Complete Ecommerce Website');
+  const safeCatalogSize = escapeHtml(catalogSize || 'Up to 500 Products');
+  const safeTimeline = escapeHtml(timeline || '7-10 Days Launch');
+  const safeStyle = escapeHtml(stylePreference || 'Modern Editorial Minimalist');
+  const safeCompany = escapeHtml(company || 'Direct-to-Consumer Brand');
+  const safePhone = escapeHtml(phone || 'Not specified');
+  const safeDriveLink = sanitizeExternalUrl(driveLink);
+  const safeProjectNotes = escapeHtml(projectNotes || 'Standard 500-product catalog, Razorpay gateway, and Cloudflare deployment.');
+
+  // 1. Client confirmation email (Dedicated Ecommerce Engineering Blueprint)
+  const clientHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #111111; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Engineering Desk</h1>
+        <p style="color: #936610; font-size: 13px; font-weight: 700; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">
+          Ecommerce Store Launch & Full-Stack Deployment
+        </p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <h2 style="font-size: 18px; font-weight: 800; margin-top: 0; color: #111111;">We Received Your Storefront Launch Brief</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
+          Thank you for trusting SlideBee to build your ecommerce storefront. Our lead full-stack engineering director is reviewing your catalog scope, payment gateway requirements, and brand files.
+        </p>
+
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1.5px solid #FCBF14;">
+          <h3 style="font-size: 12px; font-weight: 900; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 12px; letter-spacing: 0.05em;">
+            Store Launch Blueprint Specifications
+          </h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #111111; line-height: 1.8;">
+            <tr><td style="font-weight: 700; color: #726F6D; width: 140px;">Package:</td><td><strong>${safeServiceType} (₹25,000 All-Inclusive)</strong></td></tr>
+            <tr><td style="font-weight: 700; color: #726F6D;">Catalog Scope:</td><td>${safeCatalogSize}</td></tr>
+            <tr><td style="font-weight: 700; color: #726F6D;">Visual Aesthetic:</td><td>${safeStyle}</td></tr>
+            <tr><td style="font-weight: 700; color: #726F6D;">Target Timeline:</td><td>${safeTimeline}</td></tr>
+            <tr><td style="font-weight: 700; color: #726F6D;">Payment Gateway:</td><td>Razorpay Certified UPI / Cards / Net Banking</td></tr>
+            <tr><td style="font-weight: 700; color: #726F6D;">Edge Infrastructure:</td><td>Cloudflare CDN Global Edge Deployment</td></tr>
+            ${safeDriveLink ? `<tr><td style="font-weight: 700; color: #726F6D;">Catalog / Assets:</td><td><a href="${safeDriveLink}" target="_blank" rel="noopener noreferrer" style="color: #936610; font-weight: 800;">View Uploaded Files</a></td></tr>` : ''}
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #4B5563; line-height: 1.6;">
+          <strong>Next Steps (Your 7-Day Roadmap):</strong><br/>
+          1. <strong>Blueprint Review (Within 2h)</strong>: Our lead engineer will confirm your product taxonomy and domain setup.<br/>
+          2. <strong>Storefront Architecture (Days 1–3)</strong>: Full build of homepage, product filters, variant selectors, and mobile cart drawer.<br/>
+          3. <strong>Razorpay & Zoho Activation (Days 4–5)</strong>: Integration of UPI checkout, webhooks, and custom domain business mailboxes.<br/>
+          4. <strong>Live Deployment & Handover (Days 6–7)</strong>: DNS cutover, SSL verification, and admin portal training.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Engineering Desk • Bengaluru, India • Protected under strict mutual NDA.<br/>
+        Questions or urgent requests? Reply directly or contact <a href="mailto:hello@theslidebee.com" style="color: #936610; font-weight: 700;">hello@theslidebee.com</a>.
+      </div>
+    </div>
+  `;
+
+  const clientResult = await sendEmail({
+    to: clientEmail,
+    fromEmail: 'design@theslidebee.com',
+    fromName: 'SlideBee Engineering Desk',
+    replyTo: 'design@theslidebee.com',
+    subject: `Store Launch Blueprint Received: ${safeCatalogSize} (${safeCompany}) — SlideBee`,
+    html: clientHtml,
+  });
+
+  // 2. Admin Alert (Delivered directly to vizhalsuresh@gmail.com and design@theslidebee.com)
+  const adminNotificationHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
+      <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
+        NEW ECOMMERCE STORE INTAKE (₹25,000) — ACTION REQUIRED
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">New Store Order: ${safeCompany} (${safeClientName})</h2>
+      
+      <div style="background-color: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333333; margin-bottom: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e0e0e0; line-height: 1.8;">
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 140px;">Founder Name:</td><td>${safeClientName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Email:</td><td><a href="mailto:${clientEmail}" style="color: #FCBF14;">${clientEmail}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Phone / WhatsApp:</td><td>${safePhone}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Brand / Company:</td><td>${safeCompany}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Catalog Size:</td><td>${safeCatalogSize}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Store Style:</td><td>${safeStyle}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Timeline:</td><td>${safeTimeline}</td></tr>
+          ${safeDriveLink ? `<tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Drive / Assets:</td><td><a href="${safeDriveLink}" target="_blank" rel="noopener noreferrer" style="color: #FCBF14; font-weight: 700;">View Files</a></td></tr>` : ''}
+          <tr><td style="padding: 6px 0 0 0; font-weight: 700; color: #FCBF14; vertical-align: top;">Project Notes:</td><td style="padding-top: 6px;">${safeProjectNotes}</td></tr>
+        </table>
+      </div>
+      <p style="font-size: 12px; color: #999999; margin: 0;">Reply directly to this email to contact the founder, or view full intake record in the Admin Hub.</p>
+    </div>
+  `;
+
+  const ecommerceAdminRecipients = ['vizhalsuresh@gmail.com', 'design@theslidebee.com'];
+  for (const adminTo of ecommerceAdminRecipients) {
+    sendEmail({
+      to: adminTo,
+      fromEmail: 'hello@theslidebee.com',
+      fromName: 'SlideBee Store Intake Alert',
+      replyTo: clientEmail,
+      subject: `[ECOMMERCE STORE ORDER] ${safeCompany} — ${safeClientName} (${safeCatalogSize})`,
+      html: adminNotificationHtml,
+    }).catch(err => console.warn(`Ecommerce intake notification dispatch to ${adminTo}:`, err));
+  }
 
   return clientResult;
 }

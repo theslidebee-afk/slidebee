@@ -13,8 +13,8 @@ export interface StoreTemplate {
   image_url: string;
   slides: string[];
   slides_count: number;
-  rating: number;
-  downloads: number;
+  rating?: number;
+  downloads?: number;
   download_url?: string;
   file_name: string;
   file_size: string;

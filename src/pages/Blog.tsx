@@ -114,6 +114,15 @@ export const initialBlogArticles = [
     date: "May 2026",
     category: "Corporate",
     readTime: "6 min read"
+  },
+  {
+    id: "13",
+    title: "How to Build & Launch a High-Converting Ecommerce Store in India for ₹25,000 (Complete 2026 Blueprint)",
+    content: "Why smart Indian brands are skipping bloated SaaS fees for lightning-fast serverless storefronts with Razorpay, zero recurring monthly costs, and enterprise Google Cloud/Cloudflare edge delivery.",
+    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
+    date: "May 2026",
+    category: "Business",
+    readTime: "8 min read"
   }
 ];
 
