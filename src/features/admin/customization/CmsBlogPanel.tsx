@@ -1,40 +1,25 @@
 import React, { useState } from "react";
-import { Save, Plus, UploadCloud, Trash2 } from "lucide-react";
+import { Save, Plus, UploadCloud, Trash2, RotateCcw } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { uploadToR2 } from "../../../lib/r2";
-
-const DEFAULT_BLOGS = [
-  {
-    id: "1",
-    title: "The 3-Second Rule: Why Most C-Suite Slides Fail to Persuade",
-    content: "When presenting to senior executive stakeholders, dense walls of bullet points force the audience to read instead of listen. Here is how Ex-McKinsey consultants structure high-impact focal points.",
-    imageUrl: "/portfolio/case_study_a_14.png",
-    date: "September 2026",
-    category: "Strategy"
-  },
-  {
-    id: "2",
-    title: "How to Design a Series A Pitch Deck That Secures Partner Meetings",
-    content: "Venture capitalists look at hundreds of decks per week. Learn the 12 essential slides, TAM/SAM/SOM market sizing visualization, and unit economics framing that get rounds closed.",
-    imageUrl: "/portfolio/global_brands_1.png",
-    date: "August 2026",
-    category: "Fundraising"
-  },
-  {
-    id: "3",
-    title: "Building an Enterprise Master Template System That Teams Actually Use",
-    content: "Why do corporate slide templates break within weeks? Discover the layout locking techniques and modular drag-and-drop systems that keep 500+ employee organizations visually aligned.",
-    imageUrl: "/portfolio/levis_yuengling_6.png",
-    date: "August 2026",
-    category: "Branding"
-  }
-];
+import { allDefaultBlogArticles } from "../../blog/defaultArticles";
 
 export const CmsBlogPanel: React.FC = () => {
   const { siteConfigs, setSiteConfigs, handleSaveConfig, configSaving } = useAdmin();
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
 
-  const blogs = Array.isArray(siteConfigs["blog_cms"]) ? siteConfigs["blog_cms"] : DEFAULT_BLOGS;
+  // Merge CMS saved articles with any missing default articles (like Article 13)
+  const getInitialBlogs = () => {
+    const raw = siteConfigs["blog_cms"];
+    if (Array.isArray(raw) && raw.length > 0) {
+      const cmsIds = new Set(raw.map((a: any) => String(a.id)));
+      const missingDefaults = allDefaultBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
+      return [...raw, ...missingDefaults];
+    }
+    return allDefaultBlogArticles;
+  };
+
+  const blogs = getInitialBlogs();
 
   const handleUploadCover = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,13 +51,32 @@ export const CmsBlogPanel: React.FC = () => {
             Publish, edit, or manage insights, strategy articles, and executive guides
           </p>
         </div>
-        <button
-          onClick={() => handleSaveConfig("blog_cms", blogs)}
-          disabled={configSaving}
-          className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow cursor-pointer"
-        >
-          <Save size={14} /> {configSaving ? "Saving..." : "Save Blog Posts"}
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-[#726F6D] bg-[#FFF9E8] px-2.5 py-1 rounded-full border border-[#111111]/10">
+            {blogs.length} Articles
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Reset all blog articles to SlideBee master articles library (13 articles)? This will include the new ₹25,000 Ecommerce Store Launch Blueprint.")) {
+                setSiteConfigs({ ...siteConfigs, blog_cms: allDefaultBlogArticles });
+                handleSaveConfig("blog_cms", allDefaultBlogArticles);
+              }
+            }}
+            disabled={configSaving}
+            className="hex-pill bg-white border border-[#111111]/15 hover:bg-black/5 text-[#111111] font-bold px-3.5 py-2 text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+            title="Reset to 13 Master Articles"
+          >
+            <RotateCcw size={13} /> Reset to Defaults
+          </button>
+          <button
+            onClick={() => handleSaveConfig("blog_cms", blogs)}
+            disabled={configSaving}
+            className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow cursor-pointer"
+          >
+            <Save size={14} /> {configSaving ? "Saving..." : "Save Blog Posts"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">

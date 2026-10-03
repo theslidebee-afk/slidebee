@@ -202,7 +202,11 @@ export default function Blog() {
           .eq("key", "blog_cms")
           .maybeSingle();
         if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
-          setBlogs(data.value);
+          // Merge: CMS saved articles take precedence, and any missing default articles (like Article 13) are appended
+          const cmsArticles = data.value;
+          const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
+          const unaddedDefaults = initialBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
+          setBlogs([...cmsArticles, ...unaddedDefaults]);
         }
       } catch (err) {
         console.warn("Could not load dynamic blog CMS:", err);

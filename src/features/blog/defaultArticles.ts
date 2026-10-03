@@ -455,3 +455,12 @@ To begin your deployment blueprint, visit our **[Store Launch Intake Desk](/orde
   }
 };
 
+export const allDefaultBlogArticles = Object.values(defaultArticles).map((art) => ({
+  id: art.id,
+  title: art.title,
+  content: art.metaDescription || art.content.slice(0, 200).replace(/[#*`]/g, '') + '...',
+  imageUrl: art.imageUrl,
+  date: art.date,
+  category: art.category,
+  readTime: art.readTime || '6 min read'
+}));
