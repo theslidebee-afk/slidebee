@@ -1,43 +1,47 @@
-import { useState, useEffect } from "react";
+import { useState, type TouchEvent } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck, 
-  Star, 
-  Layers, 
-  CheckCircle2, 
-  Check, 
-  FileText,
-  Download,
-  AlertCircle,
-  Lock,
-  Crown,
-  ShoppingBag
-} from "lucide-react";
+import { ArrowLeft, Check, FileText } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { d1 } from "../lib/d1";
-import { normalizeR2Url } from "../lib/r2";
 import { sendTemplatePurchaseReceiptEmail } from "../lib/email";
-import { useTemplateCheckout, type StoreTemplate } from "../modules/StudioStoreClient";
+import { useTemplateCheckout } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
+import {
+  TemplateSlideViewer,
+  TemplateActionPanel,
+  SimilarTemplatesGrid,
+  useTemplateData,
+} from "../features/templates";
 
 export default function TemplateDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { formatPrice, currency } = useCurrency();
 
-  const [template, setTemplate] = useState<StoreTemplate | null>(null);
+  const {
+    template,
+    loading,
+    similarTemplates,
+    showStars,
+    showDownloads,
+    client,
+    clientSub,
+    userProfile,
+    clientPurchases,
+    setClientPurchases,
+    freeDownloadsToday,
+    setFreeDownloadsToday,
+    refreshClientData,
+  } = useTemplateData(id);
 
   usePageSEO({
     title: template ? `${template.title} | SlideBee PowerPoint Template` : "Presentation Template | SlideBee",
-    description: template?.description || "100% editable corporate PowerPoint deck with vector layouts, master slides, and custom typography.",
+    description:
+      template?.description ||
+      "100% editable corporate PowerPoint deck with vector layouts, master slides, and custom typography.",
   });
+
   const [activeSlideIdx, setActiveSlideIdx] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
   const [creditNotice, setCreditNotice] = useState<string | null>(null);
 
@@ -46,68 +50,6 @@ export default function TemplateDetail() {
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
   const minSwipeDistance = 45;
 
-  // Similar templates state
-  const [similarTemplates, setSimilarTemplates] = useState<StoreTemplate[]>([]);
-
-  // Admin toggles for star rating & downloads visibility
-  const [showStars, setShowStars] = useState(false);
-  const [showDownloads, setShowDownloads] = useState(false);
-
-  const [clientSub, setClientSub] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [clientPurchases, setClientPurchases] = useState<any[]>([]);
-  const [freeDownloadsToday, setFreeDownloadsToday] = useState(0);
-
-  const getClientInfo = () => {
-    const local = localStorage.getItem("slidebee_client_user");
-    if (local) {
-      try {
-        const u = JSON.parse(local);
-        return {
-          email: u.email,
-          name: u.user_metadata?.full_name || u.name || u.full_name || u.email.split("@")[0],
-          tier: u.tier,
-        };
-      } catch (e) {}
-    }
-    return null;
-  };
-
-  const client = getClientInfo();
-
-  useEffect(() => {
-    if (client?.email) {
-      d1
-        .from("subscriptions")
-        .select("*")
-        .eq("user_email", client.email)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setClientSub(data);
-        });
-
-      d1
-        .from("profiles")
-        .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
-        .eq("email", client.email)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setUserProfile(data);
-            if (Array.isArray(data.purchased_items)) {
-              setClientPurchases(data.purchased_items);
-            }
-            const today = new Date().toISOString().split("T")[0];
-            const usedToday = data.last_download_date === today ? (Number(data.downloads_today) || 0) : 0;
-            setFreeDownloadsToday(usedToday);
-          }
-        });
-    }
-  }, []);
-
-  // Deep Module: useTemplateCheckout
   const {
     isProcessing,
     isPurchased,
@@ -115,152 +57,17 @@ export default function TemplateDetail() {
     deliverableUrl,
     error: checkoutError,
     executeProTemplateDownload,
-    executeRazorpayCheckout
+    executeRazorpayCheckout,
   } = useTemplateCheckout();
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setLoading(true);
-
-    // 1. Fetch site_config metrics toggle
-    d1
-      .from("site_config")
-      .select("value")
-      .eq("key", "show_template_metrics")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value) {
-          setShowStars(Boolean(data.value.show_stars));
-          setShowDownloads(Boolean(data.value.show_downloads));
-        }
-      });
-
-    // 2. Fetch Template from Deep Module view or templates table
-    const loadTemplate = async () => {
-      try {
-        let matched: any = null;
-
-        // Try v_storefront_catalog first
-        const { data, error } = await d1
-          .from("v_storefront_catalog")
-          .select("*")
-          .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
-          .maybeSingle();
-
-        if (data && !error) {
-          matched = data;
-        } else {
-          // Fallback to direct templates table lookup
-          const { data: tData } = await d1
-            .from("templates")
-            .select("*")
-            .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
-            .maybeSingle();
-          if (tData) matched = tData;
-        }
-
-        if (matched) {
-          const coverImg = normalizeR2Url(matched.thumbnail_url || matched.image_url, "slides");
-          const slideUrls = Array.isArray(matched.slides) && matched.slides.length > 0
-            ? matched.slides.map((s: string) => normalizeR2Url(s, "slides"))
-            : [coverImg];
-          const pptxUrl = matched.download_url ? normalizeR2Url(matched.download_url, "decks") : undefined;
-
-          setTemplate({
-            id: matched.id,
-            code: matched.code || `SLD-${matched.id.slice(0, 4).toUpperCase()}`,
-            title: matched.title,
-            category: matched.category || "Business",
-            price_inr: Number(matched.price_inr) || 499,
-            price_usd: Number(matched.price_usd) || 9,
-            original_price_inr: Number(matched.original_price_inr) || 999,
-            image_url: coverImg,
-            slides: slideUrls,
-            slides_count: Number(matched.slides_count || matched.slide_count) || slideUrls.length || 30,
-            rating: Number(matched.rating) || 4.9,
-            downloads: Number(matched.downloads) || 120,
-            download_url: pptxUrl,
-            file_name: matched.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
-            file_size: matched.file_size || "4.5 MB",
-            description: matched.description || "Executive presentation deck tailored for high-stakes business meetings.",
-            features: Array.isArray(matched.features) && matched.features.length > 0
-              ? matched.features
-              : [
-                  `${matched.slides_count || 30}+ High-Impact Master Slides`,
-                  "16:9 Ultra-Wide Presentation Format",
-                  "100% Fully Editable Vector Elements",
-                  "Commercial Royalty-Free License"
-                ],
-            formats: Array.isArray(matched.formats) && matched.formats.length > 0 ? matched.formats : ["PowerPoint"],
-            is_premium: matched.is_premium !== undefined ? Number(matched.is_premium) === 1 : (Number(matched.price_inr) > 0),
-            is_credit_eligible: Boolean(matched.is_credit_eligible),
-            is_featured: Boolean(matched.is_featured),
-            is_published: true
-          });
-        }
-      } catch (err) {
-        console.error("Error loading template details:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTemplate();
-  }, [id]);
-
-  // 2. Fetch similar / related templates from v_storefront_catalog
-  useEffect(() => {
-    if (!template?.id) return;
-    d1
-      .from("v_storefront_catalog")
-      .select("*")
-      .neq("id", template.id)
-      .limit(4)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const mapped: StoreTemplate[] = data.map((t: any) => {
-            const coverImg = normalizeR2Url(t.thumbnail_url || t.image_url, "slides");
-            const slideUrls = Array.isArray(t.slides) && t.slides.length > 0
-              ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
-              : [coverImg];
-            const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
-
-            return {
-              id: t.id,
-              code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
-              title: t.title,
-              category: t.category || "Business",
-              price_inr: Number(t.price_inr) || 499,
-              price_usd: Number(t.price_usd) || 9,
-              original_price_inr: Number(t.original_price_inr) || 999,
-              image_url: coverImg,
-              slides: slideUrls,
-              slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
-              rating: Number(t.rating) || 4.9,
-              downloads: Number(t.downloads) || 120,
-              download_url: pptxUrl,
-              file_name: t.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
-              file_size: t.file_size || "4.5 MB",
-              description: t.description || "Executive presentation deck layout.",
-              features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
-              formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-              is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : (Number(t.price_inr) > 0),
-              is_credit_eligible: Boolean(t.is_credit_eligible),
-              is_featured: Boolean(t.is_featured),
-              is_published: true
-            };
-          });
-          setSimilarTemplates(mapped);
-        }
-      });
-  }, [template?.id]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center pt-24 pb-20">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-xs font-bold text-[#726F6D] uppercase tracking-wider">Loading Presentation Deck...</p>
+          <p className="text-xs font-bold text-[#726F6D] uppercase tracking-wider">
+            Loading Presentation Deck...
+          </p>
         </div>
       </div>
     );
@@ -271,8 +78,12 @@ export default function TemplateDetail() {
       <div className="min-h-screen bg-[#FFF9E8] flex items-center justify-center pt-24 pb-20">
         <div className="text-center hex-card bg-white p-8 max-w-md mx-auto border-2 border-primary/40">
           <FileText size={40} className="mx-auto text-primary-amber mb-3" />
-          <h2 className="text-xl font-heading font-extrabold text-[#111111] mb-2">Presentation Deck Not Found</h2>
-          <p className="text-xs text-[#726F6D] mb-6">The presentation master deck you are looking for might have been moved or archived.</p>
+          <h2 className="text-xl font-heading font-extrabold text-[#111111] mb-2">
+            Presentation Deck Not Found
+          </h2>
+          <p className="text-xs text-[#726F6D] mb-6">
+            The presentation master deck you are looking for might have been moved or archived.
+          </p>
           <Link to="/#templates" className="hex-pill bg-primary font-black px-6 py-2.5 text-xs text-[#111111]">
             Back to Templates Marketplace
           </Link>
@@ -282,16 +93,13 @@ export default function TemplateDetail() {
   }
 
   const slides = template.slides && template.slides.length > 0 ? template.slides : [template.image_url];
-  const currentSlideImg = slides[activeSlideIdx] || template.image_url;
-  const templateCode = template.code;
 
-  // Touch Swipe Handlers for Presentation Slides
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent) => {
     setTouchEndX(null);
     setTouchStartX(e.targetTouches[0].clientX);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent) => {
     setTouchEndX(e.targetTouches[0].clientX);
   };
 
@@ -299,10 +107,8 @@ export default function TemplateDetail() {
     if (!touchStartX || !touchEndX) return;
     const distance = touchStartX - touchEndX;
     if (distance > minSwipeDistance && slides.length > 1) {
-      // Swiped left -> next slide
       setActiveSlideIdx((prev) => (prev + 1) % slides.length);
     } else if (distance < -minSwipeDistance && slides.length > 1) {
-      // Swiped right -> previous slide
       setActiveSlideIdx((prev) => (prev - 1 + slides.length) % slides.length);
     }
   };
@@ -313,13 +119,12 @@ export default function TemplateDetail() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-
   const isPro = Boolean(
     (clientSub &&
       clientSub.status === "active" &&
       (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())) ||
-    (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
-    (client?.tier && ["monthly", "yearly", "lifetime"].includes(client.tier))
+      (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
+      (client?.tier && ["monthly", "yearly", "lifetime"].includes(client.tier))
   );
 
   const isMonthlyTier =
@@ -327,17 +132,24 @@ export default function TemplateDetail() {
     userProfile?.tier === "monthly" ||
     client?.tier === "monthly";
 
-  // Monthly Pro receives 30 templates per month, Yearly receives 360, Lifetime receives 45
   const quotaLimit = Number(
     clientSub?.slides_limit
-      ? (isMonthlyTier && Number(clientSub.slides_limit) < 30 ? 30 : Number(clientSub.slides_limit))
-      : (isMonthlyTier ? 30 : userProfile?.tier === "yearly" ? 360 : userProfile?.tier === "lifetime" ? 45 : 30)
+      ? isMonthlyTier && Number(clientSub.slides_limit) < 30
+        ? 30
+        : Number(clientSub.slides_limit)
+      : isMonthlyTier
+      ? 30
+      : userProfile?.tier === "yearly"
+      ? 360
+      : userProfile?.tier === "lifetime"
+      ? 45
+      : 30
   );
 
   const quotaUsed = Number(
     clientSub?.slides_used !== undefined && clientSub?.slides_used !== null
       ? clientSub.slides_used
-      : (userProfile?.downloads_this_month || 0)
+      : userProfile?.downloads_this_month || 0
   );
 
   const quotaRemaining = isPro ? Math.max(0, quotaLimit - quotaUsed) : 0;
@@ -346,14 +158,14 @@ export default function TemplateDetail() {
     clientPurchases.some(
       (item: any) =>
         String(item.id) === String(template?.id) ||
-        (item.code && template?.code && String(item.code).toLowerCase() === String(template.code).toLowerCase())
+        (item.code &&
+          template?.code &&
+          String(item.code).toLowerCase() === String(template.code).toLowerCase())
     )
   );
 
-  // Pro Template Download (Uses 30 monthly template quota, completely free for all decks)
   const handleProDownload = async () => {
     setCreditNotice(null);
-    const client = getClientInfo();
     if (!client) {
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
       return;
@@ -364,54 +176,28 @@ export default function TemplateDetail() {
     if (!result.success && result.message) {
       setCreditNotice(result.message);
     } else if (result.success) {
-      // Re-sync subscription quota and profile in state
-      if (client.email) {
-        d1
-          .from("subscriptions")
-          .select("*")
-          .eq("user_email", client.email)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) setClientSub(data);
-          });
-
-        d1
-          .from("profiles")
-          .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
-          .eq("email", client.email)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) {
-              setUserProfile(data);
-              if (Array.isArray(data.purchased_items)) {
-                setClientPurchases(data.purchased_items);
-              }
-            }
-          });
-      }
+      refreshClientData();
     }
   };
 
-  // Free Community Deck Download for Registered Users (Community Templates Only)
   const handleDirectFreeDownload = async () => {
     setCreditNotice(null);
-    const client = getClientInfo();
     if (!client) {
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
       return;
     }
 
-    // Strict Enforcement: Free users can ONLY download free community templates!
     if (template?.is_premium) {
-      setCreditNotice("This is a Premium Template. Free accounts can only download templates from the Free Community Library. Upgrade to Pro or purchase a commercial license.");
+      setCreditNotice(
+        "This is a Premium Template. Free accounts can only download templates from the Free Community Library. Upgrade to Pro or purchase a commercial license."
+      );
       return;
     }
 
-    // Enforce 3 free downloads per day limit for non-pro accounts
     if (!isPro && freeDownloadsToday >= 3) {
-      setCreditNotice("Daily Free Limit Reached (3/3). Free tier accounts can download up to 3 community decks per day. Upgrade to Pro for unlimited downloads.");
+      setCreditNotice(
+        "Daily Free Limit Reached (3/3). Free tier accounts can download up to 3 community decks per day. Upgrade to Pro for unlimited downloads."
+      );
       return;
     }
 
@@ -424,7 +210,6 @@ export default function TemplateDetail() {
     link.click();
     document.body.removeChild(link);
 
-    // Send confirmation receipt with download link to client email
     sendTemplatePurchaseReceiptEmail({
       clientEmail: client.email,
       clientName: client.name || client.email.split("@")[0],
@@ -432,10 +217,9 @@ export default function TemplateDetail() {
       templateCode: template?.code || template?.id || "SLIDEBEE-FREE",
       downloadUrl: deliverable.startsWith("http") ? deliverable : `https://theslidebee.com${deliverable}`,
       amountPaid: 0,
-      currency: "INR"
+      currency: "INR",
     }).catch((err) => console.warn("Free template receipt email notice:", err));
 
-    // Persist to user's purchased items and increment daily count in profile
     if (template) {
       const newItem = {
         id: template.id,
@@ -446,11 +230,11 @@ export default function TemplateDetail() {
         date: new Date().toISOString(),
         type: "free",
         slide_count: (template as any).slide_count || 24,
-        file_size: (template as any).file_size || "18 MB"
+        file_size: (template as any).file_size || "18 MB",
       };
       const updatedPurchases = [
         ...clientPurchases.filter((p: any) => String(p.id) !== String(template.id)),
-        newItem
+        newItem,
       ];
       setClientPurchases(updatedPurchases);
 
@@ -459,12 +243,11 @@ export default function TemplateDetail() {
       setFreeDownloadsToday(nextCount);
 
       try {
-        await d1
-          .from("profiles")
+        await d1.from("profiles")
           .update({
             purchased_items: updatedPurchases,
             downloads_today: nextCount,
-            last_download_date: today
+            last_download_date: today,
           })
           .eq("email", client.email);
       } catch (err) {
@@ -472,26 +255,29 @@ export default function TemplateDetail() {
       }
     }
 
-    setCreditNotice(`Free community template download initiated! (${(freeDownloadsToday || 0) + 1}/3 used today). A copy has been dispatched to your email.`);
+    setCreditNotice(
+      `Free community template download initiated! (${(freeDownloadsToday || 0) + 1}/3 used today). A copy has been dispatched to your email.`
+    );
   };
 
-  // Standard Instant Purchase via Razorpay (Requires Login)
   const handleInstantDownload = async () => {
     setCreditNotice(null);
-    const client = getClientInfo();
-
     if (!client) {
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
       return;
     }
 
-    await executeRazorpayCheckout(template, currency === "USD" ? "USD" : "INR", client.email, client.name);
+    await executeRazorpayCheckout(
+      template,
+      currency === "USD" ? "USD" : "INR",
+      client.email,
+      client.name
+    );
   };
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
       <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-        
         {/* Navigation Breadcrumb */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button
@@ -519,546 +305,48 @@ export default function TemplateDetail() {
 
         {/* Main 2-Column Template Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
-          
           {/* Left Column: Interactive Full HD Multi-Slide Previewer */}
-          <div className="lg:col-span-7 space-y-4">
-            
-            <div 
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              className="hex-card-dark bg-[#FFF9E8] border-2 border-primary/50 overflow-hidden shadow-2xl relative w-full flex items-center justify-center group touch-pan-y"
-            >
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={activeSlideIdx}
-                  src={currentSlideImg}
-                  alt={`${template.title} - Slide ${activeSlideIdx + 1}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="w-full h-auto block select-none rounded-xl"
-                />
-              </AnimatePresence>
-
-              {/* Prev / Next Slide Navigation Arrows (44px Touch Targets) */}
-              {slides.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlideIdx((prev) => (prev - 1 + slides.length) % slides.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-75 hover:opacity-100 hover:scale-105"
-                    title="Previous Slide"
-                  >
-                    <ChevronLeft size={22} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlideIdx((prev) => (prev + 1) % slides.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#111111]/85 hover:bg-[#111111] text-white hover:text-primary border border-primary/40 flex items-center justify-center transition-all shadow-lg cursor-pointer z-10 opacity-75 hover:opacity-100 hover:scale-105"
-                    title="Next Slide"
-                  >
-                    <ChevronRight size={22} />
-                  </button>
-                </>
-              )}
-
-              <div className="hex-pill-sm absolute top-3 left-3 bg-[#111111]/90 text-primary border border-primary/40 text-[10px] font-black px-3 py-1 backdrop-blur-md shadow flex items-center gap-1.5 z-10">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Slide {activeSlideIdx + 1} of {slides.length}
-              </div>
-
-              {!template.is_premium ? (
-                <div className="hex-pill-sm absolute top-3 right-3 bg-emerald-600 text-white font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-emerald-700">
-                  <Download size={11} /> Free Community Deck
-                </div>
-              ) : (
-                <div className="hex-pill-sm absolute top-3 right-3 bg-[#111111]/90 text-[#FCBF14] font-black text-[10px] px-3 py-1 shadow-md flex items-center gap-1 z-10 border border-[#FCBF14]/40 backdrop-blur-md">
-                  <Crown size={11} className="fill-[#FCBF14]" /> PRO Master Deck
-                </div>
-              )}
-            </div>
-
-            {/* Slide Navigation Thumbnails (Touch Momentum Scroll) */}
-            {slides.length > 1 && (
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar touch-pan-x">
-                {slides.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveSlideIdx(idx)}
-                    className={`relative w-28 min-h-[44px] rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-[#FFF9E8] ${
-                      activeSlideIdx === idx
-                        ? "border-primary shadow-md scale-105"
-                        : "border-[#111111]/15 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={s} alt={`Slide ${idx + 1}`} className="w-full h-auto block object-cover" />
-                    <span className="absolute bottom-1 right-1 bg-black/75 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
-                      #{idx + 1}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <TemplateSlideViewer
+            template={template}
+            slides={slides}
+            activeSlideIdx={activeSlideIdx}
+            setActiveSlideIdx={setActiveSlideIdx}
+            handleTouchStart={handleTouchStart}
+            handleTouchMove={handleTouchMove}
+            handleTouchEnd={handleTouchEnd}
+          />
 
           {/* Right Column: Details & Actions */}
-          <div className="lg:col-span-5 space-y-5">
-            <div className="hex-card-lg bg-white border-2 border-primary/40 p-6 sm:p-7 shadow-lg space-y-5">
-              
-              <div className="flex items-center justify-between gap-2">
-                <span className="hex-pill-sm bg-[#FFF9E8] text-primary-amber border border-primary/30 text-[10px] font-black px-3 py-1 uppercase tracking-wider">
-                  {template.category} • {template.slides_count} Master Slides
-                </span>
-
-                {showStars && template.rating && (
-                  <div className="flex items-center gap-1 text-xs font-extrabold text-[#111111]">
-                    <Star size={13} className="fill-amber-400 text-amber-400" />
-                    {template.rating}
-                    {showDownloads && template.downloads ? ` (${template.downloads}+ downloads)` : ""}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] leading-tight mb-2">
-                  {template.title}
-                </h1>
-                <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed">
-                  {template.description}
-                </p>
-              </div>
-
-              {/* Price Display */}
-              <div className="p-4 bg-[#FFF9E8] rounded-2xl border-2 border-primary/30 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase text-[#726F6D] block">
-                    {isPro && quotaRemaining > 0
-                      ? "Included with Pro Membership"
-                      : isPro && quotaRemaining <= 0
-                      ? "Pro Quota Limit Reached (Commercial License Required)"
-                      : "Perpetual Commercial License"}
-                  </span>
-                  <div className="flex items-baseline gap-2 mt-0.5">
-                    {isPro && quotaRemaining > 0 ? (
-                      <>
-                        <span className="text-2xl sm:text-3xl font-heading font-black text-emerald-800">
-                          Free with Pro
-                        </span>
-                        <span className="text-xs text-[#726F6D] line-through font-bold">
-                          {formatPrice(template.price_inr, template.price_usd)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
-                          {formatPrice(template.price_inr, template.price_usd)}
-                        </span>
-                        {template.original_price_inr && (
-                          <span className="text-xs text-[#726F6D] line-through font-medium">
-                            {formatPrice(template.original_price_inr, (template.price_usd || 5) * 2)}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {isPro && quotaRemaining > 0 && (
-                    <span className="text-[11px] text-[#726F6D] font-medium block mt-1">
-                      Deducts 1 template from your {quotaLimit} monthly quota ({quotaRemaining} downloads remaining)
-                    </span>
-                  )}
-                  {isPro && quotaRemaining <= 0 && (
-                    <span className="text-[11px] text-amber-800 font-semibold block mt-1">
-                      Your {quotaLimit} templates for this month are used ({quotaUsed}/{quotaLimit}). Buy a standalone license to continue downloading immediately.
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-white border border-primary/50 px-3 py-1.5 rounded-xl text-xs font-black text-[#111111] shadow-xs">
-                  <FileText size={15} className="text-primary-amber" />
-                  <span>Master PowerPoint (.pptx)</span>
-                </div>
-              </div>
-
-              {/* Notice / Feedback Banner */}
-              {creditNotice && (
-                <div className="bg-amber-50 border border-amber-300 p-3 rounded-xl flex items-start gap-2 text-xs text-amber-900 font-medium">
-                  <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                  <span>{creditNotice}</span>
-                </div>
-              )}
-
-              {checkoutError && (
-                <div className="bg-rose-50 border border-rose-300 p-3 rounded-xl flex items-start gap-2 text-xs text-rose-900 font-medium">
-                  <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
-                  <span>{checkoutError}</span>
-                </div>
-              )}
-
-              {/* Purchase & Credit Action Buttons */}
-              <div className="space-y-3 pt-2">
-                {isPurchased || alreadyOwned ? (
-                  <div className="bg-emerald-50 border-2 border-emerald-400/60 p-5 rounded-2xl space-y-3 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs font-black text-emerald-900">
-                      <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-                      <span>Master Presentation Deck Ready in Library</span>
-                    </div>
-                    <p className="text-xs text-emerald-800 leading-relaxed font-medium">
-                      Your editable Master PowerPoint presentation (.pptx) is unlocked with perpetual commercial rights.
-                    </p>
-                    <div className="bg-white border border-emerald-300 px-3.5 py-2.5 rounded-xl text-xs font-black text-[#111111] flex items-center justify-between shadow-xs">
-                      <span className="truncate">{purchasedClientEmail || client?.email || "Account Library"}</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded uppercase shrink-0">
-                        {isPro ? "Pro Quota" : "Commercial License"}
-                      </span>
-                    </div>
-
-                    <a
-                      href={deliverableUrl || template.download_url || template.image_url}
-                      download={template.file_name || `${template.code}_Master.pptx`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-                    >
-                      <Download size={14} /> Download Master PowerPoint (.pptx)
-                    </a>
-                  </div>
-                ) : isPro ? (
-                  /* Pro Member Instant Download (30/Month Template Quota - All Templates Unlocked) */
-                  <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary rounded-2xl space-y-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                        <Crown size={15} className="text-amber-500" />
-                        <span>Pro VIP Membership Access</span>
-                      </div>
-                      <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
-                        {quotaRemaining} of {quotaLimit} Left
-                      </span>
-                    </div>
-
-                    {quotaRemaining > 0 ? (
-                      /* USER HAS PRO QUOTA AVAILABLE: ONLY PRO QUOTA DOWNLOAD, NO BUY OPTION */
-                      <>
-                        <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                          This complete presentation deck is fully covered by your active Pro membership quota. Instant delivery with zero payment.
-                        </p>
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={handleProDownload}
-                          className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
-                        >
-                          <Download size={17} />
-                          {isProcessing
-                            ? "Unlocking Presentation..."
-                            : `Use Pro Quota • Download Master PPTX (${quotaRemaining} Left)`}
-                        </button>
-                        <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                          <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                          <span>Perpetual Commercial Rights • Deducts 1 from {quotaLimit}-Deck Monthly Quota</span>
-                        </div>
-                      </>
-                    ) : (
-                      /* USER HAS EXHAUSTED THE 30 TEMPLATES: PROMPT TO BUY */
-                      <div className="space-y-3">
-                        <div className="bg-amber-100/80 border border-amber-300 p-3.5 rounded-xl text-xs text-amber-900 font-medium space-y-1">
-                          <p className="font-extrabold text-[#111111] text-xs">
-                            Monthly Template Quota Reached ({quotaLimit}/{quotaLimit} Used)
-                          </p>
-                          <p className="text-[11px] text-[#726F6D] leading-relaxed">
-                            You have consumed all {quotaLimit} included template downloads for your current billing cycle. Your quota resets on your next renewal. You can purchase a standalone commercial license for this template below to download it immediately.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={handleInstantDownload}
-                          className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
-                        >
-                          <ShoppingBag size={17} className="text-[#FCBF14]" />
-                          {isProcessing
-                            ? "Opening Checkout..."
-                            : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
-                        </button>
-                        <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                          <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                          <span>Perpetual Commercial Rights • Instant Master PPTX Unlock</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : !template.is_premium ? (
-                  /* FREE TEMPLATE FOR NON-PRO / FREE ACCOUNTS */
-                  <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                        <Download size={15} className="text-emerald-600" />
-                        <span>Free Community Library Deck</span>
-                      </div>
-                      <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
-                        Free Account (3/Day)
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                      Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment required.
-                    </p>
-                    {!getClientInfo() ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))}
-                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                      >
-                        <Lock size={15} />
-                        Sign In to Download Free (.pptx)
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isProcessing || freeDownloadsToday >= 3}
-                        onClick={handleDirectFreeDownload}
-                        className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
-                      >
-                        <Download size={16} />
-                        {isProcessing
-                          ? "Preparing Download..."
-                          : freeDownloadsToday >= 3
-                          ? "Daily Free Limit Reached (3/3 Used)"
-                          : `Download Free Community Deck (.pptx) • ${Math.max(0, 3 - freeDownloadsToday)} Left Today`}
-                      </button>
-                    )}
-                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                      <span>Free Community License • Single Project Use</span>
-                    </div>
-                  </div>
-                ) : (
-                  /* PREMIUM TEMPLATE FOR FREE / GUEST ACCOUNTS: FREE CANNOT DOWNLOAD THIS! */
-                  <div className="space-y-4">
-                    {/* Pro Upgrade Callout */}
-                    <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary/70 rounded-2xl space-y-2.5 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                          <Crown size={15} className="text-amber-500 fill-amber-400" />
-                          <span>Premium Master Presentation Deck</span>
-                        </div>
-                        <span className="hex-pill-sm bg-primary text-[#111111] text-[10px] font-black px-2 py-0.5 border border-[#111111]/20">
-                          PRO Exclusive
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                        This is an executive Premium Master Deck. Free tier accounts can only download community decks. Upgrade to Pro to unlock this deck and our entire presentation library.
-                      </p>
-                      <Link
-                        to="/pricing"
-                        className="hex-pill w-full bg-primary hover:bg-primary-dark text-[#111111] font-black py-3 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-                      >
-                        <Crown size={14} className="fill-[#111111]" />
-                        Upgrade to Pro to Unlock ({currency === "INR" ? "₹399/mo" : "$5/mo"})
-                      </Link>
-                    </div>
-
-                    {/* Standalone Commercial Purchase Button */}
-                    <div className="space-y-2">
-                      <div className="text-[11px] text-center text-[#726F6D] font-bold">
-                        — or buy a standalone commercial license —
-                      </div>
-                      {!getClientInfo() ? (
-                        <button
-                          type="button"
-                          onClick={() => navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))}
-                          className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-                        >
-                          <Lock size={15} className="text-primary-amber" />
-                          Sign In to Buy Master PPTX ({formatPrice(template.price_inr, template.price_usd)})
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={handleInstantDownload}
-                          className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
-                        >
-                          <ShoppingBag size={16} className="text-primary-amber" />
-                          {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                      <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                      <span>Instant Automatic Download • Perpetual Commercial License</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Agency Custom Polish Bridge */}
-                <div className="p-4 bg-[#FFF9E8] border border-primary/50 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
-                      Custom Studio Service
-                    </span>
-                    {isPro && (
-                      <span className="text-[10px] bg-primary/20 text-[#111111] font-black px-2 py-0.5 rounded-full">
-                        15% Pro Member Discount
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-xs font-black text-[#111111] leading-snug">
-                    Need this exact deck customized with your startup's content?
-                  </h4>
-                  <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                    Have our executive designers customize this layout to your exact brand, copy, and financials in 24-48h.
-                  </p>
-                  <Link
-                    to={`/ordernow?ref=${encodeURIComponent(template.title)}&code=${encodeURIComponent(templateCode)}`}
-                    className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-2.5 text-xs transition-all flex items-center justify-center gap-2 shadow-xs text-center"
-                  >
-                    <Layers size={13} className="text-[#FCBF14]" /> Order Custom Polish <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-
-              {/* What's Included Checklist */}
-              <div className="pt-4 border-t border-[#111111]/8 space-y-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#111111]">
-                  What Is Included in This Deck:
-                </h3>
-                <div className="grid grid-cols-1 gap-2">
-                  {template.features.map((feat, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-[#111111] font-medium">
-                      <CheckCircle2 size={14} className="text-primary-amber shrink-0" />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Technical Specifications */}
-              <div className="pt-4 border-t border-[#111111]/8 text-[11px] space-y-2 text-[#726F6D]">
-                <div className="flex justify-between items-center">
-                  <span>Deliverable Formats:</span>
-                  <div className="flex flex-wrap gap-1.5 justify-end">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-primary/25 text-[#111111] border border-primary/40">
-                      PPTX Vector
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#111111]/10 text-[#111111] border border-[#111111]/15">
-                      JPEG HD Slides
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#111111]/10 text-[#111111] border border-[#111111]/15">
-                      MP4 Motion Deck
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span>Supported Software:</span>
-                  <div className="flex flex-wrap gap-1 justify-end">
-                    {(template.formats && template.formats.length > 0 ? template.formats : ["PowerPoint", "Google Slides", "Keynote"]).map((fmt, i) => (
-                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#111111]/5 text-[#111111] border border-[#111111]/10">
-                        {fmt}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <span>Library Tier:</span>
-                  <strong className={!template.is_premium ? "text-emerald-600 font-bold" : "text-[#111111]"}>
-                    {!template.is_premium ? "Free Community Tier (3 Daily Downloads)" : "Pro Master Collection"}
-                  </strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Aspect Ratio:</span>
-                  <strong className="text-[#111111]">16:9 Full HD Widescreen (1920x1080)</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Vector Geometry:</span>
-                  <strong className="text-[#111111]">100% Fully Editable Shapes & Colors</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>License:</span>
-                  <strong className="text-[#111111]">Perpetual Commercial Royalty-Free</strong>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
+          <TemplateActionPanel
+            template={template}
+            showStars={showStars}
+            showDownloads={showDownloads}
+            isPro={isPro}
+            quotaLimit={quotaLimit}
+            quotaUsed={quotaUsed}
+            quotaRemaining={quotaRemaining}
+            formatPrice={formatPrice}
+            currency={currency}
+            creditNotice={creditNotice}
+            checkoutError={checkoutError}
+            isPurchased={isPurchased}
+            alreadyOwned={alreadyOwned}
+            purchasedClientEmail={purchasedClientEmail}
+            client={client}
+            deliverableUrl={deliverableUrl}
+            isProcessing={isProcessing}
+            handleProDownload={handleProDownload}
+            handleInstantDownload={handleInstantDownload}
+            handleDirectFreeDownload={handleDirectFreeDownload}
+            freeDownloadsToday={freeDownloadsToday}
+          />
         </div>
 
         {/* Similar Presentation Templates Section */}
-        {similarTemplates.length > 0 && (
-          <section className="pt-10 border-t border-[#111111]/10 mt-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
-              <div>
-                <span className="text-primary-amber text-xs font-black uppercase tracking-widest block mb-1">
-                  Related Master Decks
-                </span>
-                <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[#111111]">
-                  Similar Presentation Templates
-                </h2>
-              </div>
-              <Link
-                to="/#templates"
-                className="hex-pill-sm inline-flex items-center gap-1.5 bg-white border border-primary/40 px-3.5 py-1.5 text-xs font-bold text-[#111111] hover:border-primary transition-all shadow-sm"
-              >
-                Browse Full Library <ArrowRight size={13} />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {similarTemplates.map((sim) => (
-                <Link
-                  key={sim.id}
-                  to={`/template/${sim.id}`}
-                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                  className="hex-card group bg-white border-2 border-primary/30 hover:border-primary overflow-hidden hover:shadow-xl transition-all flex flex-col justify-between text-left"
-                >
-                  {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
-                  <div className="p-3 bg-[#FFF9E8]/75 border-b border-primary/20">
-                    <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
-                      <img
-                        src={sim.image_url}
-                        alt={sim.title}
-                        className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 flex flex-col justify-between flex-grow">
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber">
-                          {sim.category}
-                        </span>
-                        {(!sim.is_premium) && (
-                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Download size={9} /> Free Deck
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-start justify-between mb-1.5">
-                        <h3 className="font-heading font-extrabold text-xs text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
-                          {sim.title}
-                        </h3>
-                        <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
-                          {formatPrice(sim.price_inr, sim.price_usd)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-primary/15 text-[10px] font-bold text-[#726F6D]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                      <span>{sim.slides_count} Master Slides (.pptx)</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
+        <SimilarTemplatesGrid
+          similarTemplates={similarTemplates}
+          formatPrice={formatPrice}
+        />
       </div>
     </div>
   );

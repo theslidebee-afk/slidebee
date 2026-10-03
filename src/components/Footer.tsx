@@ -47,52 +47,54 @@ export default function Footer() {
             <p className="text-gray-400 font-light leading-relaxed text-xs sm:text-sm">
               {footerConfig.tagline}
             </p>
-            <div className="flex gap-3 pt-1">
-              {footerConfig.linkedinUrl && (
-                <a
-                  href={footerConfig.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
-                  aria-label="LinkedIn"
-                >
-                  in
-                </a>
-              )}
-              {footerConfig.twitterUrl && (
-                <a
-                  href={footerConfig.twitterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
-                  aria-label="Twitter / X"
-                >
-                  X
-                </a>
-              )}
-              {footerConfig.instagramUrl && (
-                <a
-                  href={footerConfig.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
-                  aria-label="Instagram"
-                >
-                  ig
-                </a>
-              )}
-              {footerConfig.dribbbleUrl && (
-                <a
-                  href={footerConfig.dribbbleUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
-                  aria-label="Dribbble"
-                >
-                  dr
-                </a>
-              )}
-            </div>
+            {footerConfig.showSocialIcons !== false && (
+              <div className="flex gap-3 pt-1">
+                {footerConfig.linkedinUrl && (
+                  <a
+                    href={footerConfig.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
+                    aria-label="LinkedIn"
+                  >
+                    in
+                  </a>
+                )}
+                {footerConfig.twitterUrl && (
+                  <a
+                    href={footerConfig.twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
+                    aria-label="Twitter / X"
+                  >
+                    X
+                  </a>
+                )}
+                {footerConfig.instagramUrl && (
+                  <a
+                    href={footerConfig.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
+                    aria-label="Instagram"
+                  >
+                    ig
+                  </a>
+                )}
+                {footerConfig.dribbbleUrl && (
+                  <a
+                    href={footerConfig.dribbbleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary hover:text-black flex items-center justify-center text-xs font-bold transition-all"
+                    aria-label="Dribbble"
+                  >
+                    dr
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}
@@ -116,7 +118,7 @@ export default function Footer() {
               <li><Link to="/services?service=keynote" onClick={scrollToTop} className="hover:text-primary transition-colors">Executive Keynotes</Link></li>
               <li><Link to="/services?service=data" onClick={scrollToTop} className="hover:text-primary transition-colors">Data Visualization</Link></li>
               <li><Link to="/services?service=template" onClick={scrollToTop} className="hover:text-primary transition-colors">Custom Templates</Link></li>
-              <li><Link to="/services?type=ecommerce" onClick={scrollToTop} className="hover:text-primary transition-colors text-white font-medium">Ecommerce Store (₹25K)</Link></li>
+              <li><Link to="/services?type=ecommerce" onClick={scrollToTop} className="hover:text-primary transition-colors">Build Ecommerce Store (₹25K)</Link></li>
             </ul>
           </div>
 

@@ -30,18 +30,14 @@ export default function Contact() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [contactConfig, setContactConfig] = useState<any>({
-    headline: isEcommerce ? "Talk to Our Lead Engineering Desk." : "Let’s Talk About Your Next Presentation.",
-    subheadline: isEcommerce
-      ? "Have questions about your product catalog, payment integration, or Cloudflare store architecture? Send us a message and our lead engineer will get back to you within 2 hours."
-      : "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.",
+    headline: "Let’s Talk About Your Next Presentation.",
+    subheadline: "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.",
     generalEmail: "hello@theslidebee.com",
     supportEmail: "support@theslidebee.com",
     phone: "+91 98765 43210",
     whatsapp: "+91 98765 43210",
-    responseGuarantee: isEcommerce ? "Engineering Desk — 2-Hour Response Time" : "2-Hour Response Time",
-    availabilityNotice: isEcommerce
-      ? "Our engineering desk builds and supports full-stack Cloudflare serverless storefronts with direct WhatsApp escalation."
-      : "Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.",
+    responseGuarantee: "2-Hour Response Time",
+    availabilityNotice: "Our design studio operates 24/7 with dedicated shifts across North America, Europe, and Asia to guarantee fast turns.",
     address: "SlideBee Design Studio, Bengaluru, Karnataka 560001, India (Hubs: Singapore & San Francisco)"
   });
 
@@ -64,9 +60,9 @@ export default function Contact() {
       .eq("key", "contact_cms")
       .single()
       .then(({ data }) => {
-        if (data?.value && !isEcommerce) setContactConfig(data.value);
+        if (data?.value) setContactConfig(data.value);
       });
-  }, [isEcommerce]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -55,73 +55,63 @@ export default function About() {
       {/* ========================================================================= */}
       {/* 1. OUR TEAM SECTION                                                       */}
       {/* ========================================================================= */}
-      <section className="w-[90%] max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 items-center">
-          
-          {/* Left Text Column */}
-          <div className="lg:col-span-6 space-y-6">
-            <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
-              {cfg.teamEyebrow || "OUR TEAM"}
-            </span>
+      <section className="w-full px-4 sm:px-6 lg:px-8 py-16 sm:py-20 flex flex-col items-center text-center">
+        <div className="max-w-4xl space-y-6 mb-12">
+          <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
+            {cfg.teamEyebrow || "OUR TEAM"}
+          </span>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line">
-              {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
-            </h1>
+          <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line mx-auto">
+            {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
+          </h1>
 
-            <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-lg">
-              {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
-            </p>
+          <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-2xl mx-auto">
+            {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
+          </p>
 
-            <div className="pt-2">
-              <Link
-                to={cfg.teamCtaLink || "/examples"}
-                data-bee-state="hover"
-                className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-sm hover:scale-105 active:scale-95 transition-all"
-              >
-                <span>{cfg.teamCtaText || "Meet Our Work"}</span>
-                <ArrowRight size={17} className="stroke-[2.5]" />
-              </Link>
-            </div>
+          <div className="pt-4 flex justify-center">
+            <Link
+              to={cfg.teamCtaLink || "/examples"}
+              data-bee-state="hover"
+              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-sm hover:scale-105 active:scale-95 transition-all"
+            >
+              <span>{cfg.teamCtaText || "Meet Our Work"}</span>
+              <ArrowRight size={17} className="stroke-[2.5]" />
+            </Link>
           </div>
+        </div>
 
-          {/* Right Visual Column: Team Photo Filling Visual Stage with Accent Note */}
-          <div className="lg:col-span-6 relative flex items-center justify-center w-full">
-            
-            <div className="relative w-full h-[380px] sm:h-[460px] lg:h-[520px]">
+        {/* Full-Bleed Visual Stage */}
+        <div className="w-full max-w-[1400px] relative flex justify-center">
+          <div className="relative w-full h-[400px] sm:h-[500px] lg:h-[700px]">
+            {/* Full-bleed Visual Container */}
+            <div className="relative w-full h-full rounded-3xl sm:rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5]">
+              <img
+                src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=85"}
+                alt="SlideBee Presentation Design Team"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+
+            {/* Yellow Sticky Note with Radiating Accent Lines */}
+            <div className="absolute -top-6 right-4 sm:-top-8 sm:right-12 z-20 flex items-start gap-2">
               
-              {/* Full-bleed Visual Container */}
-              <div className="relative w-full h-full rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5]">
-                <img
-                  src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=85"}
-                  alt="SlideBee Presentation Design Team"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+              {/* 3 Radiating Sketched Tick Lines to the left */}
+              <svg className="w-6 h-8 text-[#111111] mt-2 shrink-0 select-none" viewBox="0 0 24 32" fill="none">
+                <path d="M22 6L4 12" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M22 16L2 16" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M22 26L4 20" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
+              </svg>
+
+              {/* Tilted Sticky Note */}
+              <div className="bg-[#FFD028] text-[#111111] px-5 py-4 sm:px-6 sm:py-5 rounded-lg shadow-[0_12px_30px_rgba(0,0,0,0.18)] rotate-[-4deg] hover:rotate-0 transition-transform duration-300 border border-[#E5AC0E]/30">
+                <p className="font-heading font-extrabold text-sm sm:text-base leading-snug tracking-tight text-center whitespace-pre-line">
+                  {cfg.teamNote || "Different\nPerspectives\nBetter Slides"}
+                </p>
               </div>
-
-              {/* Yellow Sticky Note with Radiating Accent Lines */}
-              <div className="absolute -top-6 right-2 sm:-top-8 sm:right-4 z-20 flex items-start gap-2">
-                
-                {/* 3 Radiating Sketched Tick Lines to the left */}
-                <svg className="w-6 h-8 text-[#111111] mt-2 shrink-0 select-none" viewBox="0 0 24 32" fill="none">
-                  <path d="M22 6L4 12" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                  <path d="M22 16L2 16" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                  <path d="M22 26L4 20" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                </svg>
-
-                {/* Tilted Sticky Note */}
-                <div className="bg-[#FFD028] text-[#111111] px-5 py-4 sm:px-6 sm:py-5 rounded-lg shadow-[0_12px_30px_rgba(0,0,0,0.18)] rotate-[-4deg] hover:rotate-0 transition-transform duration-300 border border-[#E5AC0E]/30">
-                  <p className="font-heading font-extrabold text-sm sm:text-base leading-snug tracking-tight text-center whitespace-pre-line">
-                    {cfg.teamNote || "Different\nPerspectives\nBetter Slides"}
-                  </p>
-                </div>
-
-              </div>
-
             </div>
-
           </div>
-
         </div>
       </section>
 

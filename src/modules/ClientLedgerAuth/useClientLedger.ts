@@ -1,72 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { d1 } from "../../lib/d1";
 import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
-import { sendWelcomeEmail } from "../../lib/email";
-import { isDisposableEmail, getDeviceFingerprint } from "../../lib/deviceFingerprint";
 import { registerActiveSession, verifyActiveSession, triggerSessionDisplacement } from "../../lib/sessionGuard";
+import type { UserProfile, ClientAuthResult } from "./types";
+import { fetchClientProfileAndOrders, recordAuthEvent } from "./clientLedgerStorage";
+import {
+  performSignUp,
+  performCompletePasswordReset,
+  performTemplateDownload,
+} from "./clientAuthActions";
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  full_name?: string;
-  company?: string;
-  phone?: string;
-  role: "client" | "admin" | "super_admin";
-  tier?: "free" | "monthly" | "yearly" | "lifetime";
-  tier_expires_at?: string;
-  downloads_today?: number;
-  last_download_date?: string;
-  downloads_this_month?: number;
-  month_cycle_start?: string;
-  is_bot_flagged?: number;
-  credits_total?: number;
-  credits_used?: number;
-  credits_balance?: number;
-  purchased_items: Array<{
-    id: string;
-    slug?: string;
-    code?: string;
-    title: string;
-    category?: string;
-    slides_count?: number;
-    download_url: string;
-    purchased_at?: string;
-    is_premium?: boolean;
-    is_credit_redemption?: boolean;
-    amount?: number;
-    currency?: string;
-  }>;
-  usage_history: Array<{
-    item_title: string;
-    credits_used?: number;
-    action: string;
-    date: string;
-  }>;
-  last_sign_in_at?: string;
-}
+export type { UserProfile, ClientAuthResult } from "./types";
 
-export interface ClientAuthResult {
-  success: boolean;
-  message?: string;
-  unregisteredPrompt?: string;
-  isUnregistered?: boolean;
-  isAdmin?: boolean;
-}
-
-/**
- * Deep Module: ClientLedgerAuth
- * 
- * Public Interface:
- * - currentUser: D1 auth or localStorage user object
- * - userProfile: Normalized client profile and credits ledger
- * - userOrders: Client quote and template purchase orders
- * - loading: Boolean initialization state
- * - signIn(email, password): Signs in client or redirects admin
- * - signUp(email, password, fullName, company): Registers client with Free Tier access
- * - logout(): Global cross-tab logout
- * - redeemCredit(templateId): Atomically claims 1 free community deck using daily quota
- * - refreshClientData(): Re-syncs profile and order ledger
- */
 export function useClientLedger() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -77,67 +22,17 @@ export function useClientLedger() {
   const fetchClientData = useCallback(async (userEmail: string) => {
     if (!userEmail) return;
     const cleanEmail = userEmail.trim();
-
-    // 1. Fetch Profile ledger
-    const { data: profile } = await d1
-      .from("profiles")
-      .select("*")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
-
-    if (profile) {
-      setUserProfile(profile as UserProfile);
+    const result = await fetchClientProfileAndOrders(cleanEmail);
+    if (result.profile) {
+      setUserProfile(result.profile);
     }
-
-    // 2. Fetch Orders (Case-insensitive matching to guarantee custom briefs appear in user dashboard)
-    const { data: ords } = await d1
-      .from("orders")
-      .select("*")
-      .ilike("email", cleanEmail)
-      .order("created_at", { ascending: false });
-
-    // Also check local client order backup if present
-    let localSaved: any[] = [];
-    try {
-      const raw = localStorage.getItem("slidebee_orders");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          localSaved = parsed.filter((o: any) => o.email && o.email.trim().toLowerCase() === cleanEmail.toLowerCase());
-        }
-      }
-    } catch {
-      // ignore json parse error
-    }
-
-    const mergedOrders = [...(ords || [])];
-    localSaved.forEach((lo) => {
-      const exists = mergedOrders.some(
-        (mo) => (mo.order_reference && mo.order_reference === lo.order_reference) || (mo.id && mo.id === lo.id)
-      );
-      if (!exists) {
-        mergedOrders.push(lo);
-      }
-    });
-
-    setUserOrders(mergedOrders);
-
-    // 3. Fetch Subscription
-    const { data: sub } = await d1
-      .from("subscriptions")
-      .select("*")
-      .ilike("user_email", cleanEmail)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    setUserSubscription(sub || null);
+    setUserOrders(result.orders);
+    setUserSubscription(result.subscription);
   }, []);
 
   const checkUserSession = useCallback(async () => {
     const localAdmin = localStorage.getItem("slidebee_admin_session");
     if (localAdmin === "true") {
-      // Admin session is active: client session cannot coexist under strict mutual exclusivity
       setCurrentUser(null);
       setUserProfile(null);
       setUserOrders([]);
@@ -145,8 +40,9 @@ export function useClientLedger() {
       return;
     }
 
-    // Strict GoTrue Server-Side Session Verification (Prompts 18 & 25)
-    const { data: { session } } = await d1.auth.getSession();
+    const {
+      data: { session },
+    } = await d1.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
         session.user.email === "admin@theslidebee.com" ||
@@ -196,7 +92,6 @@ export function useClientLedger() {
       },
       (role) => {
         if (role === "admin") {
-          // Admin signed in on another tab; terminate client view in this tab
           setCurrentUser(null);
           setUserProfile(null);
           setUserOrders([]);
@@ -209,34 +104,13 @@ export function useClientLedger() {
     return () => unsubscribe();
   }, [checkUserSession]);
 
-  // Log authentication events to auth_logs
-  const recordAuthEvent = async (userEmail: string, event: "LOGIN" | "SIGNUP" | "LOGOUT" | "PASSWORD_RESET", meta: any = {}) => {
-    try {
-      await d1.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("email", userEmail);
-      await d1.from("auth_logs").insert([
-        {
-          user_email: userEmail,
-          event,
-          metadata: {
-            ...meta,
-            timestamp: new Date().toISOString(),
-            userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "browser"
-          }
-        }
-      ]);
-    } catch (e) {
-      console.warn("Auth event logging error:", e);
-    }
-  };
-
-  // Sign In with Unregistered Intercept
   const signIn = async (emailInput: string, passwordInput: string): Promise<ClientAuthResult> => {
     const cleanEmail = emailInput.toLowerCase().trim();
     const cleanPassword = passwordInput.trim();
 
     const { data: authData, error: authErr } = await d1.auth.signInWithPassword({
       email: cleanEmail,
-      password: cleanPassword
+      password: cleanPassword,
     });
 
     if (authData?.user) {
@@ -273,14 +147,15 @@ export function useClientLedger() {
       return {
         success: false,
         message: authErr.message || "Invalid email or password. Please verify your credentials and try again.",
-        isUnregistered: Boolean((authErr as any)?.isUnregistered || authErr.message?.includes("No registered account found"))
+        isUnregistered: Boolean(
+          (authErr as any)?.isUnregistered || authErr.message?.includes("No registered account found")
+        ),
       };
     }
 
     return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
-  // Google OAuth One-Click Sign In
   const signInWithGoogle = async () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://theslidebee.com";
     const redirectTo = `${origin}/auth/callback`;
@@ -300,127 +175,21 @@ export function useClientLedger() {
     return data;
   };
 
-  // Sign Up with Free Tier Provisioning & Anti-Abuse Protection
   const signUp = async (
     emailInput: string,
     passwordInput: string,
     fullNameInput: string,
     companyInput: string
   ): Promise<ClientAuthResult> => {
-    const cleanEmail = emailInput.toLowerCase().trim();
-    const cleanPassword = passwordInput.trim();
-    const cleanName = fullNameInput.trim();
-    const cleanCompany = companyInput.trim() || "Client Enterprise";
+    const { authData, cleanEmail, trialEligible } = await performSignUp(
+      emailInput,
+      passwordInput,
+      fullNameInput,
+      companyInput
+    );
 
-    if (!cleanName) throw new Error("Please enter your full name.");
-    if (cleanPassword.length < 8 || !/[A-Z]/.test(cleanPassword) || !/[0-9]/.test(cleanPassword)) {
-      throw new Error("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
-    }
-
-    // 1. Block disposable and burner temporary email domains
-    if (isDisposableEmail(cleanEmail)) {
-      throw new Error("Disposable or temporary email addresses are not permitted. Please use a valid personal or corporate email.");
-    }
-
-    // 2. Hardware and device fingerprinting for trial anti-abuse check
-    const fingerprint = await getDeviceFingerprint();
-    let trialEligible = true;
-
-    try {
-      const trialCheckRes = await fetch("/api/trial-guard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "CHECK_AND_CLAIM",
-          email: cleanEmail,
-          deviceFingerprint: fingerprint
-        })
-      });
-
-      if (trialCheckRes.ok) {
-        const trialData = await trialCheckRes.json();
-        if (trialData && trialData.eligible === false) {
-          trialEligible = false;
-        }
-      }
-    } catch (trialGuardErr) {
-      console.warn("Trial guard pre-check notice:", trialGuardErr);
-    }
-
-    // 3. Check duplicate account
-    const { data: existingProfile } = await d1
-      .from("profiles")
-      .select("id")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-
-    if (existingProfile) {
-      throw new Error("An account with this email already exists. Please sign in instead.");
-    }
-
-    // 4. Register in D1 Auth
-    const { data: authData, error: authErr } = await d1.auth.signUp({
-      email: cleanEmail,
-      password: cleanPassword,
-      options: {
-        data: {
-          full_name: cleanName,
-          company: cleanCompany
-        }
-      }
-    });
-
-    if (authErr) {
-      throw new Error(authErr.message || "Failed to register account.");
-    }
-
-    // 5. Enforce trial provisioning or zero credits if already claimed
-    if (trialEligible) {
-      try {
-        await d1.rpc("fn_grant_starter_credits", {
-          p_email: cleanEmail,
-          p_full_name: cleanName,
-          p_company: cleanCompany
-        });
-      } catch (e) {
-        console.warn("Free tier provisioning RPC notice:", e);
-      }
-    } else {
-      // Free trial already claimed on this device/canonical email: initialize with 0 credits
-      try {
-        await d1.from("profiles").upsert({
-          email: cleanEmail,
-          full_name: cleanName,
-          company: cleanCompany,
-          role: "client",
-          credits_total: 0,
-          credits_used: 0,
-          credits_balance: 0,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "email" });
-      } catch (profileErr) {
-        console.warn("Profile zero-credit initialization notice:", profileErr);
-      }
-    }
-
-    // 6. Register this device as the active session
-    await registerActiveSession(cleanEmail);
-
-    await recordAuthEvent(cleanEmail, "SIGNUP", {
-      fullName: cleanName,
-      company: cleanCompany,
-      trialEligible,
-      deviceFingerprint: fingerprint
-    });
-
-    // Send Welcome Onboarding Email
-    sendWelcomeEmail({
-      clientName: cleanName || cleanEmail.split("@")[0],
-      clientEmail: cleanEmail,
-      company: cleanCompany
-    }).catch(err => console.warn("Welcome email notice:", err));
-
-    const welcomeNotice = "Welcome to SlideBee! Your Free Tier account is active with 3 daily community presentation downloads.";
+    const welcomeNotice =
+      "Welcome to SlideBee! Your Free Tier account is active with 3 daily community presentation downloads.";
 
     if (authData?.session?.user || authData?.user) {
       const clientObj = authData.session?.user || authData.user;
@@ -437,128 +206,52 @@ export function useClientLedger() {
       success: true,
       message: trialEligible
         ? "Account created successfully with 5 free design credits. Please sign in."
-        : "Account created successfully. Free starter trial was already claimed on this device. Please sign in."
+        : "Account created successfully. Free starter trial was already claimed on this device. Please sign in.",
     };
   };
 
-  // Entitlement-backed Template Download Engine (3/day Free, 30/mo Pro, 45/mo Lifetime Anti-bot)
   const downloadTemplate = async (templateId: string) => {
     if (!currentUser?.email && !userProfile?.email) {
       throw new Error("Please log in to download presentation templates.");
     }
-
     const emailToUse = currentUser?.email || userProfile?.email;
-
-    try {
-      const res = await fetch("/api/entitlement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateId,
-          userEmail: emailToUse,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to download template.");
-      }
-
-      await fetchClientData(emailToUse);
-      return data;
-    } catch (err: any) {
-      // Fallback to legacy RPC
-      const { data, error } = await d1.rpc("fn_redeem_template_credit", {
-        p_user_email: emailToUse,
-        p_template_id: templateId
-      });
-
-      if (error) {
-        throw new Error(error.message || err.message || "Download failed.");
-      }
-
-      await fetchClientData(emailToUse);
-      return data;
-    }
+    const data = await performTemplateDownload(emailToUse, templateId);
+    await fetchClientData(emailToUse);
+    return data;
   };
 
   const redeemCredit = downloadTemplate;
 
-  // Secure Password Reset Request (Dispatches tokenized recovery link to inbox)
   const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = emailInput.toLowerCase().trim();
     if (!cleanEmail) {
       return { success: false, message: "Please enter your registered email address." };
     }
     try {
-      const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "https://dev.slidebee.pages.dev";
+      const redirectOrigin =
+        typeof window !== "undefined" ? window.location.origin : "https://dev.slidebee.pages.dev";
       await d1.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${redirectOrigin}/login?action=reset`
+        redirectTo: `${redirectOrigin}/login?action=reset`,
       });
     } catch (err) {
-      // Fail closed with uniform feedback to prevent enumeration
+      // Fail closed
     }
     return {
       success: true,
-      message: "If an account exists with this email, a secure password recovery link has been dispatched."
+      message: "If an account exists with this email, a secure password recovery link has been dispatched.",
     };
   };
 
-  // Secure Password Reset Completion via D1 Edge Auth & GoTrue
-  const completePasswordReset = async (newPasswordInput: string, token?: string, email?: string): Promise<{ success: boolean; message: string }> => {
-    const cleanPass = newPasswordInput.trim();
-    if (!cleanPass || cleanPass.length < 8) {
-      return { success: false, message: "Password must be at least 8 characters in length." };
+  const completePasswordReset = async (
+    newPasswordInput: string,
+    token?: string,
+    email?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await performCompletePasswordReset(newPasswordInput, token, email);
+    if (res.user) {
+      setCurrentUser(res.user);
     }
-    try {
-      // 1. Prioritize Cloudflare D1 recovery token verification
-      if (token) {
-        const res = await fetch("/api/auth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "reset_password_confirm",
-            token,
-            email,
-            password: cleanPass
-          }),
-        });
-        const json = await res.json();
-        if (res.ok && !json.error) {
-          if (json.data?.session) {
-            localStorage.setItem("slidebee_edge_session", JSON.stringify(json.data.session));
-            if (json.data.user) {
-              setCurrentUser(json.data.user);
-              localStorage.setItem("slidebee_client_user", JSON.stringify({
-                email: json.data.user.email,
-                tier: json.data.profile?.tier || "free",
-                role: json.data.user.role || "client",
-                user_metadata: json.data.user.user_metadata
-              }));
-            }
-          }
-          return { success: true, message: "Password has been successfully updated." };
-        } else if (json.error) {
-          return { success: false, message: json.error.message || "Password update failed." };
-        }
-      }
-
-      // 2. Direct updateUser fallback
-      const { data, error } = await d1.auth.updateUser({
-        password: cleanPass,
-        email
-      });
-      if (error) {
-        return { success: false, message: error.message || "Failed to update password. Recovery link may have expired." };
-      }
-      if (data?.user) {
-        await recordAuthEvent(data.user.email || "unknown", "PASSWORD_RESET", { provider: "d1_auth" });
-        return { success: true, message: "Password has been successfully updated." };
-      }
-      return { success: true, message: "Password has been updated." };
-    } catch (err: any) {
-      return { success: false, message: err.message || "Password update failed. Please try again." };
-    }
+    return res;
   };
 
   const logout = async () => {
@@ -571,23 +264,31 @@ export function useClientLedger() {
 
   const isPro = Boolean(
     (userProfile?.tier && userProfile.tier !== "free") ||
-    (userSubscription &&
-      userSubscription.status === "active" &&
-      (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
+      (userSubscription &&
+        userSubscription.status === "active" &&
+        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
   );
 
   const isProExpired = Boolean(
     userSubscription &&
-    userSubscription.current_period_end &&
-    new Date(userSubscription.current_period_end) <= new Date()
+      userSubscription.current_period_end &&
+      new Date(userSubscription.current_period_end) <= new Date()
   );
 
   const daysRemaining = userSubscription?.current_period_end
-    ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(
+        0,
+        Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      )
     : null;
 
   const userTier: "free" | "monthly" | "yearly" | "lifetime" =
-    userProfile?.tier || (isPro ? (userSubscription?.plan_name?.toLowerCase()?.includes("year") ? "yearly" : "monthly") : "free");
+    userProfile?.tier ||
+    (isPro
+      ? userSubscription?.plan_name?.toLowerCase()?.includes("year")
+        ? "yearly"
+        : "monthly"
+      : "free");
 
   const downloadsToday = userProfile?.downloads_today || 0;
   const downloadsThisMonth = userProfile?.downloads_this_month || 0;
@@ -599,7 +300,7 @@ export function useClientLedger() {
       ? Math.max(0, 45 - downloadsThisMonth)
       : 0;
 
-  const templateQuotaTotal = userTier === "lifetime" ? 45 : (userTier === "free" ? 3 : 30);
+  const templateQuotaTotal = userTier === "lifetime" ? 45 : userTier === "free" ? 3 : 30;
   const templateQuotaUsed = userTier === "free" ? downloadsToday : downloadsThisMonth;
   const templateQuotaRemaining = userTier === "free" ? remainingFreeToday : remainingPremiumThisMonth;
 
@@ -633,6 +334,6 @@ export function useClientLedger() {
     completePasswordReset,
     downloadTemplate,
     redeemCredit,
-    refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined)
+    refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined),
   };
 }

@@ -1,31 +1,21 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import {
-  Zap,
-  Infinity as InfinityIcon,
-  ArrowRight,
-  Search,
-  Crown,
-  Eye,
-  Star,
-  FileText,
-  TrendingUp,
-  Sparkles,
-  Paintbrush,
-  BarChart3,
-  LayoutGrid,
-  Flame
-} from "lucide-react";
+import { useMemo } from "react";
+import { motion } from "framer-motion";
 import { useStudioStore } from "../modules/StudioStoreClient";
-import { MagneticButton } from "../components/MagneticButton";
 import { usePageSEO } from "../hooks/usePageSEO";
-import { d1 } from "../lib/d1";
+import {
+  HomeHeroBanners,
+  HomeSearchDock,
+  HomeTemplateGrid,
+  HomeCustomServiceStrip,
+  HomeTestimonialsSection,
+} from "../features/home";
+import { useHomePageData } from "../features/home/useHomePageData";
 
 export default function Home() {
   usePageSEO({
     title: "SlideBee | Executive PowerPoint Presentation Templates & Bespoke Design Studio",
-    description: "SlideBee is a premier presentation design studio and marketplace for PowerPoint (.pptx) and Google Slides. Investor pitch decks, business templates, and bespoke slide design.",
+    description:
+      "SlideBee is a premier presentation design studio and marketplace for PowerPoint (.pptx) and Google Slides. Investor pitch decks, business templates, and bespoke slide design.",
     keywords: [
       "presentation design",
       "powerpoint templates",
@@ -34,235 +24,43 @@ export default function Home() {
       "executive presentation studio",
       "investor deck design",
       "infographic slides",
-      "business presentation templates"
+      "business presentation templates",
     ],
-    canonicalUrl: "https://theslidebee.com/"
+    canonicalUrl: "https://theslidebee.com/",
   });
 
-  const navigate = useNavigate();
-  const heroRef = useRef<HTMLDivElement>(null);
-  const templatesRef = useRef<HTMLElement>(null);
+  const {
+    heroRef,
+    templatesRef,
+    heroCardY,
+    heroCardOpacity,
+    videoScale,
+    videoOpacity,
+    templatesSlideUpY,
+    visibleCount,
+    setVisibleCount,
+    activeSidebarCategory,
+    setActiveSidebarCategory,
+    searchQuery,
+    setSearchQuery,
+    isSearchFocused,
+    setIsSearchFocused,
+    tierFilter,
+    setTierFilter,
+    setIsBrowsingActive,
+    isFilterActive,
+    dockOffset,
+    resetToResting,
+    categoriesList,
+    heroConfig,
+    curatedTrendingIds,
+    homeBanner1,
+    homeBanner2,
+    testimonials,
+  } = useHomePageData();
 
-  // Window scroll-driven motion for hero dissolve and template slide-up
-  const { scrollY } = useScroll();
-  const heroCardY = useTransform(scrollY, [0, 420], [0, -40]);
-  const heroCardOpacity = useTransform(scrollY, [0, 360], [1, 0]);
-  const videoScale = useTransform(scrollY, [0, 480], [1, 0.94]);
-  const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.1]);
-  const templatesSlideUpY = useTransform(scrollY, [0, 420], [0, -75]);
-
-
-  // Helper to extract inner preview slide thumbnails for SlideEgg-style showcase cards
-  // Only returns real uploaded slides — never pads with portfolio placeholders
-  const getPreviewSlides = (template: any, count = 6) => {
-    const rawSlides = Array.isArray(template?.slides) ? template.slides.filter(Boolean) : [];
-    if (rawSlides.length > 0) {
-      return rawSlides.slice(0, count);
-    }
-    // If no slides array but has a cover image, show that
-    const cover = template?.image_url || template?.thumbnail_url;
-    if (cover) return [cover];
-    return [];
-  };
-
-  // Determine dynamic mini-slide counts (0, 3, 6, 9) for magnet masonry variation
-  const getMiniSlideCount = (template: any) => {
-    const category = (template?.category || "").toLowerCase();
-    const title = (template?.title || "").toLowerCase();
-    if (
-      category.includes("infographic") ||
-      title.includes("infographic") ||
-      category.includes("diagram") ||
-      title.includes("diagram")
-    ) {
-      const idSeed = String(template?.id || "").charCodeAt(0) || 0;
-      return idSeed % 2 === 0 ? 0 : 3;
-    }
-    const idSeed = String(template?.id || template?.title || "deck")
-      .split("")
-      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const mod = idSeed % 3;
-    if (mod === 0) return 9;
-    if (mod === 1) return 6;
-    return 6;
-  };
-
-  // Catalog State
-  const { templates: allTemplates, loading } = useStudioStore();
-
-  // Filtering & Continuous Scroll State
-  const [visibleCount, setVisibleCount] = useState<number>(24);
-  const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
-  const [tierFilter, setTierFilter] = useState<"all" | "free" | "premium">("all");
-  const [isBrowsingActive, setIsBrowsingActive] = useState<boolean>(false);
-
-  const isFilterActive =
-    isBrowsingActive ||
-    isSearchFocused ||
-    searchQuery.trim().length > 0 ||
-    activeSidebarCategory !== "all" ||
-    tierFilter !== "all";
   const isSearching = isFilterActive;
-  const [dockOffset, setDockOffset] = useState<number>(505);
-
-  const resetToResting = () => {
-    setIsBrowsingActive(false);
-    setIsSearchFocused(false);
-    setSearchQuery("");
-    setActiveSidebarCategory("all");
-    setTierFilter("all");
-    setVisibleCount(24);
-  };
-
-  // Measure exact resting distance so templates sheet rises up and docks seamlessly below the better presentation slogan
-  useEffect(() => {
-    const calculateOffset = () => {
-      const heroEl = heroRef.current;
-      const sloganEl = document.getElementById("hero-slogan-note");
-      if (heroEl && sloganEl) {
-        const heroRect = heroEl.getBoundingClientRect();
-        const sloganRect = sloganEl.getBoundingClientRect();
-        
-        let targetOffset: number;
-        if (isFilterActive) {
-          // Banners & headline are already collapsed: slogan is at its elevated position.
-          // We dock #templates with ~65px breathing room below the slogan:
-          targetOffset = heroRect.bottom - (sloganRect.bottom + 65);
-        } else {
-          // Resting state: banners (~135px) and headline (~45px) are expanded (~175px total).
-          // When filter activates, slogan will lift ~175px higher:
-          const restingDiff = heroRect.bottom - sloganRect.bottom;
-          targetOffset = restingDiff + 175;
-        }
-
-        // Safety clamp: offset should stay between 340px and 525px to prevent extreme overlap or gap
-        const safeOffset = Math.max(340, Math.min(525, Math.round(targetOffset)));
-        setDockOffset(safeOffset);
-      }
-    };
-
-    calculateOffset();
-    const timer = setTimeout(calculateOffset, 200);
-    window.addEventListener("resize", calculateOffset);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", calculateOffset);
-    };
-  }, [isFilterActive]);
-
-  // Outside-Click Dismissal
-  // When user clicks anywhere outside the search card and templates sheet, dismiss search focus, query, and filters back to resting state
-  useEffect(() => {
-    if (!isFilterActive) return;
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target) return;
-      const cardEl = document.getElementById("hero-search-card");
-      const templatesEl = document.getElementById("templates");
-      if (cardEl?.contains(target) || templatesEl?.contains(target)) return;
-      resetToResting();
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, [isFilterActive]);
-  const [categoriesList, setCategoriesList] = useState<string[]>([
-    "Pitch Decks",
-    "Business",
-    "Infographics",
-    "Marketing",
-    "Corporate",
-    "Finance",
-    "Strategy"
-  ]);
-  const [customTestimonials, setCustomTestimonials] = useState<any[] | null>(null);
-  const [heroConfig, setHeroConfig] = useState<any>({
-    badge: "PRESENTATIONS FOR A BRIGHTER TOMORROW",
-    title: "Ideas Deserve\nBetter Slides.",
-    subtitle: "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.",
-  });
-  const [curatedTrendingIds, setCuratedTrendingIds] = useState<string[]>([]);
-  const [homeBanner1, setHomeBanner1] = useState<any>({
-    title: "Create Presentations That Make an Impact",
-    subtitle: "Turn your ideas into amazing slides.",
-    ctaText: "Get Started",
-    ctaLink: "/ordernow",
-  });
-  const [homeBanner2, setHomeBanner2] = useState<any>({
-    title: "Get Unlimited Downloads",
-    subtitle: "Access all templates. No limits.",
-    ctaText: "Explore Now",
-    ctaLink: "#templates",
-  });
-
-  // Quick jump on hash change or mount
-  useEffect(() => {
-    if (window.location.hash === "#templates") {
-      setTimeout(() => {
-        document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" });
-      }, 150);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Fetch dynamic template categories
-    d1
-      .from("site_config")
-      .select("*")
-      .eq("key", "template_categories")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
-          setCategoriesList(data.value);
-        }
-      });
-
-    // Fetch testimonials configuration
-    d1
-      .from("site_config")
-      .select("*")
-      .eq("key", "testimonials")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value && Array.isArray(data.value)) {
-          setCustomTestimonials(data.value);
-        }
-      });
-
-    // Fetch dynamic hero, promotional banners, and curated trending templates
-    d1
-      .from("site_config")
-      .select("*")
-      .in("key", ["hero", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
-      .then(({ data }) => {
-        if (data && Array.isArray(data)) {
-          data.forEach((row: any) => {
-            if (row.key === "hero" && row.value) {
-              setHeroConfig((prev: any) => ({ ...prev, ...row.value }));
-            }
-            if (row.key === "home_banner_1" && row.value) {
-              setHomeBanner1((prev: any) => ({ ...prev, ...row.value }));
-            }
-            if (row.key === "home_banner_2" && row.value) {
-              setHomeBanner2((prev: any) => ({ ...prev, ...row.value }));
-            }
-            if ((row.key === "trending_templates" || row.key === "featured_templates") && row.value) {
-              const raw = row.value;
-              const ids = Array.isArray(raw) ? raw : (Array.isArray(raw?.ids) ? raw.ids : []);
-              if (Array.isArray(ids) && ids.length > 0) {
-                setCuratedTrendingIds(ids.map(String));
-              }
-            }
-          });
-        }
-      });
-  }, []);
+  const { templates: allTemplates, loading } = useStudioStore();
 
   const scrollToTemplates = () => {
     const el = document.getElementById("templates");
@@ -270,7 +68,6 @@ export default function Home() {
       el.scrollIntoView({ behavior: "smooth" });
     }
   };
-
 
   // Dynamic category pills combined from site_config and allTemplates
   const allCategoryPills = useMemo(() => {
@@ -286,7 +83,6 @@ export default function Home() {
   // Filter & Sort Catalog for Continuous Scrolling Feed
   const filteredCatalog = useMemo(() => {
     const list = allTemplates.filter((item) => {
-      // 1. Sidebar / Top Category match
       let matchesSidebarCategory = true;
       if (activeSidebarCategory === "trending") {
         if (curatedTrendingIds.length > 0) {
@@ -302,14 +98,12 @@ export default function Home() {
           item.category?.toLowerCase() === activeSidebarCategory.toLowerCase();
       }
 
-      // 2. Search Query match
       const matchesSearch =
         !searchQuery.trim() ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // 3. Tier Filter match
       const matchesTier =
         tierFilter === "all" ||
         (tierFilter === "free" && !item.is_premium) ||
@@ -318,7 +112,6 @@ export default function Home() {
       return matchesSidebarCategory && matchesSearch && matchesTier;
     });
 
-    // When on "all", prioritize curated trending templates at the top
     if (activeSidebarCategory === "all" && curatedTrendingIds.length > 0) {
       return [...list].sort((a, b) => {
         const aTrending =
@@ -353,120 +146,15 @@ export default function Home() {
   const freeCount = useMemo(() => allTemplates.filter((t) => !t.is_premium).length, [allTemplates]);
   const premiumCount = useMemo(() => allTemplates.filter((t) => t.is_premium).length, [allTemplates]);
 
-  const defaultTestimonials = [
-    {
-      quote: "SlideBee's templates saved us hours of work. The quality, structure, and typography are exceptional!",
-      name: "Rohan Mehta",
-      role: "Founder, FinEdge",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-      rating: 5,
-    },
-    {
-      quote: "The design team understood our brand perfectly and delivered a board-ready deck within 24 hours.",
-      name: "Priya Sharma",
-      role: "Marketing Head, Nexora",
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=80",
-      rating: 5,
-    },
-    {
-      quote: "Our investor deck looked stunning and helped us raise our $4.5M seed round effortlessly!",
-      name: "Arjun Patel",
-      role: "CEO, InnovateX",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-      rating: 5,
-    }
-  ];
-
-  const testimonials = (customTestimonials && customTestimonials.length > 0) ? customTestimonials : defaultTestimonials;
-
-  // Minimalist SlideEgg-style Showcase Card with Swallowtail Ribbons
-  const renderShowcaseCard = (template: any) => {
-    const miniCount = getMiniSlideCount(template);
-    const previewSlides = miniCount > 0 ? getPreviewSlides(template, miniCount) : [];
-
-    return (
-      <div
-        key={template.id}
-        onClick={() => navigate(`/template/${template.id}`)}
-        data-bee-state="card"
-        className="group flex flex-col cursor-pointer transition-all duration-300"
-      >
-        {/* Main Card Canvas with Subtle Border & Soft Shadow */}
-        <div className="relative bg-[#FAFAFA] group-hover:bg-white border border-[#111111]/10 group-hover:border-[#FCBF14] rounded-2xl p-2 sm:p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] group-hover:shadow-xl transition-all duration-300 overflow-hidden">
-          
-          {/* Swallowtail Ribbon Tag: Free badge for free community decks */}
-          {!template.is_premium && (
-            <div
-              style={{
-                clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
-              }}
-              className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading"
-            >
-              Free
-            </div>
-          )}
-
-          {/* Main Top Slide Cover Preview */}
-          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-xs">
-            <img
-              src={template.image_url || template.thumbnail_url || previewSlides[0] || "/portfolio/case_study_a_1.png"}
-              alt={template.title}
-              className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
-              loading="lazy"
-            />
-
-            {/* Subtle Hover Lens Overlay */}
-            <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-              <span className="bg-[#111111]/90 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-extrabold px-3 py-1 rounded-full shadow-md flex items-center gap-1 scale-95 group-hover:scale-100 transition-transform">
-                <Eye size={12} className="text-[#FCBF14]" /> View Deck
-              </span>
-            </div>
-          </div>
-
-          {/* Multi-Slide Grid Mini Previews (Matching SlideEgg 3-column subgrid) */}
-          {miniCount > 0 && previewSlides.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 sm:gap-1.5 mt-1.5">
-              {previewSlides.map((slideUrl: string, idx: number) => (
-                <div
-                  key={idx}
-                  className="relative aspect-video rounded-[5px] overflow-hidden bg-white border border-[#111111]/6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                >
-                  <img
-                    src={slideUrl}
-                    alt={`${template.title} slide ${idx + 1}`}
-                    className="w-full h-full object-cover object-center"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-        </div>
-
-        {/* Minimalist Title Below Card */}
-        <div className="mt-2 px-1">
-          <h3 className="font-heading font-extrabold text-xs sm:text-[13px] text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug">
-            {template.title}
-          </h3>
-        </div>
-
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
-      
-      {/* ========================================================================= */}
-      {/* 1 & 2. UNIFIED HERO STAGE                                                 */}
-      {/* ========================================================================= */}
+      {/* 1 & 2. UNIFIED HERO STAGE */}
       <section
         id="hero-stage"
         ref={heroRef}
         className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-14 transition-all duration-300"
       >
-        {/* Total Hero Section Background Video: 3D Isometric Animated Cubes with Parallax */}
+        {/* Total Hero Section Background Video */}
         <motion.div
           style={{ scale: videoScale, opacity: videoOpacity }}
           className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
@@ -480,7 +168,6 @@ export default function Home() {
             playsInline
             className="w-full h-full min-w-full min-h-full object-cover object-center select-none"
           />
-          {/* Subtle warm ambient tint without any dark black underlayer or haze */}
           <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
         </motion.div>
 
@@ -492,678 +179,62 @@ export default function Home() {
           style={{ y: heroCardY, opacity: heroCardOpacity }}
           className="w-[92%] max-w-[1760px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
         >
-          
-          {/* Top Split Promotion Banners (Center aligned with central card) */}
-          <motion.div
-            animate={{
-              height: isFilterActive ? 0 : "auto",
-              opacity: isFilterActive ? 0 : 1,
-              marginBottom: isFilterActive ? 0 : 20,
-            }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden w-full max-w-5xl lg:max-w-6xl mx-auto relative z-20"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 pb-1">
-            
-            {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
-            {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (
-              <Link
-                to={homeBanner1.ctaLink}
-                data-bee-state="quote"
-                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_30px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
-              >
-                {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
-                <div className="absolute -bottom-10 -left-10 w-52 h-52 pointer-events-none opacity-35">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 120 C 60 80, 120 160, 200 110 L 200 200 L 0 200 Z" fill="#F09B0A" />
-                  </svg>
-                </div>
+          {/* Top Split Promotion Banners */}
+          <HomeHeroBanners
+            isFilterActive={isFilterActive}
+            homeBanner1={homeBanner1}
+            homeBanner2={homeBanner2}
+            scrollToTemplates={scrollToTemplates}
+          />
 
-                {/* Organic Fluid Texture Wave 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-48 h-48 pointer-events-none opacity-25">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 140 C 70 110, 130 180, 200 130 L 200 200 L 0 200 Z" fill="#E08B00" />
-                  </svg>
-                </div>
-
-                <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
-                  {/* White Circle Badge with Radiating Spark Lines */}
-                  <div className="relative shrink-0">
-                    <svg className="absolute -top-2 -right-2 w-5 h-5 pointer-events-none" viewBox="0 0 30 30" fill="none">
-                      <path d="M15 4V11" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                      <path d="M6 8L11 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                      <path d="M24 8L19 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                    </svg>
-
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FFFDF5] shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center">
-                      <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] fill-[#111111]" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-[#111111] leading-tight">
-                      {homeBanner1.title || "Create Presentations That Make an Impact"}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#111111]/85 font-medium mt-0.5">
-                      {homeBanner1.subtitle || "Turn your ideas into amazing slides."}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={scrollToTemplates}
-                data-bee-state="quote"
-                className="group bg-gradient-to-r from-[#FFC72C] via-[#FFD034] to-[#FFAE00] text-[#111111] rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_30px_rgba(252,191,20,0.22)] border border-[#e0a810] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
-              >
-                {/* Organic Fluid Texture Wave 1 (Bottom Left) */}
-                <div className="absolute -bottom-10 -left-10 w-52 h-52 pointer-events-none opacity-35">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 120 C 60 80, 120 160, 200 110 L 200 200 L 0 200 Z" fill="#F09B0A" />
-                  </svg>
-                </div>
-
-                {/* Organic Fluid Texture Wave 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-48 h-48 pointer-events-none opacity-25">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 140 C 70 110, 130 180, 200 130 L 200 200 L 0 200 Z" fill="#E08B00" />
-                  </svg>
-                </div>
-
-                <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
-                  {/* White Circle Badge with Radiating Spark Lines */}
-                  <div className="relative shrink-0">
-                    <svg className="absolute -top-2 -right-2 w-5 h-5 pointer-events-none" viewBox="0 0 30 30" fill="none">
-                      <path d="M15 4V11" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                      <path d="M6 8L11 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                      <path d="M24 8L19 13" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                    </svg>
-
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FFFDF5] shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center">
-                      <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] fill-[#111111]" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-[#111111] leading-tight">
-                      {homeBanner1.title || "Create Presentations That Make an Impact"}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#111111]/85 font-medium mt-0.5">
-                      {homeBanner1.subtitle || "Turn your ideas into amazing slides."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Banner 2: Obsidian Gold - Get Unlimited Downloads */}
-            {homeBanner2.ctaLink && homeBanner2.ctaLink !== "#templates" && !homeBanner2.ctaLink.startsWith("#") ? (
-              <Link
-                to={homeBanner2.ctaLink}
-                className="group bg-[#161616]/92 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_40px_rgba(252,191,20,0.18)] border border-[#FCBF14]/35 hover:border-[#FCBF14] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
-              >
-                {/* Organic Flowing Contour Texture 1 (Top Left) */}
-                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-30">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#242424" />
-                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#2a2a2a" />
-                  </svg>
-                </div>
-
-                {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-25">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#262626" />
-                  </svg>
-                </div>
-
-                <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
-                  {/* Yellow Circle Badge with Infinity Icon */}
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FCBF14] shadow-[0_6px_22px_rgba(252,191,20,0.35)] flex items-center justify-center shrink-0">
-                    <InfinityIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] stroke-[2.8]" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
-                      {homeBanner2.title || "Get Unlimited Downloads"}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#D4D4D4] font-medium mt-0.5">
-                      {homeBanner2.subtitle || "Access all templates. No limits."}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={scrollToTemplates}
-                className="group bg-[#161616]/92 backdrop-blur-md text-white rounded-[24px] sm:rounded-[28px] p-4 sm:p-5 lg:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_40px_rgba(252,191,20,0.18)] border border-[#FCBF14]/35 hover:border-[#FCBF14] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden min-h-[110px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
-              >
-                {/* Organic Flowing Contour Texture 1 (Top Left) */}
-                <div className="absolute -top-10 -left-10 w-56 h-56 pointer-events-none opacity-30">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M0 0 L 160 0 C 130 60, 80 120, 0 160 Z" fill="#242424" />
-                    <path d="M0 0 L 120 0 C 90 50, 60 90, 0 120 Z" fill="#2a2a2a" />
-                  </svg>
-                </div>
-
-                {/* Organic Flowing Contour Texture 2 (Bottom Right) */}
-                <div className="absolute -bottom-8 -right-8 w-52 h-52 pointer-events-none opacity-25">
-                  <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-                    <path d="M200 80 C 140 120, 80 140, 40 200 L 200 200 Z" fill="#262626" />
-                  </svg>
-                </div>
-
-                <div className="flex items-center gap-3.5 sm:gap-4 relative z-10">
-                  {/* Yellow Circle Badge with Infinity Icon */}
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#FCBF14] shadow-[0_6px_22px_rgba(252,191,20,0.35)] flex items-center justify-center shrink-0">
-                    <InfinityIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#111111] stroke-[2.8]" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-white leading-tight">
-                      {homeBanner2.title || "Get Unlimited Downloads"}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#D4D4D4] font-medium mt-0.5">
-                      {homeBanner2.subtitle || "Access all templates. No limits."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            </div>
-          </motion.div>
-          
           {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
-          <motion.div
-            id="hero-search-card"
-            layout
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className={`w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
-              isSearching ? "p-4 sm:p-5" : "p-5 sm:p-7 lg:p-8"
-            }`}
-          >
-
-            {/* Row 1: Section Heading & Summary */}
-            <motion.div
-              animate={{
-                opacity: isSearching ? 0 : 1,
-                height: isSearching ? 0 : "auto",
-                marginBottom: isSearching ? 0 : 16,
-              }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="pt-1">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs font-bold text-[#726F6D]">
-                    Showing {displayedContinuousTemplates.length} of {filteredCatalog.length} templates
-                  </span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
-                  {heroConfig?.headline || "Explore Executive Presentation Templates"}
-                </h2>
-              </div>
-            </motion.div>
-
-            {/* Row 2: Live Search Input & Access Tier Toggles Strip */}
-            <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-3.5 transition-all duration-300">
-              
-              {/* Live Search Input - Kinetic Expansion on Focus */}
-              <motion.div
-                layout
-                transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                className={`relative flex-1 transition-all duration-300 ${
-                  isSearching ? "md:flex-[2.8]" : "md:flex-1"
-                }`}
-              >
-                <Search
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 pointer-events-none ${
-                    isSearchFocused ? "text-[#FCBF14]" : "text-[#726F6D]"
-                  }`}
-                />
-                <input
-                  type="text"
-                  placeholder={
-                    isSearchFocused
-                      ? "Search pitch decks, business, frameworks, corporate, finance..."
-                      : "Search templates, pitch decks, business frameworks..."
-                  }
-                  value={searchQuery}
-                  onFocus={() => {
-                    setIsSearchFocused(true);
-                    setIsBrowsingActive(true);
-                    if (window.scrollY > 40) {
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }
-                  }}
-                  onBlur={() => {
-                    setIsSearchFocused(false);
-                  }}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setIsBrowsingActive(true);
-                    setVisibleCount(24);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                    if (e.key === "Escape") {
-                      resetToResting();
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
-                    isSearchFocused
-                      ? "bg-white border-2 border-[#FCBF14] shadow-[0_0_0_4px_rgba(252,191,20,0.22)]"
-                      : "bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] border border-[#111111]/12"
-                  }`}
-                />
-                <AnimatePresence>
-                  {searchQuery && (
-                    <motion.button
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 450, damping: 25 }}
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setVisibleCount(24);
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold bg-[#111111]/8 hover:bg-[#111111]/15 text-[#111111] px-2.5 py-1 rounded-md cursor-pointer transition-colors"
-                    >
-                      Clear ×
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Access Tier Filter Pills */}
-              <motion.div
-                layout
-                transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                className={`flex items-center bg-[#F4EEDC] p-1 rounded-xl border border-[#111111]/8 self-start md:self-auto shrink-0 transition-all duration-300 ${
-                  isSearchFocused ? "md:opacity-95 md:scale-[0.98] origin-right" : "md:opacity-100 md:scale-100"
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    setIsBrowsingActive(true);
-                    setTierFilter("all");
-                    setVisibleCount(24);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    tierFilter === "all"
-                      ? "bg-[#111111] text-white shadow-xs font-black"
-                      : "text-[#726F6D] hover:text-[#111111]"
-                  }`}
-                >
-                  All ({allTemplates.length})
-                </button>
-                <button
-                  onClick={() => {
-                    setIsBrowsingActive(true);
-                    setTierFilter("free");
-                    setVisibleCount(24);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    tierFilter === "free"
-                      ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
-                      : "text-[#726F6D] hover:text-[#111111]"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
-                  Free ({freeCount})
-                </button>
-                <button
-                  onClick={() => {
-                    setIsBrowsingActive(true);
-                    setTierFilter("premium");
-                    setVisibleCount(24);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    tierFilter === "premium"
-                      ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
-                      : "text-[#726F6D] hover:text-[#111111]"
-                  }`}
-                >
-                  <Crown size={12} className={tierFilter === "premium" ? "text-[#111111] fill-[#111111]" : "text-amber-600"} />
-                  Premium ({premiumCount})
-                </button>
-              </motion.div>
-
-            </div>
-
-            {/* Row 3: Multi-Line Category Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 py-1">
-              {/* All Templates */}
-              <button
-                onClick={() => {
-                  setIsBrowsingActive(true);
-                  setActiveSidebarCategory("all");
-                  setSearchQuery("");
-                  setVisibleCount(24);
-                  if (window.scrollY > 40) {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                }}
-                className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeSidebarCategory === "all"
-                    ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
-                    : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
-                }`}
-              >
-                <Sparkles size={13} className={activeSidebarCategory === "all" ? "text-[#FCBF14]" : "text-[#726F6D]"} />
-                <span>All Templates</span>
-                <span className="text-[10px] font-mono opacity-60">({allTemplates.length})</span>
-              </button>
-
-              {/* Trending */}
-              <button
-                onClick={() => {
-                  setIsBrowsingActive(true);
-                  setActiveSidebarCategory("trending");
-                  setSearchQuery("");
-                  setVisibleCount(24);
-                  if (window.scrollY > 40) {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                }}
-                className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeSidebarCategory === "trending"
-                    ? "bg-[#FCBF14] text-[#111111] shadow-md scale-102"
-                    : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
-                }`}
-              >
-                <Flame size={13} className={activeSidebarCategory === "trending" ? "text-[#111111] fill-[#111111]" : "text-amber-500 fill-amber-500"} />
-                <span>Trending</span>
-              </button>
-
-              {/* Dynamic categories */}
-              {allCategoryPills.map((cat) => {
-                const isCatActive = activeSidebarCategory.toLowerCase() === cat.toLowerCase();
-                const count = allTemplates.filter((t: any) => t.category?.toLowerCase() === cat.toLowerCase()).length;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setIsBrowsingActive(true);
-                      setActiveSidebarCategory(cat);
-                      setSearchQuery("");
-                      setVisibleCount(24);
-                      if (window.scrollY > 40) {
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }
-                    }}
-                    className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isCatActive
-                        ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
-                        : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
-                    }`}
-                  >
-                    <span>{cat}</span>
-                    {count > 0 && <span className="text-[10px] font-mono opacity-60">({count})</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-          </motion.div>
-
-          {/* Playful Note Beneath Hero Stage */}
-          <div id="hero-slogan-note" className="mt-4 sm:mt-5 text-center">
-            <span className="inline-block font-heading font-black italic text-sm sm:text-lg lg:text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] tracking-tight relative">
-              {heroConfig.slogan || "Better Presentations Brighter Ideas"}
-              <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#FCBF14]" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10, 100 3" stroke="#FCBF14" strokeWidth="3" fill="none" strokeLinecap="round" />
-              </svg>
-            </span>
-          </div>
-
+          <HomeSearchDock
+            isSearching={isSearching}
+            isFilterActive={isFilterActive}
+            isSearchFocused={isSearchFocused}
+            setIsSearchFocused={setIsSearchFocused}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            tierFilter={tierFilter}
+            setTierFilter={setTierFilter}
+            activeSidebarCategory={activeSidebarCategory}
+            setActiveSidebarCategory={setActiveSidebarCategory}
+            setIsBrowsingActive={setIsBrowsingActive}
+            setVisibleCount={setVisibleCount}
+            resetToResting={resetToResting}
+            allTemplates={allTemplates}
+            freeCount={freeCount}
+            premiumCount={premiumCount}
+            filteredCatalog={filteredCatalog}
+            displayedCount={displayedContinuousTemplates.length}
+            allCategoryPills={allCategoryPills}
+            heroConfig={heroConfig}
+          />
         </motion.div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 3. CONTINUOUS TEMPLATES SECTION (SlideEgg 6-Column Magnet Masonry)         */}
-      {/* ========================================================================= */}
-      <motion.section
-        id="templates"
-        ref={templatesRef}
-        style={{
-          y: isFilterActive ? 0 : templatesSlideUpY,
-        }}
-        animate={{
-          marginTop: isSearching ? -dockOffset : -32,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 230,
-          damping: 26,
-          mass: 0.85,
-        }}
-        className={`scroll-mt-16 relative z-20 bg-[#FFF9E8] rounded-t-[36px] sm:rounded-t-[56px] border-t-2 border-[#FCBF14]/50 shadow-[0_-35px_80px_rgba(0,0,0,0.35)] ${
-          isFilterActive ? "pt-3 sm:pt-4" : "pt-6 sm:pt-8"
-        } pb-20`}
-      >
-        <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
+      {/* 3. CONTINUOUS TEMPLATES SECTION */}
+      <HomeTemplateGrid
+        templatesRef={templatesRef}
+        isFilterActive={isFilterActive}
+        templatesSlideUpY={templatesSlideUpY}
+        isSearching={isSearching}
+        dockOffset={dockOffset}
+        loading={loading}
+        filteredCatalog={filteredCatalog}
+        displayedTemplates={displayedContinuousTemplates}
+        hasMoreTemplates={hasMoreTemplates}
+        handleLoadMore={handleLoadMore}
+        resetToResting={resetToResting}
+        searchQuery={searchQuery}
+        visibleCount={visibleCount}
+      />
 
-          {/* Catalog Content (6-Column Magnet Masonry or Loading / Empty States) */}
-          {loading ? (
-            <div className="py-24 text-center">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-xs font-extrabold text-[#726F6D] uppercase tracking-wider">
-                Loading Continuous Catalog...
-              </p>
-            </div>
-          ) : filteredCatalog.length === 0 ? (
-            <div className="bg-white border-2 border-primary/30 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm">
-              <FileText size={40} className="mx-auto text-primary-amber mb-3" />
-              <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-2">
-                No Templates Found
-              </h3>
-              <p className="text-xs text-[#726F6D] mb-6 font-medium">
-                No templates match "{searchQuery}" under the current filters.
-              </p>
-              <button
-                onClick={resetToResting}
-                className="hex-pill bg-primary text-[#111111] font-black px-6 py-2.5 text-xs cursor-pointer"
-              >
-                Reset All Filters
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* 6-Column Structured Grid Layout with Live Pop-Up Physics */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4 items-start">
-                <AnimatePresence mode="popLayout">
-                  {displayedContinuousTemplates.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.88, y: 16 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.88, y: 16 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 24,
-                        mass: 0.8,
-                      }}
-                      className="w-full"
-                    >
-                      {renderShowcaseCard(item)}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+      {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP */}
+      <HomeCustomServiceStrip />
 
-              {/* Continuous / Endless Load More Button */}
-              {hasMoreTemplates && (
-                <div className="text-center pt-10 sm:pt-12">
-                  <button
-                    onClick={handleLoadMore}
-                    className="hex-pill bg-white hover:bg-primary/10 border-2 border-primary text-[#111111] font-black text-xs sm:text-sm px-8 py-3.5 shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 cursor-pointer hover:scale-102"
-                  >
-                    <span>Load More Templates ({filteredCatalog.length - visibleCount} Remaining)</span>
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-        </div>
-      </motion.section>
-
-      {/* ========================================================================= */}
-      {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP                                */}
-      {/* ========================================================================= */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 bg-[#FFF9E8] py-12 border-t-2 border-primary/20"
-      >
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 shadow-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-              <div>
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-heading font-extrabold text-[#111111] mb-1">
-                  Need Something Custom?
-                </h2>
-                <p className="text-[#726F6D] text-xs sm:text-sm font-medium">
-                  Our presentation specialists redesign, storyboard, and animate executive slides in 24h–48h.
-                </p>
-              </div>
-              <MagneticButton>
-                <Link
-                  to="/ordernow"
-                  className="rounded-full text-[#111111] font-black px-7 py-3 text-xs sm:text-sm gap-2 shrink-0 bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow shadow-md shadow-[#FCBF14]/25 hover:scale-105 transition-all flex items-center"
-                >
-                  Request Custom Design <ArrowRight size={15} />
-                </Link>
-              </MagneticButton>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Paintbrush className="w-5 h-5 text-primary-amber" />
-                </div>
-                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                  Presentation Redesign
-                </h3>
-                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                  Transform cluttered slides into clear, modern, and impactful presentations.
-                </p>
-              </div>
-
-              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-5 h-5 text-primary-amber" />
-                </div>
-                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                  Pitch Deck Design
-                </h3>
-                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                  Investor-ready pitch decks that tell your story and secure attention.
-                </p>
-              </div>
-
-              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-5 h-5 text-primary-amber" />
-                </div>
-                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                  Data Visualization
-                </h3>
-                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                  Turn complex data into visual stories that drive understanding.
-                </p>
-              </div>
-
-              <div className="hex-card bg-[#FFF9E8]/80 border-2 border-primary/30 p-5 flex flex-col items-center text-center group hover:border-primary hover:shadow-md transition-all">
-                <div className="hex-pill w-12 h-12 bg-primary/20 border border-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <LayoutGrid className="w-5 h-5 text-primary-amber" />
-                </div>
-                <h3 className="font-heading font-extrabold text-sm text-[#111111] mb-1">
-                  Branded Templates
-                </h3>
-                <p className="text-[#726F6D] text-[11px] font-medium leading-relaxed">
-                  Custom templates that reflect your brand and maintain consistency.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* ========================================================================= */}
-      {/* 5. CLIENT TESTIMONIALS                                                    */}
-      {/* ========================================================================= */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 bg-[#FFF9E8] pt-12 pb-20"
-      >
-        <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
-              Client Reviews
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111]">
-              Trusted by Founders & Executives
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1580px] w-full mx-auto">
-            {testimonials.map((t, idx) => (
-              <div
-                key={idx}
-                className="hex-card bg-[#FFF9E8] border-2 border-primary/35 p-5 flex flex-col justify-between shadow-sm"
-              >
-                <div>
-                  <div className="flex items-center gap-1 text-primary mb-2.5">
-                    {[...Array(t.rating)].map((_, i) => (
-                      <Star key={i} size={13} fill="#FCBF14" />
-                    ))}
-                  </div>
-                  <p className="text-[#111111] text-xs font-medium leading-relaxed mb-4 italic">
-                    "{t.quote}"
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 pt-3 border-t border-primary/20">
-                  <img
-                    src={t.avatar}
-                    alt={t.name}
-                    className="hex-pill w-8 h-8 object-cover border border-primary/30"
-                  />
-                  <div>
-                    <h5 className="font-heading font-extrabold text-xs text-[#111111]">
-                      {t.name}
-                    </h5>
-                    <p className="text-[10px] text-[#726F6D] font-medium">
-                      {t.role}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </motion.section>
-
+      {/* 5. CLIENT TESTIMONIALS */}
+      <HomeTestimonialsSection testimonials={testimonials} />
     </div>
   );
 }
