@@ -59,7 +59,7 @@ export const SlideBeeSelect: React.FC<SlideBeeSelectProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full flex items-center justify-between bg-[#FFF9E8] border-2 transition-all duration-200 rounded-2xl px-4 py-3.5 text-left text-xs sm:text-sm font-bold text-[#111111] shadow-sm cursor-pointer select-none ${
+        className={`w-full flex items-center justify-between min-h-[48px] bg-[#FFF9E8] border-2 transition-all duration-200 rounded-2xl px-4 py-3 text-left text-base sm:text-sm font-bold text-[#111111] shadow-sm cursor-pointer select-none ${
           isOpen
             ? "border-primary ring-2 ring-primary/30 shadow-md"
             : "border-primary/40 hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -95,7 +95,7 @@ export const SlideBeeSelect: React.FC<SlideBeeSelectProps> = ({
                     onChange(option);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                  className={`w-full text-left px-4 py-3 min-h-[44px] text-sm flex items-center justify-between transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-primary text-[#111111] font-black"
                       : "text-[#111111] font-semibold hover:bg-primary/20"

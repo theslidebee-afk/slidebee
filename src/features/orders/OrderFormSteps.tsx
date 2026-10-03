@@ -184,7 +184,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 text-left">
               Full Name *
             </label>
             <input
@@ -193,12 +193,12 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               placeholder="e.g. Vikram Singhania"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 text-left">
               Work Email *
             </label>
             <input
@@ -207,14 +207,14 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               placeholder="vikram@company.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 text-left">
               Company / Organization
             </label>
             <input
@@ -222,12 +222,12 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               placeholder="e.g. Nexora Ventures"
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 text-left">
               Phone / WhatsApp Number
             </label>
             <input
@@ -235,7 +235,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               placeholder="+91 98765 43210"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -243,22 +243,22 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
 
       {/* Guarantees & Submit Button */}
       <div className="bg-white border-2 border-primary/40 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-1.5 text-xs text-[#726F6D] font-medium">
+        <div className="space-y-1.5 text-xs text-[#726F6D] font-medium w-full md:w-auto text-left">
           <div className="flex items-center gap-2">
-            <Shield size={14} className="text-primary-amber" /> 100% Confidential & NDA Protected
+            <Shield size={14} className="text-primary-amber shrink-0" /> 100% Confidential & NDA Protected
           </div>
           <div className="flex items-center gap-2">
-            <Clock size={14} className="text-primary-amber" /> Guaranteed 2-Hour Response Time
+            <Clock size={14} className="text-primary-amber shrink-0" /> Guaranteed 2-Hour Response Time
           </div>
           <div className="flex items-center gap-2">
-            <Layers size={14} className="text-primary-amber" /> {isEcommerce ? "Full Source Code Ownership & Edge Deployment" : "Unlimited Revisions & Editable Source Files"}
+            <Layers size={14} className="text-primary-amber shrink-0" /> {isEcommerce ? "Full Source Code Ownership & Edge Deployment" : "Unlimited Revisions & Editable Source Files"}
           </div>
         </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full md:w-auto bg-primary hover:bg-primary-dark text-[#111111] font-black px-10 py-4 rounded-full text-sm sm:text-base shadow-xl shadow-primary/30 hover:scale-105 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-70 cursor-pointer"
+          className="w-full md:w-auto min-h-[48px] bg-primary hover:bg-primary-dark text-[#111111] font-black px-10 py-4 rounded-full text-sm sm:text-base shadow-xl shadow-primary/30 hover:scale-105 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-70 cursor-pointer"
         >
           {isSubmitting ? (
             <>

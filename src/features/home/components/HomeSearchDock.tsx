@@ -126,7 +126,7 @@ export function HomeSearchDock({
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
+              className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-base sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
                 isSearchFocused
                   ? "bg-white border-2 border-[#FCBF14] shadow-[0_0_0_4px_rgba(252,191,20,0.22)]"
                   : "bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] border border-[#111111]/12"
@@ -166,7 +166,7 @@ export function HomeSearchDock({
                 setTierFilter("all");
                 setVisibleCount(24);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
                 tierFilter === "all"
                   ? "bg-[#111111] text-white shadow-xs font-black"
                   : "text-[#726F6D] hover:text-[#111111]"
@@ -180,7 +180,7 @@ export function HomeSearchDock({
                 setTierFilter("free");
                 setVisibleCount(24);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 tierFilter === "free"
                   ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
                   : "text-[#726F6D] hover:text-[#111111]"
@@ -195,7 +195,7 @@ export function HomeSearchDock({
                 setTierFilter("premium");
                 setVisibleCount(24);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 tierFilter === "premium"
                   ? "bg-[#FCBF14] text-[#111111] shadow-xs font-black"
                   : "text-[#726F6D] hover:text-[#111111]"
@@ -220,7 +220,7 @@ export function HomeSearchDock({
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
             }}
-            className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`hex-pill px-4 py-2.5 min-h-[44px] rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeSidebarCategory === "all"
                 ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
                 : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
@@ -246,7 +246,7 @@ export function HomeSearchDock({
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
             }}
-            className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`hex-pill px-4 py-2.5 min-h-[44px] rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeSidebarCategory === "trending"
                 ? "bg-[#FCBF14] text-[#111111] shadow-md scale-102"
                 : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"
@@ -276,7 +276,7 @@ export function HomeSearchDock({
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`hex-pill px-4 py-2 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`hex-pill px-4 py-2.5 min-h-[44px] rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   isCatActive
                     ? "bg-[#111111] text-[#FCBF14] shadow-md scale-102"
                     : "bg-white/80 hover:bg-white text-[#555250] hover:text-[#111111] border border-[#111111]/10"

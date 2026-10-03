@@ -82,8 +82,8 @@ export function HomeHeroBanners({
             </div>
             
             {homeBanner1.ctaText && (
-              <div className="mt-3 sm:mt-0 shrink-0">
-                <span className="inline-flex items-center justify-center bg-[#111111] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full shadow-md group-hover:bg-[#222222] transition-colors whitespace-nowrap">
+              <div className="mt-3 sm:mt-0 shrink-0 w-full sm:w-auto">
+                <span className="inline-flex items-center justify-center bg-[#111111] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 rounded-full shadow-md group-hover:bg-[#222222] transition-colors whitespace-nowrap w-full sm:w-auto text-center">
                   {homeBanner1.ctaText}
                 </span>
               </div>
@@ -136,8 +136,8 @@ export function HomeHeroBanners({
             </div>
             
             {homeBanner1.ctaText && (
-              <div className="mt-3 sm:mt-0 shrink-0">
-                <span className="inline-flex items-center justify-center bg-[#111111] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full shadow-md group-hover:bg-[#222222] transition-colors whitespace-nowrap">
+              <div className="mt-3 sm:mt-0 shrink-0 w-full sm:w-auto">
+                <span className="inline-flex items-center justify-center bg-[#111111] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 rounded-full shadow-md group-hover:bg-[#222222] transition-colors whitespace-nowrap w-full sm:w-auto text-center">
                   {homeBanner1.ctaText}
                 </span>
               </div>
@@ -183,8 +183,8 @@ export function HomeHeroBanners({
             </div>
             
             {homeBanner2.ctaText && (
-              <div className="mt-3 sm:mt-0 shrink-0">
-                <span className="inline-flex items-center justify-center bg-[#FCBF14] text-[#111111] text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full shadow-md group-hover:bg-[#FFD034] transition-colors whitespace-nowrap">
+              <div className="mt-3 sm:mt-0 shrink-0 w-full sm:w-auto">
+                <span className="inline-flex items-center justify-center bg-[#FCBF14] text-[#111111] text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 rounded-full shadow-md group-hover:bg-[#FFD034] transition-colors whitespace-nowrap w-full sm:w-auto text-center">
                   {homeBanner2.ctaText}
                 </span>
               </div>
@@ -229,8 +229,8 @@ export function HomeHeroBanners({
             </div>
             
             {homeBanner2.ctaText && (
-              <div className="mt-3 sm:mt-0 shrink-0">
-                <span className="inline-flex items-center justify-center bg-[#FCBF14] text-[#111111] text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full shadow-md group-hover:bg-[#FFD034] transition-colors whitespace-nowrap">
+              <div className="mt-3 sm:mt-0 shrink-0 w-full sm:w-auto">
+                <span className="inline-flex items-center justify-center bg-[#FCBF14] text-[#111111] text-[11px] sm:text-xs font-black uppercase tracking-wider px-5 py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 rounded-full shadow-md group-hover:bg-[#FFD034] transition-colors whitespace-nowrap w-full sm:w-auto text-center">
                   {homeBanner2.ctaText}
                 </span>
               </div>
