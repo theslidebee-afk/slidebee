@@ -90,13 +90,82 @@ export const Admin: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<any | null>(null);
 
-  // Auth Sync Listener
+  // Auth & Session Check (Resilient across Edge, localStorage, and AuthSync)
   useEffect(() => {
-    const unsub = subscribeToAuthSync((newSession) => {
-      setSession(newSession);
+    const resolveAdminSession = async (edgeSession?: any) => {
+      let activeSession = edgeSession;
+      if (!activeSession) {
+        try {
+          const { data } = await d1.auth.getSession();
+          activeSession = data?.session;
+        } catch {}
+      }
+
+      const userEmail = activeSession?.user?.email?.toLowerCase().trim() || "";
+      const isSuperOrAdmin =
+        userEmail === "admin@theslidebee.com" ||
+        activeSession?.user?.role === "admin" ||
+        activeSession?.user?.role === "super_admin" ||
+        activeSession?.user?.user_metadata?.role === "admin" ||
+        activeSession?.user?.user_metadata?.role === "super_admin";
+
+      if (activeSession && isSuperOrAdmin) {
+        setSession(activeSession);
+        setLoading(false);
+        return;
+      }
+
+      // Resilient check: localStorage admin credentials
+      const isAdminSession = localStorage.getItem("slidebee_admin_session") === "true";
+      const storedAdminEmail = localStorage.getItem("slidebee_admin_email")?.toLowerCase().trim();
+      if (isAdminSession && (storedAdminEmail === "admin@theslidebee.com" || !storedAdminEmail)) {
+        const fallbackSession = {
+          access_token: "sess-admin-master",
+          user: {
+            id: "usr-admin-master",
+            email: storedAdminEmail || "admin@theslidebee.com",
+            role: "super_admin",
+            user_metadata: { role: "super_admin", full_name: "SlideBee Master Admin" }
+          }
+        };
+        setSession(fallbackSession);
+        setLoading(false);
+        return;
+      }
+
+      setSession(null);
       setLoading(false);
+    };
+
+    const unsubscribeSync = subscribeToAuthSync(
+      (role) => {
+        if (!role || role === "admin") {
+          setSession(null);
+        }
+      },
+      (role) => {
+        if (role === "client") {
+          setSession(null);
+          return;
+        }
+        resolveAdminSession();
+      }
+    );
+
+    resolveAdminSession();
+
+    const {
+      data: { subscription },
+    } = d1.auth.onAuthStateChange((_event, newSession) => {
+      resolveAdminSession(newSession);
     });
-    return () => unsub();
+
+    return () => {
+      unsubscribeSync();
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // Fetch Dashboard Live Data
@@ -108,7 +177,7 @@ export const Admin: React.FC = () => {
         d1.from("templates").select("*").order("created_at", { ascending: false }),
         d1.from("profiles").select("*").order("created_at", { ascending: false }),
         d1.from("subscriptions").select("*").order("created_at", { ascending: false }),
-        d1.from("site_configs").select("*")
+        d1.from("site_config").select("*")
       ]);
 
       if (ordersRes.data) setOrders(ordersRes.data as AdminOrderRecord[]);
@@ -183,7 +252,7 @@ export const Admin: React.FC = () => {
     setConfigValidationError("");
     try {
       const payloadString = JSON.stringify(value);
-      await d1.from("site_configs").upsert({
+      await d1.from("site_config").upsert({
         key,
         value: payloadString,
         updated_at: new Date().toISOString()

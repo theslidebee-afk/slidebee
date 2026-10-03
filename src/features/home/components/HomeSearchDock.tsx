@@ -235,7 +235,11 @@ export function HomeSearchDock({
           <button
             onClick={() => {
               setIsBrowsingActive(true);
-              setActiveSidebarCategory("trending");
+              if (activeSidebarCategory === "trending") {
+                setActiveSidebarCategory("all");
+              } else {
+                setActiveSidebarCategory("trending");
+              }
               setSearchQuery("");
               setVisibleCount(24);
               if (window.scrollY > 40) {
@@ -261,7 +265,11 @@ export function HomeSearchDock({
                 key={cat}
                 onClick={() => {
                   setIsBrowsingActive(true);
-                  setActiveSidebarCategory(cat);
+                  if (isCatActive) {
+                    setActiveSidebarCategory("all");
+                  } else {
+                    setActiveSidebarCategory(cat);
+                  }
                   setSearchQuery("");
                   setVisibleCount(24);
                   if (window.scrollY > 40) {
