@@ -201,12 +201,20 @@ export default function Blog() {
           .select("value")
           .eq("key", "blog_cms")
           .maybeSingle();
-        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
-          // Merge: CMS saved articles take precedence, and any missing default articles (like Article 13) are appended
-          const cmsArticles = data.value;
-          const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
-          const unaddedDefaults = initialBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
-          setBlogs([...cmsArticles, ...unaddedDefaults]);
+
+        if (data?.value) {
+          let cmsArticles: any[] = [];
+          if (Array.isArray(data.value) && data.value.length > 0) {
+            cmsArticles = data.value;
+          } else if (typeof data.value === "object" && Array.isArray(data.value.articles)) {
+            cmsArticles = data.value.articles;
+          }
+
+          if (cmsArticles.length > 0) {
+            const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
+            const unaddedDefaults = initialBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
+            setBlogs([...cmsArticles, ...unaddedDefaults]);
+          }
         }
       } catch (err) {
         console.warn("Could not load dynamic blog CMS:", err);
@@ -342,7 +350,7 @@ export default function Blog() {
                       {blog.title}
                     </h3>
                     <p className="text-xs text-[#726F6D] font-medium line-clamp-3 mb-6 flex-grow leading-relaxed">
-                      {blog.content}
+                      {blog.subtitle || blog.excerpt || blog.metaDescription || (blog.content ? blog.content.replace(/#{1,6}\s+/g, "").replace(/\*\*|\*/g, "").slice(0, 150) + "..." : "")}
                     </p>
                     <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 mt-auto group-hover:translate-x-1 transition-transform">
                       Read Article <ArrowRight size={14} />

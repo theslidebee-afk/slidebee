@@ -1,14 +1,70 @@
+export interface BlogAuthor {
+  name: string;
+  role: string;
+  avatar: string;
+}
+
+export interface BlogPromoCardConfig {
+  badge: string;
+  title: string;
+  description: string;
+  buttonText: string;
+  buttonUrl: string;
+}
+
 export interface BlogArticle {
   id: string;
   title: string;
+  subtitle?: string;
+  excerpt?: string;
   category: string;
   date: string;
   imageUrl: string;
   readTime: string;
-  keywords: string[];
-  metaDescription: string;
-  content: string;
+  author?: BlogAuthor;
+  customPromo?: BlogPromoCardConfig;
+  keywords?: string[];
+  metaDescription?: string;
+  content: string; // Full markdown content
+  isPublished?: boolean;
 }
+
+export interface BlogGlobalSettings {
+  relatedTitle: string;
+  relatedSubtitle: string;
+  showToc: boolean;
+  tocTitle: string;
+  showShare: boolean;
+  shareTitle: string;
+  defaultPromo: BlogPromoCardConfig;
+  categories: string[];
+}
+
+export const DEFAULT_BLOG_SETTINGS: BlogGlobalSettings = {
+  relatedTitle: "Related Presentation Playbooks",
+  relatedSubtitle: "Explore more insights and executive guides to accelerate high-stakes pitch and ecommerce conversions.",
+  showToc: true,
+  tocTitle: "Table of Contents",
+  showShare: true,
+  shareTitle: "Share Article",
+  defaultPromo: {
+    badge: "Executive Design Studio",
+    title: "Need Bespoke Slides for Your Next Board Meeting?",
+    description: "Get investor-grade PowerPoint and Google Slides crafted with 24-hour turnaround and dedicated Art Director guidance.",
+    buttonText: "Order Custom Decks",
+    buttonUrl: "/ordernow"
+  },
+  categories: [
+    "All",
+    "Pitch Decks",
+    "Business",
+    "Infographics",
+    "Marketing",
+    "Corporate",
+    "Finance",
+    "Strategy"
+  ]
+};
 
 export const defaultArticles: Record<string, any> = {
   "1": {
@@ -455,12 +511,32 @@ To begin your deployment blueprint, visit our **[Store Launch Intake Desk](/orde
   }
 };
 
-export const allDefaultBlogArticles = Object.values(defaultArticles).map((art) => ({
-  id: art.id,
+export const allDefaultBlogArticles: BlogArticle[] = Object.values(defaultArticles).map((art) => ({
+  id: String(art.id),
   title: art.title,
-  content: art.metaDescription || art.content.slice(0, 200).replace(/[#*`]/g, '') + '...',
+  subtitle: art.metaDescription || "Executive presentation design strategy and conversion principles.",
+  excerpt: art.metaDescription || "Executive presentation design strategy and conversion principles.",
+  content: art.content, // FULL ARTICLE MARKDOWN BODY
   imageUrl: art.imageUrl,
   date: art.date,
   category: art.category,
-  readTime: art.readTime || '6 min read'
+  readTime: art.readTime || '6 min read',
+  author: {
+    name: "SlideBee Editorial Desk",
+    role: "Senior Presentation Strategists & Art Directors",
+    avatar: "/slidebee_logo_light.png"
+  },
+  customPromo: art.category === "Business" || String(art.id) === "7" || String(art.id) === "13"
+    ? {
+        badge: "₹25,000 All-Inclusive Package",
+        title: "Launch a High-Converting Ecommerce Store in 7 Days",
+        description: "500 products, Razorpay UPI/Card checkout, Cloudflare edge hosting, and Zoho mail with zero monthly SaaS fees.",
+        buttonText: "Launch Storefront (₹25,000)",
+        buttonUrl: "/ordernow?service=ecommerce"
+      }
+    : undefined,
+  keywords: art.keywords || [],
+  metaDescription: art.metaDescription || "",
+  isPublished: true
 }));
+
