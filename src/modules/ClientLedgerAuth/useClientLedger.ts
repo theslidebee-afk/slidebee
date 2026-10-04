@@ -25,6 +25,22 @@ export function useClientLedger() {
     const result = await fetchClientProfileAndOrders(cleanEmail);
     if (result.profile) {
       setUserProfile(result.profile);
+      try {
+        const stored = localStorage.getItem("slidebee_client_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localStorage.setItem(
+            "slidebee_client_user",
+            JSON.stringify({
+              ...parsed,
+              tier: result.profile.tier,
+              tier_expires_at: result.profile.tier_expires_at,
+            })
+          );
+        }
+      } catch {
+        // silent
+      }
     }
     setUserOrders(result.orders);
     setUserSubscription(result.subscription);
@@ -263,16 +279,19 @@ export function useClientLedger() {
   };
 
   const isPro = Boolean(
-    (userProfile?.tier && userProfile.tier !== "free") ||
+    (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
       (userSubscription &&
-        userSubscription.status === "active" &&
+        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
         (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
   );
 
   const isProExpired = Boolean(
-    userSubscription &&
+    (userSubscription &&
       userSubscription.current_period_end &&
-      new Date(userSubscription.current_period_end) <= new Date()
+      new Date(userSubscription.current_period_end) <= new Date()) ||
+      (userProfile?.tier_expires_at &&
+        userProfile?.tier !== "free" &&
+        new Date(userProfile.tier_expires_at) <= new Date())
   );
 
   const daysRemaining = userSubscription?.current_period_end
@@ -280,15 +299,25 @@ export function useClientLedger() {
         0,
         Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
       )
+    : userProfile?.tier_expires_at
+    ? Math.max(
+        0,
+        Math.ceil((new Date(userProfile.tier_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      )
     : null;
 
   const userTier: "free" | "monthly" | "yearly" | "lifetime" =
-    userProfile?.tier ||
-    (isPro
+    userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)
+      ? (userProfile.tier as any)
+      : userSubscription?.tier && ["monthly", "yearly", "lifetime"].includes(userSubscription.tier)
+      ? (userSubscription.tier as any)
+      : isPro
       ? userSubscription?.plan_name?.toLowerCase()?.includes("year")
         ? "yearly"
+        : userSubscription?.plan_name?.toLowerCase()?.includes("lifetime")
+        ? "lifetime"
         : "monthly"
-      : "free");
+      : "free";
 
   const downloadsToday = userProfile?.downloads_today || 0;
   const downloadsThisMonth = userProfile?.downloads_this_month || 0;

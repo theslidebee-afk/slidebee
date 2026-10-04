@@ -85,10 +85,13 @@ support@theslidebee.com`
 
       // 2. Direct D1 deletion guarantee
       await d1.from("subscriptions").delete().eq("user_email", targetClient.email);
+      await d1.from("orders").delete().eq("email", targetClient.email);
+      await d1.from("download_logs").delete().eq("user_email", targetClient.email);
       if (targetClient.id) {
         await d1.from("profiles").delete().eq("id", targetClient.id);
         await d1.from("users").delete().eq("id", targetClient.id);
       }
+      await d1.from("profiles").delete().eq("email", targetClient.email);
       await d1.from("users").delete().eq("email", targetClient.email);
 
       // 3. Fallback direct email dispatch if sendEmail is checked

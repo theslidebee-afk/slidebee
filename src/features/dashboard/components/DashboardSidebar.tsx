@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   CreditCard,
   MessageCircle,
+  Crown,
 } from "lucide-react";
 import SlideBeeLogo from "../../../components/SlideBeeLogo";
 
@@ -18,6 +19,7 @@ interface DashboardSidebarProps {
   ordersCount: number;
   userTier: string;
   studioWhatsapp: string;
+  isProUser?: boolean;
 }
 
 export function DashboardSidebar({
@@ -27,6 +29,7 @@ export function DashboardSidebar({
   ordersCount,
   userTier,
   studioWhatsapp,
+  isProUser = false,
 }: DashboardSidebarProps) {
   return (
     <div className="w-full xl:w-72 border-b xl:border-b-0 xl:border-r border-gray-100 p-6 sm:p-7 flex flex-col justify-between shrink-0 bg-white">
@@ -148,7 +151,8 @@ export function DashboardSidebar({
               />
               <span>Plan & Quota</span>
             </div>
-            <span className="text-[10px] uppercase font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+            <span className="text-[10px] uppercase font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1">
+              {isProUser && <Crown size={10} className="text-amber-700" />}
               {userTier}
             </span>
           </button>

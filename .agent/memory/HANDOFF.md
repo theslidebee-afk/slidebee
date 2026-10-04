@@ -1,37 +1,34 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Full-Codebase Modular Architecture & Line Threshold Decomposition: Eliminate oversized files (> 500 lines) across the SlideBee codebase, targeting healthy component sizes (200–400 lines) with zero changes to business logic, pricing, routing, database schemas, or visual appearance.
+Admin-Provisioned Pro Synchronization, Deep Account Deletion Purge, and Razorpay Subscription Email Notifications.
 
 ## What Was Done
-1. **Storefront & Client Core Decompositions (All < 500 lines)**:
-   - `src/pages/Home.tsx`: Refactored into `src/features/home/` (`useHomeFilters.ts`, `HeroSection.tsx`, `TemplatesSection.tsx`, `CategoriesBar.tsx`, `SplitBannersSection.tsx`). (1,169 -> 426 lines)
-   - `src/pages/TemplateDetail.tsx`: Refactored into `src/features/templates/` (`TemplateGallery.tsx`, `TemplateDetailHeader.tsx`, `TemplateActionPanel.tsx`, `TemplateSpecifications.tsx`, `TemplateRelatedCarousel.tsx`). (1,065 -> 353 lines)
-   - `src/pages/Login.tsx`: Refactored into `src/features/auth/` (`useAuthPage.ts`, `AuthCard.tsx`, `AuthFeaturesGrid.tsx`, `authConstants.ts`). (1,135 -> 220 lines)
-   - `src/components/UserModernDashboard.tsx`: Refactored into `src/features/dashboard/` (`DashboardHeader.tsx`, `DashboardOverviewCards.tsx`, `PurchasedTemplatesTab.tsx`, `CustomOrdersTab.tsx`, `SubscriptionTierTab.tsx`, `ProfileSettingsTab.tsx`). (1,030 -> 227 lines)
-   - `src/lib/email.ts`: Refactored into `src/lib/email/` (`client.ts`, `orderEmails.ts`, `authEmails.ts`, `subscriptionEmails.ts`). (921 -> 10 lines)
-   - `src/pages/Services.tsx`: Refactored into `src/features/services/` (`BeforeAfterSlider.tsx`, `PresentationServicesSection.tsx`, `EcommercePackageSection.tsx`, `servicesData.ts`). (814 -> 180 lines)
-   - `src/pages/OrderNow.tsx`: Refactored into `src/features/orders/` (`SlideBeeSelect.tsx`, `useOrderForm.ts`, `OrderSuccessCard.tsx`, `OrderFormSteps.tsx`, `types.ts`). (729 -> 63 lines)
-   - `src/pages/BlogDetail.tsx`: Refactored into `src/features/blog/` (`defaultArticles.ts`, `BlogArticleBody.tsx`, `BlogCtaBanner.tsx`). (680 -> 180 lines)
-   - `src/modules/ClientLedgerAuth/useClientLedger.ts`: Refactored into `src/modules/ClientLedgerAuth/` (`clientAuthActions.ts`, `clientLedgerStorage.ts`, `types.ts`). (638 -> 291 lines)
-   - `src/components/createSlideBeeHoneycombModel.ts`: Refactored into `src/components/honeycomb/` (`types.ts`, `canvasTextures.ts`, `geometry.ts`, `createSlideBeeHoneycombModel.ts`). (615 -> 6 lines)
-   - `src/pages/Examples.tsx`: Refactored into `src/features/examples/` (`PortfolioCard.tsx`, `PortfolioModal.tsx`, `PortfolioToolbar.tsx`, `types.ts`). (590 -> 186 lines)
-   - `src/components/Navbar.tsx`: Refactored into `src/components/navbar/` (`useNavbarAuth.ts`, `DesktopNavLinks.tsx`, `NavbarAuthActions.tsx`, `MobileNavDrawer.tsx`, `navLinks.ts`). (550 -> 100 lines)
+1. **Admin-Provisioned Pro & Dashboard VIP Synchronization**:
+   - `src/modules/ClientLedgerAuth/useClientLedger.ts`: In `fetchClientData`, automatically syncs `localStorage.slidebee_client_user` with fresh D1 profile `tier` and `tier_expires_at`.
+   - Updated `isPro` check to recognize all paid tiers (`monthly`, `yearly`, `lifetime`) as well as active subscription records.
+   - Updated `daysRemaining` calculation to fallback to `userProfile.tier_expires_at` when `userSubscription` has no explicit end date.
+   - `src/features/auth/hooks/useAuthPage.ts`: Directly integrated subscription and Pro status from `useClientLedger()`.
+   - `src/components/UserModernDashboard.tsx`: Removed un-prefixed ignore aliases (`_userSubscription`, `_isProUser`, etc.); set `activeOrder = userOrders.length > 0 ? ... : null` to completely eliminate the fake hardcoded `"Q4 Investor Pitch Deck"` milestone fallback.
+   - `src/features/dashboard/components/DashboardOverviewTab.tsx`: Created a VIP Pro Hero Banner with Gold Crown icon celebrating active membership, displaying real monthly quota, and providing custom deck commission CTA.
+   - `src/features/dashboard/components/DashboardRightSidebar.tsx`: Added VIP Pro Membership Card with validity countdown, bespoke deck commission button, and VIP WhatsApp concierge hotline.
+   - `src/features/dashboard/components/DashboardSidebar.tsx` & `DashboardLedgerTab.tsx`: Added Pro Crown badges and subscription status breakdown with licensing terms.
 
-2. **Admin Domain Decompositions (All < 500 lines)**:
-   - `src/features/admin/templates/TemplateCreateModal.tsx`: Extracted shared fields (`FormatSelectorField.tsx`, `PptxUploaderField.tsx`, `TemplatePreviewsField.tsx`, `TemplateFormInputs.tsx`). (718 -> 376 lines)
-   - `src/features/admin/templates/TemplateEditModal.tsx`: Reused shared fields. (727 -> 431 lines)
-   - `src/features/admin/templates/BulkImportModal.tsx`: Refactored into `src/features/admin/templates/bulk/` (`bulkImportUtils.ts`, `BulkAssetUploaderTab.tsx`, `BulkCsvParserTab.tsx`). (938 -> 248 lines)
-   - `src/features/admin/templates/AdminTemplates.tsx`: Refactored into `src/features/admin/templates/components/` (`TemplatesToolbar.tsx`, `TemplatesTableView.tsx`, `TemplatesGridView.tsx`). (761 -> 244 lines)
-   - `src/features/admin/orders/OrderBriefModal.tsx`: Refactored into `src/features/admin/orders/modal/` (`OrderMilestoneStepper.tsx`, `OrderDeliverableUploader.tsx`, `OrderEmailComposer.tsx`). (867 -> 494 lines)
-   - `src/features/admin/customization/CmsServicesPanel.tsx`: Refactored into `src/features/admin/customization/services/` (`constants.ts`, `SuspendedCarouselManager.tsx`, `CoreCapabilitiesManager.tsx`). (732 -> 153 lines)
-   - `src/features/admin/subscriptions/AdminSubscriptions.tsx`: Refactored into `src/features/admin/subscriptions/components/` (`SubscriptionsMetricStrip.tsx`, `SubscriptionsTable.tsx`, `ClientAccountsTable.tsx`). (597 -> 158 lines)
+2. **Deep Account Deletion Purge (Backend & Frontend)**:
+   - `functions/api/delete-account.ts`: Enhanced Cloudflare D1 transaction batch to purge case-insensitively from `subscriptions`, `orders` (`DELETE FROM orders WHERE LOWER(TRIM(email)) = ?`), `download_logs`, `sessions`, `profiles`, and `users`.
+   - `src/features/auth/hooks/useAccountDeletion.ts`: Added full cache purge removing `localStorage.slidebee_orders`, `slidebee_client_user`, `slidebee_edge_session`, `slidebee_session_id`, `slidebee_cart`, and cleared `sessionStorage`.
+   - `src/features/admin/subscriptions/DeleteAccountModal.tsx`: Added direct D1 deletion for `orders` and `download_logs` in step 2.
+
+3. **Razorpay Subscription Receipt & Studio Alert Emails**:
+   - `src/lib/email/templates/subscriptionEmails.ts`: Implemented `sendSubscriptionActivatedReceiptEmail` with an official payment receipt for the client and alerts sent to `vizhalsuresh@gmail.com` and `design@theslidebee.com`.
+   - `functions/api/subscribe-pro.ts`: Added automated server-side Resend API dispatch for receipt and studio notification upon subscription creation.
+   - `src/features/pricing/usePricing.ts`: Wired client-side fallback email dispatch, updated `localStorage.slidebee_client_user`, and called `broadcastAuthEvent("LOGIN", "client")`.
 
 ## What Was Verified
 - `npm run build` (`tsc -b && vite build`) exits cleanly with code 0.
-- 100% of all files in `src/` are now under 500 lines (0 files > 500 lines).
-- ZERO unicode emojis across all TypeScript/TSX code files, comments, and strings.
-- 100% feature and visual parity preserved across all storefront pages, checkout, and admin tools.
+- ZERO unicode emojis across all modified files (verified via automated regex script).
+- Working branch is `dev`.
 
 ## Next Steps
-- Review git diff and stage commits on branch `dev`.
+- Commit and push changes to `origin/dev`.
+- Await user feedback.

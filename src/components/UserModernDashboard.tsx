@@ -34,7 +34,7 @@ interface UserModernDashboardProps {
 export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   currentUser,
   userProfile,
-  userSubscription: _userSubscription,
+  userSubscription,
   userTier,
   userOrders,
   purchasedItems,
@@ -43,8 +43,8 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   downloadsThisMonth,
   remainingFreeToday,
   remainingPremiumThisMonth,
-  proDaysRemaining: _proDaysRemaining,
-  isProUser: _isProUser,
+  proDaysRemaining,
+  isProUser,
   isProExpired: _isProExpired,
   handleLogout,
   studioWhatsapp = "919876543210",
@@ -55,8 +55,8 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 
   const clientName =
     userProfile?.full_name ||
-    currentUser.user_metadata?.full_name ||
-    currentUser.email.split("@")[0];
+    currentUser?.user_metadata?.full_name ||
+    (currentUser?.email ? currentUser.email.split("@")[0] : "Client");
 
   // Quota metrics calculation
   const quotaTotal = userTier === "free" ? 3 : userTier === "lifetime" ? 45 : 30;
@@ -73,20 +73,26 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
   const milestoneGaugePercent = 75;
   const milestoneStrokeDashoffset = circumference - (milestoneGaugePercent / 100) * circumference;
 
-  // Active custom order
+  // Active custom order (only if genuine order exists)
   const activeOrder =
-    userOrders.find((o) => o.status !== "completed" && o.status !== "delivered") || userOrders[0];
+    userOrders && userOrders.length > 0
+      ? userOrders.find((o) => o.status !== "completed" && o.status !== "delivered") || userOrders[0]
+      : null;
 
   const activeProjectTitle =
-    activeOrder?.project_title || activeOrder?.service_type || "Q4 Investor Pitch Deck";
-  const activeMilestone =
-    activeOrder?.status === "draft_1"
+    activeOrder?.project_title ||
+    activeOrder?.service_type ||
+    (isProUser ? "VIP Presentation Pass" : "Bespoke Slide Deck");
+
+  const activeMilestone = activeOrder
+    ? activeOrder.status === "draft_1"
       ? "Draft 1 (Blueprint)"
-      : activeOrder?.status === "draft_2"
+      : activeOrder.status === "draft_2"
       ? "Draft 2 (Design Alignment)"
-      : activeOrder?.status === "polish"
+      : activeOrder.status === "polish"
       ? "Final Polish"
-      : "Final Polish";
+      : "In Production"
+    : null;
 
   // Recent deliverables list
   const defaultDeliverables = [
@@ -108,7 +114,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
     },
   ];
 
-  const customOrderDeliverables = userOrders
+  const customOrderDeliverables = (userOrders || [])
     .filter((o) => Boolean(o.deliverable_url))
     .map((o, i) => ({
       id: o.id || `custom-deliverable-${i}`,
@@ -121,7 +127,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 
   const allPurchasedDeliverables = [
     ...customOrderDeliverables,
-    ...purchasedItems.map((p, i) => ({
+    ...(purchasedItems || []).map((p, i) => ({
       id: p.id || `purchased-${i}`,
       title: p.title || p.template_title || p.template_name || `SlideDeck #${i + 1}`,
       subtitle: `${p.slide_count || 24} slides, PPTX, ${p.file_size || "18 MB"}`,
@@ -150,10 +156,11 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
         <DashboardSidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          purchasedCount={purchasedItems.length}
-          ordersCount={userOrders.length}
+          purchasedCount={(purchasedItems || []).length}
+          ordersCount={(userOrders || []).length}
           userTier={userTier}
           studioWhatsapp={studioWhatsapp}
+          isProUser={isProUser}
         />
 
         {/* Column 2: Center Main Content Area */}
@@ -173,11 +180,15 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           {activeTab === "overview" && (
             <DashboardOverviewTab
               clientName={clientName}
+              activeOrder={activeOrder}
               activeProjectTitle={activeProjectTitle}
               activeMilestone={activeMilestone}
               quotaTotal={quotaTotal}
               quotaRemaining={quotaRemaining}
               userTier={userTier}
+              isProUser={isProUser}
+              proDaysRemaining={proDaysRemaining}
+              userSubscription={userSubscription}
               creditStrokeDashoffset={creditStrokeDashoffset}
               milestoneStrokeDashoffset={milestoneStrokeDashoffset}
               radius={radius}
@@ -192,7 +203,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           )}
 
           {activeTab === "custom" && (
-            <DashboardCustomTab userOrders={userOrders} studioWhatsapp={studioWhatsapp} />
+            <DashboardCustomTab userOrders={userOrders || []} studioWhatsapp={studioWhatsapp} />
           )}
 
           {activeTab === "marketplace" && (
@@ -205,6 +216,9 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               quotaRemaining={quotaRemaining}
               quotaTotal={quotaTotal}
               quotaUsed={quotaUsed}
+              isProUser={isProUser}
+              userSubscription={userSubscription}
+              proDaysRemaining={proDaysRemaining}
               onDeleteAccount={onDeleteAccount}
             />
           )}
@@ -218,6 +232,10 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           activeMilestone={activeMilestone}
           studioWhatsapp={studioWhatsapp}
           handleLogout={handleLogout}
+          isProUser={isProUser}
+          proDaysRemaining={proDaysRemaining}
+          userSubscription={userSubscription}
+          userTier={userTier}
         />
       </div>
     </div>

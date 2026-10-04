@@ -3,6 +3,8 @@ import { useLocation } from "react-router-dom";
 import { d1 } from "../../lib/d1";
 import { openRazorpayCheckout } from "../../lib/razorpay";
 import { useCurrency } from "../../context/CurrencyContext";
+import { broadcastAuthEvent } from "../../lib/authSync";
+import { sendSubscriptionActivatedReceiptEmail } from "../../lib/email";
 
 export interface PricingConfig {
   rate_usd_redesign: number;
@@ -103,20 +105,72 @@ export function usePricing() {
       description: desc,
       prefill: { email: session.user.email || "", name: session.user.user_metadata?.full_name || "SlideBee Member" },
       onSuccess: async (rzpRes: any) => {
+        const paymentId = rzpRes.razorpay_payment_id || "rzp_direct";
         try {
           await fetch("/api/subscribe-pro", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              paymentId: rzpRes.razorpay_payment_id || "rzp_direct",
+              paymentId,
               userId: session.user.id,
               userEmail: session.user.email,
-              tier, amount, currency, planName: title, billingPeriod: tier,
+              tier,
+              amount,
+              currency,
+              planName: title,
+              billingPeriod: tier,
             }),
           });
         } catch (subErr) {
           console.warn("Subscription provisioning error:", subErr);
         }
+
+        // Direct client-side receipt backup to ensure immediate dispatch
+        try {
+          await sendSubscriptionActivatedReceiptEmail({
+            clientEmail: session.user.email || "",
+            clientName: session.user.user_metadata?.full_name || "SlideBee Member",
+            planName: title,
+            tier,
+            amountPaid: amount,
+            currency: currency === "USD" ? "USD" : "INR",
+            paymentId,
+            expiryDate:
+              tier === "monthly"
+                ? new Date(Date.now() + 30 * 86400000).toISOString()
+                : tier === "yearly"
+                ? new Date(Date.now() + 365 * 86400000).toISOString()
+                : null,
+            quotaLimit: tier === "lifetime" ? 45 : 30,
+          });
+        } catch (mailErr) {
+          console.warn("Client subscription email fallback warning:", mailErr);
+        }
+
+        // Update local storage so client immediately reflects new tier
+        try {
+          const stored = localStorage.getItem("slidebee_client_user");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            localStorage.setItem(
+              "slidebee_client_user",
+              JSON.stringify({
+                ...parsed,
+                tier,
+                tier_expires_at:
+                  tier === "monthly"
+                    ? new Date(Date.now() + 30 * 86400000).toISOString()
+                    : tier === "yearly"
+                    ? new Date(Date.now() + 365 * 86400000).toISOString()
+                    : null,
+              })
+            );
+          }
+        } catch (storageErr) {
+          console.warn("Local storage tier update warning:", storageErr);
+        }
+
+        broadcastAuthEvent("LOGIN", "client");
         window.location.href = "/login?tier_upgraded=" + tier;
       },
       onFailure: (err: any) => { console.error("Checkout failed:", err); },

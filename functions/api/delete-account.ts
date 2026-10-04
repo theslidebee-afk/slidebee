@@ -128,15 +128,17 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       // Purge all records from D1 in a single transaction batch using exact schema column names
       // subscriptions: user_email, user_id
       // orders: email
+      // download_logs: user_email
       // sessions: email, user_id
       // profiles: email, id
       // users: email, id
       await env.DB.batch([
-        env.DB.prepare("DELETE FROM subscriptions WHERE user_email = ? OR user_id = ?").bind(cleanEmail, uid),
-        env.DB.prepare("DELETE FROM orders WHERE email = ?").bind(cleanEmail),
-        env.DB.prepare("DELETE FROM sessions WHERE email = ? OR user_id = ?").bind(cleanEmail, uid),
-        env.DB.prepare("DELETE FROM profiles WHERE email = ? OR id = ?").bind(cleanEmail, uid),
-        env.DB.prepare("DELETE FROM users WHERE email = ? OR id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM subscriptions WHERE LOWER(TRIM(user_email)) = ? OR user_id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM orders WHERE LOWER(TRIM(email)) = ?").bind(cleanEmail),
+        env.DB.prepare("DELETE FROM download_logs WHERE LOWER(TRIM(user_email)) = ?").bind(cleanEmail),
+        env.DB.prepare("DELETE FROM sessions WHERE LOWER(TRIM(email)) = ? OR user_id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM profiles WHERE LOWER(TRIM(email)) = ? OR id = ?").bind(cleanEmail, uid),
+        env.DB.prepare("DELETE FROM users WHERE LOWER(TRIM(email)) = ? OR id = ?").bind(cleanEmail, uid),
         env.DB.prepare("INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'ACCOUNT_DELETED', ?)").bind(
           crypto.randomUUID(),
           cleanEmail,

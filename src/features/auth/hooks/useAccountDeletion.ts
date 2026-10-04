@@ -58,6 +58,20 @@ export function useAccountDeletion({ currentUser, userProfile, logout }: UseAcco
         throw new Error(data.error || "Server could not process account deletion.");
       }
 
+      // 1. Full client-side data and orders cache purge
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("slidebee_orders");
+          localStorage.removeItem("slidebee_client_user");
+          localStorage.removeItem("slidebee_edge_session");
+          localStorage.removeItem("slidebee_session_id");
+          localStorage.removeItem("slidebee_cart");
+          sessionStorage.clear();
+        } catch (e) {
+          console.warn("Storage purge notice:", e);
+        }
+      }
+
       await logout();
       setIsDeleteAccountOpen(false);
       setAccountDeletedNotice(

@@ -353,3 +353,147 @@ export async function sendProExpiredEmail({
     html,
   });
 }
+
+/**
+ * 6. Subscription Payment Receipt & VIP Activation Email
+ * Dispatches formal payment receipt to the client and alerts vizhalsuresh@gmail.com & design@theslidebee.com
+ */
+export async function sendSubscriptionActivatedReceiptEmail({
+  clientEmail,
+  clientName,
+  planName,
+  tier,
+  amountPaid,
+  currency = "INR",
+  paymentId,
+  expiryDate,
+  quotaLimit = 30,
+}: {
+  clientEmail: string;
+  clientName?: string;
+  planName: string;
+  tier: "monthly" | "yearly" | "lifetime";
+  amountPaid: number;
+  currency?: string;
+  paymentId: string;
+  expiryDate?: string | null;
+  quotaLimit?: number;
+}) {
+  const safeClientName = escapeHtml(clientName || "Valued Client");
+  const safeClientEmail = escapeHtml(clientEmail);
+  const safePlanName = escapeHtml(planName || (tier === "yearly" ? "SlideBee Yearly Pro" : tier === "lifetime" ? "SlideBee Lifetime VIP" : "SlideBee Monthly Pro"));
+  const safeTier = tier.toUpperCase();
+  const safePaymentId = escapeHtml(paymentId);
+  const safeCurrency = currency === "USD" ? "$" : "₹";
+  const safeAmount = Number(amountPaid) || (tier === "yearly" ? 3499 : tier === "lifetime" ? 5999 : 399);
+  const safeQuota = Number(quotaLimit) || (tier === "lifetime" ? 45 : 30);
+
+  const formattedExpiry = expiryDate
+    ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : tier === "lifetime"
+    ? "Lifetime Unlimited"
+    : "1 Year Active Period";
+
+  const clientHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Design Studio</h1>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Executive Presentation Membership & Official Receipt</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="display: inline-block; background-color: #FFF9E8; border: 1px solid #FCBF14; color: #936610; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 12px;">
+          VIP ${safeTier} MEMBERSHIP ACTIVE
+        </div>
+        <h2 style="font-size: 20px; font-weight: 800; margin-top: 0; color: #111111;">Your SlideBee Pro Membership Is Activated</h2>
+        <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+          Hi <strong>${safeClientName}</strong>,<br/><br/>
+          Thank you for subscribing to <strong>${safePlanName}</strong>. Your payment has been confirmed, and your executive presentation studio pass is now active.
+        </p>
+
+        <!-- Payment Receipt Block -->
+        <div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px; margin: 20px 0;">
+          <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #726F6D; margin-top: 0; margin-bottom: 12px;">Payment Receipt & Transaction Summary</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #111111; line-height: 2;">
+            <tr><td style="color: #726F6D; width: 140px;">Plan:</td><td style="font-weight: 700;">${safePlanName}</td></tr>
+            <tr><td style="color: #726F6D;">Amount Paid:</td><td style="font-weight: 800; color: #936610;">${safeCurrency}${safeAmount}</td></tr>
+            <tr><td style="color: #726F6D;">Payment Reference:</td><td style="font-family: monospace; font-size: 12px;">${safePaymentId}</td></tr>
+            <tr><td style="color: #726F6D;">Active Until:</td><td style="font-weight: 700;">${formattedExpiry}</td></tr>
+            <tr><td style="color: #726F6D;">Billing Account:</td><td>${safeClientEmail}</td></tr>
+          </table>
+        </div>
+
+        <!-- Membership Privileges Block -->
+        <div style="background-color: #FFF9E8; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #FCBF14;">
+          <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #936610; margin-top: 0; margin-bottom: 12px;">Included VIP Member Privileges</h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #111111; line-height: 1.8;">
+            <li><strong>Download Quota:</strong> ${safeQuota} Master Presentation Decks / month (${tier === 'yearly' ? '360 Total Yearly' : tier === 'lifetime' ? 'Unlimited Lifetime' : '30 Monthly'})</li>
+            <li><strong>Complete Catalog Access:</strong> Unrestricted access to all curated 16:9 HD presentation decks</li>
+            <li><strong>Commercial Rights:</strong> Perpetual commercial and client pitch deck licensing included</li>
+            <li><strong>VIP WhatsApp Studio Hotline:</strong> Direct priority communication in your client portal</li>
+          </ul>
+        </div>
+
+        <div style="text-align: center; margin: 28px 0 16px 0;">
+          <a href="https://theslidebee.com/login" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+            Open Your Client Portal & Download Decks
+          </a>
+        </div>
+
+        <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center; margin: 0;">
+          Your master decks are ready for instant download anytime at <a href="https://theslidebee.com" style="color: #936610; font-weight: bold;">theslidebee.com</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #726F6D;">
+        SlideBee Studio • Official Inquiries: <a href="mailto:hello@theslidebee.com" style="color: #936610;">hello@theslidebee.com</a>
+      </div>
+    </div>
+  `;
+
+  // 1. Dispatch client receipt
+  const clientResult = await sendEmail({
+    to: clientEmail,
+    fromEmail: "design@theslidebee.com",
+    fromName: "SlideBee Design Studio",
+    replyTo: "design@theslidebee.com",
+    subject: `Payment Receipt & VIP ${safeTier} Pass Activated — SlideBee Studio`,
+    html: clientHtml,
+  });
+
+  // 2. Alert studio leads: vizhalsuresh@gmail.com and design@theslidebee.com
+  const adminAlertHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
+      <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
+        NEW PAID VIP SUBSCRIBER
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">New Subscriber: ${safeClientName} (${safeTier})</h2>
+      <div style="background-color: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333333; margin-bottom: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e0e0e0; line-height: 1.8;">
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 140px;">Client Name:</td><td>${safeClientName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Email:</td><td><a href="mailto:${clientEmail}" style="color: #FCBF14;">${clientEmail}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Plan:</td><td>${safePlanName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Amount Paid:</td><td style="font-weight: 800; color: #FCBF14;">${safeCurrency}${safeAmount}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Payment ID:</td><td style="font-family: monospace;">${safePaymentId}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Active Period:</td><td>${formattedExpiry}</td></tr>
+        </table>
+      </div>
+      <p style="font-size: 12px; color: #999999; margin: 0;">Payment captured via Razorpay. Client has been provisioned with full VIP Pro studio permissions.</p>
+    </div>
+  `;
+
+  const adminRecipients = ["vizhalsuresh@gmail.com", "design@theslidebee.com"];
+  for (const adminTo of adminRecipients) {
+    sendEmail({
+      to: adminTo,
+      fromEmail: "hello@theslidebee.com",
+      fromName: "SlideBee Studio Alert",
+      replyTo: clientEmail,
+      subject: `[PAID SUBSCRIBER] ${safePlanName} — ${safeClientName} (${safeCurrency}${safeAmount})`,
+      html: adminAlertHtml,
+    }).catch((err) => console.warn(`Admin subscriber notice to ${adminTo}:`, err));
+  }
+
+  return clientResult;
+}
+

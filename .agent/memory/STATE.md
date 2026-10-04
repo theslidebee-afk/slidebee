@@ -26,12 +26,14 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **Admin Studio Management**: Complete template CRUD, file uploads to Cloudflare R2, and site configuration controls.
 - **Modern Routing & SEO Infrastructure**: Clean HTML5 `BrowserRouter` routes (zero hash routing fragments), canonical tags, dynamic JSON-LD schemas on all 10 blog posts, `sitemap.xml`, `robots.txt`, `llms.txt`, and `llms-full.txt`.
 - **Strict Single Administrator Authentication & Client Routing**: Strictly locked administrator recognition to `admin@theslidebee.com` and password `SlideBee@Admin2026!` (removing all wildcards, prefix matching, and secondary addresses); fixed client-side redirection from stale hash (`#/admin`) to HTML5 `BrowserRouter` (`/admin`); implemented graceful handling of unregistered accounts (`No registered account found for <email>`) with automatic switch to Sign Up; added resilient admin session recovery in `Admin.tsx` and `d1.ts` to prevent false login rejections.
-- **Clean Edge Architecture**: Unified all application imports with native `d1` from `src/lib/d1.ts`, updated `.env`, and refreshed all documentation.
+- **Admin-Provisioned Pro & VIP Dashboard Synchronization**: Fixed admin-granted subscription tiers not reflecting on the user dashboard. Updated `useClientLedger.ts` and `useAuthPage.ts` to sync `localStorage.slidebee_client_user` with fresh D1 profiles, expanded `isPro` check to include all valid paid tiers (`monthly`, `yearly`, `lifetime`), updated `proDaysRemaining` to read `tier_expires_at`, and replaced the fake mock project fallback in `UserModernDashboard.tsx` with a VIP Pro Hero Banner, monthly quota ring, and dedicated VIP Membership Card.
+- **Deep Account Deletion Purge (Backend & Frontend)**: Fixed account deletion failing to purge custom design briefs and orders. `functions/api/delete-account.ts` now executes a comprehensive D1 deletion across `subscriptions`, `orders` (case-insensitive `LOWER(TRIM(email)) = ?`), `download_logs`, `sessions`, `profiles`, and `users`. Frontend `useAccountDeletion.ts` purges `localStorage.slidebee_orders`, `slidebee_client_user`, edge session cookies, and active session tokens.
+- **Razorpay Subscription Receipt & Studio Alert Emails**: Wired automated email dispatching on subscription creation (`functions/api/subscribe-pro.ts` and `src/features/pricing/usePricing.ts`) using `sendSubscriptionActivatedReceiptEmail`. Automatically sends an itemized payment receipt to the client and alerts studio admins (`vizhalsuresh@gmail.com` and `design@theslidebee.com`).
 
 ---
 
 ## 3. In-Progress Features
-- **Pro Quota Automations**: Refining automatic monthly 30-deck reset on Pro membership renewals.
+- **Visual Smoke Testing & Multi-Device Verification**: Verifying dashboard display across mobile and desktop viewports.
 
 ---
 

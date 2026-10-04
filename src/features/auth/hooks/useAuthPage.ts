@@ -76,6 +76,10 @@ export function useAuthPage() {
     currentUser,
     userProfile,
     userOrders,
+    userSubscription: ledgerSubscription,
+    isPro,
+    isProExpired: ledgerProExpired,
+    daysRemaining,
     loading,
     purchasedItems,
     usageHistory,
@@ -157,19 +161,23 @@ export function useAuthPage() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  const [userSubscription, setUserSubscription] = useState<any>(null);
+  const [directSubscription, setDirectSubscription] = useState<any>(null);
 
   useEffect(() => {
     if (currentUser?.email) {
       d1.from("subscriptions")
         .select("*")
-        .eq("user_email", currentUser.email)
+        .ilike("user_email", currentUser.email.trim())
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
         .then(({ data }) => {
-          if (data) setUserSubscription(data);
+          if (data) setDirectSubscription(data);
         });
     }
   }, [currentUser?.email]);
+
+  const userSubscription = directSubscription || ledgerSubscription;
 
   const [studioWhatsapp, setStudioWhatsapp] = useState<string>(
     WHATSAPP_CONFIG.phoneNumber || "919876543210"
@@ -186,29 +194,37 @@ export function useAuthPage() {
   }, []);
 
   const isProExpired = Boolean(
-    userSubscription &&
-      userSubscription.current_period_end &&
-      new Date(userSubscription.current_period_end) <= new Date()
+    ledgerProExpired ||
+      (userSubscription &&
+        userSubscription.current_period_end &&
+        new Date(userSubscription.current_period_end) <= new Date()) ||
+      (userProfile?.tier_expires_at &&
+        userProfile?.tier !== "free" &&
+        new Date(userProfile.tier_expires_at) <= new Date())
   );
 
   const isProUser = Boolean(
-    (userSubscription &&
-      (userSubscription.status === "active" || userSubscription.status === "trialing") &&
-      (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()) &&
-      (userSubscription.plan_name?.toLowerCase().includes("pro") ||
-        userSubscription.plan_tier?.toLowerCase().includes("pro") ||
-        userSubscription.plan_name?.toLowerCase().includes("membership"))) ||
-      userTier === "monthly" ||
-      userTier === "yearly" ||
-      userTier === "lifetime"
+    isPro ||
+      ["monthly", "yearly", "lifetime"].includes(userTier) ||
+      ["monthly", "yearly", "lifetime"].includes(userProfile?.tier || "") ||
+      (userSubscription &&
+        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
   );
 
-  const proDaysRemaining = userSubscription?.current_period_end
-    ? Math.max(
-        0,
-        Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      )
-    : null;
+  const proDaysRemaining =
+    daysRemaining ??
+    (userSubscription?.current_period_end
+      ? Math.max(
+          0,
+          Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        )
+      : userProfile?.tier_expires_at
+      ? Math.max(
+          0,
+          Math.ceil((new Date(userProfile.tier_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        )
+      : null);
 
   const handleGoogleSignIn = async () => {
     try {
