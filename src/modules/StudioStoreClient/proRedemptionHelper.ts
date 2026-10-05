@@ -1,6 +1,7 @@
 import { type StoreTemplate } from "./useStudioStore";
 import { d1 } from "../../lib/d1";
 import { sendTemplatePurchaseReceiptEmail } from "../../lib/email";
+import { getTemplateDeliverableUrl, triggerPptxDownload, isValidPptxUrl } from "../../lib/templates";
 import type { CheckoutResult } from "./useTemplateCheckout";
 
 export async function redeemProTemplateDownload(
@@ -94,7 +95,7 @@ export async function redeemProTemplateDownload(
       existingPurchases = profile.purchased_items;
     }
 
-    const pptxUrl = template.download_url || template.image_url;
+    const pptxUrl = getTemplateDeliverableUrl(template) || "";
     const fileName = template.file_name || `${template.code}_Master.pptx`;
 
     const newPurchase = {
@@ -130,19 +131,13 @@ export async function redeemProTemplateDownload(
     };
   }
 
-  const pptxUrl = data.downloadUrl || template.download_url || template.image_url;
+  const pptxUrl = (data.downloadUrl && isValidPptxUrl(data.downloadUrl)) ? data.downloadUrl : (getTemplateDeliverableUrl(template) || "");
   const fileName = data.fileName || template.file_name || `${template.code}_Master.pptx`;
 
-  // Auto-trigger browser download
+  // Auto-trigger browser download for verified deliverable
   if (typeof window !== "undefined" && pptxUrl) {
     try {
-      const dlLink = document.createElement("a");
-      dlLink.href = pptxUrl;
-      dlLink.download = fileName;
-      dlLink.target = "_blank";
-      document.body.appendChild(dlLink);
-      dlLink.click();
-      document.body.removeChild(dlLink);
+      triggerPptxDownload(pptxUrl, fileName);
     } catch (dlErr) {
       console.warn("Auto-download notice:", dlErr);
     }

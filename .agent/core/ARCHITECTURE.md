@@ -56,20 +56,28 @@ CLIENT BROWSER (React 19 SPA)
 5. Site configuration (`site_config`) is fetched in parallel to populate categories, trending IDs, and promotional banners.
 6. User interactions trigger live filtering in the 6-column CSS grid.
 
-### B. Single-Deck Download & Quota Flow
+### B. Single-Deck Download & Strict PPTX Deliverable Flow
 1. User clicks template card -> navigates to `/template/:id` (`TemplateDetail.tsx`).
-2. Free Template:
+2. Presentation Deliverable Validation:
+   - System strictly verifies genuine presentation deliverable (`.pptx`, `.ppt`, `.zip`) via `isValidPptxUrl()` (`src/lib/templates.ts`).
+   - SILENT IMAGE FALLBACKS ARE STRICTLY PROHIBITED: Image files (`.jpg`, `.png`, `.webp`) are never renamed or substituted as presentations.
+3. Free Template:
    - Client checks `profiles.downloads_today` and `profiles.last_download_date` via `useClientLedger`.
-   - If quota < 3: increments counter in D1, logs in `download_logs`, and initiates direct download from Cloudflare R2 CDN.
+   - If quota < 3: increments counter in D1, logs in `download_logs`, and initiates direct `.pptx` file download from Cloudflare R2 CDN via `triggerPptxDownload()`.
    - If quota exhausted: triggers login / upgrade prompt modal.
-3. Pro Template:
+4. Pro Template:
    - Verifies active Pro subscription in `subscriptions` and `profiles.quota_remaining`.
-   - Calls `/api/redeem-pro-template.ts` to deduct quota and generate secure R2 `.pptx` download token.
+   - Deducts quota in D1 and triggers direct download of genuine `.pptx` deliverable from Cloudflare R2.
 
-### C. Custom Brief & Order Submission Flow
-1. Client completes order configurator at `/ordernow` (`OrderNow.tsx`).
-2. Inserts record into `orders` via `d1.from("orders").insert(...)`.
-3. Dispatches `/api/send-email.ts` to trigger dual Zoho Mail notifications to client and studio admins.
+### C. Custom Brief & Inbound Communications Pipeline
+1. Client brief orders at `/ordernow` (`OrderNow.tsx`):
+   - Inserts record into `orders` table with `status: "pending"` or `"processing"`.
+   - Dispatches dual notifications to client and studio admins (`vizhalsuresh@gmail.com`, `admin@theslidebee.com`).
+2. Client "Get a Quote" / Inbound Inquiries at `/contact` (`Contact.tsx`):
+   - Inserts structured record into `orders` with `order_reference: INQ-xxxxxx`, `service_type: "Inbound Quote Request"`, and `status: "inquiry"`.
+   - Stored in tandem with `waitlist` table for lead auditing.
+   - Dispatches instant email notification alerts to studio leadership.
+   - Surfaced inside the dedicated Admin "Inquiries & Quotes" portal (`src/features/admin/inquiries/AdminInquiries.tsx`) for review and status management.
 
 ---
 

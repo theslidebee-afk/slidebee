@@ -73,6 +73,28 @@ export default function Contact() {
     setErrorMsg("");
 
     try {
+      // 1. Structured inquiry persistence in orders table
+      const randomArray = new Uint32Array(1);
+      crypto.getRandomValues(randomArray);
+      const inqRef = `INQ-${100000 + (randomArray[0] % 900000)}`;
+
+      try {
+        await d1.from("orders").insert([
+          {
+            order_reference: inqRef,
+            service_type: "Inbound Quote Request",
+            status: "inquiry",
+            full_name: name || "Prospective Client",
+            email: cleanEmail,
+            project_brief: `[Subject: ${subject || "General Inquiry"}]\n\n${message}`,
+            style_preference: "Direct Website Inquiry"
+          }
+        ]);
+      } catch (inqErr: any) {
+        console.warn("Orders inquiry insert notice:", inqErr);
+      }
+
+      // 2. Secondary backup in waitlist
       const { error } = await d1.from("waitlist").insert([
         {
           email: cleanEmail,

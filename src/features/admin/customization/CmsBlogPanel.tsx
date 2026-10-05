@@ -26,6 +26,7 @@ import {
   type BlogArticle,
   type BlogGlobalSettings
 } from "../../blog";
+import { RouteUrlSelector } from "../shared/RouteUrlSelector";
 
 export const CmsBlogPanel: React.FC = () => {
   const { siteConfigs, setSiteConfigs, handleSaveConfig, configSaving } = useAdmin();
@@ -826,22 +827,18 @@ export const CmsBlogPanel: React.FC = () => {
                               </div>
 
                               <div>
-                                <label className="text-[10px] font-bold text-[#111111] block mb-1">
-                                  Button Destination URL
-                                </label>
-                                <input
-                                  type="text"
+                                <RouteUrlSelector
+                                  label="Button Destination URL"
                                   value={art.customPromo.buttonUrl || ""}
                                   placeholder="/ordernow?service=ecommerce"
-                                  onChange={(e) => {
+                                  onChange={(url) => {
                                     const updated = [...articles];
                                     updated[realIndex] = {
                                       ...updated[realIndex],
-                                      customPromo: { ...updated[realIndex].customPromo!, buttonUrl: e.target.value },
+                                      customPromo: { ...updated[realIndex].customPromo!, buttonUrl: url },
                                     };
                                     updateArticles(updated);
                                   }}
-                                  className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
                                 />
                               </div>
                             </div>
@@ -1040,20 +1037,16 @@ export const CmsBlogPanel: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-[#111111] block mb-1">
-                    Button Target Link
-                  </label>
-                  <input
-                    type="text"
+                  <RouteUrlSelector
+                    label="Button Target Link"
                     value={settings.defaultPromo?.buttonUrl || ""}
                     placeholder="/ordernow"
-                    onChange={(e) =>
+                    onChange={(url) =>
                       updateSettings({
                         ...settings,
-                        defaultPromo: { ...settings.defaultPromo, buttonUrl: e.target.value },
+                        defaultPromo: { ...settings.defaultPromo, buttonUrl: url },
                       })
                     }
-                    className="w-full bg-[#FFF9E8] border border-[#111111]/12 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
                   />
                 </div>
               </div>

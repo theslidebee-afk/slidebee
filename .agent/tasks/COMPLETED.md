@@ -41,3 +41,20 @@
 - **Completed**: October 2026
 - **Summary**: Established full `.agent/` directory structure, `docs/DATABASE.md`, and updated root `AGENTS.md` per project context guidelines.
 - **Verification**: Complete documentation coverage without guessing.
+
+---
+
+## TASK-010: Comprehensive 9-Point Bug Fixes & Refinements
+- **Completed**: October 2026
+- **Summary**: Resolved 9 critical client-reported bugs and platform refinements:
+  1. Strict PPTX download integrity with zero silent image fallbacks (`src/lib/templates.ts`, verified 108/108 templates have real R2 PPTX decks).
+  2. Inbound quote requests recorded in `orders` (`status: "inquiry"`, `INQ-xxxxxx`) with automated email alerts.
+  3. Portfolio multi-slide local computer uploader to R2 with slide strip, reordering, and deletion controls (`CmsPortfolioPanel.tsx`).
+  4. Bulk CSV import enhancements with explicit `pptx_file_url` column, row deletion, asset queue removal, and validation badges.
+  5. Decoupled Free Tier (2 templates) from Pro Credit eligibility in table and filter badges.
+  6. Dedicated Admin "Inquiries & Quotes" portal for managing inbound client communications.
+  7. Connected `Suspended3DCarousel.tsx` and `PresentationServicesSection.tsx` dynamically to `services_cms`.
+  8. Unified Blog Table of Contents anchor navigation with fixed navbar offset.
+  9. Reusable `RouteUrlSelector.tsx` for preset and custom URL destinations across all CMS panels.
+- **Verification**: `npm run build` exits 0; zero unicode emojis across all files.
+

@@ -4,6 +4,7 @@ import { ArrowLeft, Check, FileText } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { d1 } from "../lib/d1";
 import { sendTemplatePurchaseReceiptEmail } from "../lib/email";
+import { getTemplateDeliverableUrl, triggerPptxDownload } from "../lib/templates";
 import { useTemplateCheckout } from "../modules/StudioStoreClient";
 import { usePageSEO } from "../hooks/usePageSEO";
 import {
@@ -201,14 +202,15 @@ export default function TemplateDetail() {
       return;
     }
 
-    const deliverable = template?.download_url || template?.image_url || "/portfolio/case_study_a_1.png";
-    const link = document.createElement("a");
-    link.href = deliverable;
-    link.download = template?.file_name || `${(template as any)?.slug || "slidebee-template"}.pptx`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const deliverable = getTemplateDeliverableUrl(template);
+    if (!deliverable) {
+      setCreditNotice(
+        "The master PowerPoint file (.pptx) for this deck is currently being provisioned by the studio. Please contact support@theslidebee.com or check back shortly."
+      );
+      return;
+    }
+
+    triggerPptxDownload(deliverable, template?.file_name || `${(template as any)?.slug || template?.code || "slidebee-template"}.pptx`);
 
     sendTemplatePurchaseReceiptEmail({
       clientEmail: client.email,

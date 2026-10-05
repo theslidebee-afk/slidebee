@@ -141,6 +141,10 @@ export const useTemplateEdit = (
       setEditTemplateWarning("Please enter a valid Total Slides Count (minimum 1).");
       return;
     }
+    if (!editingTemplate.download_url) {
+      setEditTemplateWarning("Please upload or provide the Master PowerPoint (.pptx) file before saving.");
+      return;
+    }
 
     setIsSavingEditTemplate(true);
     const effectiveDownloadUrl = editingTemplate.download_url || "";

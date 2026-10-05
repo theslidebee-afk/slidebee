@@ -3,6 +3,7 @@ import { Save } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { CmsAboutTeamSection } from "./about/CmsAboutTeamSection";
 import { CmsAboutVisionSection } from "./about/CmsAboutVisionSection";
+import { RouteUrlSelector } from "../shared/RouteUrlSelector";
 
 export const CmsAboutPanel: React.FC = () => {
   const { siteConfigs, setSiteConfigs, handleSaveConfig, configSaving } = useAdmin();
@@ -99,60 +100,56 @@ export const CmsAboutPanel: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
-          <div>
-            <label className="text-[11px] font-bold text-[#FCBF14] block mb-1">
-              Primary Button (Label & Link)
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-[#FCBF14] block">
+              Primary Button
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={aboutConfig.ctaPrimaryText ?? "Explore Templates"}
-                onChange={(e) => setSiteConfigs({
-                  ...siteConfigs,
-                  about_cms: { ...aboutConfig, ctaPrimaryText: e.target.value }
-                })}
-                placeholder="Explore Templates"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
-              />
-              <input
-                type="text"
-                value={aboutConfig.ctaPrimaryLink ?? "/"}
-                onChange={(e) => setSiteConfigs({
-                  ...siteConfigs,
-                  about_cms: { ...aboutConfig, ctaPrimaryLink: e.target.value }
-                })}
-                placeholder="/"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-white placeholder:text-gray-400"
-              />
-            </div>
+            <input
+              type="text"
+              value={aboutConfig.ctaPrimaryText ?? "Explore Templates"}
+              onChange={(e) => setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, ctaPrimaryText: e.target.value }
+              })}
+              placeholder="Explore Templates"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+            />
+            <RouteUrlSelector
+              label="Primary Destination Link"
+              value={aboutConfig.ctaPrimaryLink ?? "/templates"}
+              onChange={(url) => setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, ctaPrimaryLink: url }
+              })}
+              placeholder="/templates"
+              dark
+            />
           </div>
 
-          <div>
-            <label className="text-[11px] font-bold text-gray-300 block mb-1">
-              Secondary Button (Label & Link)
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-gray-300 block">
+              Secondary Button
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={aboutConfig.ctaSecondaryText ?? "Get a Custom Presentation"}
-                onChange={(e) => setSiteConfigs({
-                  ...siteConfigs,
-                  about_cms: { ...aboutConfig, ctaSecondaryText: e.target.value }
-                })}
-                placeholder="Get a Custom Presentation"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
-              />
-              <input
-                type="text"
-                value={aboutConfig.ctaSecondaryLink ?? "/ordernow"}
-                onChange={(e) => setSiteConfigs({
-                  ...siteConfigs,
-                  about_cms: { ...aboutConfig, ctaSecondaryLink: e.target.value }
-                })}
-                placeholder="/ordernow"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-white placeholder:text-gray-400"
-              />
-            </div>
+            <input
+              type="text"
+              value={aboutConfig.ctaSecondaryText ?? "Get a Custom Presentation"}
+              onChange={(e) => setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, ctaSecondaryText: e.target.value }
+              })}
+              placeholder="Get a Custom Presentation"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+            />
+            <RouteUrlSelector
+              label="Secondary Destination Link"
+              value={aboutConfig.ctaSecondaryLink ?? "/ordernow"}
+              onChange={(url) => setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, ctaSecondaryLink: url }
+              })}
+              placeholder="/ordernow"
+              dark
+            />
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { AdminContext } from "../features/admin/context/AdminContext";
 import { AdminHeader } from "../features/admin/components/AdminHeader";
 import { AdminNavigation } from "../features/admin/components/AdminNavigation";
 import { AdminOverview } from "../features/admin/overview/AdminOverview";
+import { AdminInquiries } from "../features/admin/inquiries";
 import { AdminOrders } from "../features/admin/orders/AdminOrders";
 import { AdminTemplates } from "../features/admin/templates/AdminTemplates";
 import { AdminSubscriptions } from "../features/admin/subscriptions/AdminSubscriptions";
@@ -33,8 +34,9 @@ export const Admin: React.FC = () => {
   const navigate = useNavigate();
 
   // Active sub-tab derived from route
-  const getTabFromPath = (): "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions" => {
+  const getTabFromPath = (): "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions" => {
     const path = location.pathname.toLowerCase();
+    if (path.includes("/inquiries")) return "inquiries";
     if (path.includes("/orders")) return "orders";
     if (path.includes("/templates")) return "templates";
     if (path.includes("/customization")) return "customization";
@@ -44,7 +46,7 @@ export const Admin: React.FC = () => {
     return "overview";
   };
 
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions">(getTabFromPath());
+  const [activeTab, setActiveTab] = useState<"overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions">(getTabFromPath());
 
   useEffect(() => {
     setActiveTab(getTabFromPath());
@@ -399,6 +401,7 @@ export const Admin: React.FC = () => {
         <Routes>
           <Route path="/" element={<AdminOverview />} />
           <Route path="overview" element={<AdminOverview />} />
+          <Route path="inquiries" element={<AdminInquiries />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="templates" element={<AdminTemplates />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />

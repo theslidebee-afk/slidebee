@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ListFilter } from "lucide-react";
-import { slugifyHeading } from "./BlogArticleBody";
+import { cleanHeadingText, slugifyHeading } from "./BlogArticleBody";
 
 interface TocItem {
   id: string;
@@ -31,20 +31,18 @@ export const BlogTableOfContents: React.FC<BlogTableOfContentsProps> = ({
 
     lines.forEach((line) => {
       const trimmed = line.trim();
-      if (trimmed.startsWith("### ")) {
-        const text = trimmed.replace(/^###\s+/, "").replace(/[*_`]/g, "");
-        items.push({
-          id: slugifyHeading(text),
-          text,
-          level: 3,
-        });
-      } else if (trimmed.startsWith("## ")) {
-        const text = trimmed.replace(/^##\s+/, "").replace(/[*_`]/g, "");
-        items.push({
-          id: slugifyHeading(text),
-          text,
-          level: 2,
-        });
+      if (trimmed.startsWith("### ") || trimmed.startsWith("## ")) {
+        const isH3 = trimmed.startsWith("### ");
+        const rawTitle = isH3 ? trimmed.replace(/^###\s+/, "") : trimmed.replace(/^##\s+/, "");
+        const text = cleanHeadingText(rawTitle);
+        const slug = slugifyHeading(rawTitle);
+        if (text && slug) {
+          items.push({
+            id: slug,
+            text,
+            level: isH3 ? 3 : 2,
+          });
+        }
       }
     });
 
@@ -57,6 +55,17 @@ export const BlogTableOfContents: React.FC<BlogTableOfContentsProps> = ({
   useEffect(() => {
     if (headings.length === 0) return;
 
+    // Handle initial hash in URL if present
+    const hash = window.location.hash?.replace("#", "");
+    if (hash) {
+      const match = headings.find((h) => h.id === hash);
+      if (match) {
+        setTimeout(() => {
+          scrollToHeading(match.id);
+        }, 400);
+      }
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -66,7 +75,7 @@ export const BlogTableOfContents: React.FC<BlogTableOfContentsProps> = ({
         });
       },
       {
-        rootMargin: "-80px 0px -60% 0px",
+        rootMargin: "-90px 0px -60% 0px",
         threshold: 0.1,
       }
     );
@@ -84,8 +93,15 @@ export const BlogTableOfContents: React.FC<BlogTableOfContentsProps> = ({
   const scrollToHeading = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      const yOffset = -90; // Fixed navigation header offset
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: "smooth" });
       setActiveId(id);
+      try {
+        window.history.replaceState(null, "", `#${id}`);
+      } catch {
+        // Safe fallback
+      }
     }
   };
 

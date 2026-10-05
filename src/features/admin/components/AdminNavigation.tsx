@@ -8,7 +8,8 @@ import {
   HardDrive, 
   LayoutDashboard, 
   Crown, 
-  Search 
+  Search,
+  MessageSquare 
 } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 
@@ -37,7 +38,7 @@ export const AdminNavigation: React.FC = () => {
   const remainingGB = (remainingMB / 1024).toFixed(2);
   const percentUsed = ((storageStats.totalUsedMB / totalR2QuotaMB) * 100).toFixed(1);
 
-  const handleNav = (tab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions", path: string) => {
+  const handleNav = (tab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions", path: string) => {
     setActiveTab(tab);
     navigate(path);
   };
@@ -177,6 +178,17 @@ export const AdminNavigation: React.FC = () => {
             }`}
           >
             <LayoutDashboard size={14} /> Studio Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNav("inquiries", "/admin/inquiries")}
+            className={`px-4 py-2 hex-pill text-xs font-heading font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === "inquiries"
+                ? "bg-[#111111] text-[#FCBF14] shadow"
+                : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
+            }`}
+          >
+            <MessageSquare size={14} /> Inquiries & Quotes
           </button>
           <button
             type="button"

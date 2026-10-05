@@ -10,11 +10,11 @@ export interface CsvIssue {
 }
 
 export function handleDownloadSampleCSV() {
-  const sampleHeaders = "code,title,category,price_inr,price_usd,original_price_inr,slide_count,thumbnail_url,slides_preview_urls,download_url,is_credit_eligible,formats,description,features\n";
+  const sampleHeaders = "code,title,category,price_inr,price_usd,slide_count,thumbnail_url,slides_preview_urls,pptx_file_url,tier,is_credit_eligible,formats,description,features\n";
   const sampleRows = 
-    `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,1999,20,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/accenture.pptx","true","PowerPoint;Google Slides","High-converting 20-slide pitch deck layout with financial unit economics and investor traction metrics.","20+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
-    `"SLD-102","Executive Board Review 2026","Corporate",1499,29,2999,45,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/cvs_health.pptx","false","PowerPoint;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable Master PPTX"\n` +
-    `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",799,15,1599,25,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/nike.pptx","false","PowerPoint;Canva","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Master PowerPoint (.pptx)"`;
+    `"SLD-101","Series A SaaS Pitch Deck Pro","Pitch Decks",999,19,20,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/accenture_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/accenture.pptx","pro","true","PowerPoint;Google Slides","High-converting 20-slide pitch deck layout with financial unit economics and investor traction metrics.","20+ Editable Vector Slides;16:9 Widescreen Layout;Dark & Light Mode;Free Google Fonts;Master Color Tokens"\n` +
+    `"SLD-102","Executive Board Review 2026","Corporate",1499,29,45,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/cvs_health_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/cvs_health.pptx","pro","false","PowerPoint;Keynote","Minimalist corporate executive board presentation system with financial tables and governance frameworks.","45+ Governance & Financial Slides;Data-Dense Executive Layouts;Custom SVG Icons Included;Editable Master PPTX"\n` +
+    `"SLD-103","Modern Brand Styleguide & Guidelines","Branding",0,0,25,"https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-1.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-2.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-3.jpg;https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/slides/nike_slide-4.jpg","https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/nike.pptx","free","false","PowerPoint;Canva","Complete visual identity presentation system with color tokens, logo safe-zones, and editorial typography.","25 Modular Brand Guidelines Slides;Color Swatch Placeholders;Typography Scaling Hierarchy;Master PowerPoint (.pptx)"`;
   
   const blob = new Blob([sampleHeaders + sampleRows], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -77,11 +77,15 @@ export function parseAndValidateCsv(
   const catIdx = hasHeaderCode ? getColIndex("category", 2) : getColIndex("category", 1);
   const inrIdx = hasHeaderCode ? getColIndex("price_inr", 3) : getColIndex("price_inr", 2);
   const usdIdx = hasHeaderCode ? getColIndex("price_usd", 4) : getColIndex("price_usd", 3);
-  const origInrIdx = getColIndex("original_price_inr", 5);
-  const slidesCountIdx = hasHeaderCode ? getColIndex("slide_count", 6) : getColIndex("slide_count", 4);
-  const thumbIdx = hasHeaderCode ? getColIndex("thumbnail_url", 7) : getColIndex("thumbnail_url", 5);
-  const previewUrlsIdx = getColIndex("slides_preview_urls", 8);
-  const downloadUrlIdx = getColIndex("download_url", 9);
+  const slidesCountIdx = hasHeaderCode ? getColIndex("slide_count", 5) : getColIndex("slide_count", 4);
+  const thumbIdx = hasHeaderCode ? getColIndex("thumbnail_url", 6) : getColIndex("thumbnail_url", 5);
+  const previewUrlsIdx = getColIndex("slides_preview_urls", 7);
+  const pptxIdx = getColIndex("pptx_file_url", -1) !== -1
+    ? getColIndex("pptx_file_url", -1)
+    : getColIndex("pptx_url", -1) !== -1
+    ? getColIndex("pptx_url", -1)
+    : getColIndex("download_url", 8);
+  const tierIdx = getColIndex("tier", -1);
   const descIdx = hasHeaderCode ? getColIndex("description", 11) : getColIndex("description", 6);
   const featuresIdx = getColIndex("features", 12);
   const creditEligibleIdx = getColIndex("is_credit_eligible", -1);
@@ -118,7 +122,7 @@ export function parseAndValidateCsv(
     const rawInr = (parts[inrIdx] || "").trim();
     const rawUsd = (parts[usdIdx] || "").trim();
     const rawThumb = (parts[thumbIdx] || "").trim();
-    const rawDownload = (parts[downloadUrlIdx] || "").trim();
+    const rawDownload = (parts[pptxIdx] || "").trim();
 
     if (!rawCode) {
       errors.push({
@@ -186,25 +190,30 @@ export function parseAndValidateCsv(
       }
     }
 
-    const price_inr = Number(rawInr);
-    const price_usd = Number(rawUsd);
-    if (isNaN(price_inr) || price_inr <= 0) {
-      errors.push({
-        row: rowNum,
-        code: rawCode || "—",
-        title: rawTitle,
-        field: "price_inr",
-        issue: `Price INR must be greater than 0 ("${rawInr}" given). To offer free tier access, enter standard price and set is_credit_eligible to true.`,
-      });
-    }
-    if (isNaN(price_usd) || price_usd <= 0) {
-      errors.push({
-        row: rowNum,
-        code: rawCode || "—",
-        title: rawTitle,
-        field: "price_usd",
-        issue: `Price USD must be greater than 0 ("${rawUsd}" given). To offer free tier access, enter standard price and set is_credit_eligible to true.`,
-      });
+    const rawTier = tierIdx !== -1 ? (parts[tierIdx] || "").trim().toLowerCase() : "";
+    const isFreeTier = rawTier === "free" || rawInr === "0" || parts[getColIndex("is_free", -1)] === "true";
+
+    const price_inr = isFreeTier ? 0 : Number(rawInr);
+    const price_usd = isFreeTier ? 0 : Number(rawUsd);
+    if (!isFreeTier) {
+      if (isNaN(price_inr) || price_inr <= 0) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "price_inr",
+          issue: `Price INR must be greater than 0 ("${rawInr}" given). For 100% Free tier decks, set tier to "free".`,
+        });
+      }
+      if (isNaN(price_usd) || price_usd <= 0) {
+        errors.push({
+          row: rowNum,
+          code: rawCode || "—",
+          title: rawTitle,
+          field: "price_usd",
+          issue: `Price USD must be greater than 0 ("${rawUsd}" given). For 100% Free tier decks, set tier to "free".`,
+        });
+      }
     }
 
     if (!rawThumb) {
@@ -257,6 +266,24 @@ export function parseAndValidateCsv(
       if (parsedFeats.length > 0) features = parsedFeats;
     }
 
+    if (!rawDownload) {
+      errors.push({
+        row: rowNum,
+        code: rawCode || "—",
+        title: rawTitle,
+        field: "pptx_file_url",
+        issue: "Master PowerPoint file (.pptx) URL is missing. Every template requires an attached PPTX deck.",
+      });
+    } else if (rawDownload.endsWith(".jpg") || rawDownload.endsWith(".jpeg") || rawDownload.endsWith(".png") || rawDownload.endsWith(".webp")) {
+      errors.push({
+        row: rowNum,
+        code: rawCode || "—",
+        title: rawTitle,
+        field: "pptx_file_url",
+        issue: `Cannot use a preview image ("${rawDownload}") as the Master PPTX deliverable. Must be a .pptx file.`,
+      });
+    }
+
     const download_url = rawDownload
       ? convertGoogleDriveUrl(rawDownload, false)
       : `${R2_PUBLIC_BASE_URL}/templates/decks/${code.toLowerCase()}.pptx`;
@@ -273,9 +300,8 @@ export function parseAndValidateCsv(
       title,
       slug,
       category: rawCategory || "Pitch Decks",
-      price_inr: isNaN(price_inr) ? 499 : price_inr,
-      price_usd: isNaN(price_usd) ? 9 : price_usd,
-      original_price_inr: origInrIdx !== -1 && !isNaN(Number(parts[origInrIdx])) ? Number(parts[origInrIdx]) : null,
+      price_inr: isFreeTier ? 0 : (isNaN(price_inr) ? 499 : price_inr),
+      price_usd: isFreeTier ? 0 : (isNaN(price_usd) ? 9 : price_usd),
       slide_count,
       thumbnail_url,
       slides: convertedSlides,
@@ -284,7 +310,7 @@ export function parseAndValidateCsv(
       formats: parsedFormats,
       description: parts[descIdx] || "Executive master presentation deck with clean typography and corporate hierarchy.",
       features,
-      is_premium: Number(price_inr) > 0 ? 1 : 0,
+      is_premium: isFreeTier ? 0 : 1,
       is_published: 1,
       is_featured: false,
       is_hero: false,

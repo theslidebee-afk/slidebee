@@ -1,4 +1,5 @@
 import React from "react";
+import { RouteUrlSelector } from "../../shared/RouteUrlSelector";
 
 interface CmsPromotionalBannersProps {
   siteConfigs: any;
@@ -99,16 +100,14 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-[#111111] block mb-1">Button Link</label>
-              <input
-                type="text"
+              <RouteUrlSelector
+                label="Button Destination Link"
                 value={siteConfigs["home_banner_1"]?.ctaLink || ""}
-                onChange={(e) => setSiteConfigs({
+                onChange={(url) => setSiteConfigs({
                   ...siteConfigs,
-                  home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), ctaLink: e.target.value }
+                  home_banner_1: { ...(siteConfigs["home_banner_1"] || {}), ctaLink: url }
                 })}
                 placeholder="/about"
-                className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111]"
               />
             </div>
           </div>
@@ -148,7 +147,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 text-xs font-medium text-white placeholder:text-gray-400"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 items-end">
             <div>
               <label className="text-[11px] font-bold text-gray-300 block mb-1">Button Label</label>
               <input
@@ -163,16 +162,15 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-gray-300 block mb-1">Button Link</label>
-              <input
-                type="text"
+              <RouteUrlSelector
+                label="Button Destination Link"
                 value={siteConfigs["home_banner_2"]?.ctaLink || ""}
-                onChange={(e) => setSiteConfigs({
+                onChange={(url) => setSiteConfigs({
                   ...siteConfigs,
-                  home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), ctaLink: e.target.value }
+                  home_banner_2: { ...(siteConfigs["home_banner_2"] || {}), ctaLink: url }
                 })}
                 placeholder="/pricing"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
+                dark
               />
             </div>
           </div>

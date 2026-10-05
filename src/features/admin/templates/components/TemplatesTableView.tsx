@@ -166,14 +166,21 @@ export const TemplatesTableView: React.FC<TemplatesTableViewProps> = ({
                         <span className={`w-1.5 h-1.5 rounded-full ${tpl.is_published !== false ? "bg-emerald-500" : "bg-gray-400"}`} />
                         {tpl.is_published !== false ? "Published" : "Draft"}
                       </span>
-                      {tpl.is_credit_eligible ? (
-                        <span className="text-[9px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full w-fit">
+                      {(!tpl.is_premium || Number(tpl.price_inr) === 0) ? (
+                        <span className="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full w-fit border border-emerald-300">
                           Free Tier
                         </span>
                       ) : (
-                        <span className="text-[9px] font-bold text-[#726F6D]">
-                          Premium
-                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-[9px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full w-fit border border-amber-300">
+                            Premium
+                          </span>
+                          {tpl.is_credit_eligible ? (
+                            <span className="text-[9px] font-semibold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded-full w-fit border border-blue-200">
+                              Pro Credit
+                            </span>
+                          ) : null}
+                        </div>
                       )}
                     </div>
                   </td>

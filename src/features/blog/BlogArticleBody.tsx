@@ -99,20 +99,53 @@ export function renderFormattedInline(text: string): React.ReactNode {
   return parts.length > 0 ? parts : text;
 }
 
+export function cleanHeadingText(raw: string): string {
+  if (!raw) return "";
+  return raw.replace(/^#{1,6}\s+/, "").replace(/[*_`#]/g, "").trim();
+}
+
 export function slugifyHeading(text: string): string {
-  return text
+  const clean = cleanHeadingText(text);
+  return clean
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-");
 }
 
+export function parseMarkdownBlocks(content: string): string[] {
+  if (!content) return [];
+  const rawBlocks = content.split(/\n\n+/);
+  const blocks: string[] = [];
+
+  for (const block of rawBlocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.match(/^#{1,4}\s+/)) {
+      const firstNewline = trimmed.indexOf("\n");
+      if (firstNewline !== -1) {
+        const headingLine = trimmed.substring(0, firstNewline).trim();
+        const rest = trimmed.substring(firstNewline + 1).trim();
+        if (headingLine) blocks.push(headingLine);
+        if (rest) blocks.push(rest);
+        continue;
+      }
+    }
+    blocks.push(trimmed);
+  }
+
+  return blocks;
+}
+
 export const BlogArticleBody: React.FC<BlogArticleBodyProps> = ({ content }) => {
   if (!content) return null;
 
+  const blocks = parseMarkdownBlocks(content);
+
   return (
     <div className="prose prose-stone max-w-none text-[#111111] text-base leading-relaxed space-y-6 font-medium">
-      {content.split(/\n\n+/).map((paragraph: string, idx: number) => {
+      {blocks.map((paragraph: string, idx: number) => {
         const trimmed = paragraph.trim();
         if (!trimmed) return null;
 

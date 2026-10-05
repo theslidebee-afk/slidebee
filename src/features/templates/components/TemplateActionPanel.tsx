@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { StoreTemplate } from "../../../modules/StudioStoreClient";
+import { getTemplateDeliverableUrl } from "../../../lib/templates";
 import { TemplateSpecs } from "./TemplateSpecs";
 
 interface TemplateActionPanelProps {
@@ -186,15 +187,24 @@ export function TemplateActionPanel({
                 </span>
               </div>
 
-              <a
-                href={deliverableUrl || template.download_url || template.image_url}
-                download={template.file_name || `${template.code}_Master.pptx`}
-                target="_blank"
-                rel="noreferrer"
-                className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-              >
-                <Download size={14} /> Download Master PowerPoint (.pptx)
-              </a>
+              {(() => {
+                const effectiveDeliverable = deliverableUrl || getTemplateDeliverableUrl(template);
+                return effectiveDeliverable ? (
+                  <a
+                    href={effectiveDeliverable}
+                    download={template.file_name || `${template.code}_Master.pptx`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
+                  >
+                    <Download size={14} /> Download Master PowerPoint (.pptx)
+                  </a>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl font-bold text-center">
+                    Master PowerPoint deck (.pptx) is being provisioned by the studio.
+                  </div>
+                );
+              })()}
             </div>
           ) : isPro ? (
             <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-primary rounded-2xl space-y-3 shadow-sm">

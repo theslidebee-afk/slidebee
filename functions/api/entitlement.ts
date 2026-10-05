@@ -221,7 +221,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     let purchasedItems = [];
     try { purchasedItems = JSON.parse(profile.purchased_items || "[]"); } catch {}
 
-    const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+    const isPptx = (url: string) => url && typeof url === "string" && (url.endsWith(".pptx") || url.endsWith(".ppt") || url.endsWith(".zip") || url.includes("/templates/decks/"));
+    const deliverable = isPptx(template.download_url)
+      ? template.download_url
+      : (isPptx(template.pptx_file_url)
+        ? template.pptx_file_url
+        : `https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/accenture.pptx`);
     const alreadyPresent = purchasedItems.some((item: any) => item.id === template.id || item.slug === template.slug);
 
     if (!alreadyPresent) {

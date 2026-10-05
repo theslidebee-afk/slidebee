@@ -63,7 +63,7 @@ export const AdminTemplates: React.FC = () => {
       .filter((t: any) => {
         if (adminTemplateFilter === "published" && t.is_published === false) return false;
         if (adminTemplateFilter === "draft" && t.is_published !== false) return false;
-        if (adminTemplateFilter === "free" && !t.is_credit_eligible) return false;
+        if (adminTemplateFilter === "free" && (t.is_premium && Number(t.price_inr) > 0)) return false;
         if (adminTemplateCategory !== "All" && t.category?.toLowerCase() !== adminTemplateCategory.toLowerCase()) return false;
         if (effectiveSearch) {
           const match =

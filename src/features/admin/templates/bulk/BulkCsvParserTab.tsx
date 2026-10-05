@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Trash2, Check } from "lucide-react";
 import type { CsvIssue } from "./bulkImportUtils";
 
 interface BulkCsvParserTabProps {
@@ -11,6 +11,7 @@ interface BulkCsvParserTabProps {
   csvWarnings: CsvIssue[];
   shouldMirrorAssets: boolean;
   setShouldMirrorAssets: (mirror: boolean) => void;
+  onRemoveParsedRow?: (idx: number) => void;
 }
 
 export const BulkCsvParserTab: React.FC<BulkCsvParserTabProps> = ({
@@ -21,7 +22,8 @@ export const BulkCsvParserTab: React.FC<BulkCsvParserTabProps> = ({
   csvErrors,
   csvWarnings,
   shouldMirrorAssets,
-  setShouldMirrorAssets
+  setShouldMirrorAssets,
+  onRemoveParsedRow
 }) => {
   return (
     <div className="space-y-4 mb-6">
@@ -135,9 +137,35 @@ export const BulkCsvParserTab: React.FC<BulkCsvParserTabProps> = ({
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold bg-[#FFF9E8] px-2 py-0.5 rounded border border-primary/20 shrink-0">
-                  {t.slides?.length || 1} preview slides
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {(() => {
+                    const dl = (t.download_url || "").toLowerCase();
+                    const hasPptx = dl.endsWith(".pptx") || dl.endsWith(".ppt") || dl.endsWith(".zip") || dl.includes("/templates/decks/");
+                    return (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                        hasPptx
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-red-50 text-red-800 border border-red-200"
+                      }`}>
+                        {hasPptx ? <Check size={11} /> : <AlertCircle size={11} />}
+                        {hasPptx ? "PPTX Attached" : "No PPTX"}
+                      </span>
+                    );
+                  })()}
+                  <span className="text-[10px] font-bold bg-[#FFF9E8] px-2 py-0.5 rounded border border-primary/20 shrink-0">
+                    {t.slides?.length || 1} slides
+                  </span>
+                  {onRemoveParsedRow && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveParsedRow(idx)}
+                      className="p-1 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                      title="Remove Row"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

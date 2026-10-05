@@ -61,36 +61,36 @@ Primary presentation catalog table.
 - `slides`: TEXT (JSON array string of inner slide preview R2 image URLs)
 - `description`: TEXT NOT NULL
 - `features`: TEXT (JSON array string of bullet points)
-- `download_url`: TEXT — R2 asset download path
+- `download_url`: TEXT — Verified Cloudflare R2 presentation deliverable URL (`/templates/decks/*.pptx`). Strict integrity: Must NEVER point to image files.
 - `file_name`: TEXT (e.g. `Master_Presentation.pptx`)
 - `file_size`: TEXT (e.g. `4.5 MB`)
-- `is_credit_eligible`: INTEGER DEFAULT 0
+- `is_credit_eligible`: INTEGER DEFAULT 0 — Allows Pro plan members to redeem quota for this premium template.
 - `is_featured`: INTEGER DEFAULT 0
 - `is_published`: INTEGER DEFAULT 1
-- `is_premium`: INTEGER DEFAULT 1
+- `is_premium`: INTEGER DEFAULT 1 — Set to 0 strictly for Free Tier templates (price_inr: 0).
 - `created_at`: DATETIME DEFAULT CURRENT_TIMESTAMP
 
 ---
 
 ### B. `orders`
-Custom design project briefs submitted through `/ordernow`.
+Dual-role table recording custom design project briefs submitted through `/ordernow` and client quote inquiries submitted through `/contact`.
 
 - `id`: TEXT PRIMARY KEY
 - `created_at`: DATETIME DEFAULT CURRENT_TIMESTAMP
-- `order_reference`: TEXT UNIQUE NOT NULL (e.g. `SB-2026-XXXXX`)
-- `service_type`: TEXT NOT NULL
+- `order_reference`: TEXT UNIQUE NOT NULL (e.g. `SB-2026-XXXXX` for custom briefs, `INQ-XXXXXX` for quote inquiries)
+- `service_type`: TEXT NOT NULL (e.g. custom presentation service, or `"Inbound Quote Request"`)
 - `slide_count`: TEXT NOT NULL
 - `timeline`: TEXT NOT NULL
 - `formats`: TEXT (JSON array string)
 - `style_preference`: TEXT
 - `drive_url`: TEXT
-- `project_brief`: TEXT NOT NULL
+- `project_brief`: TEXT NOT NULL (Contains brief details or message body of the client inquiry)
 - `full_name`: TEXT NOT NULL
 - `email`: TEXT NOT NULL COLLATE NOCASE
 - `company`: TEXT
 - `phone`: TEXT
 - `payment_id`: TEXT UNIQUE
-- `status`: TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_review', 'in_progress', 'completed', 'cancelled'))
+- `status`: TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'inquiry', 'in_review', 'in_progress', 'completed', 'cancelled'))
 - `deliverable_url`: TEXT — R2 deliverable download link
 - `deliverable_name`: TEXT
 

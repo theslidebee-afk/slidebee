@@ -185,6 +185,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
               csvWarnings={csvWarnings}
               shouldMirrorAssets={shouldMirrorAssets}
               setShouldMirrorAssets={setShouldMirrorAssets}
+              onRemoveParsedRow={(idx) => setParsedBulkTemplates((prev) => prev.filter((_, i) => i !== idx))}
             />
           )}
 

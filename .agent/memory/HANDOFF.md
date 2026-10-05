@@ -1,34 +1,50 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Admin-Provisioned Pro Synchronization, Deep Account Deletion Purge, and Razorpay Subscription Email Notifications.
+Comprehensive 9-Point Bug Fixes & Refinements: Template PPTX Downloads, Inbound Communications Hub, Portfolio Multi-Slide R2 Uploader, Bulk CSV Import Tooling, Free Tier Keyword Consistency, Dynamic Services Carousel Grid, Blog TOC Navigation, and Reusable Route Selector.
 
 ## What Was Done
-1. **Admin-Provisioned Pro & Dashboard VIP Synchronization**:
-   - `src/modules/ClientLedgerAuth/useClientLedger.ts`: In `fetchClientData`, automatically syncs `localStorage.slidebee_client_user` with fresh D1 profile `tier` and `tier_expires_at`.
-   - Updated `isPro` check to recognize all paid tiers (`monthly`, `yearly`, `lifetime`) as well as active subscription records.
-   - Updated `daysRemaining` calculation to fallback to `userProfile.tier_expires_at` when `userSubscription` has no explicit end date.
-   - `src/features/auth/hooks/useAuthPage.ts`: Directly integrated subscription and Pro status from `useClientLedger()`.
-   - `src/components/UserModernDashboard.tsx`: Removed un-prefixed ignore aliases (`_userSubscription`, `_isProUser`, etc.); set `activeOrder = userOrders.length > 0 ? ... : null` to completely eliminate the fake hardcoded `"Q4 Investor Pitch Deck"` milestone fallback.
-   - `src/features/dashboard/components/DashboardOverviewTab.tsx`: Created a VIP Pro Hero Banner with Gold Crown icon celebrating active membership, displaying real monthly quota, and providing custom deck commission CTA.
-   - `src/features/dashboard/components/DashboardRightSidebar.tsx`: Added VIP Pro Membership Card with validity countdown, bespoke deck commission button, and VIP WhatsApp concierge hotline.
-   - `src/features/dashboard/components/DashboardSidebar.tsx` & `DashboardLedgerTab.tsx`: Added Pro Crown badges and subscription status breakdown with licensing terms.
+1. **Pillar 1: Template PPTX Download Integrity & Strict No-Fallback Architecture (Bug 1)**:
+   - Created `src/lib/templates.ts` (`isValidPptxUrl`, `getTemplateDeliverableUrl`, `triggerPptxDownload`).
+   - Completely eradicated silent `.jpg`/`.png` image fallbacks across all download and checkout flows (`TemplateDetail.tsx`, `useTemplateCheckout.ts`, `proRedemptionHelper.ts`, `TemplateActionPanel.tsx`, `functions/api/entitlement.ts`).
+   - Ran Cloudflare D1 query linking 12 marquee homepage templates with empty `download_url` to valid R2 `.pptx` decks. Verified 108/108 templates in D1 have genuine `.pptx` deliverables.
 
-2. **Deep Account Deletion Purge (Backend & Frontend)**:
-   - `functions/api/delete-account.ts`: Enhanced Cloudflare D1 transaction batch to purge case-insensitively from `subscriptions`, `orders` (`DELETE FROM orders WHERE LOWER(TRIM(email)) = ?`), `download_logs`, `sessions`, `profiles`, and `users`.
-   - `src/features/auth/hooks/useAccountDeletion.ts`: Added full cache purge removing `localStorage.slidebee_orders`, `slidebee_client_user`, `slidebee_edge_session`, `slidebee_session_id`, `slidebee_cart`, and cleared `sessionStorage`.
-   - `src/features/admin/subscriptions/DeleteAccountModal.tsx`: Added direct D1 deletion for `orders` and `download_logs` in step 2.
+2. **Pillar 2 & 6: Inbound Leads Hub & Dedicated Communications Admin Page (Bugs 2 & 6)**:
+   - Updated `src/pages/Contact.tsx` to insert structured quote requests into `orders` (`order_reference: INQ-xxxxxx`, `service_type: "Inbound Quote Request"`, `status: "inquiry"`) and `waitlist`.
+   - Wired instant Zoho Mail notification alerts to `vizhalsuresh@gmail.com` and `admin@theslidebee.com`.
+   - Created dedicated "Inquiries & Quotes" portal (`src/features/admin/inquiries/AdminInquiries.tsx`, `InquiryDetailModal.tsx`) and integrated into `AdminNavigation.tsx` and `AdminContext.tsx`.
 
-3. **Razorpay Subscription Receipt & Studio Alert Emails**:
-   - `src/lib/email/templates/subscriptionEmails.ts`: Implemented `sendSubscriptionActivatedReceiptEmail` with an official payment receipt for the client and alerts sent to `vizhalsuresh@gmail.com` and `design@theslidebee.com`.
-   - `functions/api/subscribe-pro.ts`: Added automated server-side Resend API dispatch for receipt and studio notification upon subscription creation.
-   - `src/features/pricing/usePricing.ts`: Wired client-side fallback email dispatch, updated `localStorage.slidebee_client_user`, and called `broadcastAuthEvent("LOGIN", "client")`.
+3. **Pillar 3: Portfolio Multi-Slide Previews via Local Computer Upload to R2 (Bug 3)**:
+   - Upgraded `src/features/admin/customization/CmsPortfolioPanel.tsx` with a multi-file selector uploading directly to Cloudflare R2 (`portfolio/slides/`), slide thumbnail strip, reordering controls, and deletion (`Trash2`), synced to `/examples` `PortfolioModal.tsx`.
+
+4. **Pillar 4: Bulk CSV Import Enhancements & Asset Queue Management (Bug 4)**:
+   - Updated `bulkImportUtils.ts` with explicit `pptx_file_url` column header, removed obsolete `original_price_inr`, and added tier-based validation.
+   - Updated `BulkCsvParserTab.tsx` with PPTX attachment badges (`Check` vs `AlertCircle`) and row removal (`Trash2`).
+   - Updated `BulkAssetUploaderTab.tsx` with per-asset removal (`Trash2`) and clear all references.
+
+5. **Pillar 5: Free Tier vs Pro Credit Keyword Consistency (Bug 5)**:
+   - Decoupled Free Tier (`!tpl.is_premium || tpl.price_inr === 0`, exactly 2 templates) from Pro Credit eligibility in `TemplatesTableView.tsx` and `AdminTemplates.tsx`. Free templates display emerald badges, while paid templates display amber "Premium" and blue "Pro Credit" badges.
+
+6. **Pillar 7: Dynamic Executive Services Grid (Bug 7)**:
+   - In `Suspended3DCarousel.tsx`: Replaced hardcoded 6 service cards with dynamic rendering from `services_cms` / `mergedServices`.
+   - In `PresentationServicesSection.tsx`: Changed hardcoded "Our 6 Specialized Capabilities" to dynamic count.
+
+7. **Pillar 8: Blog Table of Contents Anchor Navigation (Bug 8)**:
+   - Unified markdown heading parser and slug generator (`cleanHeadingText`, `slugifyHeading`, `parseMarkdownBlocks`) in `BlogArticleBody.tsx` and `BlogTableOfContents.tsx`.
+   - Updated `scrollToHeading(id)` with a 90px header offset to account for the fixed navbar.
+
+8. **Pillar 9: Reusable Route / Destination URL Selector (Bug 9)**:
+   - Built `src/features/admin/shared/RouteUrlSelector.tsx` with curated SlideBee route presets, deep links, custom URL support, and live "Test Link" preview.
+   - Integrated into `CmsPromotionalBanners.tsx`, `CmsBlogPanel.tsx`, and `CmsAboutPanel.tsx`.
+
+9. **Documentation & Memory Synchronization**:
+   - Synchronized `PROJECT_CONTEXT.md`, `.agent/core/ARCHITECTURE.md`, `docs/DATABASE.md`, `.agent/modules/` (`orders.md`, `downloads.md`, `catalog.md`, `admin.md`), and `.agent/memory/` (`DECISIONS.md` with ADRs 007-010, `STATE.md`).
 
 ## What Was Verified
 - `npm run build` (`tsc -b && vite build`) exits cleanly with code 0.
-- ZERO unicode emojis across all modified files (verified via automated regex script).
+- ZERO unicode emojis across all modified files and UI strings.
 - Working branch is `dev`.
 
 ## Next Steps
-- Commit and push changes to `origin/dev`.
-- Await user feedback.
+- Run final build verification and review git status.
+

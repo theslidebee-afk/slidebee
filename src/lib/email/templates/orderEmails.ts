@@ -319,6 +319,15 @@ export async function sendContactNotificationEmail({
     html: studioAlertHtml,
   }).catch(err => console.warn('Studio contact notification dispatch:', err));
 
+  sendEmail({
+    to: 'vizhalsuresh@gmail.com',
+    fromEmail: 'hello@theslidebee.com',
+    fromName: 'SlideBee Contact Alert',
+    replyTo: email,
+    subject: `[NEW INQUIRY] ${safeSubject} — from ${safeName} (${email})`,
+    html: studioAlertHtml,
+  }).catch(err => console.warn('Admin copy dispatch notice:', err));
+
   return clientResult;
 }
 

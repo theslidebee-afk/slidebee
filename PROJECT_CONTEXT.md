@@ -59,11 +59,33 @@ This document serves as the single source of truth for Antigravity agents and de
 * `src/pages/Admin.tsx`: Storefront management, hero/banner toggles, template CRUD, and site config.
 * `src/components/Navbar.tsx`: Sticky navigation with service links, template search, and quote CTA.
 * `src/components/Footer.tsx`: Universal footer with copyright, links, and guarantee badges.
+* `src/lib/templates.ts`: PPTX presentation deliverable validation, download triggering, and strict no-fallback architecture.
+* `src/features/admin/inquiries/AdminInquiries.tsx`: Dedicated Inbound Quotes and Communications hub for client inquiries.
+* `src/features/admin/shared/RouteUrlSelector.tsx`: Reusable route / destination URL selector for CMS button links.
 * `src/modules/StudioStoreClient/useStudioStore.ts`: Template catalog state, filtering, and Cloudflare D1 data fetcher.
 
 ---
 
-## 5. Homepage & Hero Section Architecture (`src/pages/Home.tsx`)
+## 5. Core Architectural Pillars & Deliverable Rules
+
+1. **STRICT PPTX DELIVERABLE INTEGRITY (NO IMAGE FALLBACKS)**:
+   - When a user downloads a purchased or free template, the system MUST deliver a verified presentation file (`.pptx`, `.ppt`, `.zip`).
+   - Never fall back to downloading `.jpg`/`.png` slide preview images renamed as `.pptx`.
+   - All deliverable URLs pass through `isValidPptxUrl()` and `getTemplateDeliverableUrl()`.
+   - In Bulk CSV Import, `pptx_file_url` is a first-class required column.
+
+2. **DUAL-ROLE ORDERS & INBOUND COMMUNICATIONS HUB**:
+   - Client brief orders and "Get a Quote" / inbound inquiries are both recorded in Cloudflare D1 `orders` table.
+   - Inquiries are stamped with `status: "inquiry"`, `service_type: "Inbound Quote Request"`, and reference prefix `INQ-`.
+   - Admin features a dedicated "Inquiries & Quotes" portal (`src/features/admin/inquiries/AdminInquiries.tsx`) to review, filter, and respond to incoming leads.
+   - Immediate email alerts are dispatched to `vizhalsuresh@gmail.com` and `admin@theslidebee.com`.
+
+3. **REUSABLE ROUTE & URL SELECTOR**:
+   - All CMS panels with button targets use `RouteUrlSelector` (`src/features/admin/shared/RouteUrlSelector.tsx`), offering curated preset routes (`/templates`, `/services`, `/pricing`, `/ordernow`, etc.) and a live test preview link.
+
+---
+
+## 6. Homepage & Hero Section Architecture (`src/pages/Home.tsx`)
 
 The hero section features a coordinated kinetic stage interaction:
 
@@ -105,9 +127,10 @@ When the user types into search, focuses the search input, or clicks any categor
 
 ---
 
-## 6. How to Start a New Chat Session with Full Context
+## 7. How to Start a New Chat Session with Full Context
 
 When launching a new chat in Antigravity to save tokens:
 1. Provide this brief instruction to the agent:
    > *"We are working on SlideBee in `/home/revenant/xyz_templates` on branch `dev`. Please read `PROJECT_CONTEXT.md` first to understand the architecture, recent changes, and rules."*
 2. The agent will read this file in a single tool call, initializing with 100% full context while keeping input token overhead at ~2,000 tokens instead of 45,000+.
+

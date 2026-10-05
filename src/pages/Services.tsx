@@ -120,6 +120,7 @@ export default function Services() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#FCBF14]/12 rounded-full blur-[160px] pointer-events-none" />
             <div className="w-full z-10 relative">
               <Suspended3DCarousel
+                services={mergedServices}
                 onSelectService={(svcId) => {
                   setSelectedService(svcId);
                   document.getElementById("services-grid")?.scrollIntoView({ behavior: "smooth" });

@@ -4,6 +4,7 @@ import { sendTemplatePurchaseReceiptEmail } from "../../lib/email";
 import { d1 } from "../../lib/d1";
 import { type StoreTemplate } from "./useStudioStore";
 import { redeemProTemplateDownload } from "./proRedemptionHelper";
+import { getTemplateDeliverableUrl, triggerPptxDownload, isValidPptxUrl } from "../../lib/templates";
 
 export interface CheckoutResult {
   success: boolean;
@@ -46,21 +47,15 @@ export function useTemplateCheckout() {
         throw new Error(data.message || "Download entitlement check failed.");
       }
 
-      const pptxUrl = data.downloadUrl || template.download_url || template.image_url;
+      const pptxUrl = (data.downloadUrl && isValidPptxUrl(data.downloadUrl)) ? data.downloadUrl : getTemplateDeliverableUrl(template);
       setIsPurchased(true);
       setPurchasedClientEmail(clientEmail);
-      setDeliverableUrl(pptxUrl);
+      setDeliverableUrl(pptxUrl || undefined);
 
-      // Auto-trigger browser download for client
+      // Auto-trigger browser download for client if verified deliverable is available
       if (typeof window !== "undefined" && pptxUrl) {
         try {
-          const dlLink = document.createElement("a");
-          dlLink.href = pptxUrl;
-          dlLink.download = data.fileName || template.file_name || `${template.code}_Master.pptx`;
-          dlLink.target = "_blank";
-          document.body.appendChild(dlLink);
-          dlLink.click();
-          document.body.removeChild(dlLink);
+          triggerPptxDownload(pptxUrl, data.fileName || template.file_name || `${template.code}_Master.pptx`);
         } catch (dlErr) {
           console.warn("Auto-download notice:", dlErr);
         }
@@ -131,7 +126,7 @@ export function useTemplateCheckout() {
         setPurchasedClientEmail(clientEmail);
 
         const orderRef = `TPL-${template.code}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-        let pptxUrl = template.image_url;
+        let pptxUrl = getTemplateDeliverableUrl(template) || "";
         let fileName = template.file_name || `${template.code}_Master.pptx`;
 
         try {

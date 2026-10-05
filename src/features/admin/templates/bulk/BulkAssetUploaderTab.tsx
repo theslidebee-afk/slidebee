@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UploadCloud, RefreshCw, Copy, CheckCircle2, Plus } from "lucide-react";
+import { UploadCloud, RefreshCw, Copy, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { uploadToR2 } from "../../../../lib/r2";
 
 interface BulkUploadedAsset {
@@ -66,6 +66,16 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
     navigator.clipboard.writeText(urlsText);
     setCopiedAssetUrlsSuccess(true);
     setTimeout(() => setCopiedAssetUrlsSuccess(false), 2500);
+  };
+
+  const handleRemoveAsset = (id: string) => {
+    setBulkUploadedAssets((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleClearAllAssets = () => {
+    if (confirm("Remove all uploaded asset references from this session? (Files remain safely on Cloudflare R2)")) {
+      setBulkUploadedAssets([]);
+    }
   };
 
   return (
@@ -136,6 +146,14 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
               >
                 <Plus size={13} /> Generate Template Row
               </button>
+              <button
+                type="button"
+                onClick={handleClearAllAssets}
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                title="Clear all uploaded references"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           </div>
 
@@ -155,16 +173,26 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
                   <span className="font-semibold text-[#111111] truncate">{asset.name}</span>
                   <span className="text-[#726F6D] text-[10px]">({asset.size})</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(asset.url);
-                    alert("Copied asset R2 URL:\n" + asset.url);
-                  }}
-                  className="text-primary-amber hover:underline font-bold text-[11px] shrink-0 cursor-pointer"
-                >
-                  Copy URL
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(asset.url);
+                      alert("Copied asset R2 URL:\n" + asset.url);
+                    }}
+                    className="text-primary-amber hover:underline font-bold text-[11px] cursor-pointer"
+                  >
+                    Copy URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAsset(asset.id)}
+                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                    title="Remove asset"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

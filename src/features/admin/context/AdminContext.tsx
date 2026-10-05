@@ -10,8 +10,8 @@ import type {
 export interface AdminContextValue {
   session: any;
   loading: boolean;
-  activeTab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions";
-  setActiveTab: (tab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
+  activeTab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions";
+  setActiveTab: (tab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
   orders: AdminOrderRecord[];
   setOrders: React.Dispatch<React.SetStateAction<AdminOrderRecord[]>>;
   templates: AdminTemplateRecord[];

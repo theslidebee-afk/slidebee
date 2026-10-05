@@ -54,3 +54,48 @@
 - **Alternatives considered**: Allowing selective emojis in blog or marketing headlines.
 - **Consequences**: Universal adoption of Lucide React SVG icons and text badges.
 - **Related files**: `rules/no-emojis.md`, `.agent/core/RULES.md`.
+
+---
+
+## ADR-007: Strict PPTX Deliverable Validation & Zero Silent Image Fallbacks
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Forbid any fallback to slide preview images (.jpg/.png) when delivering PowerPoint templates. All template deliverables must be verified presentations (`.pptx`, `.ppt`, `.zip`) via `isValidPptxUrl()` and `getTemplateDeliverableUrl()`.
+- **Reason**: In previous revisions, if a template lacked an explicit `download_url`, client code silently fell back to downloading the preview image (`image_url`) renamed as `.pptx`, corrupting the user's deliverable and causing client frustration.
+- **Alternatives considered**: Automatic on-the-fly conversion of slide images to PPTX via backend script (too slow and prone to formatting distortion).
+- **Consequences**: 100% of marketplace templates have genuine PowerPoint deliverables in Cloudflare R2; downloads fail explicitly with user-friendly alerts if a deliverable is absent rather than corrupting user files.
+- **Related files**: `src/lib/templates.ts`, `src/pages/TemplateDetail.tsx`, `functions/api/entitlement.ts`.
+
+---
+
+## ADR-008: Dual-Role Orders & Inbound Communications Pipeline
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Leverage Cloudflare D1 `orders` table as a unified intake engine for both paid custom design project briefs (`SB-2026-XXXXX`) and "Get a Quote" / inbound inquiries (`INQ-XXXXXX` with `status: "inquiry"`).
+- **Reason**: Avoid creating redundant tables while giving studio operations a centralized single pane of glass in the Admin Studio to review, filter, and track all incoming client communications and conversion funnels.
+- **Alternatives considered**: Storing inquiries strictly in `waitlist` or creating a separate `inquiries` table.
+- **Consequences**: Inquiries are automatically tracked alongside orders; instant Zoho Mail alerts dispatch to studio leadership (`vizhalsuresh@gmail.com`, `admin@theslidebee.com`); dedicated "Inquiries & Quotes" portal in Admin Studio.
+- **Related files**: `src/pages/Contact.tsx`, `src/features/admin/inquiries/AdminInquiries.tsx`, `docs/DATABASE.md`.
+
+---
+
+## ADR-009: Strict Free Tier vs Pro Credit Classification
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Explicitly decouple Free Tier templates (`!is_premium || price_inr === 0`) from Pro Credit eligible premium templates (`is_credit_eligible === 1`).
+- **Reason**: Previously, the Admin table labeled templates as "Free Tier" whenever `is_credit_eligible` was true, leading to confusion where dozens of paid templates appeared with "Free Tier" badges when only 2 templates were genuinely free.
+- **Alternatives considered**: Overloading `is_credit_eligible` as a synonym for free.
+- **Consequences**: Admin filters and badges accurately display "Free Tier" (emerald) ONLY for templates priced at ₹0, and "Premium" (amber) + "Pro Credit" (blue) for paid templates that can be redeemed by subscribers.
+- **Related files**: `src/features/admin/templates/components/TemplatesTableView.tsx`, `src/features/admin/templates/AdminTemplates.tsx`.
+
+---
+
+## ADR-010: Reusable Route & Destination URL Selector in CMS
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Provide a universal `RouteUrlSelector` component across all Admin CMS panels with preset routes, deep links, custom URL support, and a live test preview link.
+- **Reason**: Clients and administrators configuring promotional banners, blog promos, and about pages frequently did not know the exact route paths (e.g. `/ordernow?service=ecommerce`, `/services?type=presentation`). Free-form text fields led to 404s and broken links.
+- **Alternatives considered**: Static help text listing routes.
+- **Consequences**: Dropdown selection of all core studio routes and deep links with two-way sync to manual input and immediate live testing.
+- **Related files**: `src/features/admin/shared/RouteUrlSelector.tsx`, `src/features/admin/customization/*`.
+

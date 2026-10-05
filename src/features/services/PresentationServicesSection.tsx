@@ -21,7 +21,7 @@ export const PresentationServicesSection: React.FC<PresentationServicesSectionPr
       <div className="container mx-auto px-4 md:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block mb-2">
-            Our 6 Specialized Capabilities
+            Our {Object.keys(mergedServices).length} Specialized Capabilities
           </span>
           <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111] mb-3">
             Select a Service to See the Transformation
