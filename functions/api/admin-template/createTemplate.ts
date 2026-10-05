@@ -47,6 +47,31 @@ export async function handleCreateTemplate(request: Request, env: Env) {
     const priceInr = isPremium === 0 ? 0 : rawPriceInr;
     const priceUsd = isPremium === 0 ? 0 : rawPriceUsd;
 
+    if (body?.download_url && env.R2_BUCKET && typeof env.R2_BUCKET.head === "function") {
+      let r2Key = body.download_url;
+      if (r2Key.includes("r2.dev/")) {
+        r2Key = r2Key.split("r2.dev/")[1];
+      }
+      try {
+        const check = await env.R2_BUCKET.head(r2Key);
+        if (!check) {
+          const altKey = r2Key.replace("templates/decks/", "");
+          const altCheck = await env.R2_BUCKET.head(altKey);
+          if (!altCheck) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: `Storage Verification Error: Deliverable file '${r2Key}' was not found in Cloudflare R2 bucket. Please upload the PPTX file first before creating this template.`
+              }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (checkErr) {
+        console.warn("R2 head check notice on create:", checkErr);
+      }
+    }
+
     const row = {
       id: templateId,
       slug,

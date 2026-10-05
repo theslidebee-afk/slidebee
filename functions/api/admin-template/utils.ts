@@ -2,6 +2,7 @@
 
 export interface Env {
   DB?: any;
+  R2_BUCKET?: any;
   SLIDEBEE_ADMIN_SECRET?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_R2_BUCKET?: string;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, ArrowRight, Download, ShieldCheck, Clock, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { FileText, ArrowRight, Download, ShieldCheck, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
 
 export interface PurchasedItem {
   id: string;
@@ -26,19 +26,6 @@ export function DashboardPurchasedTab({
 }: DashboardPurchasedTabProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [redownloadNotice, setRedownloadNotice] = useState<string | null>(null);
-
-  const isWithinGracePeriod = (purchasedAt?: string): boolean => {
-    if (!purchasedAt) return false;
-    try {
-      const purchasedTime = new Date(purchasedAt).getTime();
-      if (isNaN(purchasedTime)) return false;
-      const now = Date.now();
-      const diffHours = (now - purchasedTime) / (1000 * 60 * 60);
-      return diffHours >= 0 && diffHours <= 24;
-    } catch {
-      return false;
-    }
-  };
 
   const handleProRedownload = (item: PurchasedItem) => {
     setDownloadingId(item.id);
@@ -78,15 +65,15 @@ export function DashboardPurchasedTab({
         </Link>
       </div>
 
-      {/* Digital Delivery & Metered Redownload Policy Notice */}
+      {/* Digital Delivery Policy Notice */}
       <div className="bg-[#FFFDF7] border border-[#FCBF14]/40 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#111111] shadow-2xs">
         <ShieldCheck size={18} className="text-[#D99B00] shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="font-bold text-xs uppercase tracking-wider text-[#111111]">
-            Digital Delivery & Metered Offline Access Policy
+            Single-Browser Digital Delivery Policy
           </p>
           <p className="text-[#726F6D] leading-relaxed text-xs">
-            Presentation files (.pptx) are streamed directly to your browser upon purchase for immediate offline storage. Single purchases include an initial 24-hour delivery grace window to save to your local drive. Pro members may redownload decks at any time using their monthly quota. Custom presentation deliverables remain permanently accessible.
+            In accordance with SlideBee digital rights protection, template files (.pptx) are streamed strictly once to your web browser upon purchase for local storage. Direct re-downloading from the client library is restricted. Pro members can redownload decks at any time using active monthly quota. Custom agency presentations remain permanently accessible.
           </p>
         </div>
       </div>
@@ -117,9 +104,6 @@ export function DashboardPurchasedTab({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {allPurchasedDeliverables.map((item) => {
-            const hasGrace = isWithinGracePeriod(item.purchasedAt);
-            const canDirectDownload = item.isCustomProject || hasGrace;
-
             return (
               <div
                 key={item.id}
@@ -146,25 +130,21 @@ export function DashboardPurchasedTab({
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-[#FCBF14] px-2 py-0.5 rounded-full shrink-0">
                       Custom Master
                     </span>
-                  ) : hasGrace ? (
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
-                      <Clock size={10} /> Grace Active
-                    </span>
                   ) : (
                     <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-                      Saved License
+                      Commercial License Active
                     </span>
                   )}
                 </div>
 
-                {canDirectDownload ? (
+                {item.isCustomProject ? (
                   <a
                     href={item.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full hex-pill bg-primary hover:bg-primary/90 text-[#111111] text-xs font-black py-2.5 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                   >
-                    <Download size={14} /> Download Presentation Files (.pptx)
+                    <Download size={14} /> Download Commissioned Master (.pptx)
                   </a>
                 ) : isProUser && quotaRemaining > 0 ? (
                   <div className="space-y-2">
@@ -187,7 +167,7 @@ export function DashboardPurchasedTab({
                     <div className="flex items-start gap-2 text-[11px] text-gray-600">
                       <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
                       <span>
-                        Delivery window ended. Files are stored on your local disk. To download a fresh copy, use Pro quota or acquire a new license.
+                        Delivered to browser at checkout. Per our digital license terms, library re-downloads are disabled. To download again, use Pro quota or acquire a new license.
                       </span>
                     </div>
                     <Link

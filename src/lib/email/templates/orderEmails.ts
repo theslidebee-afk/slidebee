@@ -378,7 +378,7 @@ export async function sendTemplatePurchaseReceiptEmail({
   clientName,
   templateTitle,
   templateCode,
-  downloadUrl,
+  downloadUrl: _dl,
   amountPaid,
   currency = 'INR'
 }: {
@@ -386,14 +386,13 @@ export async function sendTemplatePurchaseReceiptEmail({
   clientName?: string;
   templateTitle: string;
   templateCode: string;
-  downloadUrl: string;
+  downloadUrl?: string;
   amountPaid: number;
   currency?: string;
 }) {
   const safeClientName = escapeHtml(clientName || 'there');
   const safeTemplateTitle = escapeHtml(templateTitle);
   const safeTemplateCode = escapeHtml(templateCode);
-  const safeDownloadUrl = sanitizeExternalUrl(downloadUrl) || '#';
   const safeCurrency = currency === 'USD' ? '$' : '₹';
   const safeAmount = Number(amountPaid) || 0;
 
@@ -422,19 +421,20 @@ export async function sendTemplatePurchaseReceiptEmail({
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
             <span><strong>License:</strong></span>
-            <span>Single Commercial Unlimited Use</span>
+            <span>Perpetual Commercial Single Project License</span>
           </div>
         </div>
 
-        <div style="text-align: center; margin: 24px 0;">
-          <a href="${safeDownloadUrl}" style="background-color: #FCBF14; color: #111111; font-weight: 800; font-size: 14px; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
-            Download Master Presentation (.pptx)
-          </a>
+        <div style="background-color: #F8F9FA; border-left: 4px solid #111111; padding: 14px 18px; border-radius: 6px; margin: 20px 0;">
+          <p style="font-size: 13px; font-weight: 800; color: #111111; margin: 0 0 4px 0;">SINGLE-BROWSER DELIVERY NOTICE</p>
+          <p style="font-size: 12px; color: #555555; line-height: 1.6; margin: 0;">
+            Your Master PowerPoint (.pptx) file was streamed directly to your browser upon checkout. In accordance with SlideBee digital rights protection, raw download links are not distributed via email. Please ensure your downloaded deck is stored safely on your local drive.
+          </p>
         </div>
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center;">
           Need help customizing or want our designers to tailor this deck to your branding?<br/>
-          Reply to this email or submit a quick redesign order on <a href="https://theslidebee.com/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
+          Reply to this email or submit a redesign brief on <a href="https://theslidebee.com/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
         </p>
       </div>
 
