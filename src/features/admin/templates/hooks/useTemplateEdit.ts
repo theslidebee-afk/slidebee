@@ -129,13 +129,17 @@ export const useTemplateEdit = (
       setEditTemplateWarning("Please enter a Template Title.");
       return;
     }
-    if (editingTemplate.price_inr === "" || isNaN(Number(editingTemplate.price_inr)) || Number(editingTemplate.price_inr) <= 0) {
-      setEditTemplateWarning("Price cannot be 0. Please mark it as a free tag.");
-      return;
-    }
-    if (editingTemplate.price_usd === "" || isNaN(Number(editingTemplate.price_usd)) || Number(editingTemplate.price_usd) <= 0) {
-      setEditTemplateWarning("Price cannot be 0. Please mark it as a free tag.");
-      return;
+    const isFree = editingTemplate.is_premium === 0 || Number(editingTemplate.price_inr) === 0;
+
+    if (!isFree) {
+      if (editingTemplate.price_inr === "" || isNaN(Number(editingTemplate.price_inr)) || Number(editingTemplate.price_inr) <= 0) {
+        setEditTemplateWarning("Please enter a valid Price INR (₹) greater than 0 for premium templates.");
+        return;
+      }
+      if (editingTemplate.price_usd === "" || isNaN(Number(editingTemplate.price_usd)) || Number(editingTemplate.price_usd) <= 0) {
+        setEditTemplateWarning("Please enter a valid Price USD ($) greater than 0 for premium templates.");
+        return;
+      }
     }
     if (editingTemplate.slide_count === "" || isNaN(Number(editingTemplate.slide_count)) || Number(editingTemplate.slide_count) < 1) {
       setEditTemplateWarning("Please enter a valid Total Slides Count (minimum 1).");
@@ -155,9 +159,9 @@ export const useTemplateEdit = (
       title: editingTemplate.title,
       code: editingTemplate.code,
       category: editingTemplate.category,
-      price_inr: Number(editingTemplate.price_inr),
-      price_usd: Number(editingTemplate.price_usd),
-      original_price_inr: Number(editingTemplate.price_inr) * 2,
+      price_inr: isFree ? 0 : Number(editingTemplate.price_inr),
+      price_usd: isFree ? 0 : Number(editingTemplate.price_usd),
+      original_price_inr: isFree ? 0 : Number(editingTemplate.price_inr) * 2,
       slides_count: effectiveSlideCount,
       thumbnail_url: editingTemplate.thumbnail_url,
       image_url: editingTemplate.thumbnail_url,
@@ -167,8 +171,8 @@ export const useTemplateEdit = (
       description: editingTemplate.description,
       features: editingTemplate.features,
       is_published: editingTemplate.is_published ? 1 : 0,
-      is_premium: Number(editingTemplate.price_inr) > 0 ? 1 : 0,
-      is_credit_eligible: editingTemplate.is_credit_eligible ? 1 : 0
+      is_premium: isFree ? 0 : 1,
+      is_credit_eligible: isFree ? 0 : 1
     };
 
     try {

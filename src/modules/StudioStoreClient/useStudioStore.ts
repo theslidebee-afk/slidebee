@@ -85,14 +85,22 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           : [coverImg];
         const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
 
+        const isPrem = t.is_premium !== undefined 
+          ? Number(t.is_premium) === 1 
+          : (t.price_inr !== undefined && Number(t.price_inr) > 0);
+
+        const priceInr = isPrem ? (t.price_inr !== undefined && t.price_inr !== null ? Number(t.price_inr) : 499) : 0;
+        const priceUsd = isPrem ? (t.price_usd !== undefined && t.price_usd !== null ? Number(t.price_usd) : 9) : 0;
+        const originalPriceInr = isPrem ? (Number(t.original_price_inr) || (priceInr * 2)) : 0;
+
         return {
           id: t.id,
           code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
           title: t.title,
           category: t.category || "Business",
-          price_inr: Number(t.price_inr) || 499,
-          price_usd: Number(t.price_usd) || 9,
-          original_price_inr: Number(t.original_price_inr) || 999,
+          price_inr: priceInr,
+          price_usd: priceUsd,
+          original_price_inr: originalPriceInr,
           image_url: coverImg,
           slides: slideUrls,
           slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
@@ -104,8 +112,8 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
           features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
           formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-          is_premium: t.is_premium !== undefined ? Number(t.is_premium) === 1 : (Number(t.price_inr) > 0),
-          is_credit_eligible: Boolean(t.is_credit_eligible),
+          is_premium: isPrem,
+          is_credit_eligible: isPrem,
           is_featured: Boolean(t.is_featured),
           is_published: Boolean(t.is_published),
           created_at: t.created_at

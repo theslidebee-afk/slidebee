@@ -130,12 +130,20 @@ export const TemplatesTableView: React.FC<TemplatesTableViewProps> = ({
 
                   {/* Price */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <div className="font-heading font-black text-xs text-[#111111]">
-                      ₹{tpl.price_inr || 499}
-                    </div>
-                    <div className="text-[10px] text-[#726F6D] font-bold">
-                      ${tpl.price_usd || 9} USD
-                    </div>
+                    {(!tpl.is_premium || Number(tpl.price_inr) === 0) ? (
+                      <div className="font-heading font-black text-xs text-emerald-700">
+                        ₹0 (Free Deck)
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-heading font-black text-xs text-[#111111]">
+                          ₹{tpl.price_inr}
+                        </div>
+                        <div className="text-[10px] text-[#726F6D] font-bold">
+                          ${tpl.price_usd} USD
+                        </div>
+                      </>
+                    )}
                   </td>
 
                   {/* Slides Count */}

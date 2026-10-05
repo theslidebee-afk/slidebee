@@ -69,9 +69,15 @@ export function SimilarTemplatesGrid({
                   <h3 className="font-heading font-extrabold text-xs text-[#111111] group-hover:text-primary-amber transition-colors line-clamp-1">
                     {sim.title}
                   </h3>
-                  <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
-                    {formatPrice(sim.price_inr, sim.price_usd)}
-                  </span>
+                  {sim.is_premium ? (
+                    <span className="text-xs font-heading font-black text-[#111111] ml-2 shrink-0">
+                      {formatPrice(sim.price_inr, sim.price_usd)}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-heading font-black text-emerald-700 ml-2 shrink-0">
+                      Free
+                    </span>
+                  )}
                 </div>
               </div>
 

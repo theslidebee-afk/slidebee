@@ -61,6 +61,13 @@ export async function handleUpdateTemplate(request: Request, env: Env) {
       }
     }
 
+    if (updates.is_premium === 0) {
+      updates.price_inr = 0;
+      updates.price_usd = 0;
+      updates.original_price_inr = 0;
+      updates.is_credit_eligible = 0;
+    }
+
     if (body.slide_count !== undefined && updates.slides_count === undefined) {
       updates.slides_count = Number(body.slide_count) || 1;
     }

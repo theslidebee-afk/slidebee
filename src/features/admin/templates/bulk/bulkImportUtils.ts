@@ -287,9 +287,11 @@ export function parseAndValidateCsv(
     const download_url = rawDownload
       ? convertGoogleDriveUrl(rawDownload, false)
       : `${R2_PUBLIC_BASE_URL}/templates/decks/${code.toLowerCase()}.pptx`;
-    const is_credit_eligible = creditEligibleIdx !== -1
-      ? (parts[creditEligibleIdx]?.toLowerCase() === "true" || parts[creditEligibleIdx] === "1")
-      : false;
+    const is_credit_eligible = isFreeTier
+      ? 0
+      : (creditEligibleIdx !== -1
+        ? (parts[creditEligibleIdx]?.toLowerCase() === "false" || parts[creditEligibleIdx] === "0" ? 0 : 1)
+        : 1);
 
     const parsedFormats = formatsIdx !== -1 && parts[formatsIdx]
       ? parts[formatsIdx].split(/[;|]/).map(f => f.trim()).filter(Boolean)

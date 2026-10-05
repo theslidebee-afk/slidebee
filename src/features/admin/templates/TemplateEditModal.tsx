@@ -138,27 +138,57 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
           />
 
           <form onSubmit={handleSaveEditTemplate} className="space-y-3.5">
-            <TemplateFormInputs
-              title={editingTemplate.title}
-              setTitle={(title) => setEditingTemplate({ ...editingTemplate, title })}
-              code={editingTemplate.code}
-              setCode={(code) => setEditingTemplate({ ...editingTemplate, code })}
-              category={editingTemplate.category}
-              setCategory={(category) => setEditingTemplate({ ...editingTemplate, category })}
-              categoriesList={categoriesList}
-              slideCount={editingTemplate.slide_count}
-              setSlideCount={(slide_count) => setEditingTemplate({ ...editingTemplate, slide_count })}
-              priceINR={editingTemplate.price_inr}
-              setPriceINR={(price_inr) => setEditingTemplate({ ...editingTemplate, price_inr })}
-              priceUSD={editingTemplate.price_usd}
-              setPriceUSD={(price_usd) => setEditingTemplate({ ...editingTemplate, price_usd })}
-              description={editingTemplate.description}
-              setDescription={(description) => setEditingTemplate({ ...editingTemplate, description })}
-              features={Array.isArray(editingTemplate.features) ? editingTemplate.features : []}
-              setFeatures={(features) => setEditingTemplate({ ...editingTemplate, features })}
-              isCreditEligible={editingTemplate.is_credit_eligible}
-              setIsCreditEligible={(is_credit_eligible) => setEditingTemplate({ ...editingTemplate, is_credit_eligible })}
-            />
+            {(() => {
+              const currentTier: "free" | "premium" =
+                editingTemplate.is_premium === 0 || Number(editingTemplate.price_inr) === 0 ? "free" : "premium";
+
+              const handleTierChange = (newTier: "free" | "premium") => {
+                if (newTier === "free") {
+                  setEditingTemplate({
+                    ...editingTemplate,
+                    is_premium: 0,
+                    price_inr: 0,
+                    price_usd: 0,
+                    original_price_inr: 0,
+                    is_credit_eligible: 0
+                  });
+                } else {
+                  setEditingTemplate({
+                    ...editingTemplate,
+                    is_premium: 1,
+                    price_inr: editingTemplate.price_inr && Number(editingTemplate.price_inr) > 0 ? editingTemplate.price_inr : 499,
+                    price_usd: editingTemplate.price_usd && Number(editingTemplate.price_usd) > 0 ? editingTemplate.price_usd : 9,
+                    is_credit_eligible: 1
+                  });
+                }
+              };
+
+              return (
+                <TemplateFormInputs
+                  title={editingTemplate.title}
+                  setTitle={(title) => setEditingTemplate({ ...editingTemplate, title })}
+                  code={editingTemplate.code}
+                  setCode={(code) => setEditingTemplate({ ...editingTemplate, code })}
+                  category={editingTemplate.category}
+                  setCategory={(category) => setEditingTemplate({ ...editingTemplate, category })}
+                  categoriesList={categoriesList}
+                  slideCount={editingTemplate.slide_count}
+                  setSlideCount={(slide_count) => setEditingTemplate({ ...editingTemplate, slide_count })}
+                  priceINR={editingTemplate.price_inr}
+                  setPriceINR={(price_inr) => setEditingTemplate({ ...editingTemplate, price_inr })}
+                  priceUSD={editingTemplate.price_usd}
+                  setPriceUSD={(price_usd) => setEditingTemplate({ ...editingTemplate, price_usd })}
+                  description={editingTemplate.description}
+                  setDescription={(description) => setEditingTemplate({ ...editingTemplate, description })}
+                  features={Array.isArray(editingTemplate.features) ? editingTemplate.features : []}
+                  setFeatures={(features) => setEditingTemplate({ ...editingTemplate, features })}
+                  isCreditEligible={editingTemplate.is_credit_eligible}
+                  setIsCreditEligible={(is_credit_eligible) => setEditingTemplate({ ...editingTemplate, is_credit_eligible })}
+                  tier={currentTier}
+                  setTier={handleTierChange}
+                />
+              );
+            })()}
 
             <div className="bg-[#FFF9E8] border border-primary/40 p-3 rounded-xl flex items-center justify-between shadow-xs text-left">
               <div>

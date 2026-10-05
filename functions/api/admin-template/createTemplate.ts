@@ -38,8 +38,14 @@ export async function handleCreateTemplate(request: Request, env: Env) {
       : (body?.thumbnail_url ? [body.thumbnail_url] : []);
     const effectiveSlidesCount = Number(body?.slides_count || body?.slide_count) || (effectiveSlides.length > 0 ? effectiveSlides.length : 25);
 
-    const priceInr = Number(body?.price_inr) || 0;
-    const priceUsd = Number(body?.price_usd) || 0;
+    const rawPriceInr = Number(body?.price_inr) || 0;
+    const rawPriceUsd = Number(body?.price_usd) || 0;
+    const isPremium = body?.is_premium !== undefined
+      ? (body.is_premium ? 1 : 0)
+      : (rawPriceInr > 0 ? 1 : 0);
+
+    const priceInr = isPremium === 0 ? 0 : rawPriceInr;
+    const priceUsd = isPremium === 0 ? 0 : rawPriceUsd;
 
     const row = {
       id: templateId,
@@ -49,7 +55,7 @@ export async function handleCreateTemplate(request: Request, env: Env) {
       category: body?.category || "Business",
       price_inr: priceInr,
       price_usd: priceUsd,
-      original_price_inr: Number(body?.original_price_inr) || (priceInr * 2),
+      original_price_inr: isPremium === 0 ? 0 : (Number(body?.original_price_inr) || (priceInr * 2)),
       image_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
       thumbnail_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
       slides_count: effectiveSlidesCount,
@@ -66,10 +72,10 @@ export async function handleCreateTemplate(request: Request, env: Env) {
       download_url: body?.download_url || "",
       file_name: body?.file_name || "Master_Deck.pptx",
       file_size: body?.file_size || "4.5 MB",
-      is_credit_eligible: body?.is_credit_eligible ? 1 : 0,
+      is_credit_eligible: isPremium === 0 ? 0 : (body?.is_credit_eligible !== undefined ? (body.is_credit_eligible ? 1 : 0) : 1),
       is_featured: body?.is_featured ? 1 : 0,
       is_published: body?.is_published !== false ? 1 : 0,
-      is_premium: priceInr > 0 ? 1 : 0,
+      is_premium: isPremium,
     };
 
     const keys = Object.keys(row);

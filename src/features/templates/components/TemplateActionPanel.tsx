@@ -171,7 +171,52 @@ export function TemplateActionPanel({
 
         {/* Purchase & Credit Action Buttons */}
         <div className="space-y-3 pt-2">
-          {isPurchased || alreadyOwned ? (
+          {!template.is_premium ? (
+            <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
+                  <Download size={15} className="text-emerald-600" />
+                  <span>Free Community Library Deck</span>
+                </div>
+                <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
+                  Free Account (3/Day)
+                </span>
+              </div>
+              <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
+                Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment or Pro quota required.
+              </p>
+              {!client ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))
+                  }
+                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer hover:scale-[1.01]"
+                >
+                  <Lock size={16} />
+                  Login to get free templates for free (.pptx)
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isProcessing || freeDownloadsToday >= 3}
+                  onClick={handleDirectFreeDownload}
+                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+                >
+                  <Download size={16} />
+                  {isProcessing
+                    ? "Preparing Download..."
+                    : freeDownloadsToday >= 3
+                    ? "Daily Free Limit Reached (3/3 Used)"
+                    : `Download Free Community Deck (.pptx) • ${Math.max(0, 3 - freeDownloadsToday)} Left Today`}
+                </button>
+              )}
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
+                <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+                <span>Free Community License • Single Project Use</span>
+              </div>
+            </div>
+          ) : isPurchased || alreadyOwned ? (
             <div className="bg-emerald-50 border-2 border-emerald-400/60 p-5 rounded-2xl space-y-3 shadow-sm">
               <div className="flex items-center gap-2 text-xs font-black text-emerald-900">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
@@ -266,51 +311,6 @@ export function TemplateActionPanel({
                   </div>
                 </div>
               )}
-            </div>
-          ) : !template.is_premium ? (
-            <div className="p-4 bg-[#FFFDF5] border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-black text-[#111111]">
-                  <Download size={15} className="text-emerald-600" />
-                  <span>Free Community Library Deck</span>
-                </div>
-                <span className="hex-pill-sm bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300">
-                  Free Account (3/Day)
-                </span>
-              </div>
-              <p className="text-[11px] text-[#726F6D] font-medium leading-relaxed">
-                Free registered accounts receive 3 complimentary template downloads per day from our community library. No payment required.
-              </p>
-              {!client ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname))
-                  }
-                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer hover:scale-[1.01]"
-                >
-                  <Lock size={16} />
-                  Login to get free templates for free (.pptx)
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isProcessing || freeDownloadsToday >= 3}
-                  onClick={handleDirectFreeDownload}
-                  className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
-                >
-                  <Download size={16} />
-                  {isProcessing
-                    ? "Preparing Download..."
-                    : freeDownloadsToday >= 3
-                    ? "Daily Free Limit Reached (3/3 Used)"
-                    : `Download Free Community Deck (.pptx) • ${Math.max(0, 3 - freeDownloadsToday)} Left Today`}
-                </button>
-              )}
-              <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
-                <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
-                <span>Free Community License • Single Project Use</span>
-              </div>
             </div>
           ) : (
             <div className="space-y-4">

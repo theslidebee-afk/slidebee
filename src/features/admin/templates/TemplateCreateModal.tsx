@@ -49,6 +49,7 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
     "Enterprise RFP Deck"
   ]);
   const [newIsCreditEligible, setNewIsCreditEligible] = useState(false);
+  const [tier, setTier] = useState<"free" | "premium">("premium");
 
   if (!isOpen) return null;
 
@@ -149,13 +150,15 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
       setAddTemplateWarning("Please upload the Primary Cover Image before publishing.");
       return;
     }
-    if (newPriceINR === "" || isNaN(Number(newPriceINR)) || Number(newPriceINR) <= 0) {
-      setAddTemplateWarning("Price cannot be 0. Please mark it as a free tag.");
-      return;
-    }
-    if (newPriceUSD === "" || isNaN(Number(newPriceUSD)) || Number(newPriceUSD) <= 0) {
-      setAddTemplateWarning("Price cannot be 0. Please mark it as a free tag.");
-      return;
+    if (tier === "premium") {
+      if (newPriceINR === "" || isNaN(Number(newPriceINR)) || Number(newPriceINR) <= 0) {
+        setAddTemplateWarning("Please enter a valid Price INR (₹) greater than 0 for premium templates.");
+        return;
+      }
+      if (newPriceUSD === "" || isNaN(Number(newPriceUSD)) || Number(newPriceUSD) <= 0) {
+        setAddTemplateWarning("Please enter a valid Price USD ($) greater than 0 for premium templates.");
+        return;
+      }
     }
     if (newSlideCount === "" || isNaN(Number(newSlideCount)) || Number(newSlideCount) < 1) {
       setAddTemplateWarning("Please enter a valid Total Slides Count (minimum 1).");
@@ -169,15 +172,16 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
     const effectiveSlides = newSlides.length > 0 ? newSlides : [newThumbnail];
     const effectiveSlideCount = Number(newSlideCount) || effectiveSlides.length;
 
+    const isFree = tier === "free";
     const payload = {
       title: newTitle.trim(),
       slug,
       code: templateCode,
       description: newDesc.trim() || "Executive presentation deck layout.",
       category: newCategory,
-      price_inr: Number(newPriceINR),
-      price_usd: Number(newPriceUSD),
-      original_price_inr: Number(newPriceINR) * 2,
+      price_inr: isFree ? 0 : Number(newPriceINR),
+      price_usd: isFree ? 0 : Number(newPriceUSD),
+      original_price_inr: isFree ? 0 : Number(newPriceINR) * 2,
       slides_count: effectiveSlideCount,
       thumbnail_url: newThumbnail,
       image_url: newThumbnail,
@@ -191,8 +195,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
         "16:9 Widescreen Layout",
         "Fully Editable Vector Elements"
       ],
-      is_credit_eligible: newIsCreditEligible ? 1 : 0,
-      is_premium: Number(newPriceINR) > 0 ? 1 : 0,
+      is_credit_eligible: isFree ? 0 : 1,
+      is_premium: isFree ? 0 : 1,
       is_published: 1
     };
 
@@ -348,6 +352,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
               setFeatures={setNewFeatures}
               isCreditEligible={newIsCreditEligible}
               setIsCreditEligible={setNewIsCreditEligible}
+              tier={tier}
+              setTier={setTier}
             />
 
             {addTemplateWarning && (

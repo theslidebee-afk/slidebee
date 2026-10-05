@@ -98,10 +98,7 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
               <>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-base sm:text-lg font-heading font-black text-emerald-800">
-                    Free
-                  </span>
-                  <span className="text-xs text-[#726F6D] line-through font-bold">
-                    {formatPrice(priceInr, priceUsd)}
+                    100% Free
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 block">
