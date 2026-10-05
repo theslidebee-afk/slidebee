@@ -22,10 +22,17 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
    - Added quick launch link to "Inquiries & Quotes" in Admin Overview (`OverviewQuickActions.tsx`).
 6. **Metered Redownload Policy in User Dashboard**:
    - Updated `DashboardPurchasedTab.tsx` with 24-hour grace window, Pro quota redownload action, and fresh license link for expired single purchases, with zero emojis.
-7. **Verification & Deployment**:
+7. **Template Free Tier Editing Fix**:
+   - Fixed `is_premium` initialization in `useTemplateEdit.ts` and replaced non-functional state setters with functional updaters `(prev) => ({ ...prev, ... })` in `TemplateEditModal.tsx`.
+   - Prevented race-condition overwriting when switching to Free Tier and updated `AdminTemplates.tsx` `handleToggleFreeTier` to reset prices to ₹0 / $0.
+8. **Admin Two Concurrent Browsing Sessions Allowance**:
+   - Updated `functions/api/auth/login.ts` to retain the 1 most recent prior session for `admin@theslidebee.com` (allowing 2 active sessions in D1 `sessions` table) while strictly terminating all prior sessions for regular users.
+   - Updated `functions/api/session-guard.ts` to store an array of up to 2 active sessions for `admin@theslidebee.com` and verify without displacing either device.
+   - Updated `src/lib/sessionGuard.ts` so frontend verify checks bypass single-value `user_metadata` fallback for admin.
+9. **Verification & Deployment**:
    - `npm run build` exits 0.
    - Zero unicode emojis confirmed across all files.
-   - Committed to `dev` (`88bb8ce`) and pushed to GitHub `origin/dev`.
+   - Committed to `dev` and pushed to GitHub `origin/dev`.
    - Deployed live to Cloudflare Pages (`dev.slidebee.pages.dev`).
 
 ## What Was Verified
@@ -34,5 +41,5 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
 - Deployed successfully to Cloudflare Pages alias `https://dev.slidebee.pages.dev`.
 
 ## Next Steps
-- User visual testing on `https://dev.slidebee.pages.dev`.
+- User visual verification on `https://dev.slidebee.pages.dev`.
 
