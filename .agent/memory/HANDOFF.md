@@ -29,11 +29,18 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
    - Updated `functions/api/auth/login.ts` to retain the 1 most recent prior session for `admin@theslidebee.com` (allowing 2 active sessions in D1 `sessions` table) while strictly terminating all prior sessions for regular users.
    - Updated `functions/api/session-guard.ts` to store an array of up to 2 active sessions for `admin@theslidebee.com` and verify without displacing either device.
    - Updated `src/lib/sessionGuard.ts` so frontend verify checks bypass single-value `user_metadata` fallback for admin.
-9. **Verification & Deployment**:
+9. **Template Master PPTX Deliverable Provisioning & R2 CDN Resolution**:
+   - Recreated `v_storefront_catalog` view in remote Cloudflare D1 database (`slidebee-db`) with `download_url`, `file_name`, and `file_size` columns.
+   - Updated `src/features/templates/hooks/useTemplateData.ts` to query `templates` table directly, ensuring `download_url`, `file_name`, and `is_premium` are populated.
+   - Expanded `getTemplateDeliverableUrl` in `src/lib/templates.ts` with direct `file_name` check, formats check, and mapped fallbacks.
+   - Hardened serverless download APIs (`redeem-pro-template.ts`, `fulfill-order.ts`, `entitlement.ts`, `rpc.ts`) to resolve R2 deliverables reliably and prevent preview image corruption.
+   - Added `file_name` and `file_size` to `useTemplateEdit.ts` update payload so edits preserve deliverable metadata.
+   - Verified all templates in D1 point to active, 200 HTTP status Master PowerPoint decks.
+10. **Verification & Deployment**:
    - `npm run build` exits 0.
    - Zero unicode emojis confirmed across all files.
    - Committed to `dev` and pushed to GitHub `origin/dev`.
-   - Deployed live to Cloudflare Pages (`dev.slidebee.pages.dev`).
+   - Deployed live to Cloudflare Pages (`https://dev.slidebee.pages.dev`).
 
 ## What Was Verified
 - Full TypeScript build and Vite bundling pass cleanly.
@@ -41,5 +48,5 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
 - Deployed successfully to Cloudflare Pages alias `https://dev.slidebee.pages.dev`.
 
 ## Next Steps
-- User visual verification on `https://dev.slidebee.pages.dev`.
+- User visual testing and client handoff on `https://dev.slidebee.pages.dev`.
 
