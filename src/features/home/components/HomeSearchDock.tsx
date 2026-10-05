@@ -53,8 +53,8 @@ export function HomeSearchDock({
         id="hero-search-card"
         layout
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        className={`w-full max-w-5xl lg:max-w-6xl mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
-          isSearching ? "p-4 sm:p-5" : "p-5 sm:p-7 lg:p-8"
+        className={`w-full max-w-7xl 2xl:max-w-[1560px] mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
+          isSearching ? "p-5 sm:p-7" : "p-6 sm:p-9 lg:p-11"
         }`}
       >
         {/* Row 1: Section Heading & Summary */}
@@ -62,25 +62,25 @@ export function HomeSearchDock({
           animate={{
             opacity: isSearching ? 0 : 1,
             height: isSearching ? 0 : "auto",
-            marginBottom: isSearching ? 0 : 16,
+            marginBottom: isSearching ? 0 : 20,
           }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden"
         >
           <div className="pt-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-bold text-[#726F6D]">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs sm:text-sm font-bold text-[#726F6D]">
                 Showing {displayedCount} of {filteredCatalog.length} templates
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-[#111111] tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-[40px] font-heading font-black text-[#111111] tracking-tight leading-tight">
               {heroConfig?.headline || "Explore Executive Presentation Templates"}
             </h2>
           </div>
         </motion.div>
 
         {/* Row 2: Live Search Input & Access Tier Toggles Strip */}
-        <div className="bg-white rounded-2xl border border-[#111111]/10 p-2.5 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-3.5 transition-all duration-300">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#111111]/10 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 mb-4 transition-all duration-300">
           {/* Live Search Input - Kinetic Expansion on Focus */}
           <motion.div
             layout
@@ -90,7 +90,7 @@ export function HomeSearchDock({
             }`}
           >
             <Search
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 pointer-events-none ${
+              className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 pointer-events-none ${
                 isSearchFocused ? "text-[#FCBF14]" : "text-[#726F6D]"
               }`}
             />
@@ -126,7 +126,7 @@ export function HomeSearchDock({
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className={`w-full rounded-xl pl-10 pr-20 py-2.5 text-base sm:text-sm text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-none transition-all duration-300 font-medium ${
+              className={`w-full rounded-xl sm:rounded-2xl pl-12 pr-20 py-3.5 sm:py-4 text-base sm:text-lg text-[#111111] placeholder:text-[#726F6D]/70 focus:outline-hidden transition-all duration-300 font-medium ${
                 isSearchFocused
                   ? "bg-white border-2 border-[#FCBF14] shadow-[0_0_0_4px_rgba(252,191,20,0.22)]"
                   : "bg-[#FFF9E8]/70 hover:bg-[#FFF9E8] border border-[#111111]/12"

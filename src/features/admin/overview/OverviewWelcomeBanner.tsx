@@ -7,7 +7,7 @@ interface OverviewWelcomeBannerProps {
   templatesCount: number;
   activeProCount: number;
   remainingGB: string;
-  setActiveTab: (tab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
+  setActiveTab: (tab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
 }
 
 export const OverviewWelcomeBanner: React.FC<OverviewWelcomeBannerProps> = ({

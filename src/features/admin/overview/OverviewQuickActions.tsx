@@ -1,11 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Zap, ShoppingBag, Plus, Gift, Sliders, Clock } from "lucide-react";
+import { Zap, ShoppingBag, Plus, Gift, Sliders, Clock, MessageSquare } from "lucide-react";
 import { ORDER_MILESTONES, getMilestoneIndex } from "../shared/adminConstants";
 
 interface OverviewQuickActionsProps {
   orders: any[];
-  setActiveTab: (tab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
+  setActiveTab: (tab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
   setIsAddTemplateOpen: (open: boolean) => void;
   setSelectedOrderForModal: (order: any) => void;
   setOverviewOrderToInspect: (order: any) => void;
@@ -31,7 +31,17 @@ export const OverviewQuickActions: React.FC<OverviewQuickActionsProps> = ({
           <span className="text-[10px] font-extrabold text-[#726F6D] uppercase">Direct Actions</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => { setActiveTab("inquiries"); navigate("/admin/inquiries"); }}
+            className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 hover:border-amber-500 text-left transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <MessageSquare size={18} className="text-amber-700 mb-2" />
+            <div className="font-heading font-black text-xs text-[#111111]">Inbound Inquiries</div>
+            <div className="text-[10px] text-[#726F6D] font-medium">Quotes & Leads</div>
+          </button>
+
           <button
             type="button"
             onClick={() => { setActiveTab("orders"); navigate("/admin/orders"); }}

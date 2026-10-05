@@ -22,6 +22,9 @@ export default function Contact() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [company, setCompany] = useState("");
+  const [serviceCategory, setServiceCategory] = useState(isEcommerce ? "ecommerce" : "presentation");
   const [subject, setSubject] = useState(
     isEcommerce ? "Ecommerce Store Development (₹25,000) Inquiry" : ""
   );
@@ -67,13 +70,28 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !message) return;
+    const cleanPhone = phone.trim();
+
+    if (!cleanEmail) {
+      setErrorMsg("Please enter your email address.");
+      return;
+    }
+
+    if (!cleanPhone || cleanPhone.replace(/\D/g, "").length < 7) {
+      setErrorMsg("Please enter a valid phone number (mandatory field to receive brief estimate).");
+      return;
+    }
+
+    if (!message.trim()) {
+      setErrorMsg("Please describe your project or store requirements.");
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMsg("");
 
     try {
-      // 1. Structured inquiry persistence in orders table
+      // 1. Structured inquiry persistence in orders table with phone & company
       const randomArray = new Uint32Array(1);
       crypto.getRandomValues(randomArray);
       const inqRef = `INQ-${100000 + (randomArray[0] % 900000)}`;
@@ -82,11 +100,13 @@ export default function Contact() {
         await d1.from("orders").insert([
           {
             order_reference: inqRef,
-            service_type: "Inbound Quote Request",
+            service_type: serviceCategory === "ecommerce" ? "Ecommerce Development Inquiry" : "Inbound Quote Request",
             status: "inquiry",
             full_name: name || "Prospective Client",
             email: cleanEmail,
-            project_brief: `[Subject: ${subject || "General Inquiry"}]\n\n${message}`,
+            phone: cleanPhone,
+            company: company || "",
+            project_brief: `[Subject: ${subject || "General Inquiry"}]\n[Category: ${serviceCategory}]\n[Phone: ${cleanPhone}]\n[Company: ${company}]\n\n${message}`,
             style_preference: "Direct Website Inquiry"
           }
         ]);
@@ -98,16 +118,19 @@ export default function Contact() {
       const { error } = await d1.from("waitlist").insert([
         {
           email: cleanEmail,
-          source: `contact_form: ${name || "Anonymous"} | Sub: ${subject || "General Inquiry"} | Msg: ${message}`
+          source: `contact_form: ${name || "Anonymous"} | Tel: ${cleanPhone} | Sub: ${subject || "General Inquiry"} | Msg: ${message}`
         }
       ]);
 
       if (error) throw error;
 
-      // Dispatch confirmation email to client & notification to studio
+      // Dispatch confirmation email to client & routed notification to studio
       sendContactNotificationEmail({
         name,
         email: cleanEmail,
+        phone: cleanPhone,
+        company,
+        serviceCategory,
         subject: subject || "General Inquiry",
         message
       }).catch(err => console.warn("Contact email notice:", err));
@@ -248,10 +271,12 @@ export default function Contact() {
                       setIsSuccess(false);
                       setName("");
                       setEmail("");
+                      setPhone("");
+                      setCompany("");
                       setSubject(isEcommerce ? "Ecommerce Store Development (₹25,000) Inquiry" : "");
                       setMessage("");
                     }}
-                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs"
+                    className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs cursor-pointer"
                   >
                     Send Another Message
                   </button>
@@ -262,6 +287,7 @@ export default function Contact() {
                     {isEcommerce ? "Send Us a Store Engineering Note" : "Send Us a Project Note"}
                   </h3>
 
+                  {/* Row 1: Name & Email */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
@@ -272,7 +298,7 @@ export default function Contact() {
                         placeholder="Sarah Jenkins"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors"
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors"
                       />
                     </div>
 
@@ -286,26 +312,88 @@ export default function Contact() {
                         placeholder="sarah@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors"
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
-                      Subject / Project Type
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        isEcommerce
-                          ? "e.g. 500-Product Storefront / Razorpay Integration"
-                          : "e.g. Series A Pitch Deck / 24h Keynote Redesign"
-                      }
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors"
-                    />
+                  {/* Row 2: Phone (Mandatory) & Company */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                        Phone Number * (Mandatory)
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+91 98765 43210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                        Company / Organization
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Acme Corp / Brand Name"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Service Category & Subject */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                        Service Category *
+                      </label>
+                      <select
+                        value={serviceCategory}
+                        onChange={(e) => setServiceCategory(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 rounded-full px-4 py-3 text-xs text-[#111111] font-bold outline-hidden focus:border-primary transition-colors cursor-pointer"
+                      >
+                        <option value="presentation">Executive Presentation Design</option>
+                        <option value="ecommerce">Ecommerce Store Development (₹25,000)</option>
+                        <option value="templates">Custom Template System</option>
+                        <option value="redesign">24-Hour Keynote Redesign</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1.5">
+                        Subject / Project Title
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          isEcommerce
+                            ? "e.g. 500-Product Storefront / Razorpay Integration"
+                            : "e.g. Series A Pitch Deck / 24h Keynote Redesign"
+                        }
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="w-full bg-[#FFF9E8] border border-primary/30 hex-pill px-4 py-3 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 50% Advance Notice Badge */}
+                  <div className="bg-[#FFF4D9] border-l-4 border-[#FCBF14] p-3.5 rounded-xl flex items-start gap-3 text-left shadow-xs">
+                    <ShieldCheck size={18} className="text-[#111111] shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <span className="font-extrabold text-[#111111] block mb-0.5">
+                        50% Advance Deposit Required to Initiate Work
+                      </span>
+                      <span className="text-[#555555]">
+                        To guarantee dedicated senior design & engineering capacity, all custom briefs require a 50% advance deposit upon scope confirmation.
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -322,7 +410,7 @@ export default function Contact() {
                       }
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-card p-4 text-xs text-[#111111] font-medium outline-none focus:border-primary transition-colors resize-none"
+                      className="w-full bg-[#FFF9E8] border border-primary/30 hex-card p-4 text-xs text-[#111111] font-medium outline-hidden focus:border-primary transition-colors resize-none"
                     />
                   </div>
 

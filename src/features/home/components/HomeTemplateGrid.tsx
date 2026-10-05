@@ -1,7 +1,9 @@
 import type { RefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, ArrowRight } from "lucide-react";
+import { FileText } from "lucide-react";
 import { HomeTemplateCard } from "./HomeTemplateCard";
+import { HomeMarketplaceToolbar, type SortOption } from "./HomeMarketplaceToolbar";
+import { HomePagePagination } from "./HomePagePagination";
 
 interface HomeTemplateGridProps {
   templatesRef: RefObject<HTMLElement | null>;
@@ -12,11 +14,22 @@ interface HomeTemplateGridProps {
   loading: boolean;
   filteredCatalog: any[];
   displayedTemplates: any[];
-  hasMoreTemplates: boolean;
-  handleLoadMore: () => void;
   resetToResting: () => void;
   searchQuery: string;
-  visibleCount: number;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  startIndex: number;
+  endIndex: number;
+  tierFilter: "all" | "free" | "premium";
+  setTierFilter: (val: "all" | "free" | "premium") => void;
+  activeCategory: string;
+  setActiveCategory: (cat: string) => void;
+  categoriesList: string[];
+  sortOption: SortOption;
+  setSortOption: (sort: SortOption) => void;
+  freeCount: number;
+  premiumCount: number;
 }
 
 export function HomeTemplateGrid({
@@ -28,11 +41,22 @@ export function HomeTemplateGrid({
   loading,
   filteredCatalog,
   displayedTemplates,
-  hasMoreTemplates,
-  handleLoadMore,
   resetToResting,
   searchQuery,
-  visibleCount,
+  currentPage,
+  totalPages,
+  onPageChange,
+  startIndex,
+  endIndex,
+  tierFilter,
+  setTierFilter,
+  activeCategory,
+  setActiveCategory,
+  categoriesList,
+  sortOption,
+  setSortOption,
+  freeCount,
+  premiumCount,
 }: HomeTemplateGridProps) {
   return (
     <motion.section
@@ -55,12 +79,28 @@ export function HomeTemplateGrid({
       } pb-20`}
     >
       <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
-        {/* Catalog Content (6-Column Magnet Masonry or Loading / Empty States) */}
+        {/* Marketplace Filter Toolbar positioned at top of section */}
+        <HomeMarketplaceToolbar
+          totalCount={filteredCatalog.length}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          tierFilter={tierFilter}
+          setTierFilter={setTierFilter}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          categoriesList={categoriesList}
+          sortOption={sortOption}
+          setSortOption={setSortOption}
+          freeCount={freeCount}
+          premiumCount={premiumCount}
+        />
+
+        {/* Catalog Content (5x5 Structured Grid or Loading / Empty States) */}
         {loading ? (
           <div className="py-24 text-center">
             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-xs font-extrabold text-[#726F6D] uppercase tracking-wider">
-              Loading Continuous Catalog...
+              Loading Presentation Catalog...
             </p>
           </div>
         ) : filteredCatalog.length === 0 ? (
@@ -81,8 +121,8 @@ export function HomeTemplateGrid({
           </div>
         ) : (
           <>
-            {/* 6-Column Structured Grid Layout with Live Pop-Up Physics */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4 items-start">
+            {/* Strict 5-Column Grid Layout (5 across on lg/xl/2xl screens, rendering 25 items per page) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3.5 sm:gap-4.5 items-start">
               <AnimatePresence mode="popLayout">
                 {displayedTemplates.map((item) => (
                   <motion.div
@@ -105,18 +145,12 @@ export function HomeTemplateGrid({
               </AnimatePresence>
             </div>
 
-            {/* Continuous / Endless Load More Button */}
-            {hasMoreTemplates && (
-              <div className="text-center pt-10 sm:pt-12">
-                <button
-                  onClick={handleLoadMore}
-                  className="hex-pill bg-white hover:bg-primary/10 border-2 border-primary text-[#111111] font-black text-xs sm:text-sm px-8 py-3.5 shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 cursor-pointer hover:scale-102"
-                >
-                  <span>Load More Templates ({filteredCatalog.length - visibleCount} Remaining)</span>
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            )}
+            {/* Page Number Selector & Pagination Bar */}
+            <HomePagePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+            />
           </>
         )}
       </div>

@@ -247,35 +247,65 @@ export async function sendEcommerceOrderConfirmationEmail({
 export async function sendContactNotificationEmail({
   name,
   email,
+  phone,
+  company,
+  serviceCategory,
   subject,
   message
 }: {
   name: string;
   email: string;
+  phone?: string;
+  company?: string;
+  serviceCategory?: string;
   subject: string;
   message: string;
 }) {
   const safeName = escapeHtml(name || 'there');
   const safeSubject = escapeHtml(subject || 'General Inquiry');
   const safeMessage = escapeHtml(message || '');
+  const safePhone = escapeHtml(phone || 'Not Provided');
+  const safeCompany = escapeHtml(company || 'Direct / Individual');
+  const safeCategory = escapeHtml(serviceCategory || 'Presentation Design');
 
-  const html = `
+  const isEcommerce =
+    (serviceCategory || '').toLowerCase().includes('ecom') ||
+    (subject || '').toLowerCase().includes('ecom');
+
+  // Dynamic routing: vizhalsuresh@gmail.com for ecommerce, design@theslidebee.com for design service
+  const targetRecipient = isEcommerce
+    ? 'vizhalsuresh@gmail.com'
+    : 'design@theslidebee.com';
+
+  const clientHtml = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
       <div style="text-align: center; margin-bottom: 24px;">
         <h1 style="color: #936610; font-size: 24px; font-weight: 800; margin: 0;">SlideBee Studio</h1>
-        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Inquiry Confirmation</p>
+        <p style="color: #726F6D; font-size: 13px; margin-top: 4px;">Inquiry Confirmation & Project Intake</p>
       </div>
 
       <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid rgba(17,17,17,0.08);">
-        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Message</h2>
+        <h2 style="font-size: 18px; font-weight: 700; margin-top: 0; color: #111111;">We Received Your Project Brief</h2>
         <p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
           Hi <strong>${safeName}</strong>,<br/><br/>
-          Thank you for reaching out to SlideBee Studio. Our design leads review every project note and will reply within <strong>2 hours</strong>.
+          Thank you for reaching out to SlideBee Studio. Our senior team has received your project details and will reply within <strong>2 hours</strong>.
         </p>
 
-        <div style="background-color: #FFF9E8; padding: 14px; border-radius: 8px; margin: 18px 0; border: 1px solid #FCBF14;">
-          <p style="font-size: 12px; font-weight: bold; color: #936610; margin: 0 0 6px 0;">SUBJECT: ${safeSubject}</p>
-          <p style="font-size: 13px; color: #111111; margin: 0; white-space: pre-wrap;">${safeMessage}</p>
+        <!-- Advance Terms Notice -->
+        <div style="background-color: #FFF4D9; border-left: 4px solid #FCBF14; padding: 12px 16px; border-radius: 6px; margin: 16px 0;">
+          <p style="font-size: 12px; font-weight: 800; color: #111111; margin: 0;">COMMERCIAL TERMS NOTICE:</p>
+          <p style="font-size: 12px; color: #555555; margin: 4px 0 0 0;">A 50% advance deposit is required upon brief sign-off to allocate lead designers and initiate project work.</p>
+        </div>
+
+        <div style="background-color: #FFF9E8; padding: 16px; border-radius: 8px; margin: 18px 0; border: 1px solid #FCBF14;">
+          <p style="font-size: 12px; font-weight: bold; color: #936610; margin: 0 0 8px 0;">PROJECT INTAKE SUMMARY:</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #333333; line-height: 1.8;">
+            <tr><td style="font-weight: 700; width: 120px;">Service Desk:</td><td>${safeCategory}</td></tr>
+            <tr><td style="font-weight: 700;">Phone:</td><td>${safePhone}</td></tr>
+            <tr><td style="font-weight: 700;">Company:</td><td>${safeCompany}</td></tr>
+            <tr><td style="font-weight: 700;">Subject:</td><td>${safeSubject}</td></tr>
+          </table>
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 12px; color: #111111; white-space: pre-wrap;">${safeMessage}</div>
         </div>
       </div>
     </div>
@@ -286,47 +316,56 @@ export async function sendContactNotificationEmail({
     to: email,
     fromEmail: 'hello@theslidebee.com',
     fromName: 'SlideBee Studio',
-    replyTo: 'hello@theslidebee.com',
+    replyTo: targetRecipient,
     subject: `We Received Your Note: ${safeSubject} — SlideBee Studio`,
-    html,
+    html: clientHtml,
   });
 
   // 2. Studio notification
   const studioAlertHtml = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111111; padding: 28px; border-radius: 16px; color: #ffffff;">
       <div style="background-color: #FCBF14; color: #111111; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
-        NEW CONTACT INQUIRY
+        ${isEcommerce ? 'NEW ECOMMERCE STORE INQUIRY' : 'NEW PRESENTATION DESIGN INQUIRY'}
       </div>
-      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">Contact Form: ${safeSubject}</h2>
+      <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 16px 0; color: #ffffff;">[${safeCategory}] ${safeSubject}</h2>
+      
       <div style="background-color: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333333; margin-bottom: 16px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e0e0e0; line-height: 1.8;">
-          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 100px;">From:</td><td>${safeName}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14; width: 120px;">Client Name:</td><td>${safeName}</td></tr>
           <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Email:</td><td><a href="mailto:${email}" style="color: #FCBF14;">${email}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Phone:</td><td><a href="tel:${safePhone}" style="color: #FCBF14;">${safePhone}</a></td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Company:</td><td>${safeCompany}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Service Desk:</td><td>${safeCategory}</td></tr>
+          <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Deposit Policy:</td><td>50% Advance Required Acknowledged</td></tr>
           <tr><td style="padding: 4px 0; font-weight: 700; color: #FCBF14;">Subject:</td><td>${safeSubject}</td></tr>
         </table>
-        <div style="margin-top: 14px; padding: 14px; background-color: #222222; border-radius: 8px; font-size: 13px; color: #e0e0e0; white-space: pre-wrap;">${safeMessage}</div>
+        
+        <div style="margin-top: 14px; padding: 14px; background-color: #222222; border-radius: 8px; font-size: 13px; color: #e0e0e0; white-space: pre-wrap; border-left: 3px solid #FCBF14;">${safeMessage}</div>
       </div>
-      <p style="font-size: 12px; color: #999999; margin: 0;">Reply to this email to respond directly to ${safeName}.</p>
+      
+      <p style="font-size: 12px; color: #999999; margin: 0;">Reply directly to this email to contact ${safeName}.</p>
     </div>
   `;
 
+  // Route directly to the designated department
   sendEmail({
-    to: 'hello@theslidebee.com',
+    to: targetRecipient,
     fromEmail: 'hello@theslidebee.com',
-    fromName: 'SlideBee Contact Alert',
+    fromName: isEcommerce ? 'SlideBee Ecommerce Desk' : 'SlideBee Design Desk',
     replyTo: email,
-    subject: `[CONTACT] ${safeSubject} — from ${safeName}`,
+    subject: `[${isEcommerce ? 'ECOMMERCE INQUIRY' : 'DESIGN INQUIRY'}] ${safeSubject} — from ${safeName} (${safePhone})`,
     html: studioAlertHtml,
-  }).catch(err => console.warn('Studio contact notification dispatch:', err));
+  }).catch(err => console.warn('Department notification dispatch:', err));
 
+  // Studio backup
   sendEmail({
-    to: 'vizhalsuresh@gmail.com',
+    to: 'admin@theslidebee.com',
     fromEmail: 'hello@theslidebee.com',
-    fromName: 'SlideBee Contact Alert',
+    fromName: 'SlideBee Intake Alert',
     replyTo: email,
-    subject: `[NEW INQUIRY] ${safeSubject} — from ${safeName} (${email})`,
+    subject: `[BACKUP INQUIRY] ${safeSubject} — from ${safeName} (${email})`,
     html: studioAlertHtml,
-  }).catch(err => console.warn('Admin copy dispatch notice:', err));
+  }).catch(err => console.warn('Admin backup copy dispatch notice:', err));
 
   return clientResult;
 }

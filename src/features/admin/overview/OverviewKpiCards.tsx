@@ -7,7 +7,7 @@ interface OverviewKpiCardsProps {
   registeredClientsCount: number;
   activeProSubscribers: any[];
   remainingGB: string;
-  setActiveTab: (tab: "overview" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
+  setActiveTab: (tab: "overview" | "inquiries" | "orders" | "templates" | "customization" | "billing" | "storage" | "subscriptions") => void;
 }
 
 export const OverviewKpiCards: React.FC<OverviewKpiCardsProps> = ({

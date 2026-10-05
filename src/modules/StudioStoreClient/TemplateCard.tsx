@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, Download, ArrowRight, Crown } from "lucide-react";
+import { Star, Download, ArrowRight, Crown, Heart } from "lucide-react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { type StoreTemplate } from "./useStudioStore";
+import { useWishlist, WishlistAuthModal } from "../../features/wishlist";
 
 interface TemplateCardProps {
   template: StoreTemplate;
@@ -19,27 +20,47 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
   const originalPriceUsd = template.price_usd ? template.price_usd * 2 : 10;
 
   const isFree = !template.is_premium;
+  const { isWishlisted, toggleWishlist, showAuthModal, setShowAuthModal } = useWishlist();
+  const wishlisted = isWishlisted(template.id);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      data-bee-state="card"
-      className="hex-card bg-white border-2 border-primary/35 overflow-hidden group hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm"
-    >
-      <div>
-        {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
-        <div className="p-3 sm:p-3.5 bg-[#FFF9E8]/75 border-b border-primary/20">
-          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
-            <img
-              src={template.image_url}
-              alt={template.title}
-              className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
-              loading="lazy"
-            />
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        data-bee-state="card"
+        className="hex-card bg-white border-2 border-primary/35 overflow-hidden group hover:border-primary hover:shadow-2xl transition-all duration-300 flex flex-col justify-between shadow-sm"
+      >
+        <div>
+          {/* Direction 2: Framed Presentation Canvas (Inset Slide Mockup) */}
+          <div className="p-3 sm:p-3.5 bg-[#FFF9E8]/75 border-b border-primary/20">
+            <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-white shadow-sm border border-[#111111]/10 group-hover:shadow-md transition-all duration-300">
+              {/* Wishlist Heart Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleWishlist(template.id);
+                }}
+                aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+                className={`absolute top-2 right-2 z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-md cursor-pointer ${
+                  wishlisted
+                    ? "bg-red-500 text-white scale-105"
+                    : "bg-white/90 hover:bg-white text-gray-700 hover:text-red-500 hover:scale-105"
+                }`}
+              >
+                <Heart size={13} className={wishlisted ? "fill-white" : ""} />
+              </button>
+
+              <img
+                src={template.image_url}
+                alt={template.title}
+                className="w-full h-full object-contain bg-white group-hover:scale-102 transition-transform duration-500"
+                loading="lazy"
+              />
+            </div>
           </div>
-        </div>
 
         {/* Card Content */}
         <div className="p-5 pt-3.5">
@@ -147,6 +168,12 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
           </Link>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+
+      <WishlistAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+    </>
   );
 }

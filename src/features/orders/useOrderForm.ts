@@ -95,6 +95,11 @@ export function useOrderForm() {
       return;
     }
 
+    if (!formData.phone.trim() || formData.phone.trim().replace(/\D/g, "").length < 7) {
+      setFormError("Please provide a valid phone number (mandatory field to confirm scope & timeline).");
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email.trim())) {
       setFormError("Please provide a valid business email address.");

@@ -5,6 +5,7 @@ import {
   UploadCloud,
   Clock,
   Shield,
+  ShieldCheck,
   Layers,
   AlertCircle
 } from "lucide-react";
@@ -228,15 +229,29 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
 
           <div>
             <label className="block text-xs font-extrabold uppercase tracking-wider text-[#111111] mb-2 text-left">
-              Phone / WhatsApp Number
+              Phone / WhatsApp Number * (Mandatory)
             </label>
             <input
               type="tel"
+              required
               placeholder="+91 98765 43210"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-none focus:border-primary"
+              className="w-full bg-[#FFF9E8] border border-primary/30 rounded-2xl px-4 py-3 min-h-[44px] text-base sm:text-sm text-[#111111] font-medium focus:outline-hidden focus:border-primary"
             />
+          </div>
+        </div>
+
+        {/* 50% Advance Notice Badge */}
+        <div className="bg-[#FFF4D9] border-l-4 border-[#FCBF14] p-3.5 rounded-xl flex items-start gap-3 text-left shadow-xs mt-5">
+          <ShieldCheck size={18} className="text-[#111111] shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <span className="font-extrabold text-[#111111] block mb-0.5">
+              50% Advance Deposit Required to Initiate Work
+            </span>
+            <span className="text-[#555555]">
+              To allocate dedicated senior designers and full-stack engineers to your sprint, an initial 50% advance deposit is required upon scope approval.
+            </span>
           </div>
         </div>
       </div>

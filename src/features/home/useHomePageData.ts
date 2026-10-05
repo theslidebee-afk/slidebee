@@ -15,8 +15,14 @@ export function useHomePageData() {
   const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.1]);
   const templatesSlideUpY = useTransform(scrollY, [0, 420], [0, -75]);
 
-  // Filtering & Continuous Scroll State
-  const [visibleCount, setVisibleCount] = useState<number>(24);
+  // Filtering & Pagination State (5x5 grid = 25 items per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [sortOption, setSortOption] = useState<"trending" | "newest" | "price_asc" | "price_desc" | "downloads">("trending");
+  const pageSize = 25;
+  const setVisibleCount = (_val?: any) => {
+    setCurrentPage(1);
+  };
+  const visibleCount = pageSize;
   const [activeSidebarCategory, setActiveSidebarCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
@@ -38,8 +44,13 @@ export function useHomePageData() {
     setSearchQuery("");
     setActiveSidebarCategory("all");
     setTierFilter("all");
-    setVisibleCount(24);
+    setSortOption("trending");
+    setCurrentPage(1);
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSidebarCategory, searchQuery, tierFilter, sortOption]);
 
   // Measure exact resting distance
   useEffect(() => {
@@ -109,6 +120,15 @@ export function useHomePageData() {
       "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.",
   });
   const [curatedTrendingIds, setCuratedTrendingIds] = useState<string[]>([]);
+  const [homeBannerTop, setHomeBannerTop] = useState<any>({
+    enabled: true,
+    badge: "EXECUTIVE SUITE",
+    title: "100+ Board-Ready Presentation Templates & Frameworks",
+    subtitle: "Built for founders, management consultants, and enterprise teams. 100% editable .pptx slides.",
+    ctaText: "Explore Full Studio",
+    ctaLink: "#templates",
+    imageUrl: "",
+  });
   const [homeBanner1, setHomeBanner1] = useState<any>({
     title: "Create Presentations That Make an Impact",
     subtitle: "Turn your ideas into amazing slides.",
@@ -154,12 +174,15 @@ export function useHomePageData() {
 
     d1.from("site_config")
       .select("*")
-      .in("key", ["hero", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
+      .in("key", ["hero", "home_banner_top", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
       .then(({ data }: { data: any }) => {
         if (data && Array.isArray(data)) {
           data.forEach((row: any) => {
             if (row.key === "hero" && row.value) {
               setHeroConfig((prev: any) => ({ ...prev, ...row.value }));
+            }
+            if (row.key === "home_banner_top" && row.value) {
+              setHomeBannerTop((prev: any) => ({ ...prev, ...row.value }));
             }
             if (row.key === "home_banner_1" && row.value) {
               setHomeBanner1((prev: any) => ({ ...prev, ...row.value }));
@@ -238,6 +261,13 @@ export function useHomePageData() {
     categoriesList,
     heroConfig,
     curatedTrendingIds,
+    setCuratedTrendingIds,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    sortOption,
+    setSortOption,
+    homeBannerTop,
     homeBanner1,
     homeBanner2,
     testimonials,

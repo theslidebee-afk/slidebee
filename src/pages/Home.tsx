@@ -37,7 +37,6 @@ export default function Home() {
     videoScale,
     videoOpacity,
     templatesSlideUpY,
-    visibleCount,
     setVisibleCount,
     activeSidebarCategory,
     setActiveSidebarCategory,
@@ -54,6 +53,12 @@ export default function Home() {
     categoriesList,
     heroConfig,
     curatedTrendingIds,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    sortOption,
+    setSortOption,
+    homeBannerTop,
     homeBanner1,
     homeBanner2,
     testimonials,
@@ -130,18 +135,27 @@ export default function Home() {
       });
     }
 
+    if (sortOption === "newest") {
+      list.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    } else if (sortOption === "downloads") {
+      list.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+    } else if (sortOption === "price_asc") {
+      list.sort((a, b) => (a.price_inr || 0) - (b.price_inr || 0));
+    } else if (sortOption === "price_desc") {
+      list.sort((a, b) => (b.price_inr || 0) - (a.price_inr || 0));
+    }
+
     return list;
-  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter, curatedTrendingIds]);
+  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter, curatedTrendingIds, sortOption]);
 
-  const displayedContinuousTemplates = useMemo(() => {
-    return filteredCatalog.slice(0, visibleCount);
-  }, [filteredCatalog, visibleCount]);
+  const totalPages = Math.ceil(filteredCatalog.length / pageSize) || 1;
+  const startIndex = filteredCatalog.length > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(currentPage * pageSize, filteredCatalog.length);
 
-  const hasMoreTemplates = visibleCount < filteredCatalog.length;
-
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 18);
-  };
+  const displayedPaginatedTemplates = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCatalog.slice(start, start + pageSize);
+  }, [filteredCatalog, currentPage, pageSize]);
 
   const freeCount = useMemo(() => allTemplates.filter((t) => !t.is_premium).length, [allTemplates]);
   const premiumCount = useMemo(() => allTemplates.filter((t) => t.is_premium).length, [allTemplates]);
@@ -179,9 +193,10 @@ export default function Home() {
           style={{ y: heroCardY, opacity: heroCardOpacity }}
           className="w-[92%] max-w-[1760px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
         >
-          {/* Top Split Promotion Banners */}
+          {/* Top Promotion Banners (3rd Banner + Split Banners) */}
           <HomeHeroBanners
             isFilterActive={isFilterActive}
+            homeBannerTop={homeBannerTop}
             homeBanner1={homeBanner1}
             homeBanner2={homeBanner2}
             scrollToTemplates={scrollToTemplates}
@@ -206,14 +221,14 @@ export default function Home() {
             freeCount={freeCount}
             premiumCount={premiumCount}
             filteredCatalog={filteredCatalog}
-            displayedCount={displayedContinuousTemplates.length}
+            displayedCount={displayedPaginatedTemplates.length}
             allCategoryPills={allCategoryPills}
             heroConfig={heroConfig}
           />
         </motion.div>
       </section>
 
-      {/* 3. CONTINUOUS TEMPLATES SECTION */}
+      {/* 3. 5x5 STRUCTURED MARKETPLACE TEMPLATES SECTION */}
       <HomeTemplateGrid
         templatesRef={templatesRef}
         isFilterActive={isFilterActive}
@@ -222,12 +237,23 @@ export default function Home() {
         dockOffset={dockOffset}
         loading={loading}
         filteredCatalog={filteredCatalog}
-        displayedTemplates={displayedContinuousTemplates}
-        hasMoreTemplates={hasMoreTemplates}
-        handleLoadMore={handleLoadMore}
+        displayedTemplates={displayedPaginatedTemplates}
         resetToResting={resetToResting}
         searchQuery={searchQuery}
-        visibleCount={visibleCount}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        tierFilter={tierFilter}
+        setTierFilter={setTierFilter}
+        activeCategory={activeSidebarCategory}
+        setActiveCategory={setActiveSidebarCategory}
+        categoriesList={categoriesList}
+        sortOption={sortOption}
+        setSortOption={setSortOption}
+        freeCount={freeCount}
+        premiumCount={premiumCount}
       />
 
       {/* 4. "NEED SOMETHING CUSTOM?" SERVICE STRIP */}

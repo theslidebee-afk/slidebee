@@ -134,6 +134,8 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
       downloadUrl: p.download_url || "#",
       thumbnailBg: (i + customOrderDeliverables.length) % 2 === 0 ? "bg-[#181818]" : "bg-[#F3F4F6]",
       isCustomProject: false,
+      purchasedAt: p.created_at || p.purchased_at || p.date,
+      templateSlug: p.template_slug || p.slug || p.id,
     })),
   ];
 
@@ -199,7 +201,11 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           )}
 
           {activeTab === "purchased" && (
-            <DashboardPurchasedTab allPurchasedDeliverables={allPurchasedDeliverables} />
+            <DashboardPurchasedTab
+              allPurchasedDeliverables={allPurchasedDeliverables}
+              isProUser={isProUser}
+              quotaRemaining={quotaRemaining}
+            />
           )}
 
           {activeTab === "custom" && (

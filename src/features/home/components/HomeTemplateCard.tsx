@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Eye, Heart } from "lucide-react";
+import { useWishlist, WishlistAuthModal } from "../../wishlist";
 
 interface HomeTemplateCardProps {
   template: any;
@@ -41,38 +42,58 @@ function getMiniSlideCount(template: any): number {
 
 export function HomeTemplateCard({ template }: HomeTemplateCardProps) {
   const navigate = useNavigate();
+  const { isWishlisted, toggleWishlist, showAuthModal, setShowAuthModal } = useWishlist();
+  const wishlisted = isWishlisted(template.id);
   const miniCount = getMiniSlideCount(template);
   const previewSlides = miniCount > 0 ? getPreviewSlides(template, miniCount) : [];
 
   return (
-    <div
-      onClick={() => navigate(`/template/${template.id}`)}
-      data-bee-state="card"
-      className="group flex flex-col cursor-pointer transition-all duration-300"
-    >
-      {/* Main Card Canvas with Subtle Border & Soft Shadow */}
-      <div className="relative bg-[#FAFAFA] group-hover:bg-white border border-[#111111]/10 group-hover:border-[#FCBF14] rounded-2xl p-2 sm:p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] group-hover:shadow-xl transition-all duration-300 overflow-hidden">
-        
-        {/* Swallowtail Ribbon Tag: Free badge for free community decks */}
-        {!template.is_premium && (
-          <div
-            style={{
-              clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
+    <>
+      <div
+        onClick={() => navigate(`/template/${template.id}`)}
+        data-bee-state="card"
+        className="group flex flex-col cursor-pointer transition-all duration-300"
+      >
+        {/* Main Card Canvas with Subtle Border & Soft Shadow */}
+        <div className="relative bg-[#FAFAFA] group-hover:bg-white border border-[#111111]/10 group-hover:border-[#FCBF14] rounded-2xl p-2 sm:p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] group-hover:shadow-xl transition-all duration-300 overflow-hidden">
+          
+          {/* Wishlist Heart Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWishlist(template.id);
             }}
-            className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading"
+            aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+            className={`absolute top-2 right-2 z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-md cursor-pointer ${
+              wishlisted
+                ? "bg-red-500 text-white scale-105"
+                : "bg-white/90 hover:bg-white text-gray-700 hover:text-red-500 hover:scale-105"
+            }`}
           >
-            Free
-          </div>
-        )}
+            <Heart size={13} className={wishlisted ? "fill-white" : ""} />
+          </button>
 
-        {/* Main Top Slide Cover Preview */}
-        <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-xs">
-          <img
-            src={template.image_url || template.thumbnail_url || previewSlides[0] || "/portfolio/case_study_a_1.png"}
-            alt={template.title}
-            className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
-            loading="lazy"
-          />
+          {/* Swallowtail Ribbon Tag: Free badge for free community decks */}
+          {!template.is_premium && (
+            <div
+              style={{
+                clipPath: "polygon(0 0, 100% 0, 84% 50%, 100% 100%, 0 100%)",
+              }}
+              className="absolute top-2 left-0 bg-[#FCBF14] text-[#111111] text-[9px] sm:text-[10px] font-black uppercase pl-2.5 pr-4 py-0.5 sm:py-1 shadow-sm z-20 tracking-wider select-none font-heading"
+            >
+              Free
+            </div>
+          )}
+
+          {/* Main Top Slide Cover Preview */}
+          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-xs">
+            <img
+              src={template.image_url || template.thumbnail_url || previewSlides[0] || "/portfolio/case_study_a_1.png"}
+              alt={template.title}
+              className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
+              loading="lazy"
+            />
 
           {/* Subtle Hover Lens Overlay */}
           <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -110,6 +131,12 @@ export function HomeTemplateCard({ template }: HomeTemplateCardProps) {
         </h3>
       </div>
 
-    </div>
+      </div>
+
+      <WishlistAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+    </>
   );
 }
