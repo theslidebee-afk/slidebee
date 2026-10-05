@@ -22,6 +22,7 @@ export function useAuthPage() {
       email: searchParams.get("email") || hashParams.get("email") || "",
       name: searchParams.get("name") || hashParams.get("name") || "",
       action: searchParams.get("action") || hashParams.get("action") || "",
+      redirect: searchParams.get("redirect") || hashParams.get("redirect") || "",
     };
   }, []);
 
@@ -288,6 +289,12 @@ export function useAuthPage() {
 
           if (isAdmin) {
             window.location.href = "/admin";
+            return;
+          }
+
+          if (incomingParams.redirect) {
+            const dest = decodeURIComponent(incomingParams.redirect);
+            window.location.href = dest.startsWith("/") ? dest : `/${dest}`;
             return;
           }
         }
