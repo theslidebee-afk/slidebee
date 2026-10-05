@@ -36,7 +36,13 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
    - Hardened serverless download APIs (`redeem-pro-template.ts`, `fulfill-order.ts`, `entitlement.ts`, `rpc.ts`) to resolve R2 deliverables reliably and prevent preview image corruption.
    - Added `file_name` and `file_size` to `useTemplateEdit.ts` update payload so edits preserve deliverable metadata.
    - Verified all templates in D1 point to active, 200 HTTP status Master PowerPoint decks.
-10. **Verification & Deployment**:
+10. **Enterprise Secure Download Proxy, Storage Integrity Guard & QA Protocol**:
+   - Implemented serverless streaming download endpoint `functions/api/download.ts` to stream PPTX files directly from internal R2 bindings (`env.R2_BUCKET.get()`), completely hiding `pub-*.r2.dev` URLs from client browsers.
+   - Wired client-side download triggers (`TemplateActionPanel`, `TemplateDetail`, `useTemplateCheckout`, `proRedemptionHelper`, `DashboardPurchasedTab`) through `/api/download`.
+   - Added server-side storage validation (`head` checks) in `createTemplate.ts` and `updateTemplate.ts` to prevent missing or typoed files from entering D1.
+   - Enforced single-download policy: removed download buttons from purchase confirmation emails, restricted client dashboard re-downloads to Pro quota or fresh licenses.
+   - Created comprehensive 7-workflow manual testing and regression QA protocol in `docs/MANUAL_TESTING_GUIDE.md`.
+11. **Verification & Deployment**:
    - `npm run build` exits 0.
    - Zero unicode emojis confirmed across all files.
    - Committed to `dev` and pushed to GitHub `origin/dev`.
@@ -45,6 +51,7 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
 ## What Was Verified
 - Full TypeScript build and Vite bundling pass cleanly.
 - Zero unicode emojis across codebase.
+- Verified `/api/download?id=SLD-180` streams 1.08 MB binary PPTX with genuine PowerPoint headers.
 - Deployed successfully to Cloudflare Pages alias `https://dev.slidebee.pages.dev`.
 
 ## Next Steps
