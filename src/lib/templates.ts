@@ -75,7 +75,7 @@ export function getTemplateDeliverableUrl(template?: any | null): string | null 
     "SLD-1234": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`,
     "SLD-1235": `${R2_PUBLIC_BASE_URL}/templates/decks/cvs_health.pptx`,
     "SLD-113": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`,
-    "SLD-180": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`
+    "SLD-180": `${R2_PUBLIC_BASE_URL}/templates/decks/construction_infographic_light_1791181825938.pptx`
   };
 
   if (code && knownDecks[code]) {
