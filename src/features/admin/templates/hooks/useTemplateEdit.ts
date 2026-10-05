@@ -172,6 +172,8 @@ export const useTemplateEdit = (
       image_url: editingTemplate.thumbnail_url,
       slides: effectiveSlides,
       download_url: effectiveDownloadUrl,
+      file_name: editingTemplate.file_name || "",
+      file_size: editingTemplate.file_size || "",
       formats: editingTemplate.formats,
       description: editingTemplate.description,
       features: editingTemplate.features,

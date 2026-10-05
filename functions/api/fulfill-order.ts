@@ -134,7 +134,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
     }
 
-    const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
+    let deliverable = template.download_url;
+    if (!deliverable && template.file_name && template.file_name.endsWith(".pptx")) {
+      deliverable = `${R2_BASE}/templates/decks/${template.file_name}`;
+    }
+    if (!deliverable) {
+      deliverable = `${R2_BASE}/templates/decks/accenture.pptx`;
+    }
     const resolvedClientName = String(clientName || cleanEmail.split("@")[0]).trim();
     const authoritativeCurrency = String(currency || "INR").toUpperCase();
     const authoritativeAmount = authoritativeCurrency === "USD"

@@ -222,11 +222,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     try { purchasedItems = JSON.parse(profile.purchased_items || "[]"); } catch {}
 
     const isPptx = (url: string) => url && typeof url === "string" && (url.endsWith(".pptx") || url.endsWith(".ppt") || url.endsWith(".zip") || url.includes("/templates/decks/"));
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
     const deliverable = isPptx(template.download_url)
       ? template.download_url
-      : (isPptx(template.pptx_file_url)
-        ? template.pptx_file_url
-        : `https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev/templates/decks/accenture.pptx`);
+      : (isPptx(template.file_name)
+        ? `${R2_BASE}/templates/decks/${template.file_name}`
+        : (isPptx(template.pptx_file_url)
+          ? template.pptx_file_url
+          : `${R2_BASE}/templates/decks/accenture.pptx`));
     const alreadyPresent = purchasedItems.some((item: any) => item.id === template.id || item.slug === template.slug);
 
     if (!alreadyPresent) {

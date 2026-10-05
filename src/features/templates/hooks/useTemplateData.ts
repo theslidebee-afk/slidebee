@@ -91,7 +91,7 @@ export function useTemplateData(id?: string) {
         let matched: any = null;
 
         const { data, error } = await d1
-          .from("v_storefront_catalog")
+          .from("templates")
           .select("*")
           .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
           .maybeSingle();
@@ -99,12 +99,12 @@ export function useTemplateData(id?: string) {
         if (data && !error) {
           matched = data;
         } else {
-          const { data: tData } = await d1
-            .from("templates")
+          const { data: vData } = await d1
+            .from("v_storefront_catalog")
             .select("*")
             .or(`id.eq.${id},code.eq.${id},slug.eq.${id}`)
             .maybeSingle();
-          if (tData) matched = tData;
+          if (vData) matched = vData;
         }
 
         if (matched) {
@@ -113,16 +113,28 @@ export function useTemplateData(id?: string) {
             Array.isArray(matched.slides) && matched.slides.length > 0
               ? matched.slides.map((s: string) => normalizeR2Url(s, "slides"))
               : [coverImg];
-          const pptxUrl = matched.download_url ? normalizeR2Url(matched.download_url, "decks") : undefined;
+          const pptxUrl = matched.download_url
+            ? normalizeR2Url(matched.download_url, "decks")
+            : matched.file_name && matched.file_name.endsWith(".pptx")
+            ? normalizeR2Url(matched.file_name, "decks")
+            : undefined;
+
+          const isPrem = matched.is_premium !== undefined
+            ? Number(matched.is_premium) === 1
+            : (matched.price_inr !== undefined && Number(matched.price_inr) > 0);
+
+          const priceInr = isPrem ? (matched.price_inr !== undefined && matched.price_inr !== null ? Number(matched.price_inr) : 499) : 0;
+          const priceUsd = isPrem ? (matched.price_usd !== undefined && matched.price_usd !== null ? Number(matched.price_usd) : 9) : 0;
+          const originalPriceInr = isPrem ? (Number(matched.original_price_inr) || (priceInr * 2)) : 0;
 
           setTemplate({
             id: matched.id,
             code: matched.code || `SLD-${matched.id.slice(0, 4).toUpperCase()}`,
             title: matched.title,
             category: matched.category || "Business",
-            price_inr: Number(matched.price_inr) || 499,
-            price_usd: Number(matched.price_usd) || 9,
-            original_price_inr: Number(matched.original_price_inr) || 999,
+            price_inr: priceInr,
+            price_usd: priceUsd,
+            original_price_inr: originalPriceInr,
             image_url: coverImg,
             slides: slideUrls,
             slides_count: Number(matched.slides_count || matched.slide_count) || slideUrls.length || 30,
@@ -148,13 +160,11 @@ export function useTemplateData(id?: string) {
               Array.isArray(matched.formats) && matched.formats.length > 0
                 ? matched.formats
                 : ["PowerPoint"],
-            is_premium:
-              matched.is_premium !== undefined
-                ? Number(matched.is_premium) === 1
-                : Number(matched.price_inr) > 0,
-            is_credit_eligible: Boolean(matched.is_credit_eligible),
+            is_premium: isPrem,
+            is_credit_eligible: isPrem && Boolean(matched.is_credit_eligible),
             is_featured: Boolean(matched.is_featured),
-            is_published: true,
+            is_published: matched.is_published !== 0,
+            created_at: matched.created_at,
           });
         }
       } catch (err) {

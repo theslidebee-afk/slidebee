@@ -83,7 +83,11 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
         const slideUrls = Array.isArray(t.slides) && t.slides.length > 0
           ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
           : [coverImg];
-        const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
+        const pptxUrl = t.download_url
+          ? normalizeR2Url(t.download_url, "decks")
+          : t.file_name && t.file_name.endsWith(".pptx")
+          ? normalizeR2Url(t.file_name, "decks")
+          : undefined;
 
         const isPrem = t.is_premium !== undefined 
           ? Number(t.is_premium) === 1 

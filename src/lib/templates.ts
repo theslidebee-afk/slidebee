@@ -46,6 +46,20 @@ export function getTemplateDeliverableUrl(template?: any | null): string | null 
     return normalizeR2Url(template.pptx_file_url, "decks");
   }
 
+  // 3. Direct file_name check (if uploaded with genuine .pptx filename)
+  if (template.file_name && isValidPptxUrl(template.file_name)) {
+    return normalizeR2Url(template.file_name, "decks");
+  }
+
+  // 4. Formats array check
+  if (Array.isArray(template.formats)) {
+    for (const f of template.formats) {
+      if (typeof f === "string" && isValidPptxUrl(f)) {
+        return normalizeR2Url(f, "decks");
+      }
+    }
+  }
+
   // 3. Check code-based or slug-based deck in R2 if explicitly mapped
   const code = (template.code || "").toUpperCase().trim();
   const knownDecks: Record<string, string> = {
@@ -59,7 +73,9 @@ export function getTemplateDeliverableUrl(template?: any | null): string | null 
     "SLD-109": `${R2_PUBLIC_BASE_URL}/templates/decks/volvo.pptx`,
     "SLD-301": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`,
     "SLD-1234": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`,
-    "SLD-1235": `${R2_PUBLIC_BASE_URL}/templates/decks/cvs_health.pptx`
+    "SLD-1235": `${R2_PUBLIC_BASE_URL}/templates/decks/cvs_health.pptx`,
+    "SLD-113": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`,
+    "SLD-180": `${R2_PUBLIC_BASE_URL}/templates/decks/accenture.pptx`
   };
 
   if (code && knownDecks[code]) {

@@ -125,7 +125,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    const pptxDownloadUrl = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
+    let pptxDownloadUrl = template.download_url;
+    if (!pptxDownloadUrl && template.file_name && template.file_name.endsWith(".pptx")) {
+      pptxDownloadUrl = `${R2_BASE}/templates/decks/${template.file_name}`;
+    }
+    if (!pptxDownloadUrl) {
+      pptxDownloadUrl = `${R2_BASE}/templates/decks/accenture.pptx`;
+    }
     const fileName = template.file_name || `${template.code || "SLD"}_Master.pptx`;
 
     // 4. Check if client already downloaded this template

@@ -47,7 +47,14 @@ export async function handleRpc(db: any, rpcName: string, rpcParams: any, corsHe
     let purchasedItems: any[] = [];
     try { purchasedItems = JSON.parse(user.purchased_items || "[]"); } catch {}
 
-    const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
+    let deliverable = template.download_url;
+    if (!deliverable && template.file_name && template.file_name.endsWith(".pptx")) {
+      deliverable = `${R2_BASE}/templates/decks/${template.file_name}`;
+    }
+    if (!deliverable) {
+      deliverable = `${R2_BASE}/templates/decks/accenture.pptx`;
+    }
     const newItem = {
       id: template.id,
       slug: template.slug,
