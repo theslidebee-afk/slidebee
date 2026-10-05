@@ -61,6 +61,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
     }
 
+    const isAdmin = cleanEmail === "admin@theslidebee.com";
+
     if (action === "REGISTER") {
       const sessionData = {
         sessionId: currentSessionId,
@@ -68,7 +70,28 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         registeredAt: new Date().toISOString(),
       };
 
-      sessionsMap[cleanEmail] = sessionData;
+      if (isAdmin) {
+        // Admin alone is permitted up to 2 concurrent browsing sessions
+        let adminSessions: any[] = [];
+        const existing = sessionsMap[cleanEmail];
+        if (Array.isArray(existing)) {
+          adminSessions = existing;
+        } else if (existing && existing.sessionId) {
+          adminSessions = [existing];
+        }
+
+        // Filter out re-registration of the same session ID
+        adminSessions = adminSessions.filter((s: any) => s.sessionId !== currentSessionId);
+        // Keep at most 1 prior session so that with new session there are at most 2
+        if (adminSessions.length >= 2) {
+          adminSessions = adminSessions.slice(-1);
+        }
+        adminSessions.push(sessionData);
+        sessionsMap[cleanEmail] = adminSessions;
+      } else {
+        // Regular users: strictly single session enforcement
+        sessionsMap[cleanEmail] = sessionData;
+      }
 
       if (env?.DB) {
         await env.DB.prepare(`
@@ -99,21 +122,51 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     if (action === "VERIFY") {
       const activeRecord = sessionsMap[cleanEmail];
-      if (!activeRecord || !activeRecord.sessionId) {
+      if (!activeRecord) {
         return new Response(
           JSON.stringify({ success: true, valid: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      if (activeRecord.sessionId !== currentSessionId) {
+      if (isAdmin && Array.isArray(activeRecord)) {
+        // For admin, session is valid if currentSessionId is any of the active sessions (up to 2)
+        const match = activeRecord.find((s: any) => s.sessionId === currentSessionId);
+        if (!match) {
+          const newest = activeRecord[activeRecord.length - 1];
+          return new Response(
+            JSON.stringify({
+              success: true,
+              valid: false,
+              reason: "DISPLACED",
+              newDevice: newest?.deviceInfo || "another device",
+              displacedAt: newest?.registeredAt,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ success: true, valid: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const record = Array.isArray(activeRecord) ? activeRecord[activeRecord.length - 1] : activeRecord;
+      if (!record || !record.sessionId) {
+        return new Response(
+          JSON.stringify({ success: true, valid: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (record.sessionId !== currentSessionId) {
         return new Response(
           JSON.stringify({
             success: true,
             valid: false,
             reason: "DISPLACED",
-            newDevice: activeRecord.deviceInfo || "another device",
-            displacedAt: activeRecord.registeredAt,
+            newDevice: record.deviceInfo || "another device",
+            displacedAt: record.registeredAt,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

@@ -16,13 +16,17 @@ export const useTemplateEdit = (
     ? template.features
     : [`${template?.slide_count || template?.slides_count || 25}+ High-Impact Slides`, "16:9 Widescreen Layout", "Fully Editable Vector Elements"];
 
+  const isInitiallyPremium = template?.is_premium !== undefined
+    ? Number(template.is_premium) === 1
+    : Number(template?.price_inr ?? 499) > 0;
+
   const [editingTemplate, setEditingTemplate] = useState<any>({
     id: template?.id,
     title: template?.title || "",
     code: template?.code || `SLD-${Math.floor(100 + Math.random() * 900)}`,
     category: template?.category || "Pitch Decks",
-    price_inr: template?.price_inr ?? 499,
-    price_usd: template?.price_usd ?? 9,
+    price_inr: isInitiallyPremium ? (template?.price_inr ?? 499) : 0,
+    price_usd: isInitiallyPremium ? (template?.price_usd ?? 9) : 0,
     slide_count: template?.slide_count || template?.slides_count || rawSlides.length || 25,
     description: template?.description || "",
     thumbnail_url: template?.thumbnail_url || template?.image_url || template?.image || (rawSlides[0] || ""),
@@ -32,7 +36,8 @@ export const useTemplateEdit = (
     formats: rawFormats,
     features: rawFeatures,
     is_published: template?.is_published !== false,
-    is_credit_eligible: Boolean(template?.is_credit_eligible)
+    is_premium: isInitiallyPremium ? 1 : 0,
+    is_credit_eligible: isInitiallyPremium ? Boolean(template?.is_credit_eligible) : false
   });
 
   const [isSavingEditTemplate, setIsSavingEditTemplate] = useState(false);

@@ -71,8 +71,20 @@ export async function handleLogin(request: Request, env: Env, body: any) {
       user.role = 'super_admin';
     }
 
-    // Strict single session enforcement: delete prior sessions for this user
-    await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
+    // Session enforcement: Admin allows 2 concurrent sessions, regular users strictly 1
+    if (isAdminTarget || cleanEmail === 'admin@theslidebee.com') {
+      // Keep at most 1 previous active session so that with the new session there are at most 2
+      await env.DB.prepare(`
+        DELETE FROM sessions 
+        WHERE user_id = ? 
+        AND id NOT IN (
+          SELECT id FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+        )
+      `).bind(user.id, user.id).run();
+    } else {
+      // Strict single session enforcement: delete prior sessions for this user
+      await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
+    }
 
     // Create new session valid for 7 days
     const newSessionId = crypto.randomUUID();

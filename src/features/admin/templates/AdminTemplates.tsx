@@ -126,11 +126,30 @@ export const AdminTemplates: React.FC = () => {
   };
 
   const handleToggleFreeTier = async (tpl: any) => {
-    const nextVal = !tpl.is_credit_eligible;
-    const nextIsPremium = nextVal ? 0 : 1;
-    setTemplates(templates.map((t: any) => t.id === tpl.id ? { ...t, is_credit_eligible: nextVal, is_premium: nextIsPremium } : t));
+    const isCurrentlyFree = !tpl.is_premium || Number(tpl.price_inr) === 0;
+    const nextIsPremium = isCurrentlyFree ? 1 : 0;
+    const nextPriceInr = nextIsPremium ? 499 : 0;
+    const nextPriceUsd = nextIsPremium ? 9 : 0;
+    const nextCreditEligible = nextIsPremium ? 1 : 0;
+    const updatedTpl = {
+      ...tpl,
+      is_premium: nextIsPremium,
+      price_inr: nextPriceInr,
+      price_usd: nextPriceUsd,
+      original_price_inr: nextPriceInr * 2,
+      is_credit_eligible: nextCreditEligible
+    };
+    setTemplates(templates.map((t: any) => t.id === tpl.id ? updatedTpl : t));
     const authToken = session?.access_token || "";
     const adminKey = localStorage.getItem("slidebee_admin_key") || "";
+    const payload = {
+      id: tpl.id,
+      is_premium: nextIsPremium,
+      price_inr: nextPriceInr,
+      price_usd: nextPriceUsd,
+      original_price_inr: nextPriceInr * 2,
+      is_credit_eligible: nextCreditEligible
+    };
     try {
       await fetch("/api/admin-template", {
         method: "PUT",
@@ -139,10 +158,10 @@ export const AdminTemplates: React.FC = () => {
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           ...(adminKey ? { "x-slidebee-admin-key": adminKey } : {}),
         },
-        body: JSON.stringify({ id: tpl.id, is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }),
+        body: JSON.stringify(payload),
       });
     } catch (err) {
-      await d1.from("templates").update({ is_credit_eligible: nextVal ? 1 : 0, is_premium: nextIsPremium }).eq("id", tpl.id);
+      await d1.from("templates").update(payload).eq("id", tpl.id);
     }
   };
 

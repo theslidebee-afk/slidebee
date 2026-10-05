@@ -89,6 +89,9 @@ export async function verifyActiveSession(email: string): Promise<{ valid: boole
   const localId = localStorage.getItem(SESSION_STORAGE_ID_KEY) || "";
   if (!email || !localId) return { valid: true };
 
+  const cleanEmail = email.toLowerCase().trim();
+  const isAdmin = cleanEmail === "admin@theslidebee.com";
+
   // 1. Primary check via backend Cloudflare session guard
   try {
     const res = await fetch("/api/session-guard", {
@@ -96,7 +99,7 @@ export async function verifyActiveSession(email: string): Promise<{ valid: boole
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "VERIFY",
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         sessionId: localId
       })
     });
@@ -108,25 +111,30 @@ export async function verifyActiveSession(email: string): Promise<{ valid: boole
         if (data && data.valid === false) {
           return { valid: false, newDevice: data.newDevice || "another device" };
         }
+        if (data && data.valid === true) {
+          return { valid: true };
+        }
       }
     }
   } catch (err) {
     // Preserve active session on network/transient failures
   }
 
-  // 2. Fallback check via GoTrue user metadata
-  try {
-    const { data: { user } } = await d1.auth.getUser();
-    if (user && user.user_metadata?.active_session_id) {
-      if (user.user_metadata.active_session_id !== localId) {
-        return {
-          valid: false,
-          newDevice: user.user_metadata.active_device_info || "another device"
-        };
+  // 2. Fallback check via GoTrue user metadata (bypassed for admin since metadata holds only 1 session)
+  if (!isAdmin) {
+    try {
+      const { data: { user } } = await d1.auth.getUser();
+      if (user && user.user_metadata?.active_session_id) {
+        if (user.user_metadata.active_session_id !== localId) {
+          return {
+            valid: false,
+            newDevice: user.user_metadata.active_device_info || "another device"
+          };
+        }
       }
+    } catch (err) {
+      // preserve session on offline/transient errors
     }
-  } catch (err) {
-    // preserve session on offline/transient errors
   }
 
   return { valid: true };

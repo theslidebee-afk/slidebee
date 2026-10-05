@@ -144,46 +144,46 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
 
               const handleTierChange = (newTier: "free" | "premium") => {
                 if (newTier === "free") {
-                  setEditingTemplate({
-                    ...editingTemplate,
+                  setEditingTemplate((prev: any) => ({
+                    ...prev,
                     is_premium: 0,
                     price_inr: 0,
                     price_usd: 0,
                     original_price_inr: 0,
                     is_credit_eligible: 0
-                  });
+                  }));
                 } else {
-                  setEditingTemplate({
-                    ...editingTemplate,
+                  setEditingTemplate((prev: any) => ({
+                    ...prev,
                     is_premium: 1,
-                    price_inr: editingTemplate.price_inr && Number(editingTemplate.price_inr) > 0 ? editingTemplate.price_inr : 499,
-                    price_usd: editingTemplate.price_usd && Number(editingTemplate.price_usd) > 0 ? editingTemplate.price_usd : 9,
+                    price_inr: prev.price_inr && Number(prev.price_inr) > 0 ? prev.price_inr : 499,
+                    price_usd: prev.price_usd && Number(prev.price_usd) > 0 ? prev.price_usd : 9,
                     is_credit_eligible: 1
-                  });
+                  }));
                 }
               };
 
               return (
                 <TemplateFormInputs
                   title={editingTemplate.title}
-                  setTitle={(title) => setEditingTemplate({ ...editingTemplate, title })}
+                  setTitle={(title) => setEditingTemplate((prev: any) => ({ ...prev, title }))}
                   code={editingTemplate.code}
-                  setCode={(code) => setEditingTemplate({ ...editingTemplate, code })}
+                  setCode={(code) => setEditingTemplate((prev: any) => ({ ...prev, code }))}
                   category={editingTemplate.category}
-                  setCategory={(category) => setEditingTemplate({ ...editingTemplate, category })}
+                  setCategory={(category) => setEditingTemplate((prev: any) => ({ ...prev, category }))}
                   categoriesList={categoriesList}
                   slideCount={editingTemplate.slide_count}
-                  setSlideCount={(slide_count) => setEditingTemplate({ ...editingTemplate, slide_count })}
+                  setSlideCount={(slide_count) => setEditingTemplate((prev: any) => ({ ...prev, slide_count }))}
                   priceINR={editingTemplate.price_inr}
-                  setPriceINR={(price_inr) => setEditingTemplate({ ...editingTemplate, price_inr })}
+                  setPriceINR={(price_inr) => setEditingTemplate((prev: any) => ({ ...prev, price_inr, is_premium: Number(price_inr) > 0 ? 1 : 0 }))}
                   priceUSD={editingTemplate.price_usd}
-                  setPriceUSD={(price_usd) => setEditingTemplate({ ...editingTemplate, price_usd })}
+                  setPriceUSD={(price_usd) => setEditingTemplate((prev: any) => ({ ...prev, price_usd }))}
                   description={editingTemplate.description}
-                  setDescription={(description) => setEditingTemplate({ ...editingTemplate, description })}
+                  setDescription={(description) => setEditingTemplate((prev: any) => ({ ...prev, description }))}
                   features={Array.isArray(editingTemplate.features) ? editingTemplate.features : []}
-                  setFeatures={(features) => setEditingTemplate({ ...editingTemplate, features })}
-                  isCreditEligible={editingTemplate.is_credit_eligible}
-                  setIsCreditEligible={(is_credit_eligible) => setEditingTemplate({ ...editingTemplate, is_credit_eligible })}
+                  setFeatures={(features) => setEditingTemplate((prev: any) => ({ ...prev, features }))}
+                  isCreditEligible={Boolean(editingTemplate.is_credit_eligible)}
+                  setIsCreditEligible={(is_credit_eligible) => setEditingTemplate((prev: any) => ({ ...prev, is_credit_eligible }))}
                   tier={currentTier}
                   setTier={handleTierChange}
                 />
