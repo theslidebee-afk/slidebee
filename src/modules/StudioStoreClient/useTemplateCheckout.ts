@@ -55,7 +55,7 @@ export function useTemplateCheckout() {
       // Auto-trigger browser download for client if verified deliverable is available
       if (typeof window !== "undefined" && pptxUrl) {
         try {
-          triggerPptxDownload(pptxUrl, data.fileName || template.file_name || `${template.code}_Master.pptx`);
+          triggerPptxDownload(`/api/download?id=${encodeURIComponent(template.id || template.code)}`, data.fileName || template.file_name || `${template.code}_Master.pptx`);
         } catch (dlErr) {
           console.warn("Auto-download notice:", dlErr);
         }
@@ -186,7 +186,7 @@ export function useTemplateCheckout() {
         if (typeof window !== "undefined" && pptxUrl) {
           try {
             const dlLink = document.createElement("a");
-            dlLink.href = pptxUrl;
+            dlLink.href = `/api/download?id=${encodeURIComponent(template.id || template.code)}`;
             dlLink.download = fileName;
             dlLink.target = "_blank";
             document.body.appendChild(dlLink);

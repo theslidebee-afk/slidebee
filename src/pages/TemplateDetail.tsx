@@ -210,7 +210,8 @@ export default function TemplateDetail() {
       return;
     }
 
-    triggerPptxDownload(deliverable, template?.file_name || `${(template as any)?.slug || template?.code || "slidebee-template"}.pptx`);
+    const secureEndpoint = `/api/download?id=${encodeURIComponent(template?.id || template?.code || "")}`;
+    triggerPptxDownload(secureEndpoint, template?.file_name || `${(template as any)?.slug || template?.code || "slidebee-template"}.pptx`);
 
     sendTemplatePurchaseReceiptEmail({
       clientEmail: client.email,

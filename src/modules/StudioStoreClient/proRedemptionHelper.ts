@@ -137,7 +137,7 @@ export async function redeemProTemplateDownload(
   // Auto-trigger browser download for verified deliverable
   if (typeof window !== "undefined" && pptxUrl) {
     try {
-      triggerPptxDownload(pptxUrl, fileName);
+      triggerPptxDownload(`/api/download?id=${encodeURIComponent(template.id || template.code)}`, fileName);
     } catch (dlErr) {
       console.warn("Auto-download notice:", dlErr);
     }

@@ -29,6 +29,13 @@ export function isValidPptxUrl(url?: string | null): boolean {
   );
 }
 
+export function getTemplateSecureDownloadUrl(template?: any | null): string | null {
+  if (!template) return null;
+  const idOrCode = template.id || template.code;
+  if (!idOrCode) return null;
+  return `/api/download?id=${encodeURIComponent(idOrCode)}`;
+}
+
 /**
  * Resolves the genuine presentation deliverable URL for a template.
  * ZERO SILENT FALLBACK TO IMAGES: Returns null if no valid PPTX file is present.

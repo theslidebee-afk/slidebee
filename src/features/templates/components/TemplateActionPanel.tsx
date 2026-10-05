@@ -233,13 +233,12 @@ export function TemplateActionPanel({
               </div>
 
               {(() => {
-                const effectiveDeliverable = deliverableUrl || getTemplateDeliverableUrl(template);
-                return effectiveDeliverable ? (
+                const hasDeliverable = Boolean(deliverableUrl || getTemplateDeliverableUrl(template));
+                const secureDownloadHref = `/api/download?id=${encodeURIComponent(template.id || template.code)}`;
+                return hasDeliverable ? (
                   <a
-                    href={effectiveDeliverable}
+                    href={secureDownloadHref}
                     download={template.file_name || `${template.code}_Master.pptx`}
-                    target="_blank"
-                    rel="noreferrer"
                     className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
                   >
                     <Download size={14} /> Download Master PowerPoint (.pptx)

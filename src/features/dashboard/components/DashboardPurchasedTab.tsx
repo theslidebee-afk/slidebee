@@ -33,7 +33,7 @@ export function DashboardPurchasedTab({
     
     // Trigger download
     const link = document.createElement("a");
-    link.href = item.downloadUrl;
+    link.href = `/api/download?id=${encodeURIComponent(item.id)}`;
     link.download = `${item.title.toLowerCase().replace(/[^a-z0-9]/g, "-")}.pptx`;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
