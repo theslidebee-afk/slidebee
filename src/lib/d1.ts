@@ -146,9 +146,23 @@ export class EdgeQueryBuilder implements PromiseLike<any> {
 
   async execute(): Promise<{ data: any; error: any; count?: number }> {
     try {
+      const sessionRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('slidebee_edge_session') : null;
+      let token = '';
+      if (sessionRaw) {
+        try {
+          const parsed = JSON.parse(sessionRaw);
+          token = parsed?.access_token || '';
+        } catch {}
+      }
+      const adminKey = typeof localStorage !== 'undefined' ? localStorage.getItem('slidebee_admin_key') : null;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (adminKey) headers['x-slidebee-admin-key'] = adminKey;
+
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           action: this.action,
           table: this.table,
@@ -417,9 +431,23 @@ export const d1 = {
   from: (table: string) => new EdgeQueryBuilder(table),
   rpc: async (fnName: string, params?: any) => {
     try {
+      const sessionRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('slidebee_edge_session') : null;
+      let token = '';
+      if (sessionRaw) {
+        try {
+          const parsed = JSON.parse(sessionRaw);
+          token = parsed?.access_token || '';
+        } catch {}
+      }
+      const adminKey = typeof localStorage !== 'undefined' ? localStorage.getItem('slidebee_admin_key') : null;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (adminKey) headers['x-slidebee-admin-key'] = adminKey;
+
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ action: 'rpc', rpcName: fnName, rpcParams: params }),
       });
       if (res.ok) {

@@ -95,6 +95,95 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       );
     }
 
+    // 2. Entitlement verification for premium templates
+    const isFreeTier = template.is_premium === 0 || template.is_premium === false;
+
+    if (!isFreeTier) {
+      const authHeader = request.headers.get("Authorization");
+      const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
+      const queryToken = url.searchParams.get("token") || url.searchParams.get("sessionId");
+      const adminKey = request.headers.get("x-slidebee-admin-key")?.trim();
+      const token = (bearerToken || queryToken || adminKey)?.trim();
+
+      let isEntitled = false;
+
+      // Check admin privilege
+      if (
+        (env as any)?.SLIDEBEE_ADMIN_SECRET &&
+        (token === (env as any).SLIDEBEE_ADMIN_SECRET || adminKey === (env as any).SLIDEBEE_ADMIN_SECRET)
+      ) {
+        isEntitled = true;
+      } else if (token) {
+        const session: any = await env.DB.prepare(
+          `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+        ).bind(token).first();
+
+        if (session) {
+          const sessionEmail = String(session.email || "").toLowerCase().trim();
+          if (
+            session.role === "admin" ||
+            session.role === "super_admin" ||
+            sessionEmail === "admin@theslidebee.com"
+          ) {
+            isEntitled = true;
+          } else {
+            // Check user profile and subscriptions
+            const profile: any = await env.DB.prepare(
+              `SELECT tier, tier_expires_at, purchased_items FROM profiles WHERE email = ?`
+            ).bind(sessionEmail).first();
+
+            if (profile) {
+              // 1. Pro / VIP subscription check
+              const isProActive =
+                ["monthly", "yearly", "lifetime"].includes(profile.tier) &&
+                (!profile.tier_expires_at || new Date(profile.tier_expires_at) > new Date());
+
+              if (isProActive) {
+                isEntitled = true;
+              } else {
+                // 2. Purchased item check
+                try {
+                  const purchased = JSON.parse(profile.purchased_items || "[]");
+                  const hasPurchased = purchased.some(
+                    (p: any) =>
+                      p.id === template.id ||
+                      p.code === template.code ||
+                      p.slug === template.slug
+                  );
+                  if (hasPurchased) {
+                    isEntitled = true;
+                  }
+                } catch {}
+
+                // 3. Orders table fallback check
+                if (!isEntitled) {
+                  const completedOrder: any = await env.DB.prepare(
+                    `SELECT id FROM orders WHERE email = ? AND (project_brief LIKE ? OR service_type LIKE ?) AND status = 'completed'`
+                  ).bind(sessionEmail, `%${template.code || template.id}%`, `%${template.title}%`).first();
+
+                  if (completedOrder) {
+                    isEntitled = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (!isEntitled) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: token
+              ? "Access denied. Active Pro subscription or individual purchase required to download this master presentation."
+              : "Authentication and active license required to download this master presentation. Please sign in with an account that has acquired this template or holds an active Pro subscription.",
+          }),
+          { status: token ? 403 : 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const r2Key = extractR2Key(template.download_url, template.file_name);
     if (!r2Key) {
       return new Response(
@@ -103,7 +192,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       );
     }
 
-    // 2. Fetch Object directly from internal R2 Bucket binding
+    // 3. Fetch Object directly from internal R2 Bucket binding
     let r2Object: any = null;
     if (env.R2_BUCKET && typeof env.R2_BUCKET.get === "function") {
       r2Object = await env.R2_BUCKET.get(r2Key);
@@ -118,6 +207,22 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     // If R2 binding is not available or local dev simulation
     if (!r2Object) {
       if (template.download_url && template.download_url.startsWith("http")) {
+        try {
+          const parsedUrl = new URL(template.download_url);
+          // Anti-SSRF: restrict outbound fetches strictly to trusted CDN endpoints
+          if (!parsedUrl.hostname.endsWith(".r2.dev") && !parsedUrl.hostname.endsWith(".theslidebee.com")) {
+            return new Response(
+              JSON.stringify({ success: false, error: "Invalid storage host origin." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } catch {
+          return new Response(
+            JSON.stringify({ success: false, error: "Invalid storage URL format." }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         const proxyRes = await fetch(template.download_url);
         if (proxyRes.ok) {
           const streamHeaders = new Headers();

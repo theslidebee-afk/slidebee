@@ -10,6 +10,10 @@ export async function handleSignup(request: Request, env: Env, body: any) {
     return jsonResponse({ error: { message: "Email and password are required." } }, 400, corsHeaders);
   }
 
+  if (password.length < 8) {
+    return jsonResponse({ error: { message: "Password must be at least 8 characters in length." } }, 400, corsHeaders);
+  }
+
   if (env.DB) {
     const existing = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(cleanEmail).first();
     if (existing) {

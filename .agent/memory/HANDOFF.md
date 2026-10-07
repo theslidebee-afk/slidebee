@@ -48,12 +48,22 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
    - Committed to `dev` and pushed to GitHub `origin/dev`.
    - Deployed live to Cloudflare Pages (`https://dev.slidebee.pages.dev`).
 
+12. **Vibe Coder Security Framework 75-Vulnerabilities Hardening & Automated Test Suite**:
+   - Upgraded password hashing in `functions/api/auth/utils.ts` to WebCrypto PBKDF2 (SHA-256, 600,000 iterations) with transparent backward-compatible migration of legacy SHA-256 hashes on login.
+   - Enforced server-side login rate-limiting (10 failed attempts / 15 minutes lockout) in `functions/api/auth/login.ts` and 8-character password policy in `signup.ts`.
+   - Replaced unverified base64 decoding in `functions/api/auth/oauth.ts` with cryptographic Google OAuth token verification via `https://oauth2.googleapis.com/tokeninfo`.
+   - Hardened `functions/api/data.ts`: permanently blacklisted `users` table, enforced column identifier whitelisting to eliminate SQL injection, enforced admin-only RBAC on template/config mutations, and stripped protected fields (`role`, `tier`, `credits_balance`) to eliminate mass assignment privilege escalation.
+   - Enforced deliverable paywall in `functions/api/download.ts`: unauthenticated requests return HTTP 401, unlicensed requests return HTTP 403, and SSRF prevention guards fallback fetches.
+   - Pruned vulnerable legacy `firebase` / `@grpc/grpc-js` dependencies, bringing `npm audit` to 0 vulnerabilities.
+   - Added automated 15-check security verification test suite in `tests/security_vibe_audit.test.ts` mapped to `npm test`.
+
 ## What Was Verified
-- Full TypeScript build and Vite bundling pass cleanly.
-- Zero unicode emojis across codebase.
-- Verified `/api/download?id=SLD-180` streams 1.08 MB binary PPTX with genuine PowerPoint headers.
-- Deployed successfully to Cloudflare Pages alias `https://dev.slidebee.pages.dev`.
+- Full TypeScript compilation and Vite bundling (`npm run build`) pass cleanly with exit code 0.
+- Automated security test suite (`npm test`) passes 15/15 tests.
+- `npm audit` reports 0 vulnerabilities.
+- Zero unicode emojis confirmed across all code, tests, and documentation.
 
 ## Next Steps
-- User visual testing and client handoff on `https://dev.slidebee.pages.dev`.
+- Push commit to GitHub `dev` branch for deployment to Cloudflare Pages (`https://dev.slidebee.pages.dev`).
+- Run live regression checks on authentication, downloads, and admin features.
 

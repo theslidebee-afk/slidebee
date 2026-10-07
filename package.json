@@ -7,12 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "npx --yes tsx tests/security_vibe_audit.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",
-    "firebase": "^12.18.0",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.38.0",
     "puppeteer": "^25.10.0",

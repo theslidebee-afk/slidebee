@@ -29,36 +29,48 @@ export async function handleOAuthUrl(request: Request, env: Env, body: any) {
 export async function handleOAuthVerify(request: Request, env: Env, body: any) {
   const corsHeaders = getCorsHeaders(request);
   const { id_token } = body;
-  let userEmail = String(body.email || "").trim().toLowerCase();
+  let userEmail = "";
   let userName = String(body.name || "").trim();
 
-  // If id_token passed, safely decode JWT payload
-  if (id_token && typeof id_token === "string" && id_token.includes(".")) {
-    try {
-      const parts = id_token.split(".");
-      if (parts.length === 3) {
-        const rawPayload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
-        const parsed = JSON.parse(rawPayload);
-        if (parsed.email) userEmail = String(parsed.email).toLowerCase().trim();
-        if (parsed.name && !userName) userName = String(parsed.name).trim();
-      }
-    } catch (e) {
-      console.warn("JWT parse error:", e);
-    }
-  }
-
-  // If authorization code is provided, exchange with Google using GOOGLE_CLIENT_SECRET
-  const clientSecret =
-    env.GOOGLE_CLIENT_SECRET ||
-    (env as any)?.GOOGLE_SECRET ||
-    (env as any)?.VITE_GOOGLE_CLIENT_SECRET;
   const clientId =
     env.GOOGLE_CLIENT_ID ||
     (env as any)?.GOOGLE_ID ||
     (env as any)?.VITE_GOOGLE_CLIENT_ID ||
     "442338061739-uhlto1rvjjp36m67erc3q1b2ljn6kl1b.apps.googleusercontent.com";
 
-  if (body.code && clientSecret) {
+  // 1. Cryptographically verify id_token with Google tokeninfo service
+  if (id_token && typeof id_token === "string" && id_token.includes(".")) {
+    try {
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(id_token.trim())}`);
+      if (verifyRes.ok) {
+        const tokenInfo: any = await verifyRes.json();
+        const audMatches = tokenInfo.aud === clientId || tokenInfo.azp === clientId;
+        const isVerified = tokenInfo.email_verified === "true" || tokenInfo.email_verified === true;
+
+        if (audMatches && isVerified && tokenInfo.email) {
+          userEmail = String(tokenInfo.email).toLowerCase().trim();
+          if (tokenInfo.name && !userName) {
+            userName = String(tokenInfo.name).trim();
+          }
+        } else {
+          return jsonResponse({ error: { message: "Google token validation failed: audience mismatch or unverified email." } }, 401, corsHeaders);
+        }
+      } else {
+        return jsonResponse({ error: { message: "Google token signature verification failed." } }, 401, corsHeaders);
+      }
+    } catch (e) {
+      console.warn("Google tokeninfo verification error:", e);
+      return jsonResponse({ error: { message: "Failed to communicate with identity provider." } }, 502, corsHeaders);
+    }
+  }
+
+  // 2. If authorization code is provided, exchange with Google using GOOGLE_CLIENT_SECRET
+  const clientSecret =
+    env.GOOGLE_CLIENT_SECRET ||
+    (env as any)?.GOOGLE_SECRET ||
+    (env as any)?.VITE_GOOGLE_CLIENT_SECRET;
+
+  if (body.code && clientSecret && !userEmail) {
     try {
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
@@ -74,12 +86,13 @@ export async function handleOAuthVerify(request: Request, env: Env, body: any) {
       if (tokenRes.ok) {
         const tokenJson: any = await tokenRes.json();
         if (tokenJson.id_token) {
-          const parts = tokenJson.id_token.split(".");
-          if (parts.length === 3) {
-            const rawPayload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
-            const parsed = JSON.parse(rawPayload);
-            if (parsed.email) userEmail = String(parsed.email).toLowerCase().trim();
-            if (parsed.name && !userName) userName = String(parsed.name).trim();
+          const verifyCodeRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(tokenJson.id_token)}`);
+          if (verifyCodeRes.ok) {
+            const tokenInfo: any = await verifyCodeRes.json();
+            if (tokenInfo.email && (tokenInfo.email_verified === "true" || tokenInfo.email_verified === true)) {
+              userEmail = String(tokenInfo.email).toLowerCase().trim();
+              if (tokenInfo.name && !userName) userName = String(tokenInfo.name).trim();
+            }
           }
         }
       }
@@ -89,7 +102,7 @@ export async function handleOAuthVerify(request: Request, env: Env, body: any) {
   }
 
   if (!userEmail) {
-    return jsonResponse({ error: { message: "No verified email found in Google token." } }, 400, corsHeaders);
+    return jsonResponse({ error: { message: "No verified email found in identity provider token." } }, 401, corsHeaders);
   }
 
   if (env.DB) {

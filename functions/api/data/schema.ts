@@ -2,6 +2,8 @@
 
 export interface Env {
   DB?: any;
+  SLIDEBEE_ADMIN_SECRET?: string;
+  SLIDEBEE_APP_TOKEN?: string;
 }
 
 export const ALLOWED_TABLES = [
@@ -13,11 +15,12 @@ export const ALLOWED_TABLES = [
   "waitlist",
   "site_config",
   "subscriptions",
-  "auth_logs",
   "assets",
-  "users",
-  "download_logs",
 ];
+
+export function isValidIdentifier(name: string): boolean {
+  return typeof name === "string" && /^[a-zA-Z0-9_]{1,64}$/.test(name);
+}
 
 export const JSON_COLUMNS: Record<string, string[]> = {
   templates: ["formats", "slides", "features"],
@@ -112,9 +115,17 @@ const ALLOWED_ORIGINS = [
   "http://localhost:4173",
 ];
 
+export function isOriginAllowed(origin: string): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith(".pages.dev")) return true;
+  if (origin.endsWith(".theslidebee.com")) return true;
+  return false;
+}
+
 export function getCorsHeaders(request: Request) {
   const origin = request.headers.get("Origin") || "";
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",

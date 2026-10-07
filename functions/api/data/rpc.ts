@@ -2,9 +2,23 @@
 // Handles fn_grant_starter_credits and fn_redeem_template_credit
 import { getCorsHeaders, stringifyValue } from "./schema";
 
-export async function handleRpc(db: any, rpcName: string, rpcParams: any, corsHeaders: Record<string, string>) {
+export async function handleRpc(
+  db: any,
+  rpcName: string,
+  rpcParams: any,
+  corsHeaders: Record<string, string>,
+  sessionUser?: { email: string; role: string } | null,
+  isAdmin?: boolean
+) {
   if (rpcName === "fn_grant_starter_credits") {
     const cleanEmail = String(rpcParams?.p_email || "").trim().toLowerCase();
+    if (!isAdmin && sessionUser && sessionUser.email !== cleanEmail) {
+      return new Response(JSON.stringify({ data: null, error: { message: "Forbidden: Cannot grant credits to other accounts." } }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let profile = await db.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
     if (!profile) {
       const profileId = crypto.randomUUID();
@@ -22,6 +36,13 @@ export async function handleRpc(db: any, rpcName: string, rpcParams: any, corsHe
 
   if (rpcName === "fn_redeem_template_credit") {
     const userEmail = String(rpcParams?.p_user_email || "").trim().toLowerCase();
+    if (!isAdmin && (!sessionUser || sessionUser.email !== userEmail)) {
+      return new Response(JSON.stringify({ data: null, error: { message: "Forbidden: Active authenticated session required to redeem credits." } }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const templateId = String(rpcParams?.p_template_id || "").trim();
 
     const user = await db.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(userEmail).first();

@@ -13,19 +13,53 @@ export async function handleLogout(request: Request, env: Env, body: any) {
 
 export async function handleUpdateUser(request: Request, env: Env, body: any) {
   const corsHeaders = getCorsHeaders(request);
-  const { email, password, full_name } = body;
+  const { email, password, full_name, sessionId } = body;
   const cleanEmail = String(email || "").trim().toLowerCase();
 
   if (!env.DB) {
     return jsonResponse({ error: { message: "Database unavailable." } }, 500, corsHeaders);
   }
 
-  if (cleanEmail && password) {
+  if (!cleanEmail) {
+    return jsonResponse({ error: { message: "Email is required." } }, 400, corsHeaders);
+  }
+
+  // Authorize caller session
+  const authHeader = request.headers.get("Authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
+  const adminKey = request.headers.get("x-slidebee-admin-key")?.trim();
+  const token = (sessionId || bearerToken || adminKey)?.trim();
+
+  let isAuthorized = false;
+  if (env.SLIDEBEE_ADMIN_SECRET && (token === env.SLIDEBEE_ADMIN_SECRET || adminKey === env.SLIDEBEE_ADMIN_SECRET)) {
+    isAuthorized = true;
+  } else if (token) {
+    const session: any = await env.DB.prepare(
+      `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+    ).bind(token).first();
+
+    if (session) {
+      const sessionEmail = String(session.email || "").toLowerCase().trim();
+      const isAdmin = session.role === "admin" || session.role === "super_admin" || sessionEmail === "admin@theslidebee.com";
+      if (isAdmin || sessionEmail === cleanEmail) {
+        isAuthorized = true;
+      }
+    }
+  }
+
+  if (!isAuthorized) {
+    return jsonResponse({ error: { message: "Unauthorized: Active session required to update account details." } }, 401, corsHeaders);
+  }
+
+  if (password) {
+    if (password.length < 8) {
+      return jsonResponse({ error: { message: "Password must be at least 8 characters in length." } }, 400, corsHeaders);
+    }
     const salt = crypto.randomUUID();
     const pwdHash = await hashPassword(password, salt);
-    await env.DB.prepare(`UPDATE users SET password_hash = ?, salt = ? WHERE email = ?`).bind(pwdHash, salt, cleanEmail).run();
+    await env.DB.prepare(`UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE email = ?`).bind(pwdHash, salt, cleanEmail).run();
   }
-  if (cleanEmail && full_name) {
+  if (full_name) {
     await env.DB.prepare(`UPDATE profiles SET full_name = ? WHERE email = ?`).bind(full_name, cleanEmail).run();
   }
   return jsonResponse({ data: { message: "User updated successfully." }, error: null }, 200, corsHeaders);

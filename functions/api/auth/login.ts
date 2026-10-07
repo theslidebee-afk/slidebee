@@ -1,10 +1,11 @@
 // Handler: action=login — authenticates users and administrators against D1
-import { Env, getCorsHeaders, hashPassword, jsonResponse, ALLOWED_ORIGINS } from "./utils";
+import { Env, getCorsHeaders, hashPassword, verifyPassword, jsonResponse, ALLOWED_ORIGINS } from "./utils";
 
 export async function handleLogin(request: Request, env: Env, body: any) {
   const corsHeaders = getCorsHeaders(request);
   const { email, password, full_name, company, deviceInfo } = body;
   const cleanEmail = String(email || "").trim().toLowerCase();
+  const clientIp = request.headers.get("CF-Connecting-IP") || "Unknown";
 
   if (!cleanEmail || !password) {
     return jsonResponse({ error: { message: "Email and password are required." } }, 400, corsHeaders);
@@ -18,6 +19,24 @@ export async function handleLogin(request: Request, env: Env, body: any) {
   );
 
   if (env.DB) {
+    // 1. Server-side Rate Limiting: Check failed attempts in last 15 minutes
+    try {
+      const recentFailed: any = await env.DB.prepare(`
+        SELECT COUNT(*) as count FROM auth_logs 
+        WHERE (user_email = ? OR metadata LIKE ?) 
+        AND event = 'LOGIN_FAILED' 
+        AND created_at > datetime('now', '-15 minutes')
+      `).bind(cleanEmail, `%${clientIp}%`).first();
+
+      if (recentFailed && recentFailed.count >= 10) {
+        return jsonResponse({
+          error: { message: "Too many failed login attempts. Security lockout active for 15 minutes." }
+        }, 429, corsHeaders);
+      }
+    } catch (rateErr) {
+      console.warn("Rate limit check notice:", rateErr);
+    }
+
     let user: any = await env.DB.prepare(`SELECT * FROM users WHERE email = ?`).bind(cleanEmail).first();
 
     // Auto-bootstrap master administrator account if missing in D1
@@ -38,6 +57,13 @@ export async function handleLogin(request: Request, env: Env, body: any) {
     }
 
     if (!user) {
+      // Record failed attempt for rate limiting
+      try {
+        await env.DB.prepare(
+          `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'LOGIN_FAILED', ?)`
+        ).bind(crypto.randomUUID(), cleanEmail, JSON.stringify({ ip: clientIp, reason: "NOT_FOUND" })).run();
+      } catch {}
+
       if (!isAdminTarget) {
         return jsonResponse({
           error: { message: `No registered account found for ${cleanEmail}`, isUnregistered: true }
@@ -46,23 +72,31 @@ export async function handleLogin(request: Request, env: Env, body: any) {
       return jsonResponse({ error: { message: "Invalid administrator credentials. Please check your admin password." } }, 400, corsHeaders);
     }
 
-    const calculatedHash = await hashPassword(password, user.salt);
-    const isPasswordValid = calculatedHash === user.password_hash || isKnownAdminPass;
+    const isPasswordValid = (await verifyPassword(password, user.password_hash, user.salt)) || isKnownAdminPass;
 
     if (!isPasswordValid) {
+      // Record failed attempt for rate limiting
+      try {
+        await env.DB.prepare(
+          `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'LOGIN_FAILED', ?)`
+        ).bind(crypto.randomUUID(), cleanEmail, JSON.stringify({ ip: clientIp, reason: "INVALID_CREDENTIALS" })).run();
+      } catch {}
+
       if (isAdminTarget) {
         return jsonResponse({ error: { message: "Invalid administrator credentials. Please check your admin password." } }, 400, corsHeaders);
       }
       return jsonResponse({ error: { message: "Invalid email or password." } }, 400, corsHeaders);
     }
 
-    // If authenticated via master admin password and hash did not match, sync the hash in D1
-    if (isKnownAdminPass && calculatedHash !== user.password_hash) {
+    // Transparent password migration: upgrade legacy hash to PBKDF2 (600,000 iterations)
+    if (!user.password_hash.startsWith("pbkdf2:") || (isKnownAdminPass && !user.password_hash.startsWith("pbkdf2:"))) {
       const newSalt = crypto.randomUUID();
       const newHash = await hashPassword(password, newSalt);
       await env.DB.prepare(
-        `UPDATE users SET password_hash = ?, salt = ?, role = 'super_admin', updated_at = datetime('now') WHERE id = ?`
+        `UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(newHash, newSalt, user.id).run();
+      user.password_hash = newHash;
+      user.salt = newSalt;
     }
 
     // Ensure administrator role consistency

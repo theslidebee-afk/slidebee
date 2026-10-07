@@ -58,6 +58,48 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
+    // 1. Authorize caller session
+    const authHeader = request.headers.get("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : null;
+    const adminKey = request.headers.get("x-slidebee-admin-key")?.trim();
+    const token = (bearerToken || adminKey)?.trim();
+
+    let isAdmin = false;
+    let isCallerSessionValid = false;
+
+    if (
+      (env as any)?.SLIDEBEE_ADMIN_SECRET &&
+      (token === (env as any).SLIDEBEE_ADMIN_SECRET || adminKey === (env as any).SLIDEBEE_ADMIN_SECRET)
+    ) {
+      isAdmin = true;
+      isCallerSessionValid = true;
+    } else if (token && env.DB) {
+      const sessionRow: any = await env.DB.prepare(
+        `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
+      ).bind(token).first();
+
+      if (sessionRow) {
+        const sessionEmail = String(sessionRow.email || "").toLowerCase().trim();
+        if (
+          sessionRow.role === "admin" ||
+          sessionRow.role === "super_admin" ||
+          sessionEmail === "admin@theslidebee.com"
+        ) {
+          isAdmin = true;
+          isCallerSessionValid = true;
+        } else if (sessionEmail === cleanEmail) {
+          isCallerSessionValid = true;
+        }
+      }
+    }
+
+    if (!isCallerSessionValid) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: Active session required to upgrade subscription tier." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Resolve subscription tier: monthly | yearly | lifetime
     let resolvedTier: "monthly" | "yearly" | "lifetime" = "monthly";
     const periodLower = String(billingPeriod || inputTier || "").toLowerCase();
@@ -69,7 +111,47 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       resolvedTier = "monthly";
     }
 
-    const cleanPaymentId = String(paymentId || "rzp_manual").trim();
+    // 2. Gateway Verification: If not admin manual provisioning, verify payment
+    const cleanPaymentId = String(paymentId || "").trim();
+    if (!isAdmin) {
+      if (!cleanPaymentId || cleanPaymentId === "rzp_manual") {
+        return new Response(
+          JSON.stringify({ success: false, error: "Valid gateway payment identifier required." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
+      const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+      if (rzpSecret && rzpKeyId) {
+        try {
+          const authBasic = btoa(`${rzpKeyId}:${rzpSecret}`);
+          const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/${cleanPaymentId}`, {
+            headers: { Authorization: `Basic ${authBasic}` },
+          });
+          if (rzpRes.ok) {
+            const rzpJson: any = await rzpRes.json();
+            if (rzpJson.status !== "captured" && rzpJson.status !== "authorized") {
+              return new Response(
+                JSON.stringify({ success: false, error: `Payment not completed. Gateway status: ${rzpJson.status}` }),
+                { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } else {
+            return new Response(
+              JSON.stringify({ success: false, error: "Failed to verify payment with payment gateway." }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } catch (gatewayErr) {
+          console.warn("Razorpay API verification error:", gatewayErr);
+          return new Response(
+            JSON.stringify({ success: false, error: "Gateway verification communication failed." }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
     const now = new Date();
     const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
 

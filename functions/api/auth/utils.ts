@@ -37,13 +37,72 @@ export function getCorsHeaders(request: Request) {
   };
 }
 
+export const PBKDF2_ROUNDS = 600000;
+
 export async function hashPassword(password: string, salt: string): Promise<string> {
+  const enc = new TextEncoder();
+  const passwordKey = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: enc.encode(salt),
+      iterations: PBKDF2_ROUNDS,
+      hash: "SHA-256",
+    },
+    passwordKey,
+    256
+  );
+  const hex = Array.from(new Uint8Array(derivedBits))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `pbkdf2:${PBKDF2_ROUNDS}:${hex}`;
+}
+
+export async function verifyPassword(password: string, storedHash: string, salt: string): Promise<boolean> {
+  if (!password || !storedHash) return false;
+
+  // Check if hash is PBKDF2 format
+  if (storedHash.startsWith("pbkdf2:")) {
+    const parts = storedHash.split(":");
+    const rounds = parseInt(parts[1], 10) || PBKDF2_ROUNDS;
+    const enc = new TextEncoder();
+    const passwordKey = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(password),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits"]
+    );
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: enc.encode(salt),
+        iterations: rounds,
+        hash: "SHA-256",
+      },
+      passwordKey,
+      256
+    );
+    const calculatedHex = Array.from(new Uint8Array(derivedBits))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return `pbkdf2:${rounds}:${calculatedHex}` === storedHash;
+  }
+
+  // Legacy fallback: single-round SHA-256
   const enc = new TextEncoder();
   const data = enc.encode(password + ":" + salt);
   const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
+  const legacyHex = Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+  return legacyHex === storedHash;
 }
 
 export function jsonResponse(data: any, status = 200, corsHeaders: Record<string, string>) {

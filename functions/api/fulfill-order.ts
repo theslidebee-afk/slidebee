@@ -128,9 +128,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
               { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
+        } else {
+          return new Response(
+            JSON.stringify({ success: false, error: "Payment verification failed with gateway." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
       } catch (rzpErr) {
         console.warn("Razorpay API verification warning:", rzpErr);
+        return new Response(
+          JSON.stringify({ success: false, error: "Payment gateway communication error." }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 

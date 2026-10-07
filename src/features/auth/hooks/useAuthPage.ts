@@ -293,8 +293,10 @@ export function useAuthPage() {
           }
 
           if (incomingParams.redirect) {
-            const dest = decodeURIComponent(incomingParams.redirect);
-            window.location.href = dest.startsWith("/") ? dest : `/${dest}`;
+            const dest = decodeURIComponent(incomingParams.redirect).trim();
+            // Anti-Open-Redirect: ensure destination is strictly relative and does not use protocol-relative '//'
+            const safeDest = dest.startsWith("/") && !dest.startsWith("//") ? dest : `/${dest.replace(/^[\/\\]+/, "")}`;
+            window.location.href = safeDest;
             return;
           }
         }
