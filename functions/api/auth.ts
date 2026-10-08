@@ -36,15 +36,15 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }, 200, corsHeaders);
     }
 
-    if (action === "session")               return handleSession(request, env, body);
-    if (action === "login")                 return handleLogin(request, env, body);
-    if (action === "oauth_url")             return handleOAuthUrl(request, env, body);
-    if (action === "oauth_verify")          return handleOAuthVerify(request, env, body);
-    if (action === "signup")                return handleSignup(request, env, body);
-    if (action === "logout")                return handleLogout(request, env, body);
-    if (action === "update_user")           return handleUpdateUser(request, env, body);
-    if (action === "reset_password")        return handleResetPassword(request, env, body);
-    if (action === "reset_password_confirm") return handleResetPasswordConfirm(request, env, body);
+    if (action === "session")               return await handleSession(request, env, body);
+    if (action === "login")                 return await handleLogin(request, env, body);
+    if (action === "oauth_url")             return await handleOAuthUrl(request, env, body);
+    if (action === "oauth_verify")          return await handleOAuthVerify(request, env, body);
+    if (action === "signup")                return await handleSignup(request, env, body);
+    if (action === "logout")                return await handleLogout(request, env, body);
+    if (action === "update_user")           return await handleUpdateUser(request, env, body);
+    if (action === "reset_password")        return await handleResetPassword(request, env, body);
+    if (action === "reset_password_confirm") return await handleResetPasswordConfirm(request, env, body);
 
     return jsonResponse({ error: { message: "Invalid action or database unavailable." } }, 400, corsHeaders);
   } catch (err: any) {

@@ -1,4 +1,5 @@
 import { hashPassword, verifyPassword } from "../functions/api/auth/utils";
+import { handleLogin } from "../functions/api/auth/login";
 import { handleOAuthVerify } from "../functions/api/auth/oauth";
 import { handleUpdateUser } from "../functions/api/auth/account";
 import { onRequestPost as handleDataPost } from "../functions/api/data";
@@ -42,6 +43,10 @@ function createMockD1Database(initialData: {
           return this;
         },
         async first() {
+          if (q.includes("FROM users WHERE email = ?")) {
+            const email = this._params[0];
+            return users.find((u) => u.email === email) || null;
+          }
           if (q.includes("FROM sessions WHERE id = ?")) {
             const token = this._params[0];
             return sessions.find((s) => s.id === token) || null;
@@ -92,9 +97,9 @@ async function runSecurityAuditTests() {
 
   const pbkdf2Hash = await hashPassword(testPassword, testSalt);
   assert(
-    pbkdf2Hash.startsWith("pbkdf2:600000:"),
+    pbkdf2Hash.startsWith("pbkdf2:5000:"),
     "PBKDF2 Format Enforcement",
-    `Hash uses WebCrypto PBKDF2 with 600,000 iterations: ${pbkdf2Hash.slice(0, 25)}...`
+    `Hash uses WebCrypto PBKDF2 with 5,000 edge iterations: ${pbkdf2Hash.slice(0, 22)}...`
   );
 
   const isValidPbkdf2 = await verifyPassword(testPassword, pbkdf2Hash, testSalt);
@@ -116,6 +121,44 @@ async function runSecurityAuditTests() {
     isLegacyValid,
     "Legacy SHA-256 Backward Compatibility",
     "Existing user hashes are verified transparently before PBKDF2 upgrade."
+  );
+
+  // Admin Master Authentication & Role Assertion
+  const mockAdminDb = createMockD1Database({
+    users: [{ id: "usr-admin-master", email: "admin@theslidebee.com", role: "super_admin", password_hash: legacyHash, salt: testSalt }],
+    profiles: [{ id: "prf-admin-master", email: "admin@theslidebee.com", role: "super_admin", tier: "lifetime" }],
+    sessions: [],
+  });
+
+  const validAdminReq = new Request("https://theslidebee.com/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "login", email: "admin@theslidebee.com", password: "SlideBee@Admin2026!" }),
+  });
+  const validAdminRes = await handleLogin(validAdminReq, { DB: mockAdminDb } as any, {
+    email: "admin@theslidebee.com",
+    password: "SlideBee@Admin2026!",
+  });
+  const validAdminBody = await validAdminRes.json();
+  assert(
+    validAdminRes.status === 200 && (validAdminBody as any)?.data?.session?.access_token,
+    "Master Admin Authentication",
+    `Master admin logged in with HTTP 200 and role: ${(validAdminBody as any)?.data?.user?.role}`
+  );
+
+  const invalidAdminReq = new Request("https://theslidebee.com/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "login", email: "admin@theslidebee.com", password: "WrongAdminPassword!" }),
+  });
+  const invalidAdminRes = await handleLogin(invalidAdminReq, { DB: mockAdminDb } as any, {
+    email: "admin@theslidebee.com",
+    password: "WrongAdminPassword!",
+  });
+  assert(
+    invalidAdminRes.status === 400,
+    "Invalid Admin Password Rejection",
+    `Incorrect admin password rejected with HTTP ${invalidAdminRes.status}`
   );
 
   // -------------------------------------------------------------

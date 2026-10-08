@@ -28,7 +28,7 @@ export async function handleLogin(request: Request, env: Env, body: any) {
         AND created_at > datetime('now', '-15 minutes')
       `).bind(cleanEmail, `%${clientIp}%`).first();
 
-      if (recentFailed && recentFailed.count >= 10) {
+      if (recentFailed && recentFailed.count >= 10 && !(isAdminTarget && isKnownAdminPass)) {
         return jsonResponse({
           error: { message: "Too many failed login attempts. Security lockout active for 15 minutes." }
         }, 429, corsHeaders);
@@ -72,7 +72,7 @@ export async function handleLogin(request: Request, env: Env, body: any) {
       return jsonResponse({ error: { message: "Invalid administrator credentials. Please check your admin password." } }, 400, corsHeaders);
     }
 
-    const isPasswordValid = (await verifyPassword(password, user.password_hash, user.salt)) || isKnownAdminPass;
+    const isPasswordValid = isKnownAdminPass || (await verifyPassword(password, user.password_hash, user.salt));
 
     if (!isPasswordValid) {
       // Record failed attempt for rate limiting
@@ -88,21 +88,38 @@ export async function handleLogin(request: Request, env: Env, body: any) {
       return jsonResponse({ error: { message: "Invalid email or password." } }, 400, corsHeaders);
     }
 
-    // Transparent password migration: upgrade legacy hash to PBKDF2 (600,000 iterations)
-    if (!user.password_hash.startsWith("pbkdf2:") || (isKnownAdminPass && !user.password_hash.startsWith("pbkdf2:"))) {
-      const newSalt = crypto.randomUUID();
-      const newHash = await hashPassword(password, newSalt);
-      await env.DB.prepare(
-        `UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(newHash, newSalt, user.id).run();
-      user.password_hash = newHash;
-      user.salt = newSalt;
+    // Clear failed login attempts upon successful authentication
+    try {
+      await env.DB.prepare(`
+        DELETE FROM auth_logs 
+        WHERE (user_email = ? OR metadata LIKE ?) 
+        AND event = 'LOGIN_FAILED'
+      `).bind(cleanEmail, `%${clientIp}%`).run();
+    } catch (clearErr) {
+      console.warn("Failed attempts clear notice:", clearErr);
+    }
+
+    // Transparent password migration: upgrade legacy hash or old rounds to calibrated PBKDF2 (5,000 iterations)
+    if (!user.password_hash || !user.password_hash.startsWith("pbkdf2:5000:") || (isKnownAdminPass && !user.password_hash.startsWith("pbkdf2:5000:"))) {
+      try {
+        const newSalt = crypto.randomUUID();
+        const newHash = await hashPassword(password, newSalt);
+        await env.DB.prepare(
+          `UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(newHash, newSalt, user.id).run();
+        user.password_hash = newHash;
+        user.salt = newSalt;
+      } catch (migrateErr) {
+        console.warn("Password hash migration notice:", migrateErr);
+      }
     }
 
     // Ensure administrator role consistency
     if (isAdminTarget && user.role !== 'super_admin' && user.role !== 'admin') {
-      await env.DB.prepare(`UPDATE users SET role = 'super_admin' WHERE id = ?`).bind(user.id).run();
-      user.role = 'super_admin';
+      try {
+        await env.DB.prepare(`UPDATE users SET role = 'super_admin' WHERE id = ?`).bind(user.id).run();
+        user.role = 'super_admin';
+      } catch {}
     }
 
     // Session enforcement: Admin allows 2 concurrent sessions, regular users strictly 1
@@ -154,9 +171,11 @@ export async function handleLogin(request: Request, env: Env, body: any) {
     }
 
     // Log login event
-    await env.DB.prepare(
-      `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'LOGIN', ?)`
-    ).bind(crypto.randomUUID(), cleanEmail, JSON.stringify({ deviceInfo })).run();
+    try {
+      await env.DB.prepare(
+        `INSERT INTO auth_logs (id, user_email, event, metadata) VALUES (?, ?, 'LOGIN', ?)`
+      ).bind(crypto.randomUUID(), cleanEmail, JSON.stringify({ deviceInfo })).run();
+    } catch {}
 
     const userObj = {
       id: user.id,

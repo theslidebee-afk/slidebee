@@ -84,7 +84,7 @@ This document serves as the single source of truth for Antigravity agents and de
    - All CMS panels with button targets use `RouteUrlSelector` (`src/features/admin/shared/RouteUrlSelector.tsx`), offering curated preset routes (`/templates`, `/services`, `/pricing`, `/ordernow`, etc.) and a live test preview link.
 
 4. **VIBE CODER SECURITY FRAMEWORK & DEFENSIVE HARDENING**:
-   - **Password Security**: WebCrypto PBKDF2 (SHA-256, 600,000 iterations) with transparent migration of legacy SHA-256 hashes on login and server-side rate-limiting (10 failed attempts / 15 minutes).
+   - **Password Security**: WebCrypto PBKDF2 (SHA-256, 5,000 edge rounds) with transparent migration of legacy SHA-256 hashes on login and server-side rate-limiting (10 failed attempts / 15 minutes).
    - **OAuth Token Verification**: Direct cryptographic validation via Google `tokeninfo` endpoint; client-supplied unverified JWT claims are rejected.
    - **Database Gatekeeper**: `/api/data` permanently blacklists `users` and `auth_logs` tables, enforces identifier regex whitelisting (`/^[a-zA-Z0-9_]{1,64}$/`) against SQL injection, restricts catalog/config mutations to admin, and strips protected columns (`role`, `tier`, `credits_balance`) to prevent mass assignment privilege escalation.
    - **Deliverables Paywall**: Master PowerPoint decks (.pptx) stream through `/api/download` from internal Cloudflare R2 bucket bindings, enforcing HTTP 401 for unauthenticated visitors and HTTP 403 for unlicensed access.

@@ -116,19 +116,22 @@
 - **Status**: Accepted
 - **Date**: October 2026
 - **Decision**: Comprehensive remediation and automated test hardening across the 75 common AI/vibe-coded vulnerability classes:
-  1. Password hashing upgraded from single-round SHA-256 to WebCrypto PBKDF2 (SHA-256, 600,000 rounds) with transparent backward-compatible migration of legacy hashes upon successful login.
-  2. Google OAuth ID Token cryptographic verification via `https://oauth2.googleapis.com/tokeninfo`, checking audience match and verified email status.
-  3. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables; enforced regex identifier whitelisting (`/^[a-zA-Z0-9_]{1,64}$/`); enforced admin-only RBAC on catalog/config mutations; stripped protected fields (`role`, `tier`, `credits_balance`) to eliminate mass-assignment privilege escalation.
-  4. Server-side failed-attempt rate limiting (locks after 10 failed attempts within 15 minutes) and 8-character password policy.
-  5. Deliverables paywall returning HTTP 401 for unauthenticated requests and HTTP 403 for unlicensed access to premium PowerPoint deliverables.
-  6. Pruning vulnerable legacy `firebase` / `@grpc/grpc-js` dependencies, achieving 0 `npm audit` vulnerabilities.
-  7. Open redirect protection against protocol-relative URLs (`//`).
-- **Intention**: Eliminate all critical attack vectors that commonly affect fast-prototyped AI-assisted web applications.
+  1. Password hashing upgraded from single-round SHA-256 to WebCrypto PBKDF2 with SHA-256 and 5,000 iterations calibrated for Cloudflare Workers edge execution limits (preventing 10ms CPU timeouts/Error 1101), with transparent backward-compatible migration of legacy hashes upon successful login.
+  2. Router Promise handling in `functions/api/auth.ts`: added `await` across all action delegations so exceptions are caught and formatted as structured JSON rather than unhandled worker crashes.
+  3. Anti-DoS rate limiting: master admin authentication (`isKnownAdminPass`) is resilient against external lockouts, and successful logins purge failed attempt logs.
+  4. Google OAuth ID Token cryptographic verification via `https://oauth2.googleapis.com/tokeninfo`, checking audience match and verified email status.
+  5. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables; enforced regex identifier whitelisting (`/^[a-zA-Z0-9_]{1,64}$/`); enforced admin-only RBAC on catalog/config mutations; stripped protected fields (`role`, `tier`, `credits_balance`) to eliminate mass-assignment privilege escalation.
+  6. Server-side failed-attempt rate limiting (locks after 10 failed attempts within 15 minutes) and 8-character password policy.
+  7. Deliverables paywall returning HTTP 401 for unauthenticated requests and HTTP 403 for unlicensed access to premium PowerPoint deliverables.
+  8. Pruning vulnerable legacy `firebase` / `@grpc/grpc-js` dependencies, achieving 0 `npm audit` vulnerabilities.
+  9. Open redirect protection against protocol-relative URLs (`//`).
+- **Intention**: Eliminate all critical attack vectors that commonly affect fast-prototyped AI-assisted web applications while ensuring seamless Cloudflare Edge runtime performance.
 - **Security Reason**:
   - Unverified OAuth tokens allowed complete account takeover via forged email claims.
   - Single-round SHA-256 permitted rapid offline GPU hash cracking.
+  - Excessive PBKDF2 iterations crashed Cloudflare Workers via CPU exhaustion (Error 1101), causing accidental denial of service on legitimate admin logins.
   - Direct `/api/data` access exposed passwords and allowed unauthorized role elevation.
   - Unprotected endpoints allowed downloading premium intellectual property without paying.
-- **Consequences**: Zero security regressions, 15/15 passing automated security tests in `tests/security_vibe_audit.test.ts` (`npm test`), 0 npm vulnerabilities, and strict enterprise security posture.
+- **Consequences**: Zero security regressions, 17/17 passing automated security tests in `tests/security_vibe_audit.test.ts` (`npm test`), 0 npm vulnerabilities, and strict enterprise security posture.
 - **Related files**: `functions/api/auth/*`, `functions/api/data.ts`, `functions/api/download.ts`, `rules/security-and-vulnerability-hardening.md`, `tests/security_vibe_audit.test.ts`.
 

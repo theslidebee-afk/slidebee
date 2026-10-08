@@ -37,7 +37,7 @@ export function getCorsHeaders(request: Request) {
   };
 }
 
-export const PBKDF2_ROUNDS = 600000;
+export const PBKDF2_ROUNDS = 5000;
 
 export async function hashPassword(password: string, salt: string): Promise<string> {
   const enc = new TextEncoder();
@@ -70,7 +70,7 @@ export async function verifyPassword(password: string, storedHash: string, salt:
   // Check if hash is PBKDF2 format
   if (storedHash.startsWith("pbkdf2:")) {
     const parts = storedHash.split(":");
-    const rounds = parseInt(parts[1], 10) || PBKDF2_ROUNDS;
+    const rounds = Math.min(parseInt(parts[1], 10) || PBKDF2_ROUNDS, 5000);
     const enc = new TextEncoder();
     const passwordKey = await crypto.subtle.importKey(
       "raw",
