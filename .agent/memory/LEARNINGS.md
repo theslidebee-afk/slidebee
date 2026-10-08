@@ -37,3 +37,22 @@ This document captures concrete, non-obvious engineering discoveries and edge ca
 ## 6. Razorpay Currency Unit Normalization
 - **Discovery**: Razorpay expects order amounts in the lowest currency subdivision (e.g. paise for INR: `price * 100`, cents for USD: `price * 100`).
 - **Rule**: Always ensure amount integers are rounded before passing to Razorpay options to avoid fractional currency validation errors.
+
+---
+
+## 7. Cryptographic OAuth ID Token Verification
+- **Discovery**: Fast-prototyped web applications frequently parse JWT claims using `atob()` on the client or server without cryptographic signature verification. An attacker can craft any arbitrary base64 payload asserting ownership of any email (including administrator emails) to achieve instant account takeover.
+- **Rule**: Never trust client-supplied JWTs without cryptographic validation against identity provider verification endpoints (`https://oauth2.googleapis.com/tokeninfo`). Always verify `aud` client ID match and `email_verified: true`.
+
+---
+
+## 8. D1 Gatekeeper & SQL Injection Identifier Validation
+- **Discovery**: Generic database proxies (`/api/data`) that dynamically construct SQL queries from client-supplied column names, filters, and tables are vulnerable to SQL injection if identifiers contain semicolons, dashes, or SQL keywords, and allow unauthorized credential exfiltration if sensitive tables like `users` or `auth_logs` are exposed.
+- **Rule**: Whitelist allowed tables strictly; permanently blacklist credential tables (`users`, `auth_logs`); enforce regex `/^[a-zA-Z0-9_]{1,64}$/` on all column identifiers; and strip protected fields (`role`, `tier`, `credits_balance`) to prevent mass-assignment privilege escalation.
+
+---
+
+## 9. Deliverables Paywall & Internal R2 Streaming
+- **Discovery**: Returning direct storage CDN URLs (e.g., `pub-*.r2.dev`) to client browsers allows digital files to be hotlinked, shared, or redownloaded perpetually without payment or quota deduction.
+- **Rule**: Serve master presentation deliverables through serverless streaming endpoints (`/api/download`) bound directly to internal R2 buckets (`env.R2_BUCKET.get()`). Authenticate sessions and verify active purchases/subscriptions before streaming, returning HTTP 401 for unauthenticated visitors and HTTP 403 for unentitled users.
+

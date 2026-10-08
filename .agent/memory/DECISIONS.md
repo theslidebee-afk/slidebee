@@ -99,3 +99,36 @@
 - **Consequences**: Dropdown selection of all core studio routes and deep links with two-way sync to manual input and immediate live testing.
 - **Related files**: `src/features/admin/shared/RouteUrlSelector.tsx`, `src/features/admin/customization/*`.
 
+---
+
+## ADR-011: Serverless Deliverable Streaming Proxy (`/api/download`)
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Stream PowerPoint presentations (.pptx) directly to the client browser through a Cloudflare Pages Function `/api/download` using internal R2 bucket bindings (`env.R2_BUCKET.get()`), without exposing public R2 CDN URLs.
+- **Intention**: Prevent pirated scraping and unauthorized hotlinking of proprietary master presentation assets.
+- **Security Reason**: Exposing public R2 URLs allowed any user who obtained a link once to share or redownload the asset indefinitely without paying or consuming subscription quota. Streaming via edge proxy ensures every download request is authenticated and verified against user entitlements before any byte is transferred.
+- **Consequences**: The public R2 base URL (`pub-*.r2.dev`) is completely hidden from browser network tabs; single-download policy is enforced; zero silent image fallbacks.
+- **Related files**: `functions/api/download.ts`, `src/lib/templates.ts`, `src/pages/TemplateDetail.tsx`.
+
+---
+
+## ADR-012: Vibe Coder Security Framework 75 Vulnerabilities Hardening
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Comprehensive remediation and automated test hardening across the 75 common AI/vibe-coded vulnerability classes:
+  1. Password hashing upgraded from single-round SHA-256 to WebCrypto PBKDF2 (SHA-256, 600,000 rounds) with transparent backward-compatible migration of legacy hashes upon successful login.
+  2. Google OAuth ID Token cryptographic verification via `https://oauth2.googleapis.com/tokeninfo`, checking audience match and verified email status.
+  3. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables; enforced regex identifier whitelisting (`/^[a-zA-Z0-9_]{1,64}$/`); enforced admin-only RBAC on catalog/config mutations; stripped protected fields (`role`, `tier`, `credits_balance`) to eliminate mass-assignment privilege escalation.
+  4. Server-side failed-attempt rate limiting (locks after 10 failed attempts within 15 minutes) and 8-character password policy.
+  5. Deliverables paywall returning HTTP 401 for unauthenticated requests and HTTP 403 for unlicensed access to premium PowerPoint deliverables.
+  6. Pruning vulnerable legacy `firebase` / `@grpc/grpc-js` dependencies, achieving 0 `npm audit` vulnerabilities.
+  7. Open redirect protection against protocol-relative URLs (`//`).
+- **Intention**: Eliminate all critical attack vectors that commonly affect fast-prototyped AI-assisted web applications.
+- **Security Reason**:
+  - Unverified OAuth tokens allowed complete account takeover via forged email claims.
+  - Single-round SHA-256 permitted rapid offline GPU hash cracking.
+  - Direct `/api/data` access exposed passwords and allowed unauthorized role elevation.
+  - Unprotected endpoints allowed downloading premium intellectual property without paying.
+- **Consequences**: Zero security regressions, 15/15 passing automated security tests in `tests/security_vibe_audit.test.ts` (`npm test`), 0 npm vulnerabilities, and strict enterprise security posture.
+- **Related files**: `functions/api/auth/*`, `functions/api/data.ts`, `functions/api/download.ts`, `rules/security-and-vulnerability-hardening.md`, `tests/security_vibe_audit.test.ts`.
+

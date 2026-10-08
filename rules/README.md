@@ -16,6 +16,7 @@ All human developers and AI pair programmers working on this repository MUST con
 | [brand-and-design-system.md](./brand-and-design-system.md) | Color palette, typography, visual hierarchy, luxury aesthetic, and layout rules. | **Enforced** |
 | [database-and-storage.md](./database-and-storage.md) | Cloudflare D1 database standards, Cloudflare R2 object storage usage, edge policies, and asset conventions. | **Enforced** |
 | [authentication-and-roles.md](./authentication-and-roles.md) | Auth flow, master PIN bypass, role permissions, client credits, and error handling. | **Enforced** |
+| [security-and-vulnerability-hardening.md](./security-and-vulnerability-hardening.md) | PBKDF2 hashing, Google OAuth token verification, Anti-SQLi D1 gatekeeper, and PPTX paywall. | **Enforced** |
 | [future-rules-template.md](./future-rules-template.md) | Standardized template and procedure for documenting new rules. | **Template** |
 
 ---

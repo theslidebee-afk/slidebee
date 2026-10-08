@@ -23,6 +23,7 @@ IMPLEMENTED
 - `profiles` (`downloads_today`, `last_download_date`, `quota_remaining`)
 
 ## APIs / Server Actions
+- Cloudflare Pages Function `/api/download.ts` (Serverless Streaming Deliverable Proxy with internal R2 binding)
 - Cloudflare Pages Function `/api/r2-storage.ts`
 - Cloudflare Pages Function `/api/trial-guard.ts`
 - Cloudflare Pages Function `/api/redeem-pro-template.ts`
@@ -34,25 +35,31 @@ IMPLEMENTED
 - `src/lib/templates.ts` presentation deliverable validation and download helper.
 
 ## Important Business Rules
-- Free users are restricted to 3 template downloads per calendar day.
-- Pro subscribers are entitled to 30 deck downloads per month.
+- Free community templates (`is_premium = 0`) are freely downloadable by all visitors.
+- Premium presentation deliverables require active authorization:
+  - Anonymous requests return HTTP 401 Unauthorized.
+  - Authenticated users without an active Pro plan or individual purchase return HTTP 403 Forbidden.
+- ZERO PUBLIC R2 URL EXPOSURE: Master presentation binaries stream directly from internal R2 bucket bindings (`env.R2_BUCKET.get()`).
 - STRICT PRESENTATION DELIVERABLE INTEGRITY: All template deliverables MUST be verified presentation decks (`.pptx`, `.ppt`, `.zip`).
 - SILENT IMAGE FALLBACKS ARE STRICTLY PROHIBITED: Image files (`.jpg`, `.png`, `.webp`) are never renamed or substituted as presentations.
 - PowerPoint binaries (`.pptx`) must never be corrupted with image data.
 - Downloads are logged in `download_logs` with timestamp and template ID.
 
 ## Current Implementation
-- Client initiates download request from `TemplateDetail.tsx`.
-- Edge function `/api/entitlement.ts` validates user entitlement and resolves genuine `.pptx` URL.
-- Client validates URL via `isValidPptxUrl()` and triggers native download via `triggerPptxDownload()`.
+- Client initiates download request from `TemplateDetail.tsx`, `DashboardPurchasedTab.tsx`, or `proRedemptionHelper.ts` to `/api/download?id=<templateId>`.
+- Edge function `/api/download.ts` verifies session authorization and D1 entitlements, then pipes binary stream directly from internal Cloudflare R2 bucket.
+- Client browser receives direct attachment stream without exposing storage bucket URLs.
 
 ## Known Issues
 - None.
 
 ## Related Tasks
 - Pillar 1: Template PPTX Download Integrity & Strict No-Fallback Architecture
+- TASK-011: Vibe Coder Security Framework 75-Vulnerabilities Hardening
 
 ## Related Decisions
 - ADR-004: Hybrid Storage Strategy
 - ADR-007: Strict PPTX Deliverable Validation & Zero Silent Image Fallbacks
+- ADR-011: Serverless Deliverable Streaming Proxy (`/api/download`)
+- ADR-012: Vibe Coder Security Framework 75 Vulnerabilities Hardening
 
