@@ -28,6 +28,11 @@ interface HomeHeroBannersProps {
   scrollToTemplates: () => void;
 }
 
+function isBannerEnabled(val: any): boolean {
+  if (val === false || val === "false" || val === 0 || val === "0") return false;
+  return true;
+}
+
 export function HomeHeroBanners({
   isFilterActive,
   homeBannerTop,
@@ -35,7 +40,7 @@ export function HomeHeroBanners({
   homeBanner2,
   scrollToTemplates,
 }: HomeHeroBannersProps) {
-  const showTopBanner = homeBannerTop?.enabled !== false && !!(homeBannerTop?.title || homeBannerTop?.imageUrl);
+  const showTopBanner = isBannerEnabled(homeBannerTop?.enabled);
 
   return (
     <motion.div
@@ -73,25 +78,31 @@ export function HomeHeroBanners({
                   {homeBannerTop?.subtitle || "Tailored for senior leadership, venture capital pitches, and board meetings."}
                 </p>
 
-                {homeBannerTop?.ctaText && (
+                {(homeBannerTop?.ctaText || "Explore Full Studio") && (
                   <div className="mt-4">
                     <span className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-heading font-black text-xs sm:text-sm px-6 py-3 rounded-full shadow-lg group-hover:scale-102 transition-all">
-                      <span>{homeBannerTop.ctaText}</span>
+                      <span>{homeBannerTop?.ctaText || "Explore Full Studio"}</span>
                       <ArrowRight size={15} />
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Optional R2 Image Showcase */}
-              {homeBannerTop?.imageUrl && (
-                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
+              {/* Optional R2 Image Showcase or Interactive Arrow Portal */}
+              {homeBannerTop?.imageUrl ? (
+                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm lg:max-w-md aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
                   <img
                     src={homeBannerTop.imageUrl}
                     alt={homeBannerTop.title || "Promotional Banner"}
                     className="w-full h-full object-cover object-center"
                     loading="lazy"
                   />
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center justify-center shrink-0 pr-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center text-[#FCBF14] group-hover:scale-110 group-hover:bg-[#FCBF14] group-hover:text-[#111111] transition-all duration-300 shadow-md">
+                    <ArrowRight size={22} />
+                  </div>
                 </div>
               )}
             </Link>
@@ -120,25 +131,31 @@ export function HomeHeroBanners({
                   {homeBannerTop?.subtitle || "Tailored for senior leadership, venture capital pitches, and board meetings."}
                 </p>
 
-                {homeBannerTop?.ctaText && (
+                {(homeBannerTop?.ctaText || "Explore Full Studio") && (
                   <div className="mt-4">
                     <span className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-heading font-black text-xs sm:text-sm px-6 py-3 rounded-full shadow-lg group-hover:scale-102 transition-all">
-                      <span>{homeBannerTop.ctaText}</span>
+                      <span>{homeBannerTop?.ctaText || "Explore Full Studio"}</span>
                       <ArrowRight size={15} />
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Optional R2 Image Showcase */}
-              {homeBannerTop?.imageUrl && (
-                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
+              {/* Optional R2 Image Showcase or Interactive Arrow Portal */}
+              {homeBannerTop?.imageUrl ? (
+                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm lg:max-w-md aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
                   <img
                     src={homeBannerTop.imageUrl}
                     alt={homeBannerTop.title || "Promotional Banner"}
                     className="w-full h-full object-cover object-center"
                     loading="lazy"
                   />
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center justify-center shrink-0 pr-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center text-[#FCBF14] group-hover:scale-110 group-hover:bg-[#FCBF14] group-hover:text-[#111111] transition-all duration-300 shadow-md">
+                    <ArrowRight size={22} />
+                  </div>
                 </div>
               )}
             </div>

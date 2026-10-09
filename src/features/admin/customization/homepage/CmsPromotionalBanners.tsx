@@ -48,7 +48,11 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
     }
   };
 
-  const handleSaveAllBanners = () => {
+  const handleSaveBannerTop = async () => {
+    await handleSaveConfig("home_banner_top", bannerTop);
+  };
+
+  const handleSaveAllBanners = async () => {
     const banner1 = siteConfigs["home_banner_1"] || {
       title: "Create Presentations That Make an Impact",
       subtitle: "Discover pre-designed and custom templates for every stage of your business",
@@ -61,9 +65,9 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
       ctaText: "View Plans",
       ctaLink: "/pricing",
     };
-    handleSaveConfig("home_banner_top", bannerTop);
-    handleSaveConfig("home_banner_1", banner1);
-    handleSaveConfig("home_banner_2", banner2);
+    await handleSaveConfig("home_banner_top", bannerTop);
+    await handleSaveConfig("home_banner_1", banner1);
+    await handleSaveConfig("home_banner_2", banner2);
   };
 
   return (
@@ -97,24 +101,35 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
             </h5>
           </div>
 
-          {/* Visibility Toggle */}
-          <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-200">
-            <span>Show Top Banner on Homepage:</span>
-            <input
-              type="checkbox"
-              checked={bannerTop.enabled !== false}
-              onChange={(e) =>
-                setSiteConfigs({
-                  ...siteConfigs,
-                  home_banner_top: { ...bannerTop, enabled: e.target.checked },
-                })
-              }
-              className="w-4 h-4 accent-[#FCBF14] cursor-pointer"
-            />
-            <span className="text-[11px] font-black text-[#FCBF14]">
-              {bannerTop.enabled !== false ? "ENABLED" : "HIDDEN"}
-            </span>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Visibility Toggle */}
+            <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-200 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+              <span>Show on Homepage:</span>
+              <input
+                type="checkbox"
+                checked={bannerTop.enabled !== false}
+                onChange={(e) =>
+                  setSiteConfigs({
+                    ...siteConfigs,
+                    home_banner_top: { ...bannerTop, enabled: e.target.checked },
+                  })
+                }
+                className="w-4 h-4 accent-[#FCBF14] cursor-pointer"
+              />
+              <span className="text-[11px] font-black text-[#FCBF14]">
+                {bannerTop.enabled !== false ? "ENABLED" : "HIDDEN"}
+              </span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleSaveBannerTop}
+              disabled={configSaving}
+              className="hex-pill bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-black px-3.5 py-1.5 text-xs shadow cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <span>{configSaving ? "Saving..." : "Save Banner 3"}</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

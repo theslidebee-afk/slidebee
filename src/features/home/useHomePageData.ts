@@ -178,21 +178,29 @@ export function useHomePageData() {
       .then(({ data }: { data: any }) => {
         if (data && Array.isArray(data)) {
           data.forEach((row: any) => {
-            if (row.key === "hero" && row.value) {
-              setHeroConfig((prev: any) => ({ ...prev, ...row.value }));
+            let val = row.value;
+            if (typeof val === "string") {
+              try { val = JSON.parse(val); } catch {}
             }
-            if (row.key === "home_banner_top" && row.value) {
-              setHomeBannerTop((prev: any) => ({ ...prev, ...row.value }));
+            if (typeof val === "string") {
+              try { val = JSON.parse(val); } catch {}
             }
-            if (row.key === "home_banner_1" && row.value) {
-              setHomeBanner1((prev: any) => ({ ...prev, ...row.value }));
+            if (!val || typeof val !== "object") return;
+
+            if (row.key === "hero") {
+              setHeroConfig((prev: any) => ({ ...prev, ...val }));
             }
-            if (row.key === "home_banner_2" && row.value) {
-              setHomeBanner2((prev: any) => ({ ...prev, ...row.value }));
+            if (row.key === "home_banner_top") {
+              setHomeBannerTop((prev: any) => ({ ...prev, ...val }));
             }
-            if ((row.key === "trending_templates" || row.key === "featured_templates") && row.value) {
-              const raw = row.value;
-              const ids = Array.isArray(raw) ? raw : Array.isArray(raw?.ids) ? raw.ids : [];
+            if (row.key === "home_banner_1") {
+              setHomeBanner1((prev: any) => ({ ...prev, ...val }));
+            }
+            if (row.key === "home_banner_2") {
+              setHomeBanner2((prev: any) => ({ ...prev, ...val }));
+            }
+            if (row.key === "trending_templates" || row.key === "featured_templates") {
+              const ids = Array.isArray(val) ? val : Array.isArray(val?.ids) ? val.ids : [];
               if (Array.isArray(ids) && ids.length > 0) {
                 setCuratedTrendingIds(ids.map(String));
               }
