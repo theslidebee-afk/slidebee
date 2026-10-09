@@ -22,7 +22,7 @@ export function HomeTestimonialsSection({ testimonials }: HomeTestimonialsSectio
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="relative z-10 bg-[#FFF9E8] pt-12 pb-20"
     >
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
             Client Reviews
@@ -32,7 +32,7 @@ export function HomeTestimonialsSection({ testimonials }: HomeTestimonialsSectio
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1580px] w-full mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mx-auto">
           {testimonials.map((t, idx) => (
             <div
               key={idx}

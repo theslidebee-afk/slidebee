@@ -63,10 +63,22 @@
 ## TASK-011: Vibe Coder Security Framework 75-Vulnerabilities Hardening
 - **Completed**: October 2026
 - **Summary**: Comprehensive audit and defense remediation across all 75 vulnerability categories from the Vibe Coder Security Framework:
-  1. PBKDF2 WebCrypto password hashing (600,000 rounds) with transparent backward-compatible migration for legacy hashes, server-side rate limiting (10 attempts / 15 minutes), and 8-character password policy.
+  1. PBKDF2 WebCrypto password hashing (5,000 edge worker rounds) with transparent backward-compatible migration for legacy hashes, server-side rate limiting (10 attempts / 15 minutes), and 8-character password policy.
   2. Google OAuth ID Token cryptographic signature verification via Google tokeninfo service, validating audience match and verified email status.
-  3. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` from allowed tables, added identifier regex whitelisting, restricted catalog/config mutations to admins, and stripped protected fields (`role`, `tier`, `credits_balance`) against mass assignment privilege escalation.
+  3. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables, added identifier regex whitelisting, restricted catalog/config mutations to admins, and stripped protected fields (`role`, `tier`, `credits_balance`) against mass assignment privilege escalation.
   4. Enterprise entitlement enforcement on `/api/download`: returning HTTP 401 for unauthenticated and HTTP 403 for unlicensed access to premium PowerPoint deliverables, with anti-SSRF hostname verification.
   5. Dependency sanitation: pruned `firebase` and `@grpc/grpc-js`, resolving 5 high-severity vulnerabilities down to 0 in `npm audit`.
-  6. Automated security test suite (`tests/security_vibe_audit.test.ts`) integrated into `npm test` with 15/15 passing checks.
-- **Verification**: `npm test` passed 15/15; `npm run build` passed with exit code 0; `npm audit` reports 0 vulnerabilities; zero unicode emojis.
+  6. Automated security test suite (`tests/security_vibe_audit.test.ts`) integrated into `npm test` with 17/17 passing checks.
+- **Verification**: `npm test` passed 17/17; `npm run build` passed with exit code 0; `npm audit` reports 0 vulnerabilities; zero unicode emojis.
+
+---
+
+## TASK-012: Unified Multi-Display Viewport Scaling & Container Harmonization
+- **Completed**: October 2026
+- **Summary**: Resolved cross-display visual scale discrepancies between laptops (1280px–1440px with OS zoom) and external desktop monitors (1920px+ at 100% scale):
+  1. Standardized outer container styling across all storefront sections (`HomeHeroBanners`, `HomeSearchDock`, `HomeTemplateGrid`, `HomeCustomServiceStrip`, `HomeTestimonialsSection`, `Navbar`, `Footer`, `Templates`, and `TemplateDetail`) to `w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8`.
+  2. Removed the artificial inner `max-w-[1560px]` clamps from `HomeHeroBanners` and `HomeSearchDock`, ensuring their borders align flush with the template grid below on any viewport size and eliminating the 280px staircase mismatch.
+  3. Upgraded `HomeTemplateGrid` to an adaptive column layout (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6`), ensuring cards stay at an optimal, compact ~260px width on large monitors rather than ballooning to 350px.
+  4. Adjusted pagination `pageSize` to 30 items per page (evenly divisible by 2, 3, 5, and 6), ensuring perfectly full rows with zero hanging cards across mobile, tablet, laptop, and desktop viewports.
+- **Verification**: `npm run build` exits with code 0; `npm test` passes 17/17; zero unicode emojis across all files.
+

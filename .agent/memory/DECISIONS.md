@@ -135,3 +135,17 @@
 - **Consequences**: Zero security regressions, 17/17 passing automated security tests in `tests/security_vibe_audit.test.ts` (`npm test`), 0 npm vulnerabilities, and strict enterprise security posture.
 - **Related files**: `functions/api/auth/*`, `functions/api/data.ts`, `functions/api/download.ts`, `rules/security-and-vulnerability-hardening.md`, `tests/security_vibe_audit.test.ts`.
 
+---
+
+### ADR-013: Unified Multi-Display Container Harmonization & Adaptive Responsive Columns
+- **Status**: Accepted (Implemented October 2026)
+- **Context**: Users reported visual layout discrepancies between laptop screens (1280px–1440px with OS scaling) and external desktop monitors (1920px+ at 100% scale). Diagnosis revealed that the Hero Banners and Search Dock were capped at `max-w-7xl 2xl:max-w-[1560px]`, while the Marketplace Template Grid below expanded to `max-w-[1840px]`, causing an unsightly 280px staircase mismatch on widescreen displays. In addition, the template grid was locked to 5 columns on all desktop viewports, causing cards to stretch by over 50% (~350px wide) on external monitors.
+- **Decision**:
+  1. Standardized outer container styling across all storefront sections (`HomeHeroBanners`, `HomeSearchDock`, `HomeTemplateGrid`, `HomeCustomServiceStrip`, `HomeTestimonialsSection`, `Navbar`, `Footer`, `Templates`, and `TemplateDetail`) to `w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8`.
+  2. Removed the artificial inner `max-w-[1560px]` clamps from `HomeHeroBanners` and `HomeSearchDock`, ensuring their borders align flush with the template grid below on any viewport size.
+  3. Upgraded `HomeTemplateGrid` to an adaptive column system (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6`), ensuring cards stay at an optimal, compact ~260px width on large monitors rather than ballooning.
+  4. Adjusted pagination `pageSize` to 30 items per page (the common multiple of 2, 3, 5, and 6), ensuring perfectly full rows with zero hanging cards across mobile, tablet, laptop, and desktop viewports.
+- **Consequences**: Pixel-perfect vertical alignment across all screen sizes, elimination of the staircase overhang, consistent card density across laptop and external displays, zero broken rows, and 100% responsive stability.
+- **Related files**: `src/pages/Home.tsx`, `src/features/home/components/*`, `src/features/home/useHomePageData.ts`, `src/components/Navbar.tsx`, `src/components/Footer.tsx`.
+
+

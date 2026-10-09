@@ -15,10 +15,10 @@ export function useHomePageData() {
   const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.1]);
   const templatesSlideUpY = useTransform(scrollY, [0, 420], [0, -75]);
 
-  // Filtering & Pagination State (5x5 grid = 25 items per page)
+  // Filtering & Pagination State (balanced 5x6 laptop or 6x5 monitor grid = 30 items per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [sortOption, setSortOption] = useState<"trending" | "newest" | "price_asc" | "price_desc" | "downloads">("trending");
-  const pageSize = 25;
+  const pageSize = 30;
   const setVisibleCount = (_val?: any) => {
     setCurrentPage(1);
   };

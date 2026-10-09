@@ -78,7 +78,7 @@ export function HomeTemplateGrid({
         isFilterActive ? "pt-3 sm:pt-4" : "pt-6 sm:pt-8"
       } pb-20`}
     >
-      <div className="w-[94%] max-w-[1840px] mx-auto px-2 sm:px-4 lg:px-6">
+      <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         {/* Marketplace Filter Toolbar positioned at top of section */}
         <HomeMarketplaceToolbar
           totalCount={filteredCatalog.length}
@@ -121,8 +121,8 @@ export function HomeTemplateGrid({
           </div>
         ) : (
           <>
-            {/* Strict 5-Column Grid Layout (5 across on lg/xl/2xl screens, rendering 25 items per page) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3.5 sm:gap-4.5 items-start">
+            {/* Adaptive Grid Layout (2-col mobile, 3-col sm, 4-col md, 5-col laptop/lg, 6-col wide monitor/2xl) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3.5 sm:gap-4 lg:gap-4.5 items-start">
               <AnimatePresence mode="popLayout">
                 {displayedTemplates.map((item) => (
                   <motion.div

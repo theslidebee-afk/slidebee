@@ -12,7 +12,7 @@ export function HomeCustomServiceStrip() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="relative z-10 bg-[#FFF9E8] py-12 border-t-2 border-primary/20"
     >
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="bg-white/80 backdrop-blur-md rounded-3xl border-2 border-primary/40 p-6 sm:p-10 shadow-lg">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
             <div>

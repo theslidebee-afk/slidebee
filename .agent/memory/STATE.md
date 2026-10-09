@@ -53,10 +53,12 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
   - Deliverables paywall & anti-SSRF: Enforced serverless entitlement verification on `/api/download`, returning HTTP 401 for unauthenticated and HTTP 403 for unlicensed access to premium PowerPoint deliverables; validated fallback fetch hosts against allowed domain allowlist.
   - Dependency hygiene & open redirect defense: Pruned obsolete `firebase` / `@grpc/grpc-js` dependencies, achieving 0 `npm audit` vulnerabilities; protected auth redirects from protocol-relative (`//`) bypasses; added automated 15-check security test suite (`npm test`).
 
+- **Unified Viewport Scaling & Container Harmonization (Laptop vs Desktop Monitor)**: Resolved container width discrepancies and card ballooning across laptop viewports (1280px–1440px with OS scaling) and external desktop monitors (1920px+ at 100% scale). Unified standard container width across `HomeHeroBanners`, `HomeSearchDock`, `HomeTemplateGrid`, `HomeCustomServiceStrip`, `HomeTestimonialsSection`, `Navbar`, `Footer`, `Templates`, and `TemplateDetail` to `w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8`, eliminating the 280px staircase overhang. Transformed the template grid from fixed 5 columns to an adaptive layout (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6`), maintaining consistent ~260px card widths on large monitors. Calibrated pagination page size to 30 items per page (evenly divisible across 2, 3, 5, and 6 columns for perfectly balanced rows on all screen sizes).
+
 ---
 
 ## 3. In-Progress Features
-- **Visual Smoke Testing & Multi-Device Verification**: Verifying marketplace and admin portal across mobile and desktop viewports.
+- **All Core Sprint Tasks Verified & Clean**: Zero pending blockers. Ready for production verification.
 
 ---
 

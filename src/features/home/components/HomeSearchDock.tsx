@@ -53,8 +53,8 @@ export function HomeSearchDock({
         id="hero-search-card"
         layout
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        className={`w-full max-w-7xl 2xl:max-w-[1560px] mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
-          isSearching ? "p-5 sm:p-7" : "p-6 sm:p-9 lg:p-11"
+        className={`w-full mx-auto bg-[#FFFDF5]/95 sm:bg-[#FFFDF5]/98 backdrop-blur-2xl border-2 border-white/95 rounded-[32px] sm:rounded-[44px] shadow-[0_30px_90px_rgba(0,0,0,0.24)] transition-all relative text-left z-30 ${
+          isSearching ? "p-5 sm:p-7" : "p-6 sm:p-8 lg:p-10"
         }`}
       >
         {/* Row 1: Section Heading & Summary */}

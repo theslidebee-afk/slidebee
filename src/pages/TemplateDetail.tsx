@@ -280,7 +280,7 @@ export default function TemplateDetail() {
 
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] pt-28 pb-24 large-hex-grid">
-      <div className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         {/* Navigation Breadcrumb */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button

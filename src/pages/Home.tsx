@@ -191,7 +191,7 @@ export default function Home() {
         {/* Central Stage Container */}
         <motion.div
           style={{ y: heroCardY, opacity: heroCardOpacity }}
-          className="w-[92%] max-w-[1760px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
+          className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
         >
           {/* Top Promotion Banners (3rd Banner + Split Banners) */}
           <HomeHeroBanners

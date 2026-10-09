@@ -45,7 +45,7 @@ export function HomeHeroBanners({
         marginBottom: isFilterActive ? 0 : 24,
       }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="overflow-hidden w-full max-w-7xl 2xl:max-w-[1560px] mx-auto relative z-20 text-left"
+      className="overflow-hidden w-full mx-auto relative z-20 text-left"
     >
       {/* 3rd Top Banner (Spanning full width above the split banners) */}
       {showTopBanner && (
