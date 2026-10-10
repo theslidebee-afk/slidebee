@@ -453,3 +453,25 @@ button, a, input, select, textarea {
   display: none;
 }
 
+/* Custom horizontal slide thumbnails scrollbar */
+.custom-slide-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(252, 191, 20, 0.45) transparent;
+}
+.custom-slide-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-slide-scrollbar::-webkit-scrollbar-track {
+  background: rgba(17, 17, 17, 0.05);
+  border-radius: 9999px;
+}
+.custom-slide-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(252, 191, 20, 0.45);
+  border-radius: 9999px;
+}
+.custom-slide-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(217, 155, 0, 0.85);
+}
+
+
