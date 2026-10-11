@@ -5,6 +5,12 @@ import { usePageSEO } from "../hooks/usePageSEO";
 import { d1 } from "../lib/d1";
 
 const DEFAULT_ABOUT_CONFIG = {
+  heroTitle: "About Us",
+  heroSubtitle: "Crafting high-impact executive presentation systems and bespoke presentation decks for visionary founders and global leaders.",
+  heroBreadcrumb: "Home \u00BB About Us",
+  heroImage: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=85",
+  heroColorTheme: "charcoal_amber",
+
   teamEyebrow: "OUR TEAM",
   teamHeading: "A Specialized\nPresentation\nDesign Team.",
   teamSubtitle: "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries.",
@@ -26,6 +32,24 @@ const DEFAULT_ABOUT_CONFIG = {
   ctaSecondaryText: "Get a Custom Presentation",
   ctaSecondaryLink: "/ordernow",
 };
+
+function getHeroOverlay(theme?: string) {
+  switch (theme) {
+    case "pine_emerald":
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1F13]/92 via-[#0E2E1C]/82 to-[#0A1F13]/94 pointer-events-none" />
+      );
+    case "midnight_obsidian":
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D0D]/95 via-[#141414]/85 to-[#0D0D0D]/95 pointer-events-none" />
+      );
+    case "charcoal_amber":
+    default:
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#111111]/90 via-[#1A1508]/82 to-[#111111]/92 pointer-events-none" />
+      );
+  }
+}
 
 export default function About() {
   const [cfg, setCfg] = useState(DEFAULT_ABOUT_CONFIG);
@@ -49,9 +73,58 @@ export default function About() {
       .catch(() => {});
   }, []);
 
+  const breadcrumbRaw = cfg.heroBreadcrumb || "Home \u00BB About Us";
+  const breadcrumbParts = breadcrumbRaw.split(/\s*(?:>>|\u00BB|>)\s*/);
+  const rootBreadcrumb = breadcrumbParts[0] || "Home";
+  const currentBreadcrumb = breadcrumbParts[1] || "About Us";
+  const heroImageSrc = cfg.heroImage || DEFAULT_ABOUT_CONFIG.heroImage;
+
   return (
-    <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-24 sm:pt-28 pb-0">
+    <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-20 sm:pt-24 pb-0">
       
+      {/* ========================================================================= */}
+      {/* HERO HEADER: ARCHITECTURAL FULL-BLEED MASTHEAD (Sharp Edges, rounded-none) */}
+      {/* ========================================================================= */}
+      <section className="relative w-full min-h-[340px] sm:min-h-[420px] lg:min-h-[460px] overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        {/* Background Photographic Image Layer */}
+        <img
+          src={heroImageSrc}
+          alt={cfg.heroTitle || "About Us"}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+
+        {/* Brand Palette Duotone Gradient Overlay */}
+        {getHeroOverlay(cfg.heroColorTheme)}
+
+        {/* Ambient Warm Golden Center Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(252,191,20,0.22)_0%,transparent_70%)] pointer-events-none" />
+
+        {/* Centered Content: Title, Subtitle, Breadcrumb */}
+        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-4 sm:space-y-5">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-white tracking-tight leading-none drop-shadow-md">
+            {cfg.heroTitle || "About Us"}
+          </h1>
+
+          <p className="text-sm sm:text-base lg:text-lg text-[#FFF9E8]/90 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
+            {cfg.heroSubtitle || "Crafting high-impact executive presentation systems and bespoke presentation decks for visionary founders and global leaders."}
+          </p>
+
+          {/* Breadcrumbs Navigation */}
+          <nav aria-label="Breadcrumb" className="inline-flex items-center gap-2 pt-2 text-xs sm:text-sm font-black uppercase tracking-wider text-[#FCBF14] drop-shadow">
+            <Link
+              to="/"
+              className="text-[#FCBF14] hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              {rootBreadcrumb}
+            </Link>
+            <span className="text-[#FCBF14]/70 font-bold select-none">&gt;&gt;</span>
+            <span className="text-white">
+              {currentBreadcrumb}
+            </span>
+          </nav>
+        </div>
+      </section>
+
       {/* ========================================================================= */}
       {/* 1. OUR TEAM SECTION                                                       */}
       {/* ========================================================================= */}
@@ -61,9 +134,9 @@ export default function About() {
             {cfg.teamEyebrow || "OUR TEAM"}
           </span>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line mx-auto">
+          <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line mx-auto">
             {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
-          </h1>
+          </h2>
 
           <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-2xl mx-auto">
             {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}

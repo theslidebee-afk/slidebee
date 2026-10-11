@@ -1,6 +1,7 @@
 import React from "react";
 import { Save } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
+import { CmsAboutHeroSection } from "./about/CmsAboutHeroSection";
 import { CmsAboutTeamSection } from "./about/CmsAboutTeamSection";
 import { CmsAboutVisionSection } from "./about/CmsAboutVisionSection";
 import { RouteUrlSelector } from "../shared/RouteUrlSelector";
@@ -18,7 +19,7 @@ export const CmsAboutPanel: React.FC = () => {
             About Page Story & Vision Customizer (/about)
           </h3>
           <p className="text-xs text-[#726F6D]">
-            Update the team spotlight, company vision, and bottom call-to-action sections on the About page.
+            Update the hero masthead banner, team spotlight, company vision, and bottom call-to-action sections on the About page.
           </p>
         </div>
         <button
@@ -29,6 +30,13 @@ export const CmsAboutPanel: React.FC = () => {
           <Save size={14} /> {configSaving ? "Saving..." : "Save About Page"}
         </button>
       </div>
+
+      {/* HEADER BANNER: ARCHITECTURAL MASTHEAD */}
+      <CmsAboutHeroSection
+        aboutConfig={aboutConfig}
+        siteConfigs={siteConfigs}
+        setSiteConfigs={setSiteConfigs}
+      />
 
       {/* 1. OUR TEAM SECTION */}
       <CmsAboutTeamSection

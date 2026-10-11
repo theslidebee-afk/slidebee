@@ -58,7 +58,7 @@ export function HomeHeroBanners({
           {homeBannerTop?.ctaLink && homeBannerTop.ctaLink !== "#templates" && !homeBannerTop.ctaLink.startsWith("#") ? (
             <Link
               to={homeBannerTop.ctaLink}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_15px_45px_rgba(0,0,0,0.3)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300 block"
+              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_10px_30px_rgba(252,191,20,0.12)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300 block"
             >
               {/* Background ambient gold aura */}
               <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FCBF14]/10 rounded-full blur-3xl pointer-events-none" />
@@ -111,7 +111,7 @@ export function HomeHeroBanners({
               role="button"
               tabIndex={0}
               onClick={scrollToTemplates}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_15px_45px_rgba(0,0,0,0.3)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300"
+              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_10px_30px_rgba(252,191,20,0.12)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300"
             >
               {/* Background ambient gold aura */}
               <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FCBF14]/10 rounded-full blur-3xl pointer-events-none" />
@@ -244,7 +244,7 @@ export function HomeHeroBanners({
           <Link
             to={homeBanner2.ctaLink}
             data-bee-state="catalog"
-            className="group bg-[#111111] text-white rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 lg:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.25)] border border-[#222222] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden min-h-[125px] sm:min-h-[140px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
+            className="group bg-[#111111] text-white rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 lg:p-7 shadow-[0_8px_24px_rgba(0,0,0,0.18)] border border-[#222222] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden min-h-[125px] sm:min-h-[140px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 block text-left"
           >
             <div className="flex items-center gap-4 relative z-10">
               <div className="relative shrink-0">
@@ -277,7 +277,7 @@ export function HomeHeroBanners({
             tabIndex={0}
             onClick={scrollToTemplates}
             data-bee-state="catalog"
-            className="group bg-[#111111] text-white rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 lg:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.25)] border border-[#222222] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden min-h-[125px] sm:min-h-[140px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
+            className="group bg-[#111111] text-white rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 lg:p-7 shadow-[0_8px_24px_rgba(0,0,0,0.18)] border border-[#222222] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden min-h-[125px] sm:min-h-[140px] cursor-pointer hover:scale-[1.015] active:scale-[0.99] transition-all duration-300 text-left"
           >
             <div className="flex items-center gap-4 relative z-10">
               <div className="relative shrink-0">
