@@ -7,9 +7,11 @@ import {
   DashboardPurchasedTab,
   DashboardCustomTab,
   DashboardMarketplaceTab,
+  DashboardWishlistTab,
   DashboardLedgerTab,
   type DashboardTab,
 } from "../features/dashboard";
+import { useWishlist } from "../features/wishlist";
 
 interface UserModernDashboardProps {
   currentUser: any;
@@ -52,6 +54,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [searchQuery, setSearchQuery] = useState("");
+  const { wishlist } = useWishlist();
 
   const clientName =
     userProfile?.full_name ||
@@ -159,6 +162,7 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           purchasedCount={(purchasedItems || []).length}
+          wishlistCount={wishlist.length}
           ordersCount={(userOrders || []).length}
           userTier={userTier}
           studioWhatsapp={studioWhatsapp}
@@ -206,6 +210,10 @@ export const UserModernDashboard: React.FC<UserModernDashboardProps> = ({
               isProUser={isProUser}
               quotaRemaining={quotaRemaining}
             />
+          )}
+
+          {activeTab === "wishlist" && (
+            <DashboardWishlistTab isProUser={isProUser} />
           )}
 
           {activeTab === "custom" && (

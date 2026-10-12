@@ -103,7 +103,7 @@ export function TemplateSlideViewer({
   };
 
   return (
-    <div className="lg:col-span-7 space-y-4">
+    <div className="space-y-4">
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Crown, Sparkles, Flame } from "lucide-react";
+import { Search, Crown, Sparkles, Flame, Heart } from "lucide-react";
+import { useWishlist } from "../../wishlist";
 
 interface HomeSearchDockProps {
   isSearching: boolean;
@@ -46,6 +47,7 @@ export function HomeSearchDock({
   allCategoryPills,
   heroConfig,
 }: HomeSearchDockProps) {
+  const { wishlist } = useWishlist();
   return (
     <>
       {/* Central Translucent Frosted Glass Card with Search Bar & Template Controls */}
@@ -254,6 +256,35 @@ export function HomeSearchDock({
           >
             <Flame size={13} className={activeSidebarCategory === "trending" ? "text-[#111111] fill-[#111111]" : "text-amber-500 fill-amber-500"} />
             <span>Trending</span>
+          </button>
+
+          {/* Wishlist Category Filter */}
+          <button
+            onClick={() => {
+              setIsBrowsingActive(true);
+              if (activeSidebarCategory === "wishlist") {
+                setActiveSidebarCategory("all");
+              } else {
+                setActiveSidebarCategory("wishlist");
+              }
+              setSearchQuery("");
+              setVisibleCount(25);
+              if (window.scrollY > 40) {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+            className={`hex-pill px-4 py-2.5 min-h-[44px] rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeSidebarCategory === "wishlist"
+                ? "bg-red-500 text-white shadow-md scale-102"
+                : "bg-white/80 hover:bg-white text-[#555250] hover:text-red-500 border border-[#111111]/10"
+            }`}
+          >
+            <Heart
+              size={13}
+              className={activeSidebarCategory === "wishlist" ? "fill-white text-white" : "text-red-500 fill-red-500/20"}
+            />
+            <span>Wishlist</span>
+            {wishlist.length > 0 && <span className="text-[10px] font-mono opacity-80">({wishlist.length})</span>}
           </button>
 
           {/* Dynamic categories */}

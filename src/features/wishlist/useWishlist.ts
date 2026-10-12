@@ -84,6 +84,7 @@ export function useWishlist() {
   }, []);
 
   return {
+    wishlist: wishlistIds,
     wishlistIds,
     isWishlisted,
     toggleWishlist,

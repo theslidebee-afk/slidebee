@@ -10,6 +10,7 @@ import { usePageSEO } from "../hooks/usePageSEO";
 import {
   TemplateSlideViewer,
   TemplateActionPanel,
+  TemplateSpecs,
   SimilarTemplatesGrid,
   useTemplateData,
 } from "../features/templates";
@@ -308,16 +309,35 @@ export default function TemplateDetail() {
 
         {/* Main 2-Column Template Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
-          {/* Left Column: Interactive Full HD Multi-Slide Previewer */}
-          <TemplateSlideViewer
-            template={template}
-            slides={slides}
-            activeSlideIdx={activeSlideIdx}
-            setActiveSlideIdx={setActiveSlideIdx}
-            handleTouchStart={handleTouchStart}
-            handleTouchMove={handleTouchMove}
-            handleTouchEnd={handleTouchEnd}
-          />
+          {/* Left Column: Interactive Full HD Multi-Slide Previewer & Description / Specs */}
+          <div className="lg:col-span-7 space-y-6">
+            <TemplateSlideViewer
+              template={template}
+              slides={slides}
+              activeSlideIdx={activeSlideIdx}
+              setActiveSlideIdx={setActiveSlideIdx}
+              handleTouchStart={handleTouchStart}
+              handleTouchMove={handleTouchMove}
+              handleTouchEnd={handleTouchEnd}
+            />
+
+            {/* Deck Description & Technical Specifications Summary */}
+            <div className="hex-card-lg bg-white border-2 border-primary/40 p-6 sm:p-7 shadow-lg space-y-6">
+              {template.description && (
+                <div>
+                  <h3 className="text-sm font-heading font-black text-[#111111] uppercase tracking-wider mb-2">
+                    About This Master Presentation
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed whitespace-pre-line">
+                    {template.description}
+                  </p>
+                </div>
+              )}
+
+              {/* What's Included & Layers / Specs Summary */}
+              <TemplateSpecs template={template} />
+            </div>
+          </div>
 
           {/* Right Column: Details & Actions */}
           <TemplateActionPanel

@@ -102,9 +102,9 @@ export function TemplateCard({ item, isProUser, showStars, showDownloads }: Temp
                   <div className="text-lg font-heading font-black text-[#111111]">
                     {formatPrice(item.price_inr, item.price_usd)}
                   </div>
-                  {item.original_price_inr && (
+                  {Number(item.original_price_inr) > Number(item.price_inr) && (
                     <div className="text-[10px] text-[#726F6D] line-through font-medium">
-                      {formatPrice(item.original_price_inr, (item.price_usd || 5) * 2)}
+                      {formatPrice(item.original_price_inr, item.original_price_usd)}
                     </div>
                   )}
                   <span className="text-[10px] font-bold text-primary-amber block">

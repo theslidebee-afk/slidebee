@@ -16,6 +16,10 @@ interface TemplateFormInputsProps {
   setPriceINR: (val: number | string) => void;
   priceUSD: number | string;
   setPriceUSD: (val: number | string) => void;
+  originalPriceINR?: number | string;
+  setOriginalPriceINR?: (val: number | string) => void;
+  originalPriceUSD?: number | string;
+  setOriginalPriceUSD?: (val: number | string) => void;
   description: string;
   setDescription: (val: string) => void;
   features?: string[];
@@ -40,6 +44,10 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
   setPriceINR,
   priceUSD,
   setPriceUSD,
+  originalPriceINR,
+  setOriginalPriceINR,
+  originalPriceUSD,
+  setOriginalPriceUSD,
   description,
   setDescription,
   features = [],
@@ -57,6 +65,8 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
     if (newTier === "free") {
       setPriceINR(0);
       setPriceUSD(0);
+      setOriginalPriceINR?.(0);
+      setOriginalPriceUSD?.(0);
       setIsCreditEligible(false);
     } else {
       if (Number(priceINR) === 0) setPriceINR(499);
@@ -166,7 +176,7 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
             Category
@@ -193,9 +203,12 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
             className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
           />
         </div>
+      </div>
 
+      {/* Pricing Inputs */}
+      <div className="text-left">
         {isFree ? (
-          <div className="col-span-2 bg-emerald-50 border border-emerald-300 rounded-lg p-2.5 flex items-center gap-2.5">
+          <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2.5 flex items-center gap-2.5">
             <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
             <div className="text-left">
               <span className="text-[11px] font-black text-emerald-900 uppercase block">
@@ -207,35 +220,78 @@ export const TemplateFormInputs: React.FC<TemplateFormInputsProps> = ({
             </div>
           </div>
         ) : (
-          <>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                Price INR (₹) *
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={priceINR ?? ""}
-                onChange={(e) => setPriceINR(e.target.value === "" ? "" : Number(e.target.value))}
-                className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-              />
+          <div className="bg-[#FAFAFA] border border-[#111111]/10 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-[#111111]/8 pb-1.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#111111]">
+                Pricing & Discount Anchoring
+              </span>
+              <span className="text-[10px] text-[#726F6D]">
+                Selling price is charged at checkout
+              </span>
             </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#726F6D] block mb-1">
-                Price USD ($) *
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={priceUSD ?? ""}
-                onChange={(e) => setPriceUSD(e.target.value === "" ? "" : Number(e.target.value))}
-                className="w-full bg-[#FFF9E8] border border-[#111111]/15 rounded-lg px-3.5 py-2 text-xs text-[#111111] font-medium outline-none focus:border-primary"
-              />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[10px] font-black uppercase text-[#111111] block mb-1">
+                  Selling Price INR (₹) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={priceINR ?? ""}
+                  onChange={(e) => setPriceINR(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="499"
+                  className="w-full bg-[#FFF9E8] border border-[#111111]/20 rounded-lg px-3 py-1.5 text-xs text-[#111111] font-black outline-none focus:border-primary"
+                />
+                <span className="text-[9px] text-emerald-700 font-bold block mt-0.5">Payable amount</span>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-[#111111] block mb-1">
+                  Selling Price USD ($) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={priceUSD ?? ""}
+                  onChange={(e) => setPriceUSD(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="9"
+                  className="w-full bg-[#FFF9E8] border border-[#111111]/20 rounded-lg px-3 py-1.5 text-xs text-[#111111] font-black outline-none focus:border-primary"
+                />
+                <span className="text-[9px] text-emerald-700 font-bold block mt-0.5">Payable amount</span>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
+                  Crossed-Out MRP (₹)
+                </label>
+                <input
+                  type="number"
+                  value={originalPriceINR ?? ""}
+                  onChange={(e) => setOriginalPriceINR?.(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g. 999"
+                  className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs text-[#555250] font-medium outline-none focus:border-primary"
+                />
+                <span className="text-[9px] text-[#726F6D] block mt-0.5">Strikethrough anchor</span>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-[#726F6D] block mb-1">
+                  Crossed-Out MRP ($)
+                </label>
+                <input
+                  type="number"
+                  value={originalPriceUSD ?? ""}
+                  onChange={(e) => setOriginalPriceUSD?.(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g. 19"
+                  className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs text-[#555250] font-medium outline-none focus:border-primary"
+                />
+                <span className="text-[9px] text-[#726F6D] block mt-0.5">Strikethrough anchor</span>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 

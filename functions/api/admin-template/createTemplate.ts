@@ -80,7 +80,7 @@ export async function handleCreateTemplate(request: Request, env: Env) {
       category: body?.category || "Business",
       price_inr: priceInr,
       price_usd: priceUsd,
-      original_price_inr: isPremium === 0 ? 0 : (Number(body?.original_price_inr) || (priceInr * 2)),
+      original_price_inr: isPremium === 0 ? 0 : (Number(body?.original_price_inr) || 0),
       image_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
       thumbnail_url: body?.thumbnail_url || body?.image_url || effectiveSlides[0] || "",
       slides_count: effectiveSlidesCount,

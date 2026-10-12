@@ -123,6 +123,7 @@ export const HomeMarketplaceToolbar: React.FC<HomeMarketplaceToolbarProps> = ({
           className="bg-white border border-[#111111]/15 text-[#111111] font-heading font-extrabold text-xs px-3.5 py-2 rounded-xl focus:outline-hidden focus:border-[#FCBF14] cursor-pointer"
         >
           <option value="all">All Categories</option>
+          <option value="wishlist">My Wishlist</option>
           <option value="trending">Curated Trending</option>
           {categoriesList.map((cat) => (
             <option key={cat} value={cat}>

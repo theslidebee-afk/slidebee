@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Star,
   FileText,
   AlertCircle,
   CheckCircle2,
@@ -14,7 +13,6 @@ import {
 } from "lucide-react";
 import type { StoreTemplate } from "../../../modules/StudioStoreClient";
 import { getTemplateDeliverableUrl } from "../../../lib/templates";
-import { TemplateSpecs } from "./TemplateSpecs";
 
 interface TemplateActionPanelProps {
   template: StoreTemplate;
@@ -42,7 +40,7 @@ interface TemplateActionPanelProps {
 
 export function TemplateActionPanel({
   template,
-  showStars,
+  showStars: _showStars,
   showDownloads,
   isPro,
   quotaLimit,
@@ -74,22 +72,18 @@ export function TemplateActionPanel({
             {template.category} • {template.slides_count} Master Slides
           </span>
 
-          {showStars && template.rating && (
+          {showDownloads && template.downloads ? (
             <div className="flex items-center gap-1 text-xs font-extrabold text-[#111111]">
-              <Star size={13} className="fill-amber-400 text-amber-400" />
-              {template.rating}
-              {showDownloads && template.downloads ? ` (${template.downloads}+ downloads)` : ""}
+              <Download size={13} className="text-[#FCBF14]" />
+              <span>{template.downloads.toLocaleString()}+ downloads</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] leading-tight mb-2">
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111] leading-tight">
             {template.title}
           </h1>
-          <p className="text-xs sm:text-sm text-[#726F6D] font-medium leading-relaxed">
-            {template.description}
-          </p>
         </div>
 
         {/* Price Display */}
@@ -123,9 +117,9 @@ export function TemplateActionPanel({
                   <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
                     {formatPrice(template.price_inr, template.price_usd)}
                   </span>
-                  {template.original_price_inr && (
+                  {Number(template.original_price_inr) > Number(template.price_inr) && (
                     <span className="text-xs text-[#726F6D] line-through font-medium">
-                      {formatPrice(template.original_price_inr, (template.price_usd || 5) * 2)}
+                      {formatPrice(template.original_price_inr, template.original_price_usd)}
                     </span>
                   )}
                 </>
@@ -409,9 +403,6 @@ export function TemplateActionPanel({
             </Link>
           </div>
         </div>
-
-        {/* Technical Specs & Inclusions */}
-        <TemplateSpecs template={template} />
       </div>
     </div>
   );

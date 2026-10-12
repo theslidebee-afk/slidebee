@@ -136,7 +136,7 @@ export const AdminTemplates: React.FC = () => {
       is_premium: nextIsPremium,
       price_inr: nextPriceInr,
       price_usd: nextPriceUsd,
-      original_price_inr: nextPriceInr * 2,
+      original_price_inr: nextIsPremium ? (tpl.original_price_inr || 0) : 0,
       is_credit_eligible: nextCreditEligible
     };
     setTemplates(templates.map((t: any) => t.id === tpl.id ? updatedTpl : t));
@@ -147,7 +147,7 @@ export const AdminTemplates: React.FC = () => {
       is_premium: nextIsPremium,
       price_inr: nextPriceInr,
       price_usd: nextPriceUsd,
-      original_price_inr: nextPriceInr * 2,
+      original_price_inr: nextIsPremium ? (tpl.original_price_inr || 0) : 0,
       is_credit_eligible: nextCreditEligible
     };
     try {

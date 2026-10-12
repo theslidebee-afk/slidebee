@@ -10,6 +10,7 @@ import {
   HomeTestimonialsSection,
 } from "../features/home";
 import { useHomePageData } from "../features/home/useHomePageData";
+import { useWishlist } from "../features/wishlist";
 
 export default function Home() {
   usePageSEO({
@@ -66,6 +67,7 @@ export default function Home() {
 
   const isSearching = isFilterActive;
   const { templates: allTemplates, loading } = useStudioStore();
+  const { wishlist } = useWishlist();
 
   const scrollToTemplates = () => {
     const el = document.getElementById("templates");
@@ -89,7 +91,12 @@ export default function Home() {
   const filteredCatalog = useMemo(() => {
     const list = allTemplates.filter((item) => {
       let matchesSidebarCategory = true;
-      if (activeSidebarCategory === "trending") {
+      if (activeSidebarCategory === "wishlist") {
+        matchesSidebarCategory =
+          wishlist.includes(String(item.id)) ||
+          wishlist.includes(String((item as any).slug)) ||
+          wishlist.includes(String((item as any).code));
+      } else if (activeSidebarCategory === "trending") {
         if (curatedTrendingIds.length > 0) {
           matchesSidebarCategory =
             curatedTrendingIds.includes(String(item.id)) ||
@@ -146,7 +153,7 @@ export default function Home() {
     }
 
     return list;
-  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter, curatedTrendingIds, sortOption]);
+  }, [allTemplates, activeSidebarCategory, searchQuery, tierFilter, curatedTrendingIds, sortOption, wishlist]);
 
   const totalPages = Math.ceil(filteredCatalog.length / pageSize) || 1;
   const startIndex = filteredCatalog.length > 0 ? (currentPage - 1) * pageSize + 1 : 0;

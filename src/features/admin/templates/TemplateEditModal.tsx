@@ -178,6 +178,10 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
                   setPriceINR={(price_inr) => setEditingTemplate((prev: any) => ({ ...prev, price_inr, is_premium: Number(price_inr) > 0 ? 1 : 0 }))}
                   priceUSD={editingTemplate.price_usd}
                   setPriceUSD={(price_usd) => setEditingTemplate((prev: any) => ({ ...prev, price_usd }))}
+                  originalPriceINR={editingTemplate.original_price_inr}
+                  setOriginalPriceINR={(original_price_inr) => setEditingTemplate((prev: any) => ({ ...prev, original_price_inr }))}
+                  originalPriceUSD={editingTemplate.original_price_usd}
+                  setOriginalPriceUSD={(original_price_usd) => setEditingTemplate((prev: any) => ({ ...prev, original_price_usd }))}
                   description={editingTemplate.description}
                   setDescription={(description) => setEditingTemplate((prev: any) => ({ ...prev, description }))}
                   features={Array.isArray(editingTemplate.features) ? editingTemplate.features : []}

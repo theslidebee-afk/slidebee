@@ -146,9 +146,9 @@ export function TemplateCard({ template, showStars = false, showDownloads = fals
                   <span className="text-lg font-heading font-extrabold text-[#111111]">
                     {formatPrice(priceInr, priceUsd)}
                   </span>
-                  {((currency === "USD" && originalPriceUsd > priceUsd) || (currency === "INR" && originalPriceInr && originalPriceInr > priceInr)) && (
+                  {Number(originalPriceInr) > Number(priceInr) && (
                     <span className="text-xs text-[#726F6D] line-through font-medium">
-                      {formatPrice(originalPriceInr || priceInr * 2, originalPriceUsd)}
+                      {formatPrice(originalPriceInr, originalPriceUsd)}
                     </span>
                   )}
                 </div>

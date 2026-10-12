@@ -10,6 +10,7 @@ export interface StoreTemplate {
   price_inr: number;
   price_usd: number;
   original_price_inr: number;
+  original_price_usd?: number;
   image_url: string;
   slides: string[];
   slides_count: number;
@@ -95,7 +96,8 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
 
         const priceInr = isPrem ? (t.price_inr !== undefined && t.price_inr !== null ? Number(t.price_inr) : 499) : 0;
         const priceUsd = isPrem ? (t.price_usd !== undefined && t.price_usd !== null ? Number(t.price_usd) : 9) : 0;
-        const originalPriceInr = isPrem ? (Number(t.original_price_inr) || (priceInr * 2)) : 0;
+        const originalPriceInr = isPrem ? (Number(t.original_price_inr) || 0) : 0;
+        const originalPriceUsd = isPrem ? (Number(t.original_price_usd) || 0) : 0;
 
         return {
           id: t.id,
@@ -105,6 +107,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           price_inr: priceInr,
           price_usd: priceUsd,
           original_price_inr: originalPriceInr,
+          original_price_usd: originalPriceUsd,
           image_url: coverImg,
           slides: slideUrls,
           slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,

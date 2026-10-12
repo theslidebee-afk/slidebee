@@ -107,10 +107,14 @@ export function HomeTemplateGrid({
           <div className="bg-white border-2 border-primary/30 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm">
             <FileText size={40} className="mx-auto text-primary-amber mb-3" />
             <h3 className="text-xl font-heading font-extrabold text-[#111111] mb-2">
-              No Templates Found
+              {activeCategory === "wishlist" ? "Wishlist is Empty" : "No Templates Found"}
             </h3>
             <p className="text-xs text-[#726F6D] mb-6 font-medium">
-              No templates match "{searchQuery}" under the current filters.
+              {activeCategory === "wishlist"
+                ? "You haven't saved any presentation decks yet. Click the heart icon on any template to add it to your wishlist."
+                : searchQuery
+                ? `No templates match "${searchQuery}" under the current filters.`
+                : "No templates found under the selected filters."}
             </p>
             <button
               onClick={resetToResting}
@@ -121,8 +125,8 @@ export function HomeTemplateGrid({
           </div>
         ) : (
           <>
-            {/* Adaptive Grid Layout (2-col mobile, 3-col sm, 4-col md, 5-col laptop/lg, 6-col wide monitor/2xl) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3.5 sm:gap-4 lg:gap-4.5 items-start">
+            {/* Adaptive Grid Layout (2-col mobile, 3-col sm, 4-col md, 5-col desktop/laptop/monitor) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-4.5 items-start">
               <AnimatePresence mode="popLayout">
                 {displayedTemplates.map((item) => (
                   <motion.div

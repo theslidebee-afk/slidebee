@@ -30,6 +30,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
   const [newCategory, setNewCategory] = useState(categoriesList[0] || "Pitch Decks");
   const [newPriceINR, setNewPriceINR] = useState<number | string>(499);
   const [newPriceUSD, setNewPriceUSD] = useState<number | string>(9);
+  const [newOriginalPriceINR, setNewOriginalPriceINR] = useState<number | string>("");
+  const [newOriginalPriceUSD, setNewOriginalPriceUSD] = useState<number | string>("");
   const [newSlideCount, setNewSlideCount] = useState<number | string>(25);
   const [newDesc, setNewDesc] = useState("");
   const [newThumbnail, setNewThumbnail] = useState("");
@@ -181,7 +183,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
       category: newCategory,
       price_inr: isFree ? 0 : Number(newPriceINR),
       price_usd: isFree ? 0 : Number(newPriceUSD),
-      original_price_inr: isFree ? 0 : Number(newPriceINR) * 2,
+      original_price_inr: isFree ? 0 : (Number(newOriginalPriceINR) || 0),
+      original_price_usd: isFree ? 0 : (Number(newOriginalPriceUSD) || 0),
       slides_count: effectiveSlideCount,
       thumbnail_url: newThumbnail,
       image_url: newThumbnail,
@@ -248,6 +251,8 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
     setNewPptUrl("");
     setNewPptFilename("");
     setNewPptSize("");
+    setNewOriginalPriceINR("");
+    setNewOriginalPriceUSD("");
     setNewFormats(["PowerPoint"]);
     setNewIsCreditEligible(false);
     setNewCode(`SLD-${Math.floor(100 + Math.random() * 900)}`);
@@ -346,6 +351,10 @@ export const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
               setPriceINR={setNewPriceINR}
               priceUSD={newPriceUSD}
               setPriceUSD={setNewPriceUSD}
+              originalPriceINR={newOriginalPriceINR}
+              setOriginalPriceINR={setNewOriginalPriceINR}
+              originalPriceUSD={newOriginalPriceUSD}
+              setOriginalPriceUSD={setNewOriginalPriceUSD}
               description={newDesc}
               setDescription={setNewDesc}
               features={newFeatures}

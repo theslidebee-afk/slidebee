@@ -7,15 +7,17 @@ import {
   CreditCard,
   MessageCircle,
   Crown,
+  Heart,
 } from "lucide-react";
 import SlideBeeLogo from "../../../components/SlideBeeLogo";
 
-export type DashboardTab = "overview" | "purchased" | "custom" | "marketplace" | "ledger";
+export type DashboardTab = "overview" | "purchased" | "wishlist" | "custom" | "marketplace" | "ledger";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTab;
   setActiveTab: (tab: DashboardTab) => void;
   purchasedCount: number;
+  wishlistCount?: number;
   ordersCount: number;
   userTier: string;
   studioWhatsapp: string;
@@ -26,6 +28,7 @@ export function DashboardSidebar({
   activeTab,
   setActiveTab,
   purchasedCount,
+  wishlistCount = 0,
   ordersCount,
   userTier,
   studioWhatsapp,
@@ -90,6 +93,29 @@ export function DashboardSidebar({
             {purchasedCount > 0 && (
               <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full font-bold">
                 {purchasedCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("wishlist")}
+            className={`shrink-0 w-auto xl:w-full min-h-[44px] flex items-center justify-between px-3.5 xl:px-4 py-2.5 xl:py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap gap-2 ${
+              activeTab === "wishlist"
+                ? "bg-[#FEF5DC] text-[#111111] font-extrabold border border-[#FCBF14]/40 shadow-xs"
+                : "text-[#726F6D] hover:bg-gray-50 hover:text-[#111111]"
+            }`}
+          >
+            <div className="flex items-center gap-2 xl:gap-3">
+              <Heart
+                size={18}
+                className={activeTab === "wishlist" ? "text-red-500 fill-red-500" : "text-[#726F6D]"}
+              />
+              <span>Wishlist</span>
+            </div>
+            {wishlistCount > 0 && (
+              <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">
+                {wishlistCount}
               </span>
             )}
           </button>

@@ -4,4 +4,5 @@ export { DashboardOverviewTab } from "./components/DashboardOverviewTab";
 export { DashboardPurchasedTab } from "./components/DashboardPurchasedTab";
 export { DashboardCustomTab } from "./components/DashboardCustomTab";
 export { DashboardMarketplaceTab } from "./components/DashboardMarketplaceTab";
+export { DashboardWishlistTab } from "./components/DashboardWishlistTab";
 export { DashboardLedgerTab } from "./components/DashboardLedgerTab";
