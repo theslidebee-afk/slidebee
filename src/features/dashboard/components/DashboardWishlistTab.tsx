@@ -126,9 +126,14 @@ export function DashboardWishlistTab({ isProUser: _isProUser = false }: Dashboar
                     <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
                       {template.category} • {template.slides_count} Slides
                     </span>
-                    <h3 className="font-heading font-black text-xs text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug mt-0.5">
-                      {template.title}
-                    </h3>
+                    <div className="mt-1 mb-1.5 min-h-[2.35rem] sm:min-h-[2.5rem] flex items-start">
+                      <h3
+                        title={template.title}
+                        className="font-heading font-black text-xs text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug"
+                      >
+                        {template.title}
+                      </h3>
+                    </div>
                   </div>
                 </div>
 

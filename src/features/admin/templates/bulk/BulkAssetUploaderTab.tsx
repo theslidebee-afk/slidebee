@@ -115,7 +115,7 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
               : "Click to Select or Drop Presentation Decks & Slide Previews"}
           </span>
           <span className="text-[11px] text-[#726F6D]">
-            Select multiple .pptx presentation files or .jpg/.png slide previews at once.
+            Select multiple .pptx presentation files or .jpg/.png slide previews at once. Slide previews should be <strong className="text-[#D99B00]">1920 × 1080 px (16:9 Widescreen)</strong> for non-truncated presentation display.
           </span>
         </label>
       </div>

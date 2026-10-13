@@ -59,6 +59,7 @@ export default function Home() {
     pageSize,
     sortOption,
     setSortOption,
+    homeTopBar,
     homeBanner1,
     homeBanner2,
     testimonials,
@@ -166,13 +167,17 @@ export default function Home() {
   const freeCount = useMemo(() => allTemplates.filter((t) => !t.is_premium).length, [allTemplates]);
   const premiumCount = useMemo(() => allTemplates.filter((t) => t.is_premium).length, [allTemplates]);
 
+  const isTopBarActive = homeTopBar?.enabled !== false && Boolean(homeTopBar?.imageUrl);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF9E8] large-hex-grid text-[#111111]">
       {/* 1 & 2. UNIFIED HERO STAGE */}
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] pt-24 sm:pt-28 lg:pt-32 pb-10 sm:pb-14 transition-all duration-300"
+        className={`relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] ${
+          isTopBarActive ? "pt-36 sm:pt-40 lg:pt-44" : "pt-24 sm:pt-28 lg:pt-32"
+        } pb-10 sm:pb-14 transition-all duration-300`}
       >
         {/* Total Hero Section Background Video */}
         <motion.div

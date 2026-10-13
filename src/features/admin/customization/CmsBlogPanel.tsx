@@ -563,9 +563,14 @@ export const CmsBlogPanel: React.FC = () => {
 
                       {/* Section 3: Cover Image (Full Width) */}
                       <div className="space-y-3 pt-3 border-t border-[#111111]/10">
-                        <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary-amber">
-                          <ImageIcon size={13} />
-                          <span>3. Blog Cover Image (Full Grid Width)</span>
+                        <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-black uppercase tracking-wider text-primary-amber">
+                          <div className="flex items-center gap-1.5">
+                            <ImageIcon size={13} />
+                            <span>3. Blog Cover Image (Full Grid Width)</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-2 py-0.5 rounded normal-case">
+                            Standard: 1200×675 px (16:9)
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-3">

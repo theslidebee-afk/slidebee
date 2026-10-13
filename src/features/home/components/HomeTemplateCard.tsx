@@ -68,10 +68,15 @@ export function HomeTemplateCard({ template }: HomeTemplateCardProps) {
             </div>
           </div>
 
-          {/* Title Inside Card */}
-          <h3 className="font-heading font-black text-xs sm:text-[13px] text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug mt-2.5 mb-1.5">
-            {template.title}
-          </h3>
+          {/* Title Inside Card - Fixed 2-Line Container for 100% Grid Uniformity */}
+          <div className="mt-2.5 mb-1.5 min-h-[2.4rem] sm:min-h-[2.5rem] flex items-start">
+            <h3
+              title={template.title}
+              className="font-heading font-black text-xs sm:text-[13px] text-[#111111] group-hover:text-amber-600 transition-colors line-clamp-2 leading-snug"
+            >
+              {template.title}
+            </h3>
+          </div>
         </div>
 
         {/* Bottom: Clean Price Only */}

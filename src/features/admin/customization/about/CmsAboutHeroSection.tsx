@@ -227,9 +227,14 @@ export const CmsAboutHeroSection: React.FC<CmsAboutHeroSectionProps> = ({
 
       {/* Hero Background Image Uploader & URL Input */}
       <div>
-        <label className="text-[11px] font-bold text-[#111111] block mb-1">
-          Hero Background Image (Cloudflare R2)
-        </label>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+          <label className="text-[11px] font-bold text-[#111111] block">
+            Hero Background Image (Cloudflare R2)
+          </label>
+          <span className="text-[10px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-2 py-0.5 rounded w-fit">
+            Recommended: 1920 × 1080 px or 2560 × 1440 px (16:9 Landscape Full-Page Stage)
+          </span>
+        </div>
         
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">

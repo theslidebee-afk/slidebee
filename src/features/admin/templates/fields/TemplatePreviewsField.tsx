@@ -56,9 +56,14 @@ export const TemplatePreviewsField: React.FC<TemplatePreviewsFieldProps> = ({
               <label className="text-xs font-extrabold text-[#111111] block">
                 Primary Cover / Thumbnail Image *
               </label>
-              <span className="text-[10px] text-[#726F6D]">
-                Main display card across marketplace.
-              </span>
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <span className="text-[10px] text-[#726F6D]">
+                  Main display card across marketplace.
+                </span>
+                <span className="text-[10px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-2 py-0.5 rounded w-fit">
+                  Standard: 1920 × 1080 px (16:9 Widescreen)
+                </span>
+              </div>
             </div>
             <label
               className={`rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${
@@ -119,9 +124,14 @@ export const TemplatePreviewsField: React.FC<TemplatePreviewsFieldProps> = ({
         {/* Interior Slides Gallery */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
-              <ImageIcon size={13} className="text-primary-amber" /> Interior Slides ({slides.length})
-            </span>
+            <div>
+              <span className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                <ImageIcon size={13} className="text-primary-amber" /> Interior Slides ({slides.length})
+              </span>
+              <span className="text-[10px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-2 py-0.5 rounded inline-block mt-0.5">
+                Standard: 1920 × 1080 px (16:9 Widescreen)
+              </span>
+            </div>
             <label className={`rounded-lg bg-primary hover:bg-primary-dark text-[#111111] font-black px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm ${isUploadingSlide ? "opacity-60 cursor-not-allowed" : ""}`}>
               <UploadCloud size={13} />
               <span>{isUploadingSlide ? "Uploading..." : "Upload Slides"}</span>

@@ -265,8 +265,13 @@ export const CmsPortfolioPanel: React.FC = () => {
 
               {/* Cover Image */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold text-[#111111]">Primary Cover Image</label>
+                <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-[#111111]">Primary Cover Image</label>
+                    <span className="text-[9px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-1.5 py-0.2 rounded">
+                      Standard: 1920×1080 px (16:9)
+                    </span>
+                  </div>
                   <label className="cursor-pointer text-[9px] font-bold text-primary-amber bg-white hover:bg-amber-50 border border-primary/30 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                     <UploadCloud size={11} /> {uploadingIdx === idx ? "Uploading..." : "Upload Cover to R2"}
                     <input
@@ -300,9 +305,14 @@ export const CmsPortfolioPanel: React.FC = () => {
               <div className="space-y-2 bg-white/70 p-3 rounded-xl border border-[#111111]/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-[10px] font-bold text-[#111111] block">
-                      Case Study Slide Deck Previews ({Array.isArray(cs.slides) ? cs.slides.length : 0} Slides)
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] font-bold text-[#111111] block">
+                        Case Study Slide Deck Previews ({Array.isArray(cs.slides) ? cs.slides.length : 0} Slides)
+                      </label>
+                      <span className="text-[9px] font-bold text-[#D99B00] bg-[#FCBF14]/15 border border-[#FCBF14]/40 px-1.5 py-0.2 rounded">
+                        Standard: 1920×1080 px (16:9)
+                      </span>
+                    </div>
                     <span className="text-[9px] text-[#726F6D]">
                       Select multiple images at once to upload to R2 and power the /examples carousel.
                     </span>

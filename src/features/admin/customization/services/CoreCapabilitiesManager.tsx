@@ -139,9 +139,14 @@ export const CoreCapabilitiesManager: React.FC<CoreCapabilitiesManagerProps> = (
                 {/* Before Image */}
                 <div className="bg-white p-3 rounded-xl border border-red-200">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-extrabold text-red-700 block">
-                      Raw Draft (Before Image)
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[11px] font-extrabold text-red-700 block">
+                        Raw Draft (Before Image)
+                      </label>
+                      <span className="text-[9px] font-bold text-red-700 bg-red-100/70 border border-red-300 px-1.5 py-0.2 rounded">
+                        1920×1080 (16:9)
+                      </span>
+                    </div>
                     <label className="cursor-pointer text-[9px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                       <UploadCloud size={11} /> {uploadingFieldKey === `svc_beforeImg_${serviceKey}` ? "Uploading..." : "Upload to R2"}
                       <input
@@ -174,9 +179,14 @@ export const CoreCapabilitiesManager: React.FC<CoreCapabilitiesManagerProps> = (
                 {/* After Image */}
                 <div className="bg-white p-3 rounded-xl border border-green-200">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-extrabold text-green-700 block">
-                      SlideBee Polish (After Image)
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[11px] font-extrabold text-green-700 block">
+                        SlideBee Polish (After Image)
+                      </label>
+                      <span className="text-[9px] font-bold text-green-700 bg-green-100/70 border border-green-300 px-1.5 py-0.2 rounded">
+                        1920×1080 (16:9)
+                      </span>
+                    </div>
                     <label className="cursor-pointer text-[9px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                       <UploadCloud size={11} /> {uploadingFieldKey === `svc_afterImg_${serviceKey}` ? "Uploading..." : "Upload to R2"}
                       <input
