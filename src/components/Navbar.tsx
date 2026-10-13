@@ -125,9 +125,9 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Homepage Attached Promotional Image Banner Strip (Option A - Full Bleed) */}
+      {/* Homepage Attached Promotional Image Banner Strip (Option 2 - Full Bleed 1920x50) */}
       {isHome && topBarConfig?.enabled !== false && (
-        <div className="w-full border-t border-white/10 overflow-hidden transition-all duration-300">
+        <div className="w-full border-t border-white/10 overflow-hidden transition-all duration-300 p-0 m-0 leading-none bg-transparent">
           {topBarConfig?.imageUrl ? (
             topBarConfig.ctaLink && topBarConfig.ctaLink !== "#" ? (
               <Link
@@ -140,20 +140,20 @@ export default function Navbar() {
                     if (el) el.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="w-full block transition-transform duration-200"
+                className="w-full block p-0 m-0 border-0 leading-none transition-transform duration-200"
               >
                 <img
                   src={topBarConfig.imageUrl}
                   alt="Promotional Banner"
-                  className="w-full h-11 sm:h-12 object-cover object-center block select-none rounded-none shadow-xs"
+                  className="w-full h-[48px] sm:h-[50px] object-cover object-center block select-none rounded-none border-0 p-0 m-0 shadow-xs"
                 />
               </Link>
             ) : (
-              <div className="w-full block">
+              <div className="w-full block p-0 m-0 border-0 leading-none">
                 <img
                   src={topBarConfig.imageUrl}
                   alt="Promotional Banner"
-                  className="w-full h-11 sm:h-12 object-cover object-center block select-none rounded-none shadow-xs"
+                  className="w-full h-[48px] sm:h-[50px] object-cover object-center block select-none rounded-none border-0 p-0 m-0 shadow-xs"
                 />
               </div>
             )

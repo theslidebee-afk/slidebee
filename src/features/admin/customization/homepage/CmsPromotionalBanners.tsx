@@ -174,7 +174,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               Promotional Graphic / Animated GIF (Cloudflare R2: <code className="text-[#FCBF14] font-mono">banners/promo/</code>)
             </label>
             <span className="text-[10px] text-[#FCBF14] font-mono font-bold">
-              Standard: 1920x48px (Full-width edge-to-edge strip)
+              Standard (Option 2): 1920x50px (Full-width edge-to-edge strip)
             </span>
           </div>
 
@@ -223,7 +223,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
           </div>
 
           <p className="text-[11px] text-gray-400 leading-relaxed">
-            Upload an edge-to-edge strip graphic (<span className="text-[#FCBF14] font-bold">1920×48 px</span> or animated <span className="text-[#FCBF14] font-bold">.GIF</span>). For optimal responsive display across all monitors, center key text/icons within the middle <span className="text-white font-bold">1200 px</span> and extend background color across full width. Uploaded directly to <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">banners/promo/</code>.
+            Upload an edge-to-edge strip graphic (<span className="text-[#FCBF14] font-bold">1920×50 px</span> or animated <span className="text-[#FCBF14] font-bold">.GIF</span>). For optimal responsive display across all monitors, center key text/icons within the middle <span className="text-white font-bold">1200 px</span> and extend background color across full width. Uploaded directly to <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">banners/promo/</code>.
           </p>
         </div>
       </div>
