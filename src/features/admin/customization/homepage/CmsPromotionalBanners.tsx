@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { RouteUrlSelector } from "../../shared/RouteUrlSelector";
-import { Sparkles, ArrowRight, UploadCloud, Trash2 } from "lucide-react";
+import { Sparkles, UploadCloud, Trash2 } from "lucide-react";
 import { uploadToR2 } from "../../../../lib/r2";
 
 interface CmsPromotionalBannersProps {
@@ -89,13 +89,13 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
         </button>
       </div>
 
-      {/* TOP ANNOUNCEMENT BAR (NAVBAR-SIZED STRIP) */}
+      {/* TOP ANNOUNCEMENT BAR: ATTACHED NAVBAR PROMOTIONAL BANNER */}
       <div className="bg-[#181818] text-white p-5 sm:p-6 rounded-2xl border-2 border-[#FCBF14]/40 space-y-4 shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-[#FCBF14]" />
             <h5 className="font-heading font-black text-xs text-[#FCBF14] uppercase tracking-wider">
-              Top Announcement Bar (Navbar-Sized Horizontal Strip)
+              Attached Navbar Promotional Banner (Homepage Only)
             </h5>
           </div>
 
@@ -125,7 +125,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               disabled={configSaving}
               className="hex-pill bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-black px-3.5 py-1.5 text-xs shadow cursor-pointer transition-all shrink-0"
             >
-              {configSaving ? "Saving..." : "Save Announcement Bar"}
+              {configSaving ? "Saving..." : "Save Attached Banner"}
             </button>
           </div>
         </div>
@@ -133,96 +133,38 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
         {/* Live Preview Strip */}
         <div>
           <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1.5">
-            Live Preview (Exact Navbar Profile):
+            Live Preview (Attached Directly Beneath Fixed Navbar):
           </span>
-          <div className="bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-full px-4 sm:px-6 py-2.5 shadow-md border border-[#FCBF14]/40 flex items-center justify-between gap-3 overflow-hidden select-none">
-            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              {topBar.imageUrl && (
-                <img
-                  src={topBar.imageUrl}
-                  alt="Promotion Graphic"
-                  className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
-                />
-              )}
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] font-black uppercase tracking-wider shrink-0">
-                <Sparkles size={11} />
-                <span>{topBar.badge || "STUDIO SPECIAL"}</span>
-              </span>
-              <span className="text-xs font-heading font-extrabold text-white truncate">
-                {topBar.title || "100+ Board-Ready Presentation Templates & Frameworks"}
-              </span>
-            </div>
-            <div className="shrink-0 flex items-center gap-1 text-[11px] font-black text-[#FCBF14]">
-              <span>{topBar.ctaText || "Explore Studio"}</span>
-              <ArrowRight size={12} />
-            </div>
+          <div className="w-full bg-[#161616] rounded-xl border border-white/10 py-2 px-4 flex items-center justify-center overflow-hidden select-none">
+            {topBar.imageUrl ? (
+              <img
+                src={topBar.imageUrl}
+                alt="Promotion Banner Preview"
+                className="max-h-11 w-auto max-w-full object-contain rounded select-none shadow-xs"
+              />
+            ) : (
+              <div className="h-8 w-full max-w-xl rounded-lg border border-dashed border-[#FCBF14]/40 bg-[#FCBF14]/5 flex items-center justify-center text-[#FCBF14] text-[11px] font-heading font-extrabold tracking-wider gap-2 select-none px-3">
+                <Sparkles size={12} className="text-[#FCBF14] shrink-0" />
+                <span className="truncate">SLIDEBEE EXECUTIVE PRESENTATION STUDIO &middot; CURATED TEMPLATES & BESPOKE DECKS</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Config Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-          <div>
-            <label className="text-[11px] font-bold text-gray-300 block mb-1">Badge Text</label>
-            <input
-              type="text"
-              value={topBar.badge || ""}
-              onChange={(e) =>
-                setSiteConfigs({
-                  ...siteConfigs,
-                  home_top_bar: { ...topBar, badge: e.target.value },
-                })
-              }
-              placeholder="STUDIO SPECIAL"
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="text-[11px] font-bold text-gray-300 block mb-1">Announcement Title</label>
-            <input
-              type="text"
-              value={topBar.title || ""}
-              onChange={(e) =>
-                setSiteConfigs({
-                  ...siteConfigs,
-                  home_top_bar: { ...topBar, title: e.target.value },
-                })
-              }
-              placeholder="100+ Board-Ready Presentation Templates & Frameworks"
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
-            />
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold text-gray-300 block mb-1">Button Label</label>
-            <input
-              type="text"
-              value={topBar.ctaText || ""}
-              onChange={(e) =>
-                setSiteConfigs({
-                  ...siteConfigs,
-                  home_top_bar: { ...topBar, ctaText: e.target.value },
-                })
-              }
-              placeholder="Explore Studio"
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-white placeholder:text-gray-400"
-            />
-          </div>
-
-          <div className="sm:col-span-2 lg:col-span-4">
-            <RouteUrlSelector
-              label="Button Destination Link"
-              value={topBar.ctaLink || "#templates"}
-              onChange={(url) =>
-                setSiteConfigs({
-                  ...siteConfigs,
-                  home_top_bar: { ...topBar, ctaLink: url },
-                })
-              }
-              placeholder="#templates"
-              dark
-            />
-          </div>
+        {/* Destination Link Selector */}
+        <div>
+          <RouteUrlSelector
+            label="Banner Destination Click Link"
+            value={topBar.ctaLink || "#templates"}
+            onChange={(url) =>
+              setSiteConfigs({
+                ...siteConfigs,
+                home_top_bar: { ...topBar, ctaLink: url },
+              })
+            }
+            placeholder="#templates"
+            dark
+          />
         </div>
 
         {/* Promotional Graphic / Animated GIF Uploader */}
@@ -232,7 +174,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               Promotional Graphic / Animated GIF (Cloudflare R2: <code className="text-[#FCBF14] font-mono">banners/promo/</code>)
             </label>
             <span className="text-[10px] text-gray-400 font-mono">
-              Recommended: 48x48px – 64x64px (Square Icon/GIF) or 120x36px (Badge)
+              Recommended: 48x48px – 64x64px (Icon/GIF), 120x36px (Badge), or 1720x48px (Strip)
             </span>
           </div>
 
@@ -246,7 +188,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
                   home_top_bar: { ...topBar, imageUrl: e.target.value },
                 })
               }
-              placeholder="https://... (or upload animated GIF / image below)"
+              placeholder="https://... (or upload animated GIF / image to R2 below)"
               className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-mono text-white placeholder:text-gray-400 focus:outline-none focus:border-[#FCBF14]"
             />
 
@@ -275,7 +217,7 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
                 title="Remove image"
               >
                 <Trash2 size={13} />
-                <span>Remove</span>
+                <span>Remove Image</span>
               </button>
             )}
           </div>

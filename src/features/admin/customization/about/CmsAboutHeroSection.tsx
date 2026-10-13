@@ -62,45 +62,6 @@ export const CmsAboutHeroSection: React.FC<CmsAboutHeroSectionProps> = ({
         </span>
       </div>
 
-      {/* Eyebrow & Breadcrumbs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-[11px] font-bold text-[#111111] block mb-1">
-            Eyebrow Label
-          </label>
-          <input
-            type="text"
-            value={aboutConfig.teamEyebrow ?? "OUR TEAM"}
-            onChange={(e) =>
-              setSiteConfigs({
-                ...siteConfigs,
-                about_cms: { ...aboutConfig, teamEyebrow: e.target.value },
-              })
-            }
-            placeholder="OUR TEAM"
-            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
-          />
-        </div>
-
-        <div>
-          <label className="text-[11px] font-bold text-[#111111] block mb-1">
-            Breadcrumbs Label
-          </label>
-          <input
-            type="text"
-            value={aboutConfig.heroBreadcrumb ?? "Home \u00BB About Us"}
-            onChange={(e) =>
-              setSiteConfigs({
-                ...siteConfigs,
-                about_cms: { ...aboutConfig, heroBreadcrumb: e.target.value },
-              })
-            }
-            placeholder="Home &gt;&gt; About Us"
-            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
-          />
-        </div>
-      </div>
-
       {/* Team Main Heading (Supports Line Breaks) */}
       <div>
         <label className="text-[11px] font-bold text-[#111111] block mb-1">

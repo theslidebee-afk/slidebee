@@ -1,17 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Infinity as InfinityIcon, Sparkles, ArrowRight } from "lucide-react";
+import { Zap, Infinity as InfinityIcon } from "lucide-react";
 
 interface HomeHeroBannersProps {
   isFilterActive: boolean;
-  homeTopBar?: {
-    enabled?: boolean;
-    badge?: string;
-    title?: string;
-    ctaText?: string;
-    ctaLink?: string;
-    imageUrl?: string;
-  };
   homeBanner1: {
     title?: string;
     subtitle?: string;
@@ -29,13 +21,10 @@ interface HomeHeroBannersProps {
 
 export function HomeHeroBanners({
   isFilterActive,
-  homeTopBar,
   homeBanner1,
   homeBanner2,
   scrollToTemplates,
 }: HomeHeroBannersProps) {
-  const showTopBar = homeTopBar?.enabled !== false;
-
   return (
     <motion.div
       animate={{
@@ -46,67 +35,6 @@ export function HomeHeroBanners({
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden w-full mx-auto relative z-20 text-left"
     >
-      {/* Sleek Navbar-Sized Promotional Bar */}
-      {showTopBar && (
-        <div className="mb-3 sm:mb-4">
-          {homeTopBar?.ctaLink && homeTopBar.ctaLink !== "#templates" && !homeTopBar.ctaLink.startsWith("#") ? (
-            <Link
-              to={homeTopBar.ctaLink}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 sm:py-3 shadow-md border border-[#FCBF14]/40 flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300 block"
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                {homeTopBar?.imageUrl && (
-                  <img
-                    src={homeTopBar.imageUrl}
-                    alt="Promotion Graphic"
-                    className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
-                  />
-                )}
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider shrink-0">
-                  <Sparkles size={12} />
-                  <span>{homeTopBar?.badge || "STUDIO SPECIAL"}</span>
-                </span>
-                <span className="text-xs sm:text-sm font-heading font-extrabold text-white truncate">
-                  {homeTopBar?.title || "100+ Board-Ready Presentation Templates & Frameworks"}
-                </span>
-              </div>
-              <div className="shrink-0 flex items-center gap-1.5 text-xs font-black text-[#FCBF14] group-hover:text-white transition-colors">
-                <span>{homeTopBar?.ctaText || "Explore Studio"}</span>
-                <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </Link>
-          ) : (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={scrollToTemplates}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 sm:py-3 shadow-md border border-[#FCBF14]/40 flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300"
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                {homeTopBar?.imageUrl && (
-                  <img
-                    src={homeTopBar.imageUrl}
-                    alt="Promotion Graphic"
-                    className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
-                  />
-                )}
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider shrink-0">
-                  <Sparkles size={12} />
-                  <span>{homeTopBar?.badge || "STUDIO SPECIAL"}</span>
-                </span>
-                <span className="text-xs sm:text-sm font-heading font-extrabold text-white truncate">
-                  {homeTopBar?.title || "100+ Board-Ready Presentation Templates & Frameworks"}
-                </span>
-              </div>
-              <div className="shrink-0 flex items-center gap-1.5 text-xs font-black text-[#FCBF14] group-hover:text-white transition-colors">
-                <span>{homeTopBar?.ctaText || "Explore Studio"}</span>
-                <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Two Split Promotional Banners */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pb-1">
         {/* Banner 1: Yellow - Create Presentations That Make an Impact */}

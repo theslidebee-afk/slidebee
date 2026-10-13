@@ -59,7 +59,6 @@ export default function Home() {
     pageSize,
     sortOption,
     setSortOption,
-    homeTopBar,
     homeBanner1,
     homeBanner2,
     testimonials,
@@ -173,7 +172,7 @@ export default function Home() {
       <section
         id="hero-stage"
         ref={heroRef}
-        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-14 transition-all duration-300"
+        className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden flex flex-col items-center justify-start bg-[#FFF9E8] pt-24 sm:pt-28 lg:pt-32 pb-10 sm:pb-14 transition-all duration-300"
       >
         {/* Total Hero Section Background Video */}
         <motion.div
@@ -192,18 +191,17 @@ export default function Home() {
           <div className="absolute inset-0 bg-[#FCBF14]/10 mix-blend-multiply pointer-events-none" />
         </motion.div>
 
-        {/* Seamless Bottom Gradient Feather into Templates Section */}
-        <div className="absolute bottom-0 left-0 right-0 h-44 sm:h-64 bg-gradient-to-b from-transparent via-[#FFF9E8]/70 to-[#FFF9E8] pointer-events-none z-10" />
+        {/* Warm Honey Amber Center/Bottom Vignette (Replaces milky white fog) */}
+        <div className="absolute bottom-0 left-0 right-0 h-44 sm:h-56 bg-[radial-gradient(ellipse_at_bottom,rgba(252,191,20,0.18)_0%,rgba(17,17,17,0.06)_50%,transparent_80%)] pointer-events-none z-10" />
 
         {/* Central Stage Container */}
         <motion.div
           style={{ y: heroCardY, opacity: heroCardOpacity }}
           className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
         >
-          {/* Hero Promotional Banners (Navbar-Sized Top Bar + Split Banners) */}
+          {/* Hero Promotional Banners (Split Banners) */}
           <HomeHeroBanners
             isFilterActive={isFilterActive}
-            homeTopBar={homeTopBar}
             homeBanner1={homeBanner1}
             homeBanner2={homeBanner2}
             scrollToTemplates={scrollToTemplates}

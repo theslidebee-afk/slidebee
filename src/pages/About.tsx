@@ -73,19 +73,15 @@ export default function About() {
       .catch(() => {});
   }, []);
 
-  const breadcrumbRaw = cfg.heroBreadcrumb || "Home \u00BB About Us";
-  const breadcrumbParts = breadcrumbRaw.split(/\s*(?:>>|\u00BB|>)\s*/);
-  const rootBreadcrumb = breadcrumbParts[0] || "Home";
-  const currentBreadcrumb = breadcrumbParts[1] || "About Us";
   const heroImageSrc = cfg.heroImage || DEFAULT_ABOUT_CONFIG.heroImage;
 
   return (
-    <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-20 sm:pt-24 pb-0">
+    <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-0 pb-0">
       
       {/* ========================================================================= */}
-      {/* HERO HEADER: ARCHITECTURAL FULL-BLEED MASTHEAD (Sharp Edges, rounded-none) */}
+      {/* HERO HEADER: FULL-PAGE ARCHITECTURAL MASTHEAD (min-h-screen, rounded-none) */}
       {/* ========================================================================= */}
-      <section className="relative w-full min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+      <section className="relative w-full min-h-screen overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         {/* Background Photographic Image Layer */}
         <img
           src={heroImageSrc}
@@ -99,42 +95,24 @@ export default function About() {
         {/* Ambient Warm Golden Center Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(252,191,20,0.22)_0%,transparent_70%)] pointer-events-none" />
 
-        {/* Centered Content: Breadcrumb, Eyebrow, Heading, Subtitle, CTA Button */}
-        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-5 sm:space-y-6">
-          {/* Breadcrumbs Navigation */}
-          <nav aria-label="Breadcrumb" className="inline-flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider text-[#FCBF14] drop-shadow">
-            <Link
-              to="/"
-              className="text-[#FCBF14] hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              {rootBreadcrumb}
-            </Link>
-            <span className="text-[#FCBF14]/70 font-bold select-none">&gt;&gt;</span>
-            <span className="text-white">
-              {currentBreadcrumb}
-            </span>
-          </nav>
-
-          <span className="text-xs font-black uppercase tracking-[0.25em] text-[#FCBF14] block">
-            {cfg.teamEyebrow || "OUR TEAM"}
-          </span>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-[60px] font-heading font-black text-white leading-[1.08] tracking-tight whitespace-pre-line mx-auto drop-shadow-md">
+        {/* Centered Overlaid Content: Heading, Subtitle, CTA Button */}
+        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-6 sm:space-y-8">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-white leading-[1.08] tracking-tight whitespace-pre-line mx-auto drop-shadow-xl max-w-4xl">
             {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
           </h1>
 
-          <p className="text-base sm:text-lg text-[#FFF9E8]/90 font-medium leading-relaxed max-w-2xl mx-auto drop-shadow-sm">
+          <p className="text-base sm:text-xl text-[#FFF9E8]/90 font-medium leading-relaxed max-w-2xl mx-auto drop-shadow-md">
             {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
           </p>
 
-          <div className="pt-2 flex justify-center">
+          <div className="pt-4 flex justify-center">
             <Link
               to={cfg.teamCtaLink || "/examples"}
               data-bee-state="hover"
-              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
+              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-extrabold text-base px-9 py-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
             >
               <span>{cfg.teamCtaText || "Meet Our Work"}</span>
-              <ArrowRight size={17} className="stroke-[2.5]" />
+              <ArrowRight size={18} className="stroke-[2.5]" />
             </Link>
           </div>
         </div>

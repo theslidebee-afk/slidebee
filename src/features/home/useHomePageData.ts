@@ -11,8 +11,8 @@ export function useHomePageData() {
   const { scrollY } = useScroll();
   const heroCardY = useTransform(scrollY, [0, 420], [0, -40]);
   const heroCardOpacity = useTransform(scrollY, [0, 360], [1, 0]);
-  const videoScale = useTransform(scrollY, [0, 480], [1, 0.94]);
-  const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.1]);
+  const videoScale = useTransform(scrollY, [0, 480], [1, 1.08]);
+  const videoOpacity = useTransform(scrollY, [0, 450], [1, 0.75]);
   const templatesSlideUpY = useTransform(scrollY, [0, 420], [0, -75]);
 
   // Filtering & Pagination State (exact 5x5 grid = 25 items per page)

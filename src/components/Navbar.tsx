@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, Sparkles } from "lucide-react";
 import clsx from "clsx";
 import SlideBeeLogo from "./SlideBeeLogo";
+import { d1 } from "../lib/d1";
 import {
   useNavbarAuth,
   DesktopNavLinks,
@@ -13,10 +14,39 @@ import {
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [topBarConfig, setTopBarConfig] = useState<{
+    enabled?: boolean;
+    imageUrl?: string;
+    ctaLink?: string;
+  } | null>(null);
 
   const { isAdmin, clientUser, userTier, handleLogoutAdmin } = useNavbarAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const isHome = location.pathname === "/" || location.pathname === "/home";
+
+  useEffect(() => {
+    d1.from("site_config")
+      .select("value")
+      .eq("key", "home_top_bar")
+      .single()
+      .then(({ data }) => {
+        if (data?.value) {
+          let val = data.value;
+          if (typeof val === "string") {
+            try { val = JSON.parse(val); } catch {}
+          }
+          if (typeof val === "string") {
+            try { val = JSON.parse(val); } catch {}
+          }
+          if (val && typeof val === "object") {
+            setTopBarConfig(val);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -89,6 +119,50 @@ export default function Navbar() {
           {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
         </button>
       </div>
+
+      {/* Homepage Attached Promotional Image Banner Strip (Option A) */}
+      {isHome && topBarConfig?.enabled !== false && (
+        <div className="w-full border-t border-white/10 bg-[#161616]/95 backdrop-blur-md transition-all duration-300">
+          <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-center relative">
+            {topBarConfig?.imageUrl ? (
+              topBarConfig.ctaLink && topBarConfig.ctaLink !== "#" ? (
+                <Link
+                  to={topBarConfig.ctaLink.startsWith("#") ? "/" : topBarConfig.ctaLink}
+                  onClick={(e) => {
+                    if (topBarConfig.ctaLink?.startsWith("#")) {
+                      e.preventDefault();
+                      const targetId = topBarConfig.ctaLink.replace("#", "");
+                      const el = document.getElementById(targetId);
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="block group max-h-11 sm:max-h-12 overflow-hidden transition-transform duration-200 hover:scale-[1.01]"
+                >
+                  <img
+                    src={topBarConfig.imageUrl}
+                    alt="Promotional Banner"
+                    className="max-h-11 sm:max-h-12 w-auto max-w-full object-contain rounded select-none shadow-xs"
+                  />
+                </Link>
+              ) : (
+                <div className="max-h-11 sm:max-h-12 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={topBarConfig.imageUrl}
+                    alt="Promotional Banner"
+                    className="max-h-11 sm:max-h-12 w-auto max-w-full object-contain rounded select-none shadow-xs"
+                  />
+                </div>
+              )
+            ) : (
+              /* High-End Branded Placeholder Graphic when no image is uploaded */
+              <div className="h-8 sm:h-9 w-full max-w-2xl rounded-lg border border-dashed border-[#FCBF14]/40 bg-[#FCBF14]/5 flex items-center justify-center text-[#FCBF14] text-[11px] sm:text-xs font-heading font-extrabold tracking-wider gap-2 select-none px-4">
+                <Sparkles size={13} className="text-[#FCBF14] shrink-0" />
+                <span className="truncate">SLIDEBEE EXECUTIVE PRESENTATION STUDIO &middot; CURATED TEMPLATES & BESPOKE DECKS</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mobile Menu Dropdown */}
       <MobileNavDrawer
