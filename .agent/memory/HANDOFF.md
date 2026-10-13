@@ -80,9 +80,12 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
 7. **Cover Aspect Ratio Optimization (Zero Slide Truncation)**: Replaced `aspect-[16/10]` containers across `HomeTemplateCard.tsx`, `DashboardWishlistTab.tsx`, `TemplatesGridView.tsx`, `TemplatePreviewsField.tsx`, and `CmsTrendingSelector.tsx` with standard `aspect-video` (16:9 widescreen ratio, 1.778). Eliminates slide clipping and ensures titles, logos, and margin data on standard presentation slides (1920x1080 / 2001x1125) are rendered 100% visible with zero horizontal or vertical truncation.
 8. **Native Microsoft PowerPoint Template (.potx) Deliverable Support**: Added `"potx"` to Cloudflare R2 security allowlist (`functions/api/r2/utils.ts`), R2 size validators and telemetry (`functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`), storage file explorer (`StorageBucketExplorer.tsx`, `StorageTemplatesTable.tsx`), admin uploaders (`PptxUploaderField.tsx`, `BulkAssetUploaderTab.tsx`, `bulkImportUtils.ts`), `isValidPptxUrl` (`src/lib/templates.ts`), `normalizeR2Url` (`src/lib/r2.ts`), and streaming download proxy dynamic MIME header dispatching (`functions/api/download.ts`).
 9. **Banner 3 Removal & Hero Stage Simplification**: Removed Banner 3 from `HomeHeroBanners.tsx` and `Home.tsx`, eliminated `homeBannerTop` state and fetches from `useHomePageData.ts`, and updated `CmsPromotionalBanners.tsx` in Admin Studio to configure and save only the two primary split banners.
+10. **Marketplace Toolbar Wishlist Trigger**: Added prominent Heart icon button with active red fill, dynamic count badge, and instantaneous catalog filtering without page reload in `HomeMarketplaceToolbar.tsx`.
+11. **About Page Overhaul & Section 1 Removal**: Streamlined `/about` by merging the "OUR TEAM" content (eyebrow, heading, narrative subtitle, and "Meet Our Work" gold CTA button) directly into the top full-bleed architectural dark duotone masthead with sharp edges (`rounded-none`). Removed the redundant Section 1 visual container (1400px image and yellow note) entirely. Updated Admin Studio CMS in `CmsAboutHeroSection.tsx` and `CmsAboutPanel.tsx`.
+12. **Navbar-Sized Promotional Banner with R2 GIF/Image Support**: Implemented sleek ~50px announcement bar in `HomeHeroBanners.tsx` matching SlideBee's navbar profile. Enabled native `.gif` format in Cloudflare R2 API allowlist and telemetry, preserving animated GIF frames without WebP compression. Added file uploader targeting `banners/promo/` in `CmsPromotionalBanners.tsx` with live preview and dimension guidelines.
 
 ## Next Steps
-- Run visual smoke tests on staging (`dev.slidebee.pages.dev`).
-- Monitor user analytics and template viewing flow.
+- Verify on live staging deployment (`dev.slidebee.pages.dev`).
+- Confirm client review feedback.
 
 

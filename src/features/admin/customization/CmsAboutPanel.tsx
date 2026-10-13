@@ -2,7 +2,6 @@ import React from "react";
 import { Save } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { CmsAboutHeroSection } from "./about/CmsAboutHeroSection";
-import { CmsAboutTeamSection } from "./about/CmsAboutTeamSection";
 import { CmsAboutVisionSection } from "./about/CmsAboutVisionSection";
 import { RouteUrlSelector } from "../shared/RouteUrlSelector";
 
@@ -31,15 +30,8 @@ export const CmsAboutPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* HEADER BANNER: ARCHITECTURAL MASTHEAD */}
+      {/* HEADER BANNER: ARCHITECTURAL OUR TEAM MASTHEAD */}
       <CmsAboutHeroSection
-        aboutConfig={aboutConfig}
-        siteConfigs={siteConfigs}
-        setSiteConfigs={setSiteConfigs}
-      />
-
-      {/* 1. OUR TEAM SECTION */}
-      <CmsAboutTeamSection
         aboutConfig={aboutConfig}
         siteConfigs={siteConfigs}
         setSiteConfigs={setSiteConfigs}

@@ -10,6 +10,7 @@ interface HomeHeroBannersProps {
     title?: string;
     ctaText?: string;
     ctaLink?: string;
+    imageUrl?: string;
   };
   homeBanner1: {
     title?: string;
@@ -54,6 +55,13 @@ export function HomeHeroBanners({
               className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 sm:py-3 shadow-md border border-[#FCBF14]/40 flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300 block"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
+                {homeTopBar?.imageUrl && (
+                  <img
+                    src={homeTopBar.imageUrl}
+                    alt="Promotion Graphic"
+                    className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
+                  />
+                )}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider shrink-0">
                   <Sparkles size={12} />
                   <span>{homeTopBar?.badge || "STUDIO SPECIAL"}</span>
@@ -75,6 +83,13 @@ export function HomeHeroBanners({
               className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 sm:py-3 shadow-md border border-[#FCBF14]/40 flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
+                {homeTopBar?.imageUrl && (
+                  <img
+                    src={homeTopBar.imageUrl}
+                    alt="Promotion Graphic"
+                    className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
+                  />
+                )}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider shrink-0">
                   <Sparkles size={12} />
                   <span>{homeTopBar?.badge || "STUDIO SPECIAL"}</span>

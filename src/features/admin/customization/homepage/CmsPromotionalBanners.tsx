@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { RouteUrlSelector } from "../../shared/RouteUrlSelector";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, UploadCloud, Trash2 } from "lucide-react";
+import { uploadToR2 } from "../../../../lib/r2";
 
 interface CmsPromotionalBannersProps {
   siteConfigs: any;
@@ -15,12 +16,34 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
   handleSaveConfig,
   configSaving,
 }) => {
+  const [uploadingTopBarImage, setUploadingTopBarImage] = useState(false);
+
   const topBar = siteConfigs["home_top_bar"] || {
     enabled: true,
     badge: "STUDIO SPECIAL",
     title: "100+ Board-Ready Presentation Templates & Frameworks",
     ctaText: "Explore Studio",
     ctaLink: "#templates",
+  };
+
+  const handleUploadTopBarImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingTopBarImage(true);
+    try {
+      const res = await uploadToR2(file, { folder: "banners/promo" });
+      if (res.success && res.publicUrl) {
+        setSiteConfigs({
+          ...siteConfigs,
+          home_top_bar: { ...topBar, imageUrl: res.publicUrl },
+        });
+      }
+    } catch (err) {
+      console.warn("Announcement banner image upload failed:", err);
+    } finally {
+      setUploadingTopBarImage(false);
+      if (e.target) e.target.value = "";
+    }
   };
 
   const handleSaveTopBar = async () => {
@@ -114,6 +137,13 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
           </span>
           <div className="bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-full px-4 sm:px-6 py-2.5 shadow-md border border-[#FCBF14]/40 flex items-center justify-between gap-3 overflow-hidden select-none">
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              {topBar.imageUrl && (
+                <img
+                  src={topBar.imageUrl}
+                  alt="Promotion Graphic"
+                  className="h-6 sm:h-7 w-auto max-w-[80px] object-contain rounded shrink-0 select-none"
+                />
+              )}
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] font-black uppercase tracking-wider shrink-0">
                 <Sparkles size={11} />
                 <span>{topBar.badge || "STUDIO SPECIAL"}</span>
@@ -193,6 +223,66 @@ export const CmsPromotionalBanners: React.FC<CmsPromotionalBannersProps> = ({
               dark
             />
           </div>
+        </div>
+
+        {/* Promotional Graphic / Animated GIF Uploader */}
+        <div className="pt-3 border-t border-white/10 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <label className="text-[11px] font-bold text-gray-300 block">
+              Promotional Graphic / Animated GIF (Cloudflare R2: <code className="text-[#FCBF14] font-mono">banners/promo/</code>)
+            </label>
+            <span className="text-[10px] text-gray-400 font-mono">
+              Recommended: 48x48px – 64x64px (Square Icon/GIF) or 120x36px (Badge)
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={topBar.imageUrl || ""}
+              onChange={(e) =>
+                setSiteConfigs({
+                  ...siteConfigs,
+                  home_top_bar: { ...topBar, imageUrl: e.target.value },
+                })
+              }
+              placeholder="https://... (or upload animated GIF / image below)"
+              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-mono text-white placeholder:text-gray-400 focus:outline-none focus:border-[#FCBF14]"
+            />
+
+            <label className="hex-pill-sm bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] text-xs font-black px-4 py-2 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow">
+              <UploadCloud size={14} />
+              <span>{uploadingTopBarImage ? "Uploading..." : "Upload Image / GIF to R2"}</span>
+              <input
+                type="file"
+                accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={handleUploadTopBarImage}
+                disabled={uploadingTopBarImage}
+                className="hidden"
+              />
+            </label>
+
+            {topBar.imageUrl && (
+              <button
+                type="button"
+                onClick={() =>
+                  setSiteConfigs({
+                    ...siteConfigs,
+                    home_top_bar: { ...topBar, imageUrl: "" },
+                  })
+                }
+                className="bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+                title="Remove image"
+              >
+                <Trash2 size={13} />
+                <span>Remove</span>
+              </button>
+            )}
+          </div>
+
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            Upload an animated <span className="text-[#FCBF14] font-bold">.GIF</span> or high-resolution graphic (<span className="text-gray-200">PNG, WEBP, SVG</span>). Files are stored directly in your Cloudflare R2 bucket under <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">banners/promo/</code>.
+          </p>
         </div>
       </div>
 

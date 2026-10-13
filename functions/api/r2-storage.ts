@@ -127,14 +127,14 @@ export async function onRequestPost(context: any) {
     const extMatch = fileKey.split(".").pop()?.toLowerCase();
     if (!extMatch || !ALLOWED_EXTENSIONS.has(extMatch)) {
       return new Response(
-        JSON.stringify({ success: false, error: `Zero-Cost & Security Policy: Disallowed file extension '.${extMatch}'. Permitted formats: pptx, ppt, png, jpg, jpeg, webp, pdf, svg.` }),
+        JSON.stringify({ success: false, error: `Zero-Cost & Security Policy: Disallowed file extension '.${extMatch}'. Permitted formats: pptx, potx, ppt, png, jpg, jpeg, webp, gif, pdf, svg.` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const fileSize = fileBuffer.byteLength;
     const isPptx = fileKey.endsWith(".pptx") || fileKey.endsWith(".potx") || fileKey.endsWith(".ppt");
-    const isImg = Boolean(fileKey.match(/\.(jpg|jpeg|png|webp|svg)$/i));
+    const isImg = Boolean(fileKey.match(/\.(jpg|jpeg|png|webp|svg|gif)$/i));
     const sizeLimit = isPptx ? MAX_PPTX_FILE_SIZE : (isImg ? MAX_IMAGE_FILE_SIZE : MAX_GENERIC_FILE_SIZE);
     const limitLabel = isPptx ? "50 MB (PPTX/POTX presentation)" : "10 MB (image)";
 

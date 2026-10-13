@@ -69,6 +69,10 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
   - 5x5 Grid & Page View Pagination: Set `pageSize = 25` in `useHomePageData.ts` and 5-column grid across desktop/laptop in `HomeTemplateGrid.tsx`, with `HomePagePagination` controls.
   - Template Detail Page Reorganization: Moved description paragraph, "What Is Included in This Deck" checklist, and technical specifications (`TemplateSpecs`) to the left column beneath `TemplateSlideViewer` in `TemplateDetail.tsx`; removed star rating from `TemplateActionPanel.tsx`.
 
+- **Wishlist Heart Filter in Marketplace Toolbar**: Added prominent, dedicated Heart icon button with active red fill and live count badge directly on `HomeMarketplaceToolbar.tsx` right above the 5x5 template grid, enabling one-click instant wishlist filtering without page reload on both desktop and mobile viewports.
+- **About Page Overhaul & Section 1 Removal**: Streamlined `/about` by merging the "OUR TEAM" content (eyebrow, heading, narrative subtitle, and "Meet Our Work" gold CTA button) directly into the top full-bleed architectural dark duotone masthead with sharp edges (`rounded-none`). Completely removed the redundant Section 1 visual container (1400px team image and tilted yellow note), allowing the page to flow seamlessly into Section 2 ("OUR VISION"). Aligned Admin Studio CMS in `CmsAboutHeroSection.tsx` and `CmsAboutPanel.tsx`.
+- **Navbar-Sized Promotional Announcement Banner with R2 GIF/Image Support**: Implemented sleek ~50px announcement bar in `HomeHeroBanners.tsx` matching SlideBee's executive navbar profile. Added native `.gif` format support to Cloudflare R2 API allowlist (`functions/api/r2/utils.ts`, `functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`, `src/lib/r2.ts`), ensuring animated GIF frames are preserved without conversion loss. Added live file uploader targeting `banners/promo/` in `CmsPromotionalBanners.tsx` with live preview and dimension guidelines (48x48px–64x64px square icon/GIF, 120x36px badge).
+
 ---
 
 ## 3. In-Progress Features

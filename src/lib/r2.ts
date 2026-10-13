@@ -336,7 +336,8 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
     url.includes("/portfolio/slides/") ||
     url.includes("/portfolio/") ||
     url.includes("/use_cases/") ||
-    url.includes("/logos/")
+    url.includes("/logos/") ||
+    url.includes("/banners/")
   ) {
     return url;
   }
@@ -373,7 +374,8 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
     url.startsWith("use_cases/") ||
     url.startsWith("logos/") ||
     url.startsWith("marquee/") ||
-    url.startsWith("templates/")
+    url.startsWith("templates/") ||
+    url.startsWith("banners/")
   ) {
     return `${R2_PUBLIC_BASE_URL}/${url}`;
   }

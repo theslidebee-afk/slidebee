@@ -85,11 +85,11 @@ export default function About() {
       {/* ========================================================================= */}
       {/* HERO HEADER: ARCHITECTURAL FULL-BLEED MASTHEAD (Sharp Edges, rounded-none) */}
       {/* ========================================================================= */}
-      <section className="relative w-full min-h-[340px] sm:min-h-[420px] lg:min-h-[460px] overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+      <section className="relative w-full min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
         {/* Background Photographic Image Layer */}
         <img
           src={heroImageSrc}
-          alt={cfg.heroTitle || "About Us"}
+          alt={cfg.teamHeading?.replace(/\n/g, " ") || "SlideBee Team"}
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
 
@@ -99,18 +99,10 @@ export default function About() {
         {/* Ambient Warm Golden Center Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(252,191,20,0.22)_0%,transparent_70%)] pointer-events-none" />
 
-        {/* Centered Content: Title, Subtitle, Breadcrumb */}
-        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-4 sm:space-y-5">
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-white tracking-tight leading-none drop-shadow-md">
-            {cfg.heroTitle || "About Us"}
-          </h1>
-
-          <p className="text-sm sm:text-base lg:text-lg text-[#FFF9E8]/90 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
-            {cfg.heroSubtitle || "Crafting high-impact executive presentation systems and bespoke presentation decks for visionary founders and global leaders."}
-          </p>
-
+        {/* Centered Content: Breadcrumb, Eyebrow, Heading, Subtitle, CTA Button */}
+        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-5 sm:space-y-6">
           {/* Breadcrumbs Navigation */}
-          <nav aria-label="Breadcrumb" className="inline-flex items-center gap-2 pt-2 text-xs sm:text-sm font-black uppercase tracking-wider text-[#FCBF14] drop-shadow">
+          <nav aria-label="Breadcrumb" className="inline-flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider text-[#FCBF14] drop-shadow">
             <Link
               to="/"
               className="text-[#FCBF14] hover:text-white transition-colors duration-200 cursor-pointer"
@@ -122,68 +114,28 @@ export default function About() {
               {currentBreadcrumb}
             </span>
           </nav>
-        </div>
-      </section>
 
-      {/* ========================================================================= */}
-      {/* 1. OUR TEAM SECTION                                                       */}
-      {/* ========================================================================= */}
-      <section className="w-full px-4 sm:px-6 lg:px-8 py-16 sm:py-20 flex flex-col items-center text-center">
-        <div className="max-w-4xl space-y-6 mb-12">
-          <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
+          <span className="text-xs font-black uppercase tracking-[0.25em] text-[#FCBF14] block">
             {cfg.teamEyebrow || "OUR TEAM"}
           </span>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line mx-auto">
+          <h1 className="text-4xl sm:text-5xl lg:text-[60px] font-heading font-black text-white leading-[1.08] tracking-tight whitespace-pre-line mx-auto drop-shadow-md">
             {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
-          </h2>
+          </h1>
 
-          <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-[#FFF9E8]/90 font-medium leading-relaxed max-w-2xl mx-auto drop-shadow-sm">
             {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
           </p>
 
-          <div className="pt-4 flex justify-center">
+          <div className="pt-2 flex justify-center">
             <Link
               to={cfg.teamCtaLink || "/examples"}
               data-bee-state="hover"
-              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-sm hover:scale-105 active:scale-95 transition-all"
+              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-bold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
             >
               <span>{cfg.teamCtaText || "Meet Our Work"}</span>
               <ArrowRight size={17} className="stroke-[2.5]" />
             </Link>
-          </div>
-        </div>
-
-        {/* Full-Bleed Visual Stage */}
-        <div className="w-full max-w-[1400px] relative flex justify-center">
-          <div className="relative w-full h-[400px] sm:h-[500px] lg:h-[700px]">
-            {/* Full-bleed Visual Container */}
-            <div className="relative w-full h-full rounded-3xl sm:rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.12)] bg-[#F5F5F5]">
-              <img
-                src={cfg.teamImage || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=85"}
-                alt="SlideBee Presentation Design Team"
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </div>
-
-            {/* Yellow Sticky Note with Radiating Accent Lines */}
-            <div className="absolute -top-6 right-4 sm:-top-8 sm:right-12 z-20 flex items-start gap-2">
-              
-              {/* 3 Radiating Sketched Tick Lines to the left */}
-              <svg className="w-6 h-8 text-[#111111] mt-2 shrink-0 select-none" viewBox="0 0 24 32" fill="none">
-                <path d="M22 6L4 12" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                <path d="M22 16L2 16" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-                <path d="M22 26L4 20" stroke="#111111" strokeWidth="2.8" strokeLinecap="round" />
-              </svg>
-
-              {/* Tilted Sticky Note */}
-              <div className="bg-[#FFD028] text-[#111111] px-5 py-4 sm:px-6 sm:py-5 rounded-lg shadow-[0_12px_30px_rgba(0,0,0,0.18)] rotate-[-4deg] hover:rotate-0 transition-transform duration-300 border border-[#E5AC0E]/30">
-                <p className="font-heading font-extrabold text-sm sm:text-base leading-snug tracking-tight text-center whitespace-pre-line">
-                  {cfg.teamNote || "Different\nPerspectives\nBetter Slides"}
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </section>

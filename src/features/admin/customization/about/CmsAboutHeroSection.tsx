@@ -54,30 +54,30 @@ export const CmsAboutHeroSection: React.FC<CmsAboutHeroSectionProps> = ({
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#FCBF14]" />
           <h4 className="font-heading font-extrabold text-xs text-[#111111] uppercase tracking-wider">
-            Header Banner: Architectural Masthead (/about)
+            Hero: Our Team Architectural Masthead (/about)
           </h4>
         </div>
         <span className="text-[10px] font-bold text-[#726F6D] uppercase tracking-wider">
-          Full-Bleed Top Banner
+          Dark Duotone Full-Bleed
         </span>
       </div>
 
-      {/* Hero Headline & Breadcrumb */}
+      {/* Eyebrow & Breadcrumbs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-[11px] font-bold text-[#111111] block mb-1">
-            Main Headline
+            Eyebrow Label
           </label>
           <input
             type="text"
-            value={aboutConfig.heroTitle ?? "About Us"}
+            value={aboutConfig.teamEyebrow ?? "OUR TEAM"}
             onChange={(e) =>
               setSiteConfigs({
                 ...siteConfigs,
-                about_cms: { ...aboutConfig, heroTitle: e.target.value },
+                about_cms: { ...aboutConfig, teamEyebrow: e.target.value },
               })
             }
-            placeholder="About Us"
+            placeholder="OUR TEAM"
             className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
           />
         </div>
@@ -101,26 +101,89 @@ export const CmsAboutHeroSection: React.FC<CmsAboutHeroSectionProps> = ({
         </div>
       </div>
 
-      {/* Subtitle / Lead Narrative */}
+      {/* Team Main Heading (Supports Line Breaks) */}
       <div>
         <label className="text-[11px] font-bold text-[#111111] block mb-1">
-          Subtitle / Lead Narrative
+          Hero Main Heading (Supports Line Breaks)
         </label>
         <textarea
           rows={2}
           value={
-            aboutConfig.heroSubtitle ??
-            "Crafting high-impact executive presentation systems and bespoke presentation decks for visionary founders and global leaders."
+            aboutConfig.teamHeading ??
+            aboutConfig.heroTitle ??
+            "A Specialized\nPresentation\nDesign Team."
           }
           onChange={(e) =>
             setSiteConfigs({
               ...siteConfigs,
-              about_cms: { ...aboutConfig, heroSubtitle: e.target.value },
+              about_cms: { ...aboutConfig, teamHeading: e.target.value },
             })
           }
-          placeholder="Narrative description text under headline..."
+          placeholder="A Specialized&#10;Presentation&#10;Design Team."
+          className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs font-bold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
+        />
+      </div>
+
+      {/* Subtitle / Lead Narrative */}
+      <div>
+        <label className="text-[11px] font-bold text-[#111111] block mb-1">
+          Hero Subtitle / Team Narrative
+        </label>
+        <textarea
+          rows={2}
+          value={
+            aboutConfig.teamSubtitle ??
+            aboutConfig.heroSubtitle ??
+            "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."
+          }
+          onChange={(e) =>
+            setSiteConfigs({
+              ...siteConfigs,
+              about_cms: { ...aboutConfig, teamSubtitle: e.target.value },
+            })
+          }
+          placeholder="Slidebee is powered by a team of presentation designers..."
           className="w-full bg-white border border-[#111111]/15 rounded-lg p-2.5 text-xs font-medium text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
         />
+      </div>
+
+      {/* Hero CTA Button Label & Link */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] font-bold text-[#111111] block mb-1">
+            CTA Button Label
+          </label>
+          <input
+            type="text"
+            value={aboutConfig.teamCtaText ?? "Meet Our Work"}
+            onChange={(e) =>
+              setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, teamCtaText: e.target.value },
+              })
+            }
+            placeholder="Meet Our Work"
+            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-bold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
+          />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-bold text-[#111111] block mb-1">
+            CTA Button Destination Link
+          </label>
+          <input
+            type="text"
+            value={aboutConfig.teamCtaLink ?? "/examples"}
+            onChange={(e) =>
+              setSiteConfigs({
+                ...siteConfigs,
+                about_cms: { ...aboutConfig, teamCtaLink: e.target.value },
+              })
+            }
+            placeholder="/examples"
+            className="w-full bg-white border border-[#111111]/15 rounded-lg px-3 py-1.5 text-xs font-medium text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-primary"
+          />
+        </div>
       </div>
 
       {/* Color Overlay Theme Palette */}

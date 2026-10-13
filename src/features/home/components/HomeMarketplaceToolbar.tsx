@@ -160,13 +160,13 @@ export const HomeMarketplaceToolbar: React.FC<HomeMarketplaceToolbarProps> = ({
           className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
             isWishlistActive
               ? "bg-red-500 text-white border-red-500 shadow-sm"
-              : "bg-[#FFF9E8] text-[#555250] hover:text-red-500 border-[#FCBF14]/30 hover:border-red-300"
+              : "bg-[#FFF9E8] text-[#555250] hover:text-red-600 border-[#FCBF14]/30 hover:border-red-300"
           }`}
           title="Filter by Saved Wishlist"
         >
           <Heart
-            size={13}
-            className={isWishlistActive ? "fill-white text-white" : "text-red-500 fill-red-500/20"}
+            size={14}
+            className={isWishlistActive ? "fill-white text-white stroke-[2.5]" : "text-red-500 fill-red-500/25 stroke-[2.2]"}
           />
           <span>Wishlist</span>
           {wishlistCount > 0 && (
