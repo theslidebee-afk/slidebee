@@ -83,13 +83,18 @@ export default function Navbar() {
   return (
     <header
       className={clsx(
-        "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b border-white/10",
         isScrolled
-          ? "bg-[#111111]/95 backdrop-blur-md shadow-xl border-b border-white/10 py-3.5"
-          : "bg-[#111111]/90 backdrop-blur-sm py-4 border-b border-white/10"
+          ? "bg-[#111111]/95 backdrop-blur-md shadow-xl"
+          : "bg-[#111111]/90 backdrop-blur-sm"
       )}
     >
-      <div className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between">
+      <div
+        className={clsx(
+          "w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between transition-all duration-300",
+          isScrolled ? "py-3 sm:py-3.5" : "py-3.5 sm:py-4"
+        )}
+      >
         {/* Logo */}
         <a
           href="#/"
@@ -140,7 +145,7 @@ export default function Navbar() {
                 <img
                   src={topBarConfig.imageUrl}
                   alt="Promotional Banner"
-                  className="w-full h-11 sm:h-12 md:h-13 object-cover object-center block select-none rounded-none shadow-xs"
+                  className="w-full h-11 sm:h-12 object-cover object-center block select-none rounded-none shadow-xs"
                 />
               </Link>
             ) : (
@@ -148,7 +153,7 @@ export default function Navbar() {
                 <img
                   src={topBarConfig.imageUrl}
                   alt="Promotional Banner"
-                  className="w-full h-11 sm:h-12 md:h-13 object-cover object-center block select-none rounded-none shadow-xs"
+                  className="w-full h-11 sm:h-12 object-cover object-center block select-none rounded-none shadow-xs"
                 />
               </div>
             )
