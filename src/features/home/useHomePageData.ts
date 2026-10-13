@@ -120,6 +120,13 @@ export function useHomePageData() {
       "At Slidebee, we help businesses, professionals, and creators turn ideas into clear, engaging, and beautiful presentations that make an impact.",
   });
   const [curatedTrendingIds, setCuratedTrendingIds] = useState<string[]>([]);
+  const [homeTopBar, setHomeTopBar] = useState<any>({
+    enabled: true,
+    badge: "STUDIO SPECIAL",
+    title: "100+ Board-Ready Presentation Templates & Frameworks",
+    ctaText: "Explore Studio",
+    ctaLink: "#templates",
+  });
   const [homeBanner1, setHomeBanner1] = useState<any>({
     title: "Create Presentations That Make an Impact",
     subtitle: "Turn your ideas into amazing slides.",
@@ -165,7 +172,7 @@ export function useHomePageData() {
 
     d1.from("site_config")
       .select("*")
-      .in("key", ["hero", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
+      .in("key", ["hero", "home_top_bar", "home_banner_1", "home_banner_2", "trending_templates", "featured_templates"])
       .then(({ data }: { data: any }) => {
         if (data && Array.isArray(data)) {
           data.forEach((row: any) => {
@@ -180,6 +187,9 @@ export function useHomePageData() {
 
             if (row.key === "hero") {
               setHeroConfig((prev: any) => ({ ...prev, ...val }));
+            }
+            if (row.key === "home_top_bar") {
+              setHomeTopBar((prev: any) => ({ ...prev, ...val }));
             }
             if (row.key === "home_banner_1") {
               setHomeBanner1((prev: any) => ({ ...prev, ...val }));
@@ -263,6 +273,7 @@ export function useHomePageData() {
     pageSize,
     sortOption,
     setSortOption,
+    homeTopBar,
     homeBanner1,
     homeBanner2,
     testimonials,
