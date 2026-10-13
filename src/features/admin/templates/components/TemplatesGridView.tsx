@@ -26,7 +26,7 @@ export const TemplatesGridView: React.FC<TemplatesGridViewProps> = ({
           key={tpl.id}
           className="hex-card bg-white border border-[#111111]/10 overflow-hidden shadow-sm flex flex-col justify-between"
         >
-          <div className="aspect-[16/10] bg-[#111111] overflow-hidden">
+          <div className="aspect-video bg-[#111111] overflow-hidden">
             <img
               src={normalizeR2Url(tpl.image_url || tpl.thumbnail_url || "/portfolio/case_study_a_1.png")}
               alt={tpl.title}
@@ -60,7 +60,7 @@ export const TemplatesGridView: React.FC<TemplatesGridViewProps> = ({
 
             <div className="flex items-center gap-1.5 pt-2 border-t border-[#111111]/8 mb-2 text-[11px] font-bold text-[#111111]">
               <FileText size={13} className="text-primary-amber" />
-              <span>Deliverable: Master PowerPoint (.pptx)</span>
+              <span>Deliverable: Master PowerPoint (.pptx / .potx)</span>
             </div>
 
             <div className="bg-[#FFF9E8] border border-primary/30 rounded-lg p-2.5 mb-3 space-y-1.5">

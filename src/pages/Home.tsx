@@ -59,7 +59,6 @@ export default function Home() {
     pageSize,
     sortOption,
     setSortOption,
-    homeBannerTop,
     homeBanner1,
     homeBanner2,
     testimonials,
@@ -200,10 +199,9 @@ export default function Home() {
           style={{ y: heroCardY, opacity: heroCardOpacity }}
           className="w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center"
         >
-          {/* Top Promotion Banners (3rd Banner + Split Banners) */}
+          {/* Split Promotional Banners */}
           <HomeHeroBanners
             isFilterActive={isFilterActive}
-            homeBannerTop={homeBannerTop}
             homeBanner1={homeBanner1}
             homeBanner2={homeBanner2}
             scrollToTemplates={scrollToTemplates}

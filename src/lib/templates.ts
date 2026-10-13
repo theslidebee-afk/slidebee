@@ -20,9 +20,11 @@ export function isValidPptxUrl(url?: string | null): boolean {
   // Check valid presentation extensions
   return (
     clean.endsWith(".pptx") ||
+    clean.endsWith(".potx") ||
     clean.endsWith(".ppt") ||
     clean.endsWith(".zip") ||
     clean.includes(".pptx?") ||
+    clean.includes(".potx?") ||
     clean.includes(".ppt?") ||
     clean.includes(".zip?") ||
     clean.includes("/templates/decks/")

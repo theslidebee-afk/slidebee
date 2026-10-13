@@ -16,7 +16,7 @@ export const StorageTemplatesTable: React.FC<StorageTemplatesTableProps> = ({
         <div>
           <h3 className="text-base font-heading font-extrabold text-[#111111] flex items-center gap-2">
             <ShoppingBag size={18} className="text-primary-amber" />
-            <span>Storefront Templates & Master PPTX Inventory (Database Audit)</span>
+            <span>Storefront Templates & Master PPTX / POTX Inventory (Database Audit)</span>
           </h3>
           <p className="text-xs text-[#726F6D]">
             Cross-referenced with live D1 database. All presentation deliverables & previews are hosted on Cloudflare R2 CDN.
@@ -32,7 +32,7 @@ export const StorageTemplatesTable: React.FC<StorageTemplatesTableProps> = ({
           <thead className="bg-[#FFF9E8] text-[#726F6D] font-extrabold text-[10px] uppercase tracking-wider border-b border-[#111111]/8">
             <tr>
               <th className="px-5 py-3">Template / SKU</th>
-              <th className="px-5 py-3">Master PPTX Deliverable</th>
+              <th className="px-5 py-3">Master Presentation (.pptx / .potx)</th>
               <th className="px-5 py-3">Slide Previews</th>
               <th className="px-5 py-3">Pricing & Access</th>
               <th className="px-5 py-3 text-right">Actions</th>

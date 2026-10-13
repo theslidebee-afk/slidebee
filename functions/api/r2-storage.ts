@@ -133,10 +133,10 @@ export async function onRequestPost(context: any) {
     }
 
     const fileSize = fileBuffer.byteLength;
-    const isPptx = fileKey.endsWith(".pptx") || fileKey.endsWith(".ppt");
+    const isPptx = fileKey.endsWith(".pptx") || fileKey.endsWith(".potx") || fileKey.endsWith(".ppt");
     const isImg = Boolean(fileKey.match(/\.(jpg|jpeg|png|webp|svg)$/i));
     const sizeLimit = isPptx ? MAX_PPTX_FILE_SIZE : (isImg ? MAX_IMAGE_FILE_SIZE : MAX_GENERIC_FILE_SIZE);
-    const limitLabel = isPptx ? "50 MB (PPTX presentation)" : "10 MB (image)";
+    const limitLabel = isPptx ? "50 MB (PPTX/POTX presentation)" : "10 MB (image)";
 
     // 1. Enforce individual file size cap
     if (fileSize > sizeLimit) {

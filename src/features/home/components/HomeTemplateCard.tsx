@@ -52,7 +52,7 @@ export function HomeTemplateCard({ template }: HomeTemplateCardProps) {
 
         {/* Top: Single High-Res Cover Slide Preview */}
         <div>
-          <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-2xs">
+          <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-white border border-[#111111]/6 shadow-2xs">
             <img
               src={coverImg}
               alt={template.title}

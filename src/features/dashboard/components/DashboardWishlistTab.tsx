@@ -107,7 +107,7 @@ export function DashboardWishlistTab({ isProUser: _isProUser = false }: Dashboar
 
                 <div>
                   {/* Thumbnail */}
-                  <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#F3F4F6] border border-[#111111]/6">
+                  <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-[#F3F4F6] border border-[#111111]/6">
                     <img
                       src={coverImg}
                       alt={template.title}

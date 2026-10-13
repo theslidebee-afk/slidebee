@@ -34,7 +34,7 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const isPpt = file.name.endsWith(".pptx") || file.name.endsWith(".ppt");
+        const isPpt = file.name.endsWith(".pptx") || file.name.endsWith(".potx") || file.name.endsWith(".ppt");
         const folder = isPpt ? "templates/decks" : "templates/slides";
         const sizeKB = (file.size / 1024).toFixed(1);
         const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
@@ -84,7 +84,7 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
         <strong className="text-primary-amber block mb-1">
           Two-Step Cloudflare R2 Ingest Pipeline:
         </strong>
-        Upload your Master PowerPoint (.pptx) decks and full slide preview images (.jpg/.png) here first.
+        Upload your Master PowerPoint (.pptx / .potx) decks and full slide preview images (.jpg/.png/.webp) here first.
         We host them immediately on high-speed Cloudflare R2 CDN, letting you copy public CDN URLs directly into your spreadsheet columns.
       </div>
 
@@ -93,7 +93,7 @@ export const BulkAssetUploaderTab: React.FC<BulkAssetUploaderTabProps> = ({
           type="file"
           id="bulk-assets-input"
           multiple
-          accept=".pptx,.ppt,.jpg,.jpeg,.png,.webp"
+          accept=".pptx,.potx,.ppt,.jpg,.jpeg,.png,.webp"
           onChange={handleUploadAssets}
           className="hidden"
           disabled={isUploadingBulkAssets}

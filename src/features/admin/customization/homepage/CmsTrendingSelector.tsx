@@ -149,7 +149,7 @@ export const CmsTrendingSelector: React.FC<CmsTrendingSelectorProps> = ({
                 }`}
               >
                 <div>
-                  <div className="relative aspect-[16/10] overflow-hidden bg-black/5 border-b border-[#111111]/10">
+                  <div className="relative aspect-video overflow-hidden bg-black/5 border-b border-[#111111]/10">
                     <img
                       src={previewImg}
                       alt={tmpl.title}

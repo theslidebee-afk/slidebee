@@ -82,3 +82,14 @@
   4. Adjusted pagination `pageSize` to 30 items per page (evenly divisible by 2, 3, 5, and 6), ensuring perfectly full rows with zero hanging cards across mobile, tablet, laptop, and desktop viewports.
 - **Verification**: `npm run build` exits with code 0; `npm test` passes 17/17; zero unicode emojis across all files.
 
+---
+
+## TASK-013: Cover Aspect Ratio Fix (16:9), Native .potx Support & Banner 3 Removal
+- **Completed**: October 2026
+- **Summary**:
+  1. Cover Aspect Ratio Optimization: Replaced container `aspect-[16/10]` across `HomeTemplateCard.tsx`, `DashboardWishlistTab.tsx`, `TemplatesGridView.tsx`, `TemplatePreviewsField.tsx`, and `CmsTrendingSelector.tsx` with standard `aspect-video` (16:9 widescreen ratio, 1.778), preventing edge clipping on 1920x1080 and 2001x1125 presentation slides.
+  2. Native Microsoft PowerPoint Template (.potx) Deliverable Support: Added `"potx"` to Cloudflare R2 security allowlist (`functions/api/r2/utils.ts`), R2 size validators and telemetry (`functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`), storage file explorer (`StorageBucketExplorer.tsx`, `StorageTemplatesTable.tsx`), admin uploaders (`PptxUploaderField.tsx`, `BulkAssetUploaderTab.tsx`, `bulkImportUtils.ts`), `isValidPptxUrl` (`src/lib/templates.ts`), `normalizeR2Url` (`src/lib/r2.ts`), and streaming download proxy dynamic MIME header dispatching (`functions/api/download.ts`).
+  3. Banner 3 Removal & Hero Stage Simplification: Removed Banner 3 from `HomeHeroBanners.tsx` and `Home.tsx`, eliminated `homeBannerTop` state and fetches from `useHomePageData.ts`, and updated `CmsPromotionalBanners.tsx` in Admin Studio to configure and save only the two primary split banners.
+- **Verification**: `npm run build` exits with code 0; `npm test` passes 17/17; zero unicode emojis across all modified files.
+
+

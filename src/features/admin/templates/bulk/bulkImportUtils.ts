@@ -272,7 +272,7 @@ export function parseAndValidateCsv(
         code: rawCode || "—",
         title: rawTitle,
         field: "pptx_file_url",
-        issue: "Master PowerPoint file (.pptx) URL is missing. Every template requires an attached PPTX deck.",
+        issue: "Master PowerPoint file (.pptx / .potx) URL is missing. Every template requires an attached PPTX/POTX deck.",
       });
     } else if (rawDownload.endsWith(".jpg") || rawDownload.endsWith(".jpeg") || rawDownload.endsWith(".png") || rawDownload.endsWith(".webp")) {
       errors.push({
@@ -280,13 +280,15 @@ export function parseAndValidateCsv(
         code: rawCode || "—",
         title: rawTitle,
         field: "pptx_file_url",
-        issue: `Cannot use a preview image ("${rawDownload}") as the Master PPTX deliverable. Must be a .pptx file.`,
+        issue: `Cannot use a preview image ("${rawDownload}") as the Master presentation deliverable. Must be a .pptx or .potx file.`,
       });
     }
 
+    const isPotx = rawDownload?.toLowerCase().endsWith(".potx");
+    const defaultExt = isPotx ? "potx" : "pptx";
     const download_url = rawDownload
       ? convertGoogleDriveUrl(rawDownload, false)
-      : `${R2_PUBLIC_BASE_URL}/templates/decks/${code.toLowerCase()}.pptx`;
+      : `${R2_PUBLIC_BASE_URL}/templates/decks/${code.toLowerCase()}.${defaultExt}`;
     const is_credit_eligible = isFreeTier
       ? 0
       : (creditEligibleIdx !== -1

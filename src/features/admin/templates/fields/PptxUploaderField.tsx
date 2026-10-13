@@ -28,21 +28,21 @@ export const PptxUploaderField: React.FC<PptxUploaderFieldProps> = ({
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
             <HardDrive size={13} className="text-primary-amber" />
-            <span>Master PPTX Deliverable</span>
+            <span>Master PowerPoint Deliverable (.pptx / .potx)</span>
           </label>
         </div>
         <p className="text-[10px] text-[#726F6D]">
-          The Master PowerPoint (.pptx) file buyers receive upon checkout or instant download.
+          The Master PowerPoint presentation (.pptx) or template (.potx) file buyers receive upon checkout or instant download.
         </p>
       </div>
 
       <div className="bg-white p-3 rounded-lg border border-[#111111]/10 space-y-2">
         <label className="rounded-lg bg-[#111111] hover:bg-black text-white hover:text-primary font-bold px-3 py-2 text-xs inline-flex items-center gap-2 cursor-pointer shadow-sm w-full justify-center transition-transform hover:scale-[1.01]">
           <HardDrive size={13} className="text-primary-amber" />
-          <span>{isUploadingPpt ? "Uploading to Cloudflare R2..." : "Choose Master PowerPoint File (.pptx)"}</span>
+          <span>{isUploadingPpt ? "Uploading to Cloudflare R2..." : "Choose Master PowerPoint File (.pptx / .potx)"}</span>
           <input
             type="file"
-            accept=".pptx,.ppt"
+            accept=".pptx,.potx,.ppt"
             disabled={isUploadingPpt}
             onChange={onPptFileUpload}
             className="hidden"

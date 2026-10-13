@@ -1,18 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Infinity as InfinityIcon, Sparkles, ArrowRight } from "lucide-react";
+import { Zap, Infinity as InfinityIcon } from "lucide-react";
 
 interface HomeHeroBannersProps {
   isFilterActive: boolean;
-  homeBannerTop?: {
-    enabled?: boolean;
-    badge?: string;
-    title?: string;
-    subtitle?: string;
-    ctaText?: string;
-    ctaLink?: string;
-    imageUrl?: string;
-  };
   homeBanner1: {
     title?: string;
     subtitle?: string;
@@ -28,20 +19,12 @@ interface HomeHeroBannersProps {
   scrollToTemplates: () => void;
 }
 
-function isBannerEnabled(val: any): boolean {
-  if (val === false || val === "false" || val === 0 || val === "0") return false;
-  return true;
-}
-
 export function HomeHeroBanners({
   isFilterActive,
-  homeBannerTop,
   homeBanner1,
   homeBanner2,
   scrollToTemplates,
 }: HomeHeroBannersProps) {
-  const showTopBanner = isBannerEnabled(homeBannerTop?.enabled);
-
   return (
     <motion.div
       animate={{
@@ -52,118 +35,7 @@ export function HomeHeroBanners({
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden w-full mx-auto relative z-20 text-left"
     >
-      {/* 3rd Top Banner (Spanning full width above the split banners) */}
-      {showTopBanner && (
-        <div className="mb-4 sm:mb-5">
-          {homeBannerTop?.ctaLink && homeBannerTop.ctaLink !== "#templates" && !homeBannerTop.ctaLink.startsWith("#") ? (
-            <Link
-              to={homeBannerTop.ctaLink}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_10px_30px_rgba(252,191,20,0.12)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300 block"
-            >
-              {/* Background ambient gold aura */}
-              <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FCBF14]/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 flex-1">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider mb-2.5">
-                  <Sparkles size={12} />
-                  <span>{homeBannerTop?.badge || "STUDIO HEADLINE"}</span>
-                </div>
-
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-heading font-black text-white leading-tight mb-2">
-                  {homeBannerTop?.title || "Executive Presentation Decks & Master Templates"}
-                </h2>
-
-                <p className="text-xs sm:text-sm lg:text-base text-white/80 font-medium max-w-3xl leading-relaxed">
-                  {homeBannerTop?.subtitle || "Tailored for senior leadership, venture capital pitches, and board meetings."}
-                </p>
-
-                {(homeBannerTop?.ctaText || "Explore Full Studio") && (
-                  <div className="mt-4">
-                    <span className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-heading font-black text-xs sm:text-sm px-6 py-3 rounded-full shadow-lg group-hover:scale-102 transition-all">
-                      <span>{homeBannerTop?.ctaText || "Explore Full Studio"}</span>
-                      <ArrowRight size={15} />
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Optional R2 Image Showcase or Interactive Arrow Portal */}
-              {homeBannerTop?.imageUrl ? (
-                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm lg:max-w-md aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
-                  <img
-                    src={homeBannerTop.imageUrl}
-                    alt={homeBannerTop.title || "Promotional Banner"}
-                    className="w-full h-full object-cover object-center"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <div className="hidden md:flex items-center justify-center shrink-0 pr-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center text-[#FCBF14] group-hover:scale-110 group-hover:bg-[#FCBF14] group-hover:text-[#111111] transition-all duration-300 shadow-md">
-                    <ArrowRight size={22} />
-                  </div>
-                </div>
-              )}
-            </Link>
-          ) : (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={scrollToTemplates}
-              className="group bg-gradient-to-r from-[#181818] via-[#222222] to-[#121212] text-white rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 lg:p-8 shadow-[0_10px_30px_rgba(252,191,20,0.12)] border-2 border-[#FCBF14]/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden cursor-pointer hover:border-[#FCBF14] transition-all duration-300"
-            >
-              {/* Background ambient gold aura */}
-              <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FCBF14]/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 flex-1">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCBF14]/20 border border-[#FCBF14]/50 text-[#FCBF14] text-[10px] sm:text-xs font-black uppercase tracking-wider mb-2.5">
-                  <Sparkles size={12} />
-                  <span>{homeBannerTop?.badge || "STUDIO HEADLINE"}</span>
-                </div>
-
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-heading font-black text-white leading-tight mb-2">
-                  {homeBannerTop?.title || "Executive Presentation Decks & Master Templates"}
-                </h2>
-
-                <p className="text-xs sm:text-sm lg:text-base text-white/80 font-medium max-w-3xl leading-relaxed">
-                  {homeBannerTop?.subtitle || "Tailored for senior leadership, venture capital pitches, and board meetings."}
-                </p>
-
-                {(homeBannerTop?.ctaText || "Explore Full Studio") && (
-                  <div className="mt-4">
-                    <span className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#D99B00] text-[#111111] font-heading font-black text-xs sm:text-sm px-6 py-3 rounded-full shadow-lg group-hover:scale-102 transition-all">
-                      <span>{homeBannerTop?.ctaText || "Explore Full Studio"}</span>
-                      <ArrowRight size={15} />
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Optional R2 Image Showcase or Interactive Arrow Portal */}
-              {homeBannerTop?.imageUrl ? (
-                <div className="relative z-10 shrink-0 w-full md:w-auto max-w-xs sm:max-w-sm lg:max-w-md aspect-video rounded-2xl overflow-hidden border border-[#FCBF14]/40 shadow-xl bg-black/50 group-hover:scale-[1.02] transition-transform duration-500">
-                  <img
-                    src={homeBannerTop.imageUrl}
-                    alt={homeBannerTop.title || "Promotional Banner"}
-                    className="w-full h-full object-cover object-center"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <div className="hidden md:flex items-center justify-center shrink-0 pr-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#FCBF14]/15 border border-[#FCBF14]/30 flex items-center justify-center text-[#FCBF14] group-hover:scale-110 group-hover:bg-[#FCBF14] group-hover:text-[#111111] transition-all duration-300 shadow-md">
-                    <ArrowRight size={22} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Two Split Banners Below */}
+      {/* Two Split Promotional Banners */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pb-1">
         {/* Banner 1: Yellow - Create Presentations That Make an Impact */}
         {homeBanner1.ctaLink && homeBanner1.ctaLink !== "#templates" && !homeBanner1.ctaLink.startsWith("#") ? (

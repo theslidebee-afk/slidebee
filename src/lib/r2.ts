@@ -344,7 +344,7 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
   // If pointing to old legacy storage URL
   if (url.includes("d1.co/storage")) {
     const filename = url.split("/").pop() || "";
-    if (filename.endsWith(".pptx") || filename.endsWith(".ppt")) {
+    if (filename.endsWith(".pptx") || filename.endsWith(".potx") || filename.endsWith(".ppt")) {
       return `${R2_PUBLIC_BASE_URL}/templates/decks/${filename}`;
     }
     if (filename.startsWith("marquee_")) {
@@ -357,7 +357,7 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
   if (url.includes("r2.dev/")) {
     const pathPart = url.split("r2.dev/")[1];
     if (pathPart && !pathPart.includes("/")) {
-      if (pathPart.endsWith(".pptx") || pathPart.endsWith(".ppt")) {
+      if (pathPart.endsWith(".pptx") || pathPart.endsWith(".potx") || pathPart.endsWith(".ppt")) {
         return `${R2_PUBLIC_BASE_URL}/templates/decks/${pathPart}`;
       }
       if (pathPart.startsWith("marquee_")) {
@@ -380,7 +380,7 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
 
   // If raw filename without protocol (e.g. "volvo_slide-1.jpg")
   if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
-    if (url.endsWith(".pptx") || url.endsWith(".ppt")) {
+    if (url.endsWith(".pptx") || url.endsWith(".potx") || url.endsWith(".ppt")) {
       return `${R2_PUBLIC_BASE_URL}/templates/decks/${url}`;
     }
     return `${R2_PUBLIC_BASE_URL}/templates/slides/${url}`;

@@ -54,7 +54,7 @@ function extractR2Key(downloadUrl: string, fileName?: string): string {
     }
   }
 
-  if (fileName && fileName.endsWith(".pptx")) {
+  if (fileName && (fileName.endsWith(".pptx") || fileName.endsWith(".potx") || fileName.endsWith(".ppt"))) {
     return `templates/decks/${fileName}`;
   }
 
@@ -225,9 +225,15 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
         const proxyRes = await fetch(template.download_url);
         if (proxyRes.ok) {
-          const streamHeaders = new Headers();
-          streamHeaders.set("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
           const safeFileName = (template.file_name || `${template.code || "SlideBee"}_Master.pptx`).replace(/[^a-zA-Z0-9_\-\. ]/g, "_");
+          const isPotx = safeFileName.toLowerCase().endsWith(".potx");
+          const streamHeaders = new Headers();
+          streamHeaders.set(
+            "Content-Type",
+            isPotx
+              ? "application/vnd.openxmlformats-officedocument.presentationml.template"
+              : "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          );
           streamHeaders.set("Content-Disposition", `attachment; filename="${safeFileName}"`);
           streamHeaders.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
 
@@ -246,8 +252,14 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
     // 3. Stream binary directly to client with attachment headers
     const safeFileName = (template.file_name || `${template.code || "SlideBee"}_Master.pptx`).replace(/[^a-zA-Z0-9_\-\. ]/g, "_");
+    const isPotx = safeFileName.toLowerCase().endsWith(".potx");
     const responseHeaders = new Headers();
-    responseHeaders.set("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    responseHeaders.set(
+      "Content-Type",
+      isPotx
+        ? "application/vnd.openxmlformats-officedocument.presentationml.template"
+        : "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    );
     responseHeaders.set("Content-Disposition", `attachment; filename="${safeFileName}"`);
     responseHeaders.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
     if (r2Object.size) {

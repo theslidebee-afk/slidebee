@@ -18,7 +18,7 @@ export const ALLOWED_ORIGINS = [
   "http://localhost:4173",
 ];
 
-export const ALLOWED_EXTENSIONS = new Set(["pptx", "ppt", "png", "jpg", "jpeg", "webp", "pdf", "svg"]);
+export const ALLOWED_EXTENSIONS = new Set(["pptx", "potx", "ppt", "png", "jpg", "jpeg", "webp", "pdf", "svg"]);
 
 export function isOriginAllowed(origin: string): boolean {
   if (!origin) return false;

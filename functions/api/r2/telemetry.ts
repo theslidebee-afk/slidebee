@@ -64,7 +64,7 @@ function computeTelemetry(raw: any[], extractor: (obj: any) => { key: string; si
     const { key, size, uploaded } = extractor(obj);
     totalBytes += size;
 
-    const isPptx = key.endsWith(".pptx") || key.endsWith(".ppt");
+    const isPptx = key.endsWith(".pptx") || key.endsWith(".potx") || key.endsWith(".ppt");
     const isImg = Boolean(key.match(/\.(jpg|jpeg|png|webp|svg)$/i));
 
     if (isPptx) { pptxBytes += size; pptxCount++; }

@@ -121,7 +121,7 @@ export const StorageBucketExplorer: React.FC<StorageBucketExplorerProps> = ({
                 })
                 .map((obj: any) => {
                   const folder = obj.key.includes("/") ? obj.key.split("/").slice(0, -1).join("/") : "root";
-                  const isPpt = obj.key.endsWith(".pptx") || obj.key.endsWith(".ppt");
+                  const isPpt = obj.key.endsWith(".pptx") || obj.key.endsWith(".potx") || obj.key.endsWith(".ppt");
                   const isImg = obj.key.match(/\.(jpg|jpeg|png|webp|svg)$/i);
 
                   return (

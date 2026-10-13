@@ -143,7 +143,7 @@ export const TemplatePreviewsField: React.FC<TemplatePreviewsFieldProps> = ({
                   key={idx}
                   className="bg-white border border-[#111111]/10 rounded p-1 text-left shadow-sm relative group"
                 >
-                  <div className="aspect-[16/10] bg-[#111111] rounded overflow-hidden mb-1">
+                  <div className="aspect-video bg-[#111111] rounded overflow-hidden mb-1">
                     <img src={normalizeR2Url(s)} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex items-center justify-between px-0.5">

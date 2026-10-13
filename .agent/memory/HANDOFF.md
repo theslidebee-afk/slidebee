@@ -77,6 +77,10 @@ Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling 
    - 5x5 Grid & Page View Pagination: Set `pageSize = 25` in `useHomePageData.ts` and 5-column grid across desktop/laptop in `HomeTemplateGrid.tsx`, with `HomePagePagination` controls.
    - Template Detail Page Reorganization: Moved description paragraph, "What Is Included in This Deck" checklist, and technical specifications (`TemplateSpecs`) to the left column beneath `TemplateSlideViewer` in `TemplateDetail.tsx`; removed star rating from `TemplateActionPanel.tsx`.
 
+7. **Cover Aspect Ratio Optimization (Zero Slide Truncation)**: Replaced `aspect-[16/10]` containers across `HomeTemplateCard.tsx`, `DashboardWishlistTab.tsx`, `TemplatesGridView.tsx`, `TemplatePreviewsField.tsx`, and `CmsTrendingSelector.tsx` with standard `aspect-video` (16:9 widescreen ratio, 1.778). Eliminates slide clipping and ensures titles, logos, and margin data on standard presentation slides (1920x1080 / 2001x1125) are rendered 100% visible with zero horizontal or vertical truncation.
+8. **Native Microsoft PowerPoint Template (.potx) Deliverable Support**: Added `"potx"` to Cloudflare R2 security allowlist (`functions/api/r2/utils.ts`), R2 size validators and telemetry (`functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`), storage file explorer (`StorageBucketExplorer.tsx`, `StorageTemplatesTable.tsx`), admin uploaders (`PptxUploaderField.tsx`, `BulkAssetUploaderTab.tsx`, `bulkImportUtils.ts`), `isValidPptxUrl` (`src/lib/templates.ts`), `normalizeR2Url` (`src/lib/r2.ts`), and streaming download proxy dynamic MIME header dispatching (`functions/api/download.ts`).
+9. **Banner 3 Removal & Hero Stage Simplification**: Removed Banner 3 from `HomeHeroBanners.tsx` and `Home.tsx`, eliminated `homeBannerTop` state and fetches from `useHomePageData.ts`, and updated `CmsPromotionalBanners.tsx` in Admin Studio to configure and save only the two primary split banners.
+
 ## Next Steps
 - Run visual smoke tests on staging (`dev.slidebee.pages.dev`).
 - Monitor user analytics and template viewing flow.
