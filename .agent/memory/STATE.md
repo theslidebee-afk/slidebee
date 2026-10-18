@@ -2,8 +2,8 @@
 
 **Last Updated**: October 2026 (Active Dev Session)  
 **Branch**: `dev`  
-**Deployment**: Cloudflare Pages (`dev.slidebee.pages.dev`)  
-**Build Status**: Passing (`npm run build` exits 0)
+**Deployment**: Cloudflare Pages Live (`https://dev.slidebee.pages.dev` / `https://83f6102f.slidebee.pages.dev`)  
+**Build Status**: Passing (`npm run build` exits 0; 34/34 tests passing)
 
 ---
 
