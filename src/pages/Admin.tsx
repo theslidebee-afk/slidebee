@@ -40,7 +40,7 @@ export const Admin: React.FC = () => {
     if (path.includes("/orders")) return "orders";
     if (path.includes("/templates")) return "templates";
     if (path.includes("/customization")) return "customization";
-    if (path.includes("/billing")) return "billing";
+    if (path.includes("/billing") || path.includes("/campaigns") || path.includes("/promotions")) return "billing";
     if (path.includes("/storage")) return "storage";
     if (path.includes("/subscriptions")) return "subscriptions";
     return "overview";
@@ -407,6 +407,8 @@ export const Admin: React.FC = () => {
           <Route path="subscriptions" element={<AdminSubscriptions />} />
           <Route path="customization" element={<AdminCMS />} />
           <Route path="billing" element={<AdminBilling />} />
+          <Route path="campaigns" element={<AdminBilling />} />
+          <Route path="promotions" element={<AdminBilling />} />
           <Route path="storage" element={<AdminStorage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>

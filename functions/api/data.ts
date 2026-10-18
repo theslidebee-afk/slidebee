@@ -270,7 +270,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     // 6. Mutation Access Control
     if (["insert", "update", "upsert", "delete"].includes(action)) {
       // Sensitive admin-only tables
-      if (["templates", "site_config", "assets", "subscriptions"].includes(table) && !isAdmin) {
+      if (["templates", "site_config", "assets", "subscriptions", "promotions", "promotion_redemptions"].includes(table) && !isAdmin) {
         return new Response(
           JSON.stringify({ data: null, error: { message: `Unauthorized: Admin credentials required to modify ${table}.` } }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }

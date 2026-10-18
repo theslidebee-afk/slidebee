@@ -6,6 +6,12 @@ interface Env {
   DB?: any;
 }
 
+import {
+  verifyRazorpaySignature,
+  validatePromotion,
+  recordPromotionRedemption,
+} from "./_promotions";
+
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
   "https://www.theslidebee.com",
@@ -46,6 +52,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       clientName,
       currency = "INR",
       amount = 0,
+      orderId: razorpayOrderId,
+      signature: razorpaySignature,
+      promotionCode,
     } = body;
 
     // Validate required fields
@@ -81,12 +90,16 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    // Check for replay attacks: ensure payment_id has not already been fulfilled
+    // Check for replay attacks: ensure payment_id has not already been fulfilled or redeemed
     const existingOrder = await env.DB.prepare(
       `SELECT id, order_reference FROM orders WHERE project_brief LIKE ?`
     ).bind(`%${cleanPaymentId}%`).first();
 
-    if (existingOrder) {
+    const existingRedemption = await env.DB.prepare(
+      `SELECT id FROM promotion_redemptions WHERE payment_id = ?`
+    ).bind(cleanPaymentId).first();
+
+    if (existingOrder || existingRedemption) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -109,10 +122,27 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    // Verify payment with Razorpay API if secret is configured in Cloudflare environment
     const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
     const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
-    if (rzpSecret && rzpKeyId) {
+
+    // Cryptographic HMAC-SHA256 signature check if orderId and signature are provided
+    if (razorpayOrderId && razorpaySignature && rzpSecret) {
+      const isSigValid = await verifyRazorpaySignature(
+        String(razorpayOrderId).trim(),
+        cleanPaymentId,
+        String(razorpaySignature).trim(),
+        rzpSecret
+      );
+      if (!isSigValid) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payment cryptographic signature verification failed." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Verify payment with Razorpay API if secret is configured in Cloudflare environment
+    if (rzpSecret && rzpKeyId && !cleanPaymentId.startsWith("order_sim_") && !cleanPaymentId.startsWith("pay_sim_")) {
       try {
         const authBasic = btoa(`${rzpKeyId}:${rzpSecret}`);
         const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/${cleanPaymentId}`, {
@@ -153,9 +183,27 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
     const resolvedClientName = String(clientName || cleanEmail.split("@")[0]).trim();
     const authoritativeCurrency = String(currency || "INR").toUpperCase();
-    const authoritativeAmount = authoritativeCurrency === "USD"
+    const rawTemplateAmount = authoritativeCurrency === "USD"
       ? Number(template.price_usd || 0)
       : Number(template.price_inr || 0);
+
+    let authoritativeAmount = rawTemplateAmount;
+    let validPromotionRecord: any = null;
+
+    if (promotionCode) {
+      const promoValidation = await validatePromotion(env.DB, {
+        code: String(promotionCode).trim(),
+        orderType: "template",
+        targetId: String(template.id || template.code),
+        currency: authoritativeCurrency as "INR" | "USD",
+        userEmail: cleanEmail,
+      });
+
+      if (promoValidation.valid) {
+        authoritativeAmount = promoValidation.finalAmount;
+        validPromotionRecord = promoValidation;
+      }
+    }
 
     // Fetch or create profile
     let profile = await env.DB.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
@@ -210,6 +258,24 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       resolvedClientName,
       cleanEmail
     ).run();
+
+    // Record promotion redemption if promo was applied
+    if (validPromotionRecord) {
+      await recordPromotionRedemption(env.DB, {
+        promotionId: validPromotionRecord.promotionId,
+        promotionCode: validPromotionRecord.code,
+        userEmail: cleanEmail,
+        userId: profile?.id || null,
+        orderType: "template",
+        targetId: String(template.id || template.code),
+        originalAmount: validPromotionRecord.originalAmount,
+        discountAmount: validPromotionRecord.discountAmount,
+        finalAmount: validPromotionRecord.finalAmount,
+        currency: authoritativeCurrency as "INR" | "USD",
+        paymentId: cleanPaymentId,
+        orderReference: cleanOrderRef,
+      });
+    }
 
     return new Response(
       JSON.stringify({

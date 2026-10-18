@@ -1,9 +1,44 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Completed Homepage Catalog Wishlist and Quote Enhancements Plan: Screen-filling hero, 5x5 catalog grid with pagination and marketplace toolbar, template wishlist with guest auth modal, 3rd top hero banner with R2 image uploader, quote intake with mandatory phone validation and department email routing, and metered template redownload policy in user dashboard.
+Completed SlideBee Promotions & Voucher System: Bank-grade server-authoritative discount validation, Razorpay Orders API locked checkout, cryptographic HMAC-SHA256 signature verification, replay/idempotency protection, coupon input UI drawers across Pricing and Template detail, and Admin Campaign Manager in AdminBilling.
 
 ## What Was Done
+1. **Promotions Database Schema & Migration**:
+   - Created `migrations/0004_promotions_engine.sql` containing `promotions` master table and `promotion_redemptions` audit ledger with indexes, foreign keys, and seed campaigns (`DIWALI50`, `WELCOME20`).
+   - Updated `functions/api/data/schema.ts` to whitelist `promotions` and `promotion_redemptions` in `ALLOWED_TABLES`, `JSON_COLUMNS` (`eligible_tiers`, `eligible_template_ids`), and `VALID_TABLE_COLUMNS`.
+   - Updated `functions/api/data.ts` to restrict all mutations on `promotions` and `promotion_redemptions` to verified administrators (HTTP 403).
+
+2. **Serverless Engine & API Endpoints**:
+   - Created `functions/api/_promotions.ts`: Shared core engine for base price resolution (`getAuthoritativeBasePrice`), coupon validation (`validatePromotion`), Web Crypto HMAC-SHA256 verification (`verifyRazorpaySignature`), and atomic redemption recording (`recordPromotionRedemption`).
+   - Created `functions/api/promotions/validate.ts`: Serverless endpoint (`/api/promotions/validate`) validating codes, date boundaries, global/per-user redemption caps, currency match, and tier/template eligibility.
+   - Created `functions/api/checkout/create-order.ts`: Serverless endpoint (`/api/checkout/create-order`) calculating authoritative final amounts, locking promotional discounts, and creating official Razorpay Order tokens.
+
+3. **Backend Provisioning Hardening**:
+   - Hardened `functions/api/subscribe-pro.ts`: Added Razorpay HMAC-SHA256 signature verification, idempotency checking against `subscriptions` and `promotion_redemptions`, server-side pricing recalculation, and atomic redemption logging.
+   - Hardened `functions/api/fulfill-order.ts`: Added HMAC signature verification, idempotency checking against `orders` and `promotion_redemptions`, authoritative template pricing recalculation with promo codes, and atomic redemption logging.
+   - Updated `src/lib/razorpay.ts` to support optional server-created `orderId` in `CheckoutParams` and Razorpay options.
+
+4. **Frontend Checkout & Coupon Experience**:
+   - Created `src/features/promotions/usePromotion.ts`: Reusable React hook for coupon input state, validation, and discount calculation.
+   - Created `src/features/promotions/components/CouponInputBox.tsx`: Sleek, brand-aligned coupon drawer/input box (zero emojis, Lucide SVG icons, Manrope typography, `#FFF9E8` / `#FCBF14` / `#111111` palette).
+   - Integrated coupon drawer and server order creation into `src/features/pricing/usePricing.ts` and `src/pages/Pricing.tsx`.
+   - Integrated coupon drawer and server order creation into `src/modules/StudioStoreClient/useTemplateCheckout.ts` and `src/features/templates/components/TemplateActionPanel.tsx`.
+
+5. **Admin Campaign Manager & Prominent Studio Visibility**:
+   - Created `src/features/admin/billing/AdminCampaignManager.tsx` and integrated it into `src/features/admin/billing/AdminBilling.tsx`, enabling administrators to create new coupon campaigns, set percentage/fixed discounts, define start/end dates, set global/per-user limits, and pause/activate campaigns in Cloudflare D1.
+   - Enhanced Admin Studio discoverability and visibility:
+     - Promoted the tab in `AdminNavigation.tsx` to `<Tag size={14} /> Pricing & Campaigns` (`/admin/billing`).
+     - Upgraded metric card 5 in `AdminNavigation.tsx` to `<Tag size={18} /> Pricing & Promos: Campaigns`.
+     - Filled the 6th card in the Studio Command Launchpad (`OverviewQuickActions.tsx`) with a dedicated "Campaign Engine" launch button (`<Tag size={18} />`, subtitle "Coupons & discounts").
+     - Added direct routes `/admin/campaigns` and `/admin/promotions` in `Admin.tsx` mapping to `AdminBilling`.
+     - Added quick-jump pill anchor navigation in `AdminBilling.tsx` linking directly to "Marketplace Base Rates" (`#pricing-rates`) and "Coupon & Campaign Engine" (`#campaigns`).
+
+6. **Verification & Quality Assurance**:
+   - Created `tests/promotions_security.test.ts` (17 automated security and calculation tests) and wired to `npm test`.
+   - All 34 tests in the test suite pass with 100% success.
+   - `npm run build` (`tsc -b && vite build`) executes cleanly with code 0.
+   - Verified zero unicode emojis across all modified and newly created files.
 1. **Screen-Filling Homepage Hero**: Expanded `HomeHeroBanners.tsx` and `HomeSearchDock.tsx` to `max-w-7xl 2xl:max-w-[1560px]`, scaled typography, search input, and responsive pill padding.
 2. **5x5 Catalog Grid, Toolbar & Pagination**:
    - Built `src/features/home/components/HomeMarketplaceToolbar.tsx` with live counts, category filter, tier toggle, and sort dropdown.

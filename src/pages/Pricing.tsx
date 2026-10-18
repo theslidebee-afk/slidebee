@@ -3,6 +3,8 @@ import { Check, ArrowRight, Flame } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
 import { usePricing } from "../features/pricing/usePricing";
 import { PricingFaqSection } from "../features/pricing/PricingFaqSection";
+import { usePromotion } from "../features/promotions/usePromotion";
+import { CouponInputBox } from "../features/promotions/components/CouponInputBox";
 
 export default function Pricing() {
   usePageSEO({
@@ -13,13 +15,44 @@ export default function Pricing() {
   const { pricingConfig, currency, handleSubscribeTier } = usePricing();
   const { tier_monthly_usd, tier_monthly_inr, tier_yearly_usd, tier_yearly_inr, tier_lifetime_usd, tier_lifetime_inr, rate_usd_redesign, rate_inr_redesign } = pricingConfig;
 
+  const {
+    couponInput,
+    setCouponInput,
+    appliedPromo,
+    isValidating,
+    validationError,
+    applyCoupon,
+    removeCoupon,
+  } = usePromotion({
+    orderType: "subscription",
+    targetId: "yearly",
+    currency: currency === "USD" ? "USD" : "INR",
+  });
+
+  const calculateTierPrice = (base: number) => {
+    if (!appliedPromo) return { final: base, discounted: false };
+    if (appliedPromo.discountType === "percentage") {
+      const discount = Math.round((base * (appliedPromo.discountValue / 100)) * 100) / 100;
+      return { final: Math.max(0, base - discount), discounted: true };
+    }
+    return { final: Math.max(0, base - appliedPromo.discountValue), discounted: true };
+  };
+
+  const monthlyBase = currency === "USD" ? (tier_monthly_usd ?? 5) : (tier_monthly_inr ?? 399);
+  const yearlyBase = currency === "USD" ? (tier_yearly_usd ?? 45) : (Number(tier_yearly_inr) || 3499);
+  const lifetimeBase = currency === "USD" ? (tier_lifetime_usd ?? 75) : (Number(tier_lifetime_inr) || 5999);
+
+  const monthlyPrice = calculateTierPrice(monthlyBase);
+  const yearlyPrice = calculateTierPrice(yearlyBase);
+  const lifetimePrice = calculateTierPrice(lifetimeBase);
+
   return (
     <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden pt-28 pb-20 large-hex-grid">
 
       <section id="marketplace" className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24 scroll-mt-32">
 
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
+        <div className="text-center max-w-3xl mx-auto mb-10">
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-[#111111] leading-tight mb-3">
             Download Premium Templates <br className="hidden sm:inline" />
             <span className="text-primary-amber">for Your Plan.</span>
@@ -27,6 +60,20 @@ export default function Pricing() {
           <p className="text-[#726F6D] text-sm font-medium max-w-xl mx-auto mb-6">
             Start with 3 free downloads per day, or unlock our complete 30-slide executive presentation library with Monthly, Yearly, or Lifetime access.
           </p>
+
+          {/* Promotion Coupon Drawer */}
+          <div className="max-w-md mx-auto pt-2">
+            <CouponInputBox
+              couponInput={couponInput}
+              onInputChange={setCouponInput}
+              appliedPromo={appliedPromo}
+              isValidating={isValidating}
+              validationError={validationError}
+              onApply={() => applyCoupon()}
+              onRemove={removeCoupon}
+              placeholder="Have a coupon code? (e.g. DIWALI50)"
+            />
+          </div>
         </div>
 
         {/* 4-Card Pricing Grid */}
@@ -62,10 +109,27 @@ export default function Pricing() {
                 <span className="hex-pill bg-primary/20 text-[#111111] border border-primary/40 text-[10px] font-black px-3 py-1 uppercase tracking-wider">FLEXIBLE</span>
                 <span className="text-[10px] text-primary-amber font-bold uppercase tracking-wider">Monthly</span>
               </div>
-              <div className="text-4xl font-heading font-black text-[#111111] mb-1">
-                {currency === "USD" ? `$${tier_monthly_usd ?? 5}` : `₹${tier_monthly_inr ?? 399}`}
-                <span className="text-xs font-normal text-[#726F6D] ml-1">/month</span>
-              </div>
+              {monthlyPrice.discounted ? (
+                <div className="mb-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-heading font-black text-[#111111]">
+                      {currency === "USD" ? `$${monthlyPrice.final}` : `₹${monthlyPrice.final.toLocaleString()}`}
+                    </span>
+                    <span className="text-sm line-through text-zinc-400 font-semibold">
+                      {currency === "USD" ? `$${monthlyBase}` : `₹${monthlyBase.toLocaleString()}`}
+                    </span>
+                    <span className="text-xs font-normal text-[#726F6D]">/month</span>
+                  </div>
+                  <span className="inline-block text-[10px] font-bold text-[#936610] bg-[#FFF9E8] px-2 py-0.5 rounded border border-[#FCBF14]/40 mt-1">
+                    {appliedPromo?.code} applied
+                  </span>
+                </div>
+              ) : (
+                <div className="text-4xl font-heading font-black text-[#111111] mb-1">
+                  {currency === "USD" ? `$${tier_monthly_usd ?? 5}` : `₹${tier_monthly_inr ?? 399}`}
+                  <span className="text-xs font-normal text-[#726F6D] ml-1">/month</span>
+                </div>
+              )}
               <p className="text-xs text-[#726F6D] font-medium mb-6">For active presenters needing regular access to fresh executive decks.</p>
               <div className="space-y-3 border-t border-primary/20 pt-5">
                 {["30 Premium Templates Per Month", "Full access to all Premium & Executive decks", "100% Editable Master PowerPoint (.pptx)", "Commercial royalty-free presentation license", "New slide decks added weekly", "Standard customer support"].map((feat, i) => (
@@ -76,7 +140,10 @@ export default function Pricing() {
                 ))}
               </div>
             </div>
-            <button onClick={() => handleSubscribeTier("monthly")} className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md">
+            <button
+              onClick={() => handleSubscribeTier("monthly", appliedPromo?.code || undefined)}
+              className="mt-8 hex-pill w-full block text-center bg-primary hover:bg-primary-dark text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
+            >
               Subscribe Monthly <ArrowRight size={14} />
             </button>
           </div>
@@ -91,12 +158,29 @@ export default function Pricing() {
                 <span className="text-[10px] text-primary font-black uppercase tracking-wider">ANNUAL PASS</span>
                 <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Save 25%</span>
               </div>
-              <div className="text-4xl font-heading font-black text-white mb-0.5">
-                {currency === "USD" ? `$${tier_yearly_usd ?? 45}` : `₹${(Number(tier_yearly_inr) || 3499).toLocaleString()}`}
-                <span className="text-xs font-normal text-[#888888] ml-1">/year</span>
-              </div>
+              {yearlyPrice.discounted ? (
+                <div className="mb-0.5">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-heading font-black text-white">
+                      {currency === "USD" ? `$${yearlyPrice.final}` : `₹${yearlyPrice.final.toLocaleString()}`}
+                    </span>
+                    <span className="text-sm line-through text-zinc-400 font-semibold">
+                      {currency === "USD" ? `$${yearlyBase}` : `₹${yearlyBase.toLocaleString()}`}
+                    </span>
+                    <span className="text-xs font-normal text-[#888888]">/year</span>
+                  </div>
+                  <span className="inline-block text-[10px] font-bold text-[#FCBF14] bg-white/10 px-2 py-0.5 rounded border border-[#FCBF14]/40 mt-1">
+                    {appliedPromo?.code} applied
+                  </span>
+                </div>
+              ) : (
+                <div className="text-4xl font-heading font-black text-white mb-0.5">
+                  {currency === "USD" ? `$${tier_yearly_usd ?? 45}` : `₹${yearlyBase.toLocaleString()}`}
+                  <span className="text-xs font-normal text-[#888888] ml-1">/year</span>
+                </div>
+              )}
               <p className="text-[11px] text-primary font-bold mb-2">
-                Equivalent to {currency === "USD" ? `$${((Number(tier_yearly_usd) || 45) / 12).toFixed(2)}/month` : `₹${Math.round((Number(tier_yearly_inr) || 3499) / 12)}/month`}
+                Equivalent to {currency === "USD" ? `$${(yearlyPrice.final / 12).toFixed(2)}/month` : `₹${Math.round(yearlyPrice.final / 12)}/month`}
               </p>
               <p className="text-xs text-[#AAAAAA] font-medium mb-6">Everything in Monthly plus our exclusive bespoke 10-slide design bonus.</p>
               <div className="space-y-3 border-t border-white/10 pt-5">
@@ -108,7 +192,10 @@ export default function Pricing() {
                 ))}
               </div>
             </div>
-            <button onClick={() => handleSubscribeTier("yearly")} className="mt-8 hex-pill w-full block text-center bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.03] flex items-center justify-center gap-1.5 shadow-xl">
+            <button
+              onClick={() => handleSubscribeTier("yearly", appliedPromo?.code || undefined)}
+              className="mt-8 hex-pill w-full block text-center bg-gradient-to-r from-[#FCBF14] via-[#FFE270] to-[#FCBF14] bg-[length:200%_auto] animate-gradient-flow text-[#111111] font-black py-3.5 text-xs transition-all hover:scale-[1.03] flex items-center justify-center gap-1.5 shadow-xl"
+            >
               Get Yearly Plan <ArrowRight size={14} />
             </button>
           </div>
@@ -120,10 +207,27 @@ export default function Pricing() {
                 <span className="hex-pill bg-[#111111] text-[#FCBF14] border border-[#FCBF14]/40 text-[10px] font-black px-3 py-1 uppercase tracking-wider">ONE-TIME PAYMENT</span>
                 <span className="text-[10px] text-[#726F6D] font-bold uppercase tracking-wider">Lifetime</span>
               </div>
-              <div className="text-4xl font-heading font-black text-[#111111] mb-1">
-                {currency === "USD" ? `$${tier_lifetime_usd ?? 75}` : `₹${(Number(tier_lifetime_inr) || 5999).toLocaleString()}`}
-                <span className="text-xs font-normal text-[#726F6D] ml-1">one-time</span>
-              </div>
+              {lifetimePrice.discounted ? (
+                <div className="mb-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-heading font-black text-[#111111]">
+                      {currency === "USD" ? `$${lifetimePrice.final}` : `₹${lifetimePrice.final.toLocaleString()}`}
+                    </span>
+                    <span className="text-sm line-through text-zinc-400 font-semibold">
+                      {currency === "USD" ? `$${lifetimeBase}` : `₹${lifetimeBase.toLocaleString()}`}
+                    </span>
+                    <span className="text-xs font-normal text-[#726F6D]">one-time</span>
+                  </div>
+                  <span className="inline-block text-[10px] font-bold text-[#936610] bg-[#FFF9E8] px-2 py-0.5 rounded border border-[#FCBF14]/40 mt-1">
+                    {appliedPromo?.code} applied
+                  </span>
+                </div>
+              ) : (
+                <div className="text-4xl font-heading font-black text-[#111111] mb-1">
+                  {currency === "USD" ? `$${tier_lifetime_usd ?? 75}` : `₹${lifetimeBase.toLocaleString()}`}
+                  <span className="text-xs font-normal text-[#726F6D] ml-1">one-time</span>
+                </div>
+              )}
               <p className="text-xs text-[#726F6D] font-medium mb-6">Pay once, access forever. Never worry about another monthly or annual renewal.</p>
               <div className="space-y-3 border-t border-primary/20 pt-5">
                 {["Unlimited Premium Templates & Downloads", "Never pay another monthly or yearly renewal", "All current & future templates included forever", "100% Editable Master PowerPoint (.pptx)", "Full commercial license for all client projects", "VIP priority support & custom deck requests"].map((feat, i) => (
@@ -134,7 +238,10 @@ export default function Pricing() {
                 ))}
               </div>
             </div>
-            <button onClick={() => handleSubscribeTier("lifetime")} className="mt-8 hex-pill w-full block text-center bg-[#111111] hover:bg-black text-[#FCBF14] border border-primary/40 font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md">
+            <button
+              onClick={() => handleSubscribeTier("lifetime", appliedPromo?.code || undefined)}
+              className="mt-8 hex-pill w-full block text-center bg-[#111111] hover:bg-black text-[#FCBF14] border border-primary/40 font-black py-3.5 text-xs transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5 shadow-md"
+            >
               Get Lifetime Access <ArrowRight size={14} />
             </button>
           </div>

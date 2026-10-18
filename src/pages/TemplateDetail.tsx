@@ -264,7 +264,7 @@ export default function TemplateDetail() {
     );
   };
 
-  const handleInstantDownload = async () => {
+  const handleInstantDownload = async (promoCode?: string) => {
     setCreditNotice(null);
     if (!client) {
       navigate("/login?redirect=" + encodeURIComponent(window.location.hash || window.location.pathname));
@@ -275,7 +275,8 @@ export default function TemplateDetail() {
       template,
       currency === "USD" ? "USD" : "INR",
       client.email,
-      client.name
+      client.name,
+      promoCode
     );
   };
 

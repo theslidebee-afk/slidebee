@@ -1,6 +1,7 @@
 import React from "react";
-import { Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { Save, CheckCircle2, AlertCircle, DollarSign, Tag } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
+import { AdminCampaignManager } from "./AdminCampaignManager";
 
 export const AdminBilling: React.FC = () => {
   const { 
@@ -16,6 +17,29 @@ export const AdminBilling: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* SECTION NAV BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-[#111111]/10 shadow-xs">
+        <div className="flex items-center gap-2">
+          <a
+            href="#pricing-rates"
+            className="hex-pill text-xs font-heading font-extrabold px-4 py-2 bg-[#FFF9E8] border border-[#111111]/10 text-[#111111] hover:border-primary transition-all flex items-center gap-2"
+          >
+            <DollarSign size={14} className="text-primary-amber" />
+            <span>Marketplace Base Rates</span>
+          </a>
+          <a
+            href="#campaigns"
+            className="hex-pill text-xs font-heading font-extrabold px-4 py-2 bg-amber-100/70 border border-amber-300 text-[#111111] hover:bg-amber-100 transition-all flex items-center gap-2 shadow-xs"
+          >
+            <Tag size={14} className="text-[#936610]" />
+            <span>Coupon & Campaign Engine</span>
+          </a>
+        </div>
+        <span className="text-[11px] text-[#726F6D] font-medium hidden sm:inline-block">
+          Manage subscriptions, base rates, and promotional vouchers
+        </span>
+      </div>
+
       {configSavedSuccess && (
         <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-pulse">
           <CheckCircle2 size={16} /> Changes saved successfully to live website database!
@@ -28,7 +52,7 @@ export const AdminBilling: React.FC = () => {
       )}
 
       {/* PLATFORM CONFIG: PRICING RATES & TIERS */}
-      <div className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-8">
+      <div id="pricing-rates" className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-8 scroll-mt-24">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
           <div>
             <h3 className="text-base font-heading font-extrabold text-[#111111]">
@@ -175,6 +199,9 @@ export const AdminBilling: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* PROMOTIONS & DISCOUNT CAMPAIGNS MANAGER */}
+      <AdminCampaignManager />
     </div>
   );
 };

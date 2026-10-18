@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Zap, ShoppingBag, Plus, Gift, Sliders, Clock, MessageSquare } from "lucide-react";
+import { Zap, ShoppingBag, Plus, Gift, Sliders, Clock, MessageSquare, Tag } from "lucide-react";
 import { ORDER_MILESTONES, getMilestoneIndex } from "../shared/adminConstants";
 
 interface OverviewQuickActionsProps {
@@ -87,6 +87,16 @@ export const OverviewQuickActions: React.FC<OverviewQuickActionsProps> = ({
             <Sliders size={18} className="text-[#111111] mb-2" />
             <div className="font-heading font-black text-xs text-[#111111]">Site Customizer</div>
             <div className="text-[10px] text-[#726F6D] font-medium">Banners, CMS & hero</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab("billing"); navigate("/admin/billing#campaigns"); }}
+            className="p-3.5 rounded-2xl bg-[#FFF9E8] border border-primary/30 hover:border-primary text-left transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <Tag size={18} className="text-[#111111] mb-2" />
+            <div className="font-heading font-black text-xs text-[#111111]">Campaign Engine</div>
+            <div className="text-[10px] text-[#726F6D] font-medium">Coupons & discounts</div>
           </button>
         </div>
       </div>

@@ -16,6 +16,8 @@ export const ALLOWED_TABLES = [
   "site_config",
   "subscriptions",
   "assets",
+  "promotions",
+  "promotion_redemptions",
 ];
 
 export function isValidIdentifier(name: string): boolean {
@@ -31,6 +33,7 @@ export const JSON_COLUMNS: Record<string, string[]> = {
   site_config: ["value"],
   auth_logs: ["metadata"],
   assets: ["metadata"],
+  promotions: ["eligible_tiers", "eligible_template_ids"],
 };
 
 export const VALID_TABLE_COLUMNS: Record<string, string[]> = {
@@ -65,7 +68,20 @@ export const VALID_TABLE_COLUMNS: Record<string, string[]> = {
     "download_url", "ip_address", "user_agent", "downloaded_at"
   ],
   users: ["id", "email", "password_hash", "salt", "role", "created_at", "updated_at"],
-  sessions: ["id", "user_id", "email", "role", "device_info", "ip_address", "created_at", "expires_at"]
+  sessions: ["id", "user_id", "email", "role", "device_info", "ip_address", "created_at", "expires_at"],
+  promotions: [
+    "id", "code", "name", "description", "discount_type", "discount_value",
+    "currency", "applicable_scope", "eligible_tiers", "eligible_template_ids",
+    "min_order_amount_inr", "min_order_amount_usd", "max_discount_cap_inr",
+    "max_discount_cap_usd", "starts_at", "expires_at", "max_total_redemptions",
+    "redemption_count", "max_redemptions_per_user", "first_time_subscribers_only",
+    "is_active", "created_at", "updated_at"
+  ],
+  promotion_redemptions: [
+    "id", "promotion_id", "promotion_code", "user_email", "user_id",
+    "order_type", "target_id", "original_amount", "discount_amount",
+    "final_amount", "currency", "payment_id", "order_reference", "redeemed_at"
+  ]
 };
 
 export function sanitizeRow(table: string, row: any): any {

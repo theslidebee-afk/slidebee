@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "npx --yes tsx tests/security_vibe_audit.test.ts",
+    "test": "npx --yes tsx tests/security_vibe_audit.test.ts && npx --yes tsx tests/promotions_security.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

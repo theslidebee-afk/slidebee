@@ -70,7 +70,7 @@ export function usePricing() {
     }
   }, [location.hash]);
 
-  const handleSubscribeTier = async (tier: "monthly" | "yearly" | "lifetime") => {
+  const handleSubscribeTier = async (tier: "monthly" | "yearly" | "lifetime", promotionCode?: string) => {
     const monthlyUsd = Number(pricingConfig.tier_monthly_usd) || 5;
     const yearlyUsd = Number(pricingConfig.tier_yearly_usd) || 45;
     const lifetimeUsd = Number(pricingConfig.tier_lifetime_usd) || 75;
@@ -78,18 +78,18 @@ export function usePricing() {
     const yearlyInr = Number(pricingConfig.tier_yearly_inr) || 3499;
     const lifetimeInr = Number(pricingConfig.tier_lifetime_inr) || 5999;
 
-    let amount = 5;
+    let baseAmount = 5;
     let title = "SlideBee Monthly Pro";
     let desc = "30 Premium Presentation Templates per month";
 
     if (currency === "USD") {
-      if (tier === "monthly") { amount = monthlyUsd; title = `SlideBee Monthly Pro ($${monthlyUsd}/mo)`; }
-      else if (tier === "yearly") { amount = yearlyUsd; title = `SlideBee Yearly Pro ($${yearlyUsd}/yr)`; desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service"; }
-      else if (tier === "lifetime") { amount = lifetimeUsd; title = `SlideBee Lifetime VIP ($${lifetimeUsd} one-time)`; desc = "Unlimited Premium Presentation Downloads Forever"; }
+      if (tier === "monthly") { baseAmount = monthlyUsd; title = `SlideBee Monthly Pro ($${monthlyUsd}/mo)`; }
+      else if (tier === "yearly") { baseAmount = yearlyUsd; title = `SlideBee Yearly Pro ($${yearlyUsd}/yr)`; desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service"; }
+      else if (tier === "lifetime") { baseAmount = lifetimeUsd; title = `SlideBee Lifetime VIP ($${lifetimeUsd} one-time)`; desc = "Unlimited Premium Presentation Downloads Forever"; }
     } else {
-      if (tier === "monthly") { amount = monthlyInr; title = `SlideBee Monthly Pro (₹${monthlyInr}/mo)`; }
-      else if (tier === "yearly") { amount = yearlyInr; title = `SlideBee Yearly Pro (₹${yearlyInr.toLocaleString()}/yr)`; desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service"; }
-      else if (tier === "lifetime") { amount = lifetimeInr; title = `SlideBee Lifetime VIP (₹${lifetimeInr.toLocaleString()} one-time)`; desc = "Unlimited Premium Presentation Downloads Forever"; }
+      if (tier === "monthly") { baseAmount = monthlyInr; title = `SlideBee Monthly Pro (₹${monthlyInr}/mo)`; }
+      else if (tier === "yearly") { baseAmount = yearlyInr; title = `SlideBee Yearly Pro (₹${yearlyInr.toLocaleString()}/yr)`; desc = "30 Premium Templates/mo + Free 10-Slide Bespoke Design Service"; }
+      else if (tier === "lifetime") { baseAmount = lifetimeInr; title = `SlideBee Lifetime VIP (₹${lifetimeInr.toLocaleString()} one-time)`; desc = "Unlimited Premium Presentation Downloads Forever"; }
     }
 
     const { data: { session } } = await d1.auth.getSession();
@@ -98,24 +98,59 @@ export function usePricing() {
       return;
     }
 
+    // 1. Create server-authoritative order with locked pricing and promotion binding
+    let serverOrderId: string | undefined;
+    let checkoutAmount = baseAmount;
+
+    try {
+      const orderRes = await fetch("/api/checkout/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "subscription",
+          targetId: tier,
+          currency: currency === "USD" ? "USD" : "INR",
+          promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
+          userEmail: session.user.email,
+        }),
+      });
+
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        if (orderData.success && orderData.orderId) {
+          serverOrderId = orderData.orderId;
+          checkoutAmount = orderData.amount;
+        }
+      }
+    } catch (orderErr) {
+      console.warn("Server order generation notice, falling back:", orderErr);
+    }
+
     await openRazorpayCheckout({
-      amount,
+      amount: checkoutAmount,
+      orderId: serverOrderId,
       currency: currency === "USD" ? "USD" : "INR",
       title,
       description: desc,
       prefill: { email: session.user.email || "", name: session.user.user_metadata?.full_name || "SlideBee Member" },
       onSuccess: async (rzpRes: any) => {
         const paymentId = rzpRes.razorpay_payment_id || "rzp_direct";
+        const returnedOrderId = rzpRes.razorpay_order_id || serverOrderId;
+        const signature = rzpRes.razorpay_signature;
+
         try {
           await fetch("/api/subscribe-pro", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               paymentId,
+              orderId: returnedOrderId,
+              signature,
+              promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
               userId: session.user.id,
               userEmail: session.user.email,
               tier,
-              amount,
+              amount: checkoutAmount,
               currency,
               planName: title,
               billingPeriod: tier,
@@ -132,7 +167,7 @@ export function usePricing() {
             clientName: session.user.user_metadata?.full_name || "SlideBee Member",
             planName: title,
             tier,
-            amountPaid: amount,
+            amountPaid: checkoutAmount,
             currency: currency === "USD" ? "USD" : "INR",
             paymentId,
             expiryDate:

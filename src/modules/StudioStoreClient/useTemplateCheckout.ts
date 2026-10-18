@@ -104,15 +104,44 @@ export function useTemplateCheckout() {
     template: StoreTemplate,
     currency: "USD" | "INR",
     clientEmail: string,
-    clientName: string
+    clientName: string,
+    promotionCode?: string
   ): Promise<void> => {
     setIsProcessing(true);
     setError(null);
 
-    const priceNum = currency === "USD" ? template.price_usd : template.price_inr;
+    const rawPrice = currency === "USD" ? template.price_usd : template.price_inr;
+    let priceNum = rawPrice;
+    let serverOrderId: string | undefined;
+
+    // Create server-authoritative order with locked pricing and promotion validation
+    try {
+      const orderRes = await fetch("/api/checkout/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "template",
+          targetId: String(template.id || template.code),
+          currency,
+          promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
+          userEmail: clientEmail,
+        }),
+      });
+
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        if (orderData.success && orderData.orderId) {
+          serverOrderId = orderData.orderId;
+          priceNum = orderData.amount;
+        }
+      }
+    } catch (orderErr) {
+      console.warn("Server order generation notice, falling back:", orderErr);
+    }
 
     await openRazorpayCheckout({
       amount: priceNum,
+      orderId: serverOrderId,
       currency,
       title: template.title,
       description: `Master PowerPoint Presentation (.pptx) — ${template.code}`,
@@ -139,6 +168,9 @@ export function useTemplateCheckout() {
               body: JSON.stringify({
                 orderRef,
                 paymentId: payment.razorpay_payment_id,
+                orderId: payment.razorpay_order_id || serverOrderId,
+                signature: payment.razorpay_signature,
+                promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
                 templateId: template.id,
                 clientEmail,
                 clientName,

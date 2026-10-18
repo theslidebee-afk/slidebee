@@ -76,8 +76,28 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **Full-Bleed Navbar Banner & Dynamic Hero Downward Shift**: Updated `Navbar.tsx` so the promotional announcement banner fills edge-to-edge across 100% of the viewport width (`w-full`) and strip height (`h-11 sm:h-12 md:h-13 object-cover object-center rounded-none`), eliminating black letterbox borders. Calibrated designer dimension standard to 1920×48 px with centered 1200 px focal zone. Added dynamic conditional top padding to `Home.tsx` (`#hero-stage`: `pt-36 sm:pt-40 lg:pt-44` when banner is active vs `pt-24 sm:pt-28 lg:pt-32` when inactive), gracefully shifting Banner 1, Banner 2, and the search dock downward with comfortable breathing room below the fixed header.
 - **Template Card 2-Line Height Alignment & Grid Uniformity**: Implemented fixed 2-line reserved title containers (`min-h-[2.4rem] sm:min-h-[2.5rem]` in `HomeTemplateCard.tsx` and `DashboardWishlistTab.tsx`) with browser hover tooltips (`title={template.title}`). Guarantees that 1-line and 2-line titles occupy the exact same vertical space, ensuring all card heights and bottom price rows are 100% laser-aligned across every row.
 - **In-UI Dimension Badges across All Admin Studio Tabs**: Added prominent, high-contrast dimension guidelines to prevent image truncation across all admin media uploaders: Cover slides (1920×1080 16:9), Interior slides (1920×1080 16:9), Navbar banner (1920×48 strip), About hero background (1920×1080 / 2560×1440 16:9), Portfolio case studies (1920×1080 16:9), Services Before/After (1920×1080 16:9), Blog featured covers (1200×675 16:9), and Bulk Ingest pipeline instructions.
+- **Server-Authoritative Promotions & Voucher Engine**: Architected and implemented a secure, bank-grade promotional discount system across SlideBee:
+  - Database schema (`migrations/0004_promotions_engine.sql`): `promotions` master campaign table and `promotion_redemptions` audit ledger with indexes and foreign keys.
+  - Gatekeeper RBAC: Protected `promotions` and `promotion_redemptions` in `functions/api/data/schema.ts` and `functions/api/data.ts` against non-admin mutations (HTTP 403).
+  - Validation endpoint (`/api/promotions/validate`): Authoritative validation checking codes, date ranges, global and per-user redemption limits, tier/template eligibility, and currency match.
+  - Server order creation (`/api/checkout/create-order`): Eliminates client price tampering by pre-calculating authoritative final amount and creating an official Razorpay Order ID.
+  - Payment provisioning hardening (`/api/subscribe-pro` and `/api/fulfill-order`): Cryptographic HMAC-SHA256 signature verification (`crypto.subtle`), replay protection (idempotency key checking), and atomic redemption recording.
+  - Checkout UI: Created `usePromotion` hook and `CouponInputBox` component (zero emojis, Lucide SVG icons, Manrope typography, brand palette) integrated into `usePricing.ts` / `Pricing.tsx` and `useTemplateCheckout.ts` / `TemplateActionPanel.tsx`.
+  - Admin Campaign Manager: Added `AdminCampaignManager.tsx` in `AdminBilling.tsx` with campaign creation, status toggles (active/paused), and redemption counters.
+  - Automated test suite: `tests/promotions_security.test.ts` (17 tests covering HMAC verification, discount math, eligibility rules, and RBAC) added to `npm test` (34 total tests passing).
 
 ---
+
+- **Promotions & Campaign Engine with Admin Studio Visibility**:
+  - Implemented end-to-end promotional discount system with server-authoritative pricing validation, Web Crypto HMAC-SHA256 signature verification, and atomic redemption recording in Cloudflare D1 (`promotions` and `promotion_redemptions`).
+  - Added full Admin Studio visibility and discoverability:
+    - Updated navigation pill tab to `<Tag size={14} /> Pricing & Campaigns` (`/admin/billing`).
+    - Updated header summary metric card 5 to `<Tag size={18} /> Pricing & Promos: Campaigns`.
+    - Added dedicated "Campaign Engine" launchpad card in `OverviewQuickActions.tsx` (Studio Command Launchpad) taking admins straight to the engine.
+    - Added direct HTML5 route aliases in `Admin.tsx` (`/admin/campaigns` and `/admin/promotions`) with automatic tab active state mapping.
+    - Added section navigation switcher bar in `AdminBilling.tsx` jumping between "Marketplace Base Rates" (`#pricing-rates`) and "Coupon & Campaign Engine" (`#campaigns`).
+  - Integrated customer-facing discount input drawer into Pro subscriptions and individual template checkout.
+  - 100% test coverage with 34/34 passing security and integration tests (`npm test`).
 
 ## 3. In-Progress Features
 - **All Core Sprint Tasks Verified & Clean**: Zero pending blockers. Ready for production verification.

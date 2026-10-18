@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import type { StoreTemplate } from "../../../modules/StudioStoreClient";
 import { getTemplateDeliverableUrl } from "../../../lib/templates";
+import { usePromotion } from "../../promotions/usePromotion";
+import { CouponInputBox } from "../../promotions/components/CouponInputBox";
 
 interface TemplateActionPanelProps {
   template: StoreTemplate;
@@ -33,7 +35,7 @@ interface TemplateActionPanelProps {
   deliverableUrl: string | null;
   isProcessing: boolean;
   handleProDownload: () => Promise<void>;
-  handleInstantDownload: () => Promise<void>;
+  handleInstantDownload: (promoCode?: string) => Promise<void>;
   handleDirectFreeDownload: () => Promise<void>;
   freeDownloadsToday: number;
 }
@@ -63,6 +65,35 @@ export function TemplateActionPanel({
 }: TemplateActionPanelProps) {
   const navigate = useNavigate();
   const templateCode = template.code;
+
+  const {
+    couponInput,
+    setCouponInput,
+    appliedPromo,
+    isValidating,
+    validationError,
+    applyCoupon,
+    removeCoupon,
+  } = usePromotion({
+    orderType: "template",
+    targetId: String(template.id || template.code),
+    currency: currency === "USD" ? "USD" : "INR",
+    userEmail: client?.email,
+  });
+
+  const basePriceNum = currency === "USD" ? Number(template.price_usd || 19) : Number(template.price_inr || 1499);
+  let finalTemplatePrice = basePriceNum;
+  let isTemplateDiscounted = false;
+
+  if (appliedPromo) {
+    if (appliedPromo.discountType === "percentage") {
+      const disc = Math.round((basePriceNum * (appliedPromo.discountValue / 100)) * 100) / 100;
+      finalTemplatePrice = Math.max(0, basePriceNum - disc);
+    } else {
+      finalTemplatePrice = Math.max(0, basePriceNum - appliedPromo.discountValue);
+    }
+    isTemplateDiscounted = true;
+  }
 
   return (
     <div className="lg:col-span-5 space-y-5">
@@ -110,6 +141,18 @@ export function TemplateActionPanel({
                   </span>
                   <span className="text-xs text-[#726F6D] line-through font-bold">
                     {formatPrice(template.price_inr, template.price_usd)}
+                  </span>
+                </>
+              ) : isTemplateDiscounted ? (
+                <>
+                  <span className="text-2xl sm:text-3xl font-heading font-black text-[#111111]">
+                    {currency === "USD" ? `$${finalTemplatePrice}` : `₹${finalTemplatePrice.toLocaleString()}`}
+                  </span>
+                  <span className="text-xs text-[#726F6D] line-through font-medium">
+                    {formatPrice(template.price_inr, template.price_usd)}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#936610] bg-[#FFF9E8] px-2 py-0.5 rounded border border-[#FCBF14]/40">
+                    {appliedPromo?.code} applied
                   </span>
                 </>
               ) : (
@@ -287,16 +330,27 @@ export function TemplateActionPanel({
                       You have consumed all {quotaLimit} included template downloads for your current billing cycle. Your quota resets on your next renewal. You can purchase a standalone commercial license for this template below to download it immediately.
                     </p>
                   </div>
+                  <CouponInputBox
+                    couponInput={couponInput}
+                    onInputChange={setCouponInput}
+                    appliedPromo={appliedPromo}
+                    isValidating={isValidating}
+                    validationError={validationError}
+                    onApply={() => applyCoupon()}
+                    onRemove={removeCoupon}
+                    placeholder="Have a promo code?"
+                  />
+
                   <button
                     type="button"
                     disabled={isProcessing}
-                    onClick={handleInstantDownload}
+                    onClick={() => handleInstantDownload(appliedPromo?.code || undefined)}
                     className="hex-pill w-full bg-[#111111] hover:bg-black text-[#FCBF14] font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer disabled:opacity-60"
                   >
                     <ShoppingBag size={17} className="text-[#FCBF14]" />
                     {isProcessing
                       ? "Opening Checkout..."
-                      : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
+                      : `Buy Standalone Commercial License (${currency === "USD" ? `$${finalTemplatePrice}` : `₹${finalTemplatePrice.toLocaleString()}`})`}
                   </button>
                   <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                     <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
@@ -341,14 +395,25 @@ export function TemplateActionPanel({
               ) : (
                 /* Logged-In Client Flow for Premium Deck */
                 <div className="space-y-3">
+                  <CouponInputBox
+                    couponInput={couponInput}
+                    onInputChange={setCouponInput}
+                    appliedPromo={appliedPromo}
+                    isValidating={isValidating}
+                    validationError={validationError}
+                    onApply={() => applyCoupon()}
+                    onRemove={removeCoupon}
+                    placeholder="Have a promo code?"
+                  />
+
                   <button
                     type="button"
                     disabled={isProcessing}
-                    onClick={handleInstantDownload}
+                    onClick={() => handleInstantDownload(appliedPromo?.code || undefined)}
                     className="hex-pill w-full bg-[#111111] hover:bg-black text-white hover:text-primary font-black py-4 text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-60"
                   >
                     <ShoppingBag size={16} className="text-primary-amber" />
-                    {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${formatPrice(template.price_inr, template.price_usd)})`}
+                    {isProcessing ? "Processing..." : `Buy Standalone Commercial License (${currency === "USD" ? `$${finalTemplatePrice}` : `₹${finalTemplatePrice.toLocaleString()}`})`}
                   </button>
 
                   <div className="p-3.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-primary/50 rounded-2xl flex items-center justify-between gap-3 text-left">

@@ -4,12 +4,12 @@ import {
   ShoppingBag, 
   Layers, 
   Sliders, 
-  DollarSign, 
   HardDrive, 
   LayoutDashboard, 
   Crown, 
   Search,
-  MessageSquare 
+  MessageSquare,
+  Tag
 } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 
@@ -123,22 +123,22 @@ export const AdminNavigation: React.FC = () => {
           </span>
         </div>
 
-        {/* Pricing Rates */}
+        {/* Pricing & Campaigns */}
         <div 
           onClick={() => handleNav("billing", "/admin/billing")}
           className="bg-white border border-[#111111]/10 p-4 rounded-2xl shadow-xs cursor-pointer hover:border-primary transition-all"
         >
           <div className="flex items-center justify-between text-primary-amber mb-1.5">
-            <DollarSign size={18} />
+            <Tag size={18} />
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#726F6D]">
-              Pricing Rates
+              Pricing & Promos
             </span>
           </div>
           <div className="text-2xl font-heading font-black text-[#111111]">
-            Rates
+            Campaigns
           </div>
           <span className="text-[10px] text-[#726F6D] font-medium block">
-            Tiers & Addons
+            Rates & Coupons
           </span>
         </div>
 
@@ -243,7 +243,7 @@ export const AdminNavigation: React.FC = () => {
                 : "text-[#111111] hover:bg-black/5 hover:text-primary-amber"
             }`}
           >
-            <DollarSign size={14} /> Pricing Rates
+            <Tag size={14} /> Pricing & Campaigns
           </button>
           <button
             type="button"

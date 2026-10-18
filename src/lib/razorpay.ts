@@ -65,6 +65,7 @@ export async function getRazorpayKey(): Promise<string> {
 
 export interface CheckoutParams {
   amount: number; // in whole currency units (e.g. 499 INR or 9 USD)
+  orderId?: string; // Optional server-created Razorpay order_id
   currency?: "INR" | "USD";
   title: string;
   description: string;
@@ -88,6 +89,7 @@ export interface CheckoutParams {
  */
 export async function openRazorpayCheckout({
   amount,
+  orderId,
   currency = "INR",
   title,
   description,
@@ -101,7 +103,7 @@ export async function openRazorpayCheckout({
 
   // If Razorpay test key is provided and script is loaded, launch official Razorpay checkout!
   if (isLoaded && key && window.Razorpay) {
-    const options = {
+    const options: any = {
       key,
       amount: Math.round(amount * 100), // amount in lowest currency subunit (paise or cents)
       currency,
@@ -124,11 +126,15 @@ export async function openRazorpayCheckout({
       handler: function (response: any) {
         onSuccess({
           razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_order_id: response.razorpay_order_id,
+          razorpay_order_id: response.razorpay_order_id || orderId,
           razorpay_signature: response.razorpay_signature,
         });
       },
     };
+
+    if (orderId) {
+      options.order_id = orderId;
+    }
 
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", function (response: any) {
