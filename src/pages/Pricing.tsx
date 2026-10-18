@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Check, ArrowRight, Flame } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
@@ -5,6 +6,7 @@ import { usePricing } from "../features/pricing/usePricing";
 import { PricingFaqSection } from "../features/pricing/PricingFaqSection";
 import { usePromotion } from "../features/promotions/usePromotion";
 import { CouponInputBox } from "../features/promotions/components/CouponInputBox";
+import { d1 } from "../lib/d1";
 
 export default function Pricing() {
   usePageSEO({
@@ -14,6 +16,25 @@ export default function Pricing() {
 
   const { pricingConfig, currency, handleSubscribeTier } = usePricing();
   const { tier_monthly_usd, tier_monthly_inr, tier_yearly_usd, tier_yearly_inr, tier_lifetime_usd, tier_lifetime_inr, rate_usd_redesign, rate_inr_redesign } = pricingConfig;
+
+  const [userEmail, setUserEmail] = useState<string | undefined>(() => {
+    try {
+      const stored = typeof localStorage !== "undefined" ? localStorage.getItem("slidebee_client_user") : null;
+      if (stored) {
+        const u = JSON.parse(stored);
+        return u?.email;
+      }
+    } catch (e) {}
+    return undefined;
+  });
+
+  useEffect(() => {
+    d1.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        setUserEmail(session.user.email);
+      }
+    });
+  }, []);
 
   const {
     couponInput,
@@ -27,6 +48,7 @@ export default function Pricing() {
     orderType: "subscription",
     targetId: "yearly",
     currency: currency === "USD" ? "USD" : "INR",
+    userEmail,
   });
 
   const calculateTierPrice = (base: number) => {
