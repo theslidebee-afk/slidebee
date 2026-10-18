@@ -96,7 +96,8 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
     - Added dedicated "Campaign Engine" launchpad card in `OverviewQuickActions.tsx` (Studio Command Launchpad) taking admins straight to the engine.
     - Added direct HTML5 route aliases in `Admin.tsx` (`/admin/campaigns` and `/admin/promotions`) with automatic tab active state mapping.
     - Added section navigation switcher bar in `AdminBilling.tsx` jumping between "Marketplace Base Rates" (`#pricing-rates`) and "Coupon & Campaign Engine" (`#campaigns`).
-  - Integrated customer-facing discount input drawer into Pro subscriptions and individual template checkout.
+  - Hardened Razorpay test checkout: filtered fallback `order_sim_...` IDs so Razorpay Standard Checkout opens smoothly with test keys, passed session tokens to `/api/subscribe-pro`, and added profile lookup fallback.
+  - Enforced per-user promotion limits: Bound authenticated client email to `Pricing.tsx` coupon drawer; verified case-insensitive `max_redemptions_per_user` enforcement across D1, blocking duplicate redemptions with `USER_LIMIT_REACHED`.
   - 100% test coverage with 34/34 passing security and integration tests (`npm test`).
 
 ## 3. In-Progress Features
