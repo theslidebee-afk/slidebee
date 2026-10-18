@@ -141,7 +141,10 @@ export function usePricing() {
         try {
           await fetch("/api/subscribe-pro", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            },
             body: JSON.stringify({
               paymentId,
               orderId: returnedOrderId,

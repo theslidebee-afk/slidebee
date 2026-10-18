@@ -61,6 +61,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     // Validate email
     const cleanEmail = String(userEmail || "").trim().toLowerCase();
+    const cleanPaymentId = String(paymentId || "").trim();
     if (!cleanEmail || !cleanEmail.includes("@") || cleanEmail.length > 254) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid client email address." }),
@@ -103,6 +104,20 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
     }
 
+    // Also authorize if client has an active profile and just completed a genuine gateway payment
+    if (!isCallerSessionValid && env.DB && cleanPaymentId && cleanPaymentId.startsWith("pay_")) {
+      try {
+        const profileRow: any = await env.DB.prepare(
+          `SELECT id, email FROM profiles WHERE LOWER(TRIM(email)) = ?`
+        ).bind(cleanEmail).first();
+        if (profileRow) {
+          isCallerSessionValid = true;
+        }
+      } catch (profileErr) {
+        console.warn("Profile lookup notice:", profileErr);
+      }
+    }
+
     if (!isCallerSessionValid) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized: Active session required to upgrade subscription tier." }),
@@ -122,7 +137,6 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     // 2. Gateway Verification & Replay Protection
-    const cleanPaymentId = String(paymentId || "").trim();
     if (!isAdmin) {
       if (!cleanPaymentId || cleanPaymentId === "rzp_manual") {
         return new Response(

@@ -132,7 +132,9 @@ export async function openRazorpayCheckout({
       },
     };
 
-    if (orderId) {
+    // Only attach order_id if it is an authentic Razorpay Order ID created via official Orders API
+    // Internal fallback/simulation IDs (e.g. "order_sim_...") must be omitted so Razorpay opens standard checkout
+    if (orderId && orderId.startsWith("order_") && !orderId.startsWith("order_sim_")) {
       options.order_id = orderId;
     }
 
