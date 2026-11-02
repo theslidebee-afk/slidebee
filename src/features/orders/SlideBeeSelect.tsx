@@ -78,10 +78,11 @@ export const SlideBeeSelect: React.FC<SlideBeeSelectProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            style={{ transformOrigin: "top center" }}
             initial={{ opacity: 0, y: -6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className="absolute z-50 left-0 right-0 mt-2 bg-[#FFFDF7] border-2 border-primary rounded-2xl shadow-2xl shadow-primary/20 overflow-hidden py-1.5 max-h-60 overflow-y-auto"
             role="listbox"
           >

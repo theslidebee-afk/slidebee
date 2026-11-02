@@ -403,6 +403,19 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         }
       }
 
+      // If deleting from promotions, first clean up any associated redemptions to avoid foreign key constraints
+      if (table === "promotions") {
+        for (const filter of filters) {
+          if (filter.column === "id" && filter.op === "eq") {
+            try {
+              await env.DB.prepare(`DELETE FROM promotion_redemptions WHERE promotion_id = ?`).bind(stringifyValue(filter.value)).run();
+            } catch (fkErr) {
+              console.warn("Clean promotion redemptions notice:", fkErr);
+            }
+          }
+        }
+      }
+
       let sql = `DELETE FROM ${table}`;
       if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
 

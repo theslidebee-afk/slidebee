@@ -71,7 +71,7 @@ export function PricingFaqSection({ pricingConfig, currency }: PricingFaqSection
               <span>{faq.q}</span>
               <ChevronDown
                 size={18}
-                className={`shrink-0 text-primary-amber transition-transform duration-300 ${openFaq === idx ? "rotate-180" : ""}`}
+                className={`shrink-0 text-primary-amber transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${openFaq === idx ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -81,7 +81,7 @@ export function PricingFaqSection({ pricingConfig, currency }: PricingFaqSection
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
                 >
                   <div className="px-6 pb-5 text-xs text-[#726F6D] font-medium leading-relaxed border-t border-primary/20 pt-3">

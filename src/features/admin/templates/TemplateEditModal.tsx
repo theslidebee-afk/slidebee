@@ -37,8 +37,6 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
   onSaveSuccess,
   onDelete
 }) => {
-  if (!isOpen || !template) return null;
-
   const {
     editingTemplate,
     setEditingTemplate,
@@ -56,13 +54,23 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      {isOpen && template && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5"
+          >
           <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
             <div>
               <h3 className="text-xl font-heading font-extrabold text-[#111111] flex items-center gap-2">
@@ -258,8 +266,9 @@ export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
             </div>
           </form>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
   );
 };
 

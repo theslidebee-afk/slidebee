@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Eye, Heart } from "lucide-react";
 import { useCurrency } from "../../../context/CurrencyContext";
 import { useWishlist, WishlistAuthModal } from "../../wishlist";
@@ -19,24 +20,27 @@ export function HomeTemplateCard({ template }: HomeTemplateCardProps) {
       <div
         onClick={() => navigate(`/template/${template.id}`)}
         data-bee-state="card"
-        className="group relative bg-white hover:bg-white border border-[#111111]/10 hover:border-[#FCBF14] rounded-2xl p-2.5 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full cursor-pointer overflow-hidden"
+        className="group relative bg-white hover:bg-white border border-[#111111]/10 hover:border-[#FCBF14] rounded-2xl p-2.5 shadow-xs hover:shadow-lg transition-[border-color,box-shadow] duration-250 flex flex-col justify-between h-full cursor-pointer overflow-hidden"
       >
         {/* Wishlist Heart Button - Top Right Corner */}
-        <button
+        <motion.button
           type="button"
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.82 }}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
           onClick={(e) => {
             e.stopPropagation();
             toggleWishlist(template.id);
           }}
           aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
-          className={`absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-md cursor-pointer ${
+          className={`absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full flex items-center justify-center shadow-md cursor-pointer ${
             wishlisted
-              ? "bg-red-500 text-white scale-105"
-              : "bg-white/90 hover:bg-white text-gray-700 hover:text-red-500 hover:scale-105"
+              ? "bg-red-500 text-white"
+              : "bg-white/90 hover:bg-white text-gray-700 hover:text-red-500"
           }`}
         >
           <Heart size={13} className={wishlisted ? "fill-white" : ""} />
-        </button>
+        </motion.button>
 
         {/* Free Swallowtail Ribbon Tag - Top Left Corner */}
         {!template.is_premium && (

@@ -37,8 +37,6 @@ export const RevokeProModal: React.FC<RevokeProModalProps> = ({
     }
   }, [targetSub]);
 
-  if (!isOpen || !targetSub) return null;
-
   const handleExecuteRevokePro = async () => {
     setIsProcessing(true);
     try {
@@ -98,13 +96,23 @@ export const RevokeProModal: React.FC<RevokeProModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      {isOpen && targetSub && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white border-2 border-amber-300 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-2 border-amber-300 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
+          >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#111111]/10 pb-4">
             <div className="flex items-center gap-2.5">
@@ -335,8 +343,9 @@ export const RevokeProModal: React.FC<RevokeProModalProps> = ({
               )}
             </button>
           </div>
+          </motion.div>
         </motion.div>
-      </div>
+      )}
     </AnimatePresence>
   );
 };

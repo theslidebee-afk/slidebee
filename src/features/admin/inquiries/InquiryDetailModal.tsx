@@ -33,23 +33,31 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
   onUpdateStatus,
   onDeleteInquiry
 }) => {
-  if (!isOpen || !inquiry) return null;
-
-  const mailtoSubject = encodeURIComponent(`Re: [SlideBee Quote Inquiry] ${inquiry.subject || inquiry.serviceType}`);
-  const mailtoBody = encodeURIComponent(
+  const mailtoSubject = inquiry ? encodeURIComponent(`Re: [SlideBee Quote Inquiry] ${inquiry.subject || inquiry.serviceType}`) : "";
+  const mailtoBody = inquiry ? encodeURIComponent(
     `Hi ${inquiry.fullName},\n\nThank you for reaching out to SlideBee Studio regarding your ${inquiry.serviceType} project.\n\n`
-  );
-  const mailtoHref = `mailto:${inquiry.email}?subject=${mailtoSubject}&body=${mailtoBody}`;
+  ) : "";
+  const mailtoHref = inquiry ? `mailto:${inquiry.email}?subject=${mailtoSubject}&body=${mailtoBody}` : "#";
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      {isOpen && inquiry && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white border-2 border-[#111111]/15 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-6 text-left"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-2 border-[#111111]/15 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-6 text-left"
+          >
           {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-[#111111]/10">
             <div>
@@ -160,7 +168,8 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
             </a>
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
-  );
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 };

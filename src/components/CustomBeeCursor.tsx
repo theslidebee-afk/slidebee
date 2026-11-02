@@ -63,25 +63,17 @@ export const CustomBeeCursor: React.FC = () => {
 
     let targetX = -100;
     let targetY = -100;
-    let currentX = -100;
-    let currentY = -100;
-    let rafId: number | null = null;
+    let isScheduled = false;
 
-    const renderLoop = () => {
-      // Instant snap for crisp, lag-free cursor feel
-      currentX = targetX;
-      currentY = targetY;
-
+    const updatePosition = () => {
       if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+        cursorRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
       }
       if (auraRef.current) {
-        auraRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+        auraRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
       }
-      rafId = requestAnimationFrame(renderLoop);
+      isScheduled = false;
     };
-
-    rafId = requestAnimationFrame(renderLoop);
 
     const handlePointerMove = (e: MouseEvent) => {
       targetX = e.clientX;
@@ -92,6 +84,11 @@ export const CustomBeeCursor: React.FC = () => {
         if (containerRef.current) {
           containerRef.current.style.opacity = "1";
         }
+      }
+
+      if (!isScheduled) {
+        isScheduled = true;
+        requestAnimationFrame(updatePosition);
       }
     };
 
@@ -162,7 +159,7 @@ export const CustomBeeCursor: React.FC = () => {
     document.addEventListener("mouseenter", handleMouseEnter);
 
     return () => {
-      if (rafId) cancelAnimationFrame(rafId);
+      isScheduled = false;
       window.removeEventListener("mousemove", handlePointerMove);
       window.removeEventListener("mouseover", handleMouseOver);
       window.removeEventListener("mousedown", handleMouseDown);

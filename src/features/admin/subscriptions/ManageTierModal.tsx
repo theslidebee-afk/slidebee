@@ -51,8 +51,6 @@ export const ManageTierModal: React.FC<ManageTierModalProps> = ({
     }
   }, [targetClient]);
 
-  if (!isOpen) return null;
-
   const handleExecuteSaveTier = async () => {
     if (!selectedClient) return;
     setIsProcessing(true);
@@ -145,13 +143,23 @@ export const ManageTierModal: React.FC<ManageTierModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-2 border-[#111111]/15 rounded-2xl p-6 sm:p-7 max-w-3xl w-full shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto"
+          >
           <div className="flex items-center justify-between border-b border-[#111111]/10 pb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-primary-amber shrink-0">
@@ -280,8 +288,9 @@ export const ManageTierModal: React.FC<ManageTierModalProps> = ({
               )}
             </button>
           </div>
+          </motion.div>
         </motion.div>
-      </div>
+      )}
     </AnimatePresence>
   );
 };

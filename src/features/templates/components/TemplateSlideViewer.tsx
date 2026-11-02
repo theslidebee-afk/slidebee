@@ -25,6 +25,13 @@ export function TemplateSlideViewer({
 }: TemplateSlideViewerProps) {
   const currentSlideImg = slides[activeSlideIdx] || template.image_url;
   const thumbnailsRef = useRef<HTMLDivElement>(null);
+  const prevSlideIdx = useRef(activeSlideIdx);
+  const direction = activeSlideIdx >= prevSlideIdx.current ? 1 : -1;
+
+  useEffect(() => {
+    prevSlideIdx.current = activeSlideIdx;
+  }, [activeSlideIdx]);
+
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -110,15 +117,16 @@ export function TemplateSlideViewer({
         onTouchEnd={handleTouchEnd}
         className="hex-card-dark bg-[#FFF9E8] border-2 border-primary/50 overflow-hidden shadow-2xl relative w-full flex items-center justify-center group touch-pan-y"
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" custom={direction}>
           <motion.img
             key={activeSlideIdx}
             src={currentSlideImg}
             alt={`${template.title} - Slide ${activeSlideIdx + 1}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            custom={direction}
+            initial={{ opacity: 0, x: direction * 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -40 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="w-full h-auto block select-none rounded-xl"
           />
         </AnimatePresence>

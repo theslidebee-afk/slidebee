@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { d1 } from "../lib/d1";
 import SlideBeeLogo from "./SlideBeeLogo";
 
@@ -13,8 +13,8 @@ export default function Footer() {
     instagramUrl: "https://instagram.com/theslidebee",
     dribbbleUrl: "https://dribbble.com/theslidebee",
     copyrightText: "SlideBee. All rights reserved.",
-    address: "123 Design Avenue, Suite 400, New York, NY 10001",
-    phone: "+1 (555) 123-4567",
+    address: "",
+    phone: "+91 98765 43210",
     email: "hello@theslidebee.com"
   });
 
@@ -25,7 +25,14 @@ export default function Footer() {
       .eq("key", "footer_cms")
       .single()
       .then(({ data }) => {
-        if (data?.value) setFooterConfig(data.value);
+        if (data?.value) {
+          try {
+            const parsed = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+            setFooterConfig((prev: any) => ({ ...prev, ...parsed }));
+          } catch (e) {
+            console.warn("Failed to parse footer_cms:", e);
+          }
+        }
       });
   }, []);
 
@@ -126,25 +133,35 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-6 text-white uppercase tracking-wider">Contact Us</h4>
             <ul className="space-y-4 text-gray-400">
-              <li className="flex items-start gap-3">
-                <MapPin className="text-primary shrink-0 mt-1" size={20} />
-                <span>{footerConfig.address || "SlideBee Design Studio, Bengaluru, Karnataka 560001, India (Hubs: Singapore & San Francisco)"}</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="text-primary shrink-0" size={20} />
-                <span>{footerConfig.phone || "+91 98765 43210"}</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="text-primary shrink-0" size={20} />
-                <span>{footerConfig.email || "hello@theslidebee.com"}</span>
-              </li>
+              {footerConfig.phone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="text-primary shrink-0" size={18} />
+                  <a
+                    href={`tel:${footerConfig.phone.replace(/[^0-9+]/g, '')}`}
+                    className="hover:text-primary transition-colors text-xs sm:text-sm font-medium"
+                  >
+                    {footerConfig.phone}
+                  </a>
+                </li>
+              )}
+              {footerConfig.email && (
+                <li className="flex items-center gap-3">
+                  <Mail className="text-primary shrink-0" size={18} />
+                  <a
+                    href={`mailto:${footerConfig.email}`}
+                    className="hover:text-primary transition-colors text-xs sm:text-sm font-medium"
+                  >
+                    {footerConfig.email}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>
 
         {/* Legal & Razorpay Compliance Bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col lg:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400">
-          <p>&copy; {currentYear} {footerConfig.copyrightText || "SlideBee. All rights reserved."} • SlideBee Design Studio (Registered in India)</p>
+          <p>&copy; {currentYear} {footerConfig.copyrightText || "SlideBee. All rights reserved."}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
             <Link to="/privacy" onClick={scrollToTop} className="hover:text-primary transition-colors">Privacy Policy</Link>
             <Link to="/terms" onClick={scrollToTop} className="hover:text-primary transition-colors">Terms & Conditions</Link>

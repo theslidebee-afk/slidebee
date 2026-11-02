@@ -63,7 +63,14 @@ export default function Contact() {
       .eq("key", "contact_cms")
       .single()
       .then(({ data }) => {
-        if (data?.value) setContactConfig(data.value);
+        if (data?.value) {
+          try {
+            const parsed = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+            setContactConfig((prev: any) => ({ ...prev, ...parsed }));
+          } catch (e) {
+            console.warn("Failed to parse contact_cms:", e);
+          }
+        }
       });
   }, []);
 
@@ -152,15 +159,17 @@ export default function Contact() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FCBF14]/12 rounded-full blur-[140px] pointer-events-none" />
 
         <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
-          {contactConfig.responseGuarantee || "2-Hour Response Time"}
+          {isEcommerce ? "Engineering Intake Desk • ₹25K Package" : (contactConfig.responseGuarantee || "2-Hour Response Time")}
         </span>
 
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-[#111111] leading-[1.12] mb-4 tracking-tight">
-          {contactConfig.headline}
+          {isEcommerce ? "Build Your High-Converting Ecommerce Store." : (contactConfig.headline || "Let’s Talk About Your Next Presentation.")}
         </h1>
 
         <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-xl mx-auto leading-relaxed">
-          {contactConfig.subheadline}
+          {isEcommerce
+            ? "Launch a lightning-fast custom online store with automated checkout, payment gateway, and catalog architecture for ₹25,000. Speak directly with our lead engineer."
+            : (contactConfig.subheadline || "Have an upcoming investor pitch, board keynote, or custom template project? Send us a message and our team will get back to you within 2 hours.")}
         </p>
       </section>
 

@@ -179,51 +179,100 @@ export function useTemplateData(id?: string) {
 
   useEffect(() => {
     if (!template?.id) return;
-    d1.from("v_storefront_catalog")
-      .select("*")
-      .neq("id", template.id)
-      .limit(4)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const mapped: StoreTemplate[] = data.map((t: any) => {
-            const coverImg = normalizeR2Url(t.thumbnail_url || t.image_url, "slides");
-            const slideUrls =
-              Array.isArray(t.slides) && t.slides.length > 0
-                ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
-                : [coverImg];
-            const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
 
-            return {
-              id: t.id,
-              code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
-              title: t.title,
-              category: t.category || "Business",
-              price_inr: Number(t.price_inr) || 499,
-              price_usd: Number(t.price_usd) || 9,
-              original_price_inr: Number(t.original_price_inr) || 999,
-              image_url: coverImg,
-              slides: slideUrls,
-              slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
-              rating: Number(t.rating) || 4.9,
-              downloads: Number(t.downloads) || 120,
-              download_url: pptxUrl,
-              file_name:
-                t.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
-              file_size: t.file_size || "4.5 MB",
-              description: t.description || "Executive presentation deck layout.",
-              features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
-              formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-              is_premium:
-                t.is_premium !== undefined ? Number(t.is_premium) === 1 : Number(t.price_inr) > 0,
-              is_credit_eligible: Boolean(t.is_credit_eligible),
-              is_featured: Boolean(t.is_featured),
-              is_published: true,
-            };
-          });
-          setSimilarTemplates(mapped);
+    const mapTemplate = (t: any): StoreTemplate => {
+      const coverImg = normalizeR2Url(t.thumbnail_url || t.image_url, "slides");
+      const slideUrls =
+        Array.isArray(t.slides) && t.slides.length > 0
+          ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
+          : [coverImg];
+      const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
+
+      return {
+        id: t.id,
+        code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
+        title: t.title,
+        category: t.category || "Business",
+        price_inr: Number(t.price_inr) || 499,
+        price_usd: Number(t.price_usd) || 9,
+        original_price_inr: Number(t.original_price_inr) || 999,
+        image_url: coverImg,
+        slides: slideUrls,
+        slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
+        rating: Number(t.rating) || 4.9,
+        downloads: Number(t.downloads) || 120,
+        download_url: pptxUrl,
+        file_name:
+          t.file_name || (pptxUrl ? pptxUrl.split("/").pop() || "Master_Deck.pptx" : "Master_Deck.pptx"),
+        file_size: t.file_size || "4.5 MB",
+        description: t.description || "Executive presentation deck layout.",
+        features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides"],
+        formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
+        is_premium:
+          t.is_premium !== undefined ? Number(t.is_premium) === 1 : Number(t.price_inr) > 0,
+        is_credit_eligible: Boolean(t.is_credit_eligible),
+        is_featured: Boolean(t.is_featured),
+        is_published: true,
+      };
+    };
+
+    const fetchSimilar = async () => {
+      const finalItems: any[] = [];
+      const seenIds = new Set<string>([template.id]);
+
+      // 1. Primary match: same category
+      if (template.category) {
+        try {
+          const { data: catMatches } = await d1
+            .from("v_storefront_catalog")
+            .select("*")
+            .eq("category", template.category)
+            .neq("id", template.id)
+            .limit(4);
+
+          if (catMatches && catMatches.length > 0) {
+            for (const item of catMatches) {
+              if (!seenIds.has(item.id)) {
+                seenIds.add(item.id);
+                finalItems.push(item);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Category-matched templates query notice:", e);
         }
-      });
-  }, [template?.id]);
+      }
+
+      // 2. Fallback backfill: fill remaining slots up to 4
+      if (finalItems.length < 4) {
+        try {
+          const { data: fallbackMatches } = await d1
+            .from("v_storefront_catalog")
+            .select("*")
+            .neq("id", template.id)
+            .limit(8);
+
+          if (fallbackMatches && fallbackMatches.length > 0) {
+            for (const item of fallbackMatches) {
+              if (!seenIds.has(item.id)) {
+                seenIds.add(item.id);
+                finalItems.push(item);
+                if (finalItems.length >= 4) break;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Fallback similar templates query notice:", e);
+        }
+      }
+
+      if (finalItems.length > 0) {
+        setSimilarTemplates(finalItems.slice(0, 4).map(mapTemplate));
+      }
+    };
+
+    fetchSimilar();
+  }, [template?.id, template?.category]);
 
   return {
     template,

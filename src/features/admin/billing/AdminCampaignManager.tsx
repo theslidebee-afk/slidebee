@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Tag,
   Plus,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 import { d1 } from "../../../lib/d1";
 
@@ -38,6 +40,7 @@ export const AdminCampaignManager: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [promoToDelete, setPromoToDelete] = useState<PromotionItem | null>(null);
 
   // Form state
   const [code, setCode] = useState("");
@@ -106,19 +109,31 @@ export const AdminCampaignManager: React.FC = () => {
     }
   };
 
-  const handleDeletePromotion = async (promo: PromotionItem) => {
-    if (!window.confirm(`Are you sure you want to delete campaign "${promo.name}" (${promo.code})?`)) {
-      return;
-    }
+  const handleDeletePromotion = (promo: PromotionItem) => {
+    setPromoToDelete(promo);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!promoToDelete) return;
+    const promo = promoToDelete;
 
     setActionLoading(promo.id);
     try {
+      // 1. Clean up any related redemptions first to avoid SQLite foreign key constraints
+      try {
+        await d1.from("promotion_redemptions").delete().eq("promotion_id", promo.id);
+      } catch (fkErr) {
+        console.warn("Clean promotion redemptions notice:", fkErr);
+      }
+
+      // 2. Delete promotion record
       const { error } = await d1.from("promotions").delete().eq("id", promo.id);
       if (error) {
         setFeedback({ type: "error", message: `Failed to delete campaign: ${error.message}` });
       } else {
         setPromotions((prev) => prev.filter((p) => p.id !== promo.id));
-        setFeedback({ type: "success", message: `Campaign "${promo.name}" removed.` });
+        setFeedback({ type: "success", message: `Campaign "${promo.name}" has been permanently removed.` });
+        setPromoToDelete(null);
       }
     } catch (err: any) {
       setFeedback({ type: "error", message: err.message || "Failed to delete campaign." });
@@ -545,6 +560,97 @@ export const AdminCampaignManager: React.FC = () => {
           </table>
         )}
       </div>
+
+      {/* Confirmation Modal for Permanent Campaign Deletion */}
+      <AnimatePresence>
+        {promoToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#111111]/10 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#111111]/8">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-heading font-extrabold text-[#111111]">
+                      Delete Campaign?
+                    </h3>
+                    <p className="text-[11px] text-[#726F6D]">
+                      Permanently remove this promotional voucher
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromoToDelete(null)}
+                  disabled={actionLoading === promoToDelete.id}
+                  className="p-1 rounded-lg text-[#726F6D] hover:bg-zinc-100 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="bg-[#FFF9E8] p-3.5 rounded-xl border border-amber-300/80 text-xs space-y-1.5">
+                <div className="font-extrabold text-[#111111]">
+                  {promoToDelete.name}
+                </div>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="font-mono font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                    {promoToDelete.code || "AUTOMATIC"}
+                  </span>
+                  <span className="font-bold text-[#111111]">
+                    {promoToDelete.discount_type === "percentage"
+                      ? `${promoToDelete.discount_value}% OFF`
+                      : `${promoToDelete.currency === "USD" ? "$" : "₹"}${promoToDelete.discount_value} OFF`}
+                  </span>
+                </div>
+                <div className="text-[#726F6D] text-[11px]">
+                  Scope: <span className="capitalize font-semibold text-zinc-800">{promoToDelete.applicable_scope}</span> • Redeemed: <span className="font-bold text-zinc-900">{promoToDelete.redemption_count}</span> times
+                </div>
+              </div>
+
+              <p className="text-xs text-[#726F6D] leading-relaxed">
+                Are you sure you want to delete this campaign? This will permanently deactivate the coupon code and clean up any linked redemptions.
+              </p>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPromoToDelete(null)}
+                  disabled={actionLoading === promoToDelete.id}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#726F6D] hover:bg-zinc-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={actionLoading === promoToDelete.id}
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-red-600 hover:bg-red-700 text-white shadow transition-all flex items-center gap-1.5 disabled:opacity-60"
+                >
+                  {actionLoading === promoToDelete.id ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={13} />
+                      <span>Delete Campaign</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

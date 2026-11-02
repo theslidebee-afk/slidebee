@@ -1,13 +1,35 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Completed SlideBee Promotions & Voucher System: Bank-grade server-authoritative discount validation, Razorpay Orders API locked checkout, cryptographic HMAC-SHA256 signature verification, replay/idempotency protection, coupon input UI drawers across Pricing and Template detail, and Admin Campaign Manager in AdminBilling.
+Completed Complete Elimination of Footer Address & Legal Location Suffix, and Fixed Coupon Campaign Deletion with In-App Confirmation Modal and SQLite Foreign-Key Cascading Clean-Up. Verified clean build and 35/35 passing tests on dev branch.
 
 ## What Was Done
-1. **Promotions Database Schema & Migration**:
-   - Created `migrations/0004_promotions_engine.sql` containing `promotions` master table and `promotion_redemptions` audit ledger with indexes, foreign keys, and seed campaigns (`DIWALI50`, `WELCOME20`).
-   - Updated `functions/api/data/schema.ts` to whitelist `promotions` and `promotion_redemptions` in `ALLOWED_TABLES`, `JSON_COLUMNS` (`eligible_tiers`, `eligible_template_ids`), and `VALID_TABLE_COLUMNS`.
-   - Updated `functions/api/data.ts` to restrict all mutations on `promotions` and `promotion_redemptions` to verified administrators (HTTP 403).
+1. **Dead Code & Dependency Pruning**:
+   - Pruned 29 unreachable files across 3D honeycomb assets (`ThreeJsHero.tsx`, `createSlideBeeHoneycombModel.ts`, `src/components/honeycomb/`, `HeroSection.tsx`, `RecreatedHoneycombCluster.tsx`, `HoneycombBackground.tsx`, `HoneycombCluster.tsx`, `HeroHexCollage.tsx`, `PageHoneycombJourney.tsx`), superseded pages (`pages/Templates.tsx`, `pages/EcommerceDevelopment.tsx`, `marketplace/TemplateCard.tsx`, `marketplace/TemplatesFilterBar.tsx`), orphaned UI widgets (`CountdownSection.tsx`, `ServicesSection.tsx`, `SoftwareIcons.tsx`, `TryNowForm.tsx`), and legacy modules (`modules/OrderFulfillmentHub/`, `lib/assets.ts`, `lib/email.ts`, `CmsAboutTeamSection.tsx`).
+   - Removed `"three": "^0.185.1"` and `"@types/three": "^0.185.4"` from `package.json`.
+   - Preserved `WhatsAppLeadWidget.tsx` and `src/config/whatsapp.ts` pinned in the workspace as requested.
+
+2. **Performance & Accessibility Overhaul**:
+   - Replaced continuous 60-144fps `requestAnimationFrame` loop in `CustomBeeCursor.tsx` with event-driven scheduling on `pointermove`, eliminating idle CPU battery drain.
+   - Added universal `@media (prefers-reduced-motion: reduce)` accessibility ruleset in `src/index.css`.
+   - Replaced `transition: all` on `.hex-card` and `.hex-card-lg` with GPU-accelerated scoped properties (`transform`, `box-shadow`, `border-color`).
+
+3. **Modal Exit Transitions Restored**:
+   - Fixed broken exit cuts across 10 dialog modals (`PortfolioModal`, `TemplateEditModal`, `BulkImportModal`, `TemplateCreateModal`, `InquiryDetailModal`, `OrderBriefModal`, `RevokeProModal`, `ManageTierModal`, `DeleteAccountModal`, `AccountDeletionModal`) by properly wrapping conditionals inside `<AnimatePresence>` and animating backdrop overlays.
+
+4. **Surface Motion & Micro-Interactions**:
+   - Upgraded `TemplateSlideViewer.tsx` to directional horizontal slide push (`x: direction * 40`, `mode="popLayout"`), removing the 150ms blank screen flash.
+   - Anchored `SlideBeeSelect.tsx` to `top center` with brand easing `[0.16, 1, 0.3, 1]`.
+   - Synchronized accordion chevron rotation and drawer height in `PricingFaqSection.tsx`.
+   - Added staggered card arrivals (`30ms` stagger) in `HomeTemplateGrid.tsx`.
+   - Added Framer Motion tactile spring feedback to wishlist hearts in `HomeTemplateCard.tsx` and scoped card transitions to prevent FLIP collisions.
+   - Added 250ms error shake and layout expansion to `CouponInputBox.tsx`.
+
+5. **Verification**:
+   - `npm run build` (`tsc -b && vite build`) executes cleanly in 2.27s with exit code 0.
+   - `npm test` passes 34/34 tests (17 security vibe checks + 17 promotions security checks).
+   - Validated zero unicode emojis across 100% of modified files.
+
 
 2. **Serverless Engine & API Endpoints**:
    - Created `functions/api/_promotions.ts`: Shared core engine for base price resolution (`getAuthoritativeBasePrice`), coupon validation (`validatePromotion`), Web Crypto HMAC-SHA256 verification (`verifyRazorpaySignature`), and atomic redemption recording (`recordPromotionRedemption`).

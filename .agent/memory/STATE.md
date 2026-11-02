@@ -83,6 +83,18 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
   - Server order creation (`/api/checkout/create-order`): Eliminates client price tampering by pre-calculating authoritative final amount and creating an official Razorpay Order ID.
   - Payment provisioning hardening (`/api/subscribe-pro` and `/api/fulfill-order`): Cryptographic HMAC-SHA256 signature verification (`crypto.subtle`), replay protection (idempotency key checking), and atomic redemption recording.
   - Checkout UI: Created `usePromotion` hook and `CouponInputBox` component (zero emojis, Lucide SVG icons, Manrope typography, brand palette) integrated into `usePricing.ts` / `Pricing.tsx` and `useTemplateCheckout.ts` / `TemplateActionPanel.tsx`.
+- **Animation System Overhaul, Modal Exit Transitions, Cursor rAF Optimization & Dead Code Decommissioning**:
+  - Repaired broken exit animations across 10 modal dialogs (`PortfolioModal`, `TemplateEditModal`, `BulkImportModal`, `TemplateCreateModal`, `InquiryDetailModal`, `OrderBriefModal`, `RevokeProModal`, `ManageTierModal`, `DeleteAccountModal`, `AccountDeletionModal`) by wrapping conditionals properly inside `<AnimatePresence>` and converting backdrop overlays to animated `motion.div` containers (200ms `[0.16, 1, 0.3, 1]`).
+  - Eliminated hidden idle CPU battery drain in `CustomBeeCursor.tsx` by replacing the continuous 60-144fps `requestAnimationFrame` loop with an event-driven rAF listener that only schedules updates during actual `pointermove` events.
+  - Added universal `@media (prefers-reduced-motion: reduce)` accessibility ruleset in `src/index.css` conforming to WCAG 2.1 Criterion 2.3.3.
+  - Replaced unconstrained `transition: all` on `.hex-card` with GPU-accelerated scoped properties (`transform`, `box-shadow`, `border-color`).
+  - Upgraded `TemplateSlideViewer.tsx` to directional horizontal slide momentum (`x: direction * 40`, `mode="popLayout"`), eliminating the 150ms blank screen flash on slide flips.
+  - Anchored `SlideBeeSelect.tsx` dropdown to `transformOrigin: "top center"` with brand easing.
+  - Synchronized accordion chevron rotation and drawer height animation to 250ms `[0.16, 1, 0.3, 1]` in `PricingFaqSection.tsx`.
+  - Added staggered card arrivals (`delay: Math.min(index * 0.025, 0.25)`) to `HomeTemplateGrid.tsx` for silky catalog filtering and search updates.
+  - Upgraded wishlist heart button in `HomeTemplateCard.tsx` with Framer Motion tactile spring feedback (`whileTap={{ scale: 0.82 }}`) and scoped card root transitions to prevent FLIP matrix collisions.
+  - Added 250ms horizontal error shake and smooth layout expansion to `CouponInputBox.tsx`.
+  - Decommissioned 29 unreachable dead code files (including legacy Three.js WebGL honeycomb models, superseded redirect pages, and orphaned prototype components) and pruned `"three": "^0.185.1"` from `package.json`, saving ~55MB in `node_modules` while keeping `WhatsAppLeadWidget.tsx` pinned for future refinement. Zero unicode emojis maintained throughout.
   - Admin Campaign Manager: Added `AdminCampaignManager.tsx` in `AdminBilling.tsx` with campaign creation, status toggles (active/paused), and redemption counters.
   - Automated test suite: `tests/promotions_security.test.ts` (17 tests covering HMAC verification, discount math, eligibility rules, and RBAC) added to `npm test` (34 total tests passing).
 
@@ -104,6 +116,12 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **All Core Sprint Tasks Verified & Clean**: Zero pending blockers. Ready for production verification.
 
 ---
+
+- **Footer Address Complete Elimination**: Fully purged address rendering and references from the public footer (`src/components/Footer.tsx`) and Admin Studio customizer (`CmsFooterPanel.tsx`). Removed the location map pin icon, dummy address, and the legal copyright suffix ("• SlideBee Design Studio (Registered in India)"). The lower bottom of the website now cleanly features only phone, support email, and pure copyright without any office or geographic address.
+- **Coupon Campaign Deletion & Foreign-Key Integrity Fix**: Resolved coupon campaign deletion failure in `AdminCampaignManager.tsx` and `functions/api/data.ts`. Replaced fragile browser `window.confirm` with an executive `<AnimatePresence>` delete confirmation modal. Added server-side cascading clean-up in `/api/data` to purge associated records in `promotion_redemptions` prior to deleting the promotion record, preventing SQLite foreign-key constraint violations (`D1_ERROR: FOREIGN KEY constraint failed`). Added automated test coverage in `tests/promotions_security.test.ts` (35/35 tests passing).
+- **Ecommerce Contact Page Tailoring**: Updated `Contact.tsx` to dynamically adapt the hero section when `isEcommerce` is active (`?type=ecommerce` / `?service=ecommerce`), replacing presentation copy with an ecommerce store development headline, subheadline, and engineering intake badge.
+- **Category-Aware Similar Presentation Recommendations**: Upgraded `useTemplateData.ts` to query recommendations matching the current template's category, with intelligent backfill from the storefront catalog to guarantee 4 recommendations are always displayed.
+- **Google Sign-In Provider Recognition & Industry Standard Guidance**: Hardened `functions/api/auth/login.ts` and `functions/api/auth/signup.ts` to detect accounts created via Google OAuth. When a user attempts password login on a Google-linked account, the system displays a clear, industry-standard message: "This account is linked with Google Sign-In. Please click 'Continue with Google' to sign in, or click 'Forgot Password' below to set an email password."
 
 ## 4. Not-Started / Future Considerations
 - Multi-item shopping cart (currently single-item direct checkout).

@@ -128,18 +128,19 @@ export function HomeTemplateGrid({
             {/* Adaptive Grid Layout (2-col mobile, 3-col sm, 4-col md, 5-col desktop/laptop/monitor) */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-4.5 items-start">
               <AnimatePresence mode="popLayout">
-                {displayedTemplates.map((item) => (
+                {displayedTemplates.map((item, index) => (
                   <motion.div
                     key={item.id}
                     layout
-                    initial={{ opacity: 0, scale: 0.88, y: 16 }}
+                    initial={{ opacity: 0, scale: 0.92, y: 14 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.88, y: 16 }}
+                    exit={{ opacity: 0, scale: 0.92, y: 14 }}
                     transition={{
                       type: "spring",
-                      stiffness: 400,
-                      damping: 24,
+                      stiffness: 420,
+                      damping: 26,
                       mass: 0.8,
+                      delay: Math.min(index * 0.025, 0.25),
                     }}
                     className="w-full"
                   >

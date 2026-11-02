@@ -90,6 +90,31 @@
   1. Cover Aspect Ratio Optimization: Replaced container `aspect-[16/10]` across `HomeTemplateCard.tsx`, `DashboardWishlistTab.tsx`, `TemplatesGridView.tsx`, `TemplatePreviewsField.tsx`, and `CmsTrendingSelector.tsx` with standard `aspect-video` (16:9 widescreen ratio, 1.778), preventing edge clipping on 1920x1080 and 2001x1125 presentation slides.
   2. Native Microsoft PowerPoint Template (.potx) Deliverable Support: Added `"potx"` to Cloudflare R2 security allowlist (`functions/api/r2/utils.ts`), R2 size validators and telemetry (`functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`), storage file explorer (`StorageBucketExplorer.tsx`, `StorageTemplatesTable.tsx`), admin uploaders (`PptxUploaderField.tsx`, `BulkAssetUploaderTab.tsx`, `bulkImportUtils.ts`), `isValidPptxUrl` (`src/lib/templates.ts`), `normalizeR2Url` (`src/lib/r2.ts`), and streaming download proxy dynamic MIME header dispatching (`functions/api/download.ts`).
   3. Banner 3 Removal & Hero Stage Simplification: Removed Banner 3 from `HomeHeroBanners.tsx` and `Home.tsx`, eliminated `homeBannerTop` state and fetches from `useHomePageData.ts`, and updated `CmsPromotionalBanners.tsx` in Admin Studio to configure and save only the two primary split banners.
-- **Verification**: `npm run build` exits with code 0; `npm test` passes 17/17; zero unicode emojis across all modified files.
+---
+
+## TASK-014: Server-Authoritative Promotions & Voucher Engine
+- **Completed**: October 2026
+- **Summary**:
+  1. Master campaign schema (`promotions`) and audit ledger (`promotion_redemptions`) created in D1.
+  2. Authoritative serverless validation endpoint (`/api/promotions/validate`) checking dates, global/per-user redemption limits, tier/template eligibility, and currency matching.
+  3. Pre-calculated server-side order generation (`/api/checkout/create-order`) binding verified discounts to Razorpay Order IDs.
+  4. Cryptographic HMAC-SHA256 signature verification in payment webhooks/fulfillment, replay protection via idempotency keys, and atomic redemption logging.
+  5. UI components (`usePromotion.ts`, `CouponInputBox.tsx`, and `AdminCampaignManager.tsx`) integrated cleanly into storefront and Admin Studio with zero emojis.
+- **Verification**: `npm test` runs 17 promotions security tests (34 total tests passing); `npm run build` exits with code 0.
+
+---
+
+## TASK-015: Animation System Polish, Cursor Optimization & Dead Code Decommissioning
+- **Completed**: October 2026
+- **Summary**:
+  1. Repaired modal exit animations across 10 dialogs by placing conditional rendering inside `<AnimatePresence>` and animating backdrop overlays.
+  2. Eliminated hidden background CPU drain in `CustomBeeCursor.tsx` by replacing continuous 60-144fps `requestAnimationFrame` with event-driven scheduling on `pointermove`.
+  3. Enforced universal `@media (prefers-reduced-motion: reduce)` accessibility rules and replaced `transition: all` with GPU-accelerated scoped properties.
+  4. Added directional slide momentum (`x: direction * 40`, `mode="popLayout"`) in `TemplateSlideViewer.tsx` to eliminate blank white flashes during deck navigation.
+  5. Anchored dropdowns in `SlideBeeSelect.tsx` to `top center` and synchronized FAQ accordion timings to 250ms `[0.16, 1, 0.3, 1]`.
+  6. Added staggered card arrivals (`30ms` stagger) in `HomeTemplateGrid.tsx`, tactile spring feedback to wishlist hearts in `HomeTemplateCard.tsx`, and error shake to `CouponInputBox.tsx`.
+  7. Decommissioned 29 unreachable dead code files (3D honeycomb assets, superseded redirect pages, and orphaned UI widgets) and uninstalled `"three"` from `package.json`, saving ~55MB in `node_modules` while keeping `WhatsAppLeadWidget.tsx` pinned for future refinement.
+- **Verification**: `npm run build` builds in 2.27s with exit code 0; `npm test` passes 34/34 tests; verified zero unicode emojis across all files.
+
 
 

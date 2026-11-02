@@ -15,8 +15,17 @@ export async function handleSignup(request: Request, env: Env, body: any) {
   }
 
   if (env.DB) {
-    const existing = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(cleanEmail).first();
+    const existing: any = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(cleanEmail).first();
     if (existing) {
+      const isGoogle = String(existing.id || "").startsWith("usr-google-");
+      if (isGoogle) {
+        return jsonResponse({
+          error: {
+            message: "An account with this email already exists and is linked with Google Sign-In. Please click 'Continue with Google' to sign in, or use 'Forgot Password'.",
+            isGoogleAccount: true,
+          }
+        }, 400, corsHeaders);
+      }
       return jsonResponse({ error: { message: "An account with this email already exists." } }, 400, corsHeaders);
     }
 

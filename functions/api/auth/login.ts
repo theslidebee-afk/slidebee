@@ -85,6 +85,18 @@ export async function handleLogin(request: Request, env: Env, body: any) {
       if (isAdminTarget) {
         return jsonResponse({ error: { message: "Invalid administrator credentials. Please check your admin password." } }, 400, corsHeaders);
       }
+
+      // Check if this account was created via Google OAuth
+      const isGoogleAccount = String(user.id || "").startsWith("usr-google-");
+      if (isGoogleAccount) {
+        return jsonResponse({
+          error: {
+            message: "This account is linked with Google Sign-In. Please click 'Continue with Google' to sign in, or click 'Forgot Password' below to set an email password.",
+            isGoogleAccount: true,
+          }
+        }, 400, corsHeaders);
+      }
+
       return jsonResponse({ error: { message: "Invalid email or password." } }, 400, corsHeaders);
     }
 

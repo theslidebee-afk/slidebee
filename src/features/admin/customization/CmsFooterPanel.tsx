@@ -103,19 +103,75 @@ export const CmsFooterPanel: React.FC = () => {
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-bold text-[#111111] block mb-1">
-          Brand Tagline
-        </label>
-        <input
-          type="text"
-          value={footerConfig.tagline || "Elevating presentations for world-class brands."}
-          onChange={(e) => setSiteConfigs({
-            ...siteConfigs,
-            footer_cms: { ...footerConfig, tagline: e.target.value }
-          })}
-          className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
-        />
+      <div className="border-t border-[#111111]/8 pt-4">
+        <h4 className="text-xs font-heading font-extrabold text-[#111111] uppercase tracking-wider mb-3">
+          Footer Contact Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-bold text-[#111111] block mb-1">
+              Support Mobile / WhatsApp
+            </label>
+            <input
+              type="text"
+              placeholder="+91 98765 43210"
+              value={footerConfig.phone || ""}
+              onChange={(e) => setSiteConfigs({
+                ...siteConfigs,
+                footer_cms: { ...footerConfig, phone: e.target.value }
+              })}
+              className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-[#111111] block mb-1">
+              Support Email
+            </label>
+            <input
+              type="email"
+              placeholder="hello@theslidebee.com"
+              value={footerConfig.email || ""}
+              onChange={(e) => setSiteConfigs({
+                ...siteConfigs,
+                footer_cms: { ...footerConfig, email: e.target.value }
+              })}
+              className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-[#111111]/8 pt-4 space-y-4">
+        <div>
+          <label className="text-xs font-bold text-[#111111] block mb-1">
+            Brand Tagline
+          </label>
+          <input
+            type="text"
+            value={footerConfig.tagline || "Elevating presentations for world-class brands."}
+            onChange={(e) => setSiteConfigs({
+              ...siteConfigs,
+              footer_cms: { ...footerConfig, tagline: e.target.value }
+            })}
+            className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-[#111111] block mb-1">
+            Copyright Notice
+          </label>
+          <input
+            type="text"
+            value={footerConfig.copyrightText || "SlideBee. All rights reserved."}
+            onChange={(e) => setSiteConfigs({
+              ...siteConfigs,
+              footer_cms: { ...footerConfig, copyrightText: e.target.value }
+            })}
+            className="w-full bg-[#FFF9E8] border border-[#111111]/12 hex-pill px-4 py-2 text-xs font-medium text-[#111111]"
+          />
+        </div>
       </div>
     </div>
   );

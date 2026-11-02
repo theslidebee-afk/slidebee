@@ -33,20 +33,28 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [item, activeSlide, onClose, onSelectSlide]);
 
-  if (!item) return null;
-
-  const modalSlides = getSlideSet(item);
-  const currentSlideImg = normalizeSlideUrl(modalSlides[activeSlide] || item.image);
+  const modalSlides = item ? getSlideSet(item) : [];
+  const currentSlideImg = item ? normalizeSlideUrl(modalSlides[activeSlide] || item.image) : "";
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      {item && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="hex-card-lg bg-white border-2 border-primary/50 p-6 sm:p-8 max-w-4xl w-full shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="hex-card-lg bg-white border-2 border-primary/50 p-6 sm:p-8 max-w-4xl w-full shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto"
+          >
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#111111] transition-colors hex-pill bg-black/5 hover:bg-black/10 cursor-pointer"
@@ -168,7 +176,8 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({
             </div>
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
   );
 };

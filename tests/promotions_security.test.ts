@@ -242,6 +242,14 @@ async function runPromotionsSecuritySuite() {
         user_email: "alreadyredeemed@acme.com",
       },
     ],
+    sessions: [
+      {
+        id: "sess_admin_valid",
+        email: "admin@theslidebee.com",
+        role: "admin",
+        expires_at: "2099-01-01 00:00:00",
+      },
+    ],
   });
 
   const subPriceInr = await getAuthoritativeBasePrice(mockDb, "subscription", "yearly", "INR");
@@ -371,6 +379,30 @@ async function runPromotionsSecuritySuite() {
     redemptionsGatekeeperRes.status === 403,
     "Promotion Redemptions RBAC",
     "Direct deletion of 'promotion_redemptions' blocked with HTTP 403 for non-admin."
+  );
+
+  // Authorized admin promotion deletion with cascading redemptions clean-up
+  const adminDeleteContext = {
+    request: new Request("http://localhost/api/data", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer sess_admin_valid",
+      },
+      body: JSON.stringify({
+        action: "delete",
+        table: "promotions",
+        filters: [{ column: "id", op: "eq", value: "prm_diwali50_2026" }],
+      }),
+    }),
+    env: { DB: mockDb },
+  };
+
+  const adminDeleteRes = await handleDataPost(adminDeleteContext as any);
+  assert(
+    adminDeleteRes.status === 200,
+    "Admin Promotion Deletion",
+    "Authorized admin successfully deleted promotion with cascading clean-up."
   );
 
   console.log("\n==================================================");
