@@ -1,9 +1,9 @@
 # SlideBee — Current Project State Snapshot
 
-**Last Updated**: October 2026 (Active Dev Session)  
-**Branch**: `dev`  
-**Deployment**: Cloudflare Pages Live (`https://dev.slidebee.pages.dev` / `https://83f6102f.slidebee.pages.dev`)  
-**Build Status**: Passing (`npm run build` exits 0; 34/34 tests passing)
+**Last Updated**: November 2026 (Active Dev Session)  
+**Branch**: `dev` (Production deployed via `main`)  
+**Deployment**: Cloudflare Pages Live (`https://theslidebee.com` / `https://dev.slidebee.pages.dev`)  
+**Build Status**: Passing (`npm run build` exits 0; 35/35 tests passing)
 
 ---
 
@@ -122,6 +122,10 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **Ecommerce Contact Page Tailoring**: Updated `Contact.tsx` to dynamically adapt the hero section when `isEcommerce` is active (`?type=ecommerce` / `?service=ecommerce`), replacing presentation copy with an ecommerce store development headline, subheadline, and engineering intake badge.
 - **Category-Aware Similar Presentation Recommendations**: Upgraded `useTemplateData.ts` to query recommendations matching the current template's category, with intelligent backfill from the storefront catalog to guarantee 4 recommendations are always displayed.
 - **Google Sign-In Provider Recognition & Industry Standard Guidance**: Hardened `functions/api/auth/login.ts` and `functions/api/auth/signup.ts` to detect accounts created via Google OAuth. When a user attempts password login on a Google-linked account, the system displays a clear, industry-standard message: "This account is linked with Google Sign-In. Please click 'Continue with Google' to sign in, or click 'Forgot Password' below to set an email password."
+- **Sandbox Compliance Gateway Notice & Production Launch**:
+  - Built pre-checkout modal notice in `src/lib/razorpay.ts` that warns customers when the payment gateway is undergoing merchant compliance review in sandbox mode (`key.startsWith("rzp_test_")`), preventing accidental submissions of real credit card numbers while providing Razorpay compliance reviewers an explicit button to test the checkout flow.
+  - Merged `dev` cleanly into `main` and pushed to `origin/main`, taking the full SlideBee platform (15+ real presentation decks, bespoke services configurator, pricing plans, and all mandatory policy routes: `/privacy`, `/terms`, `/refund-policy`, `/shipping-policy`, `/contact`) live on `https://theslidebee.com` to satisfy Razorpay BMC requirements.
+  - Test suite passing 100% (35/35 tests) and build passing cleanly.
 
 ## 4. Not-Started / Future Considerations
 - Multi-item shopping cart (currently single-item direct checkout).
