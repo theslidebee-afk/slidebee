@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserX, X, Mail, Send, Loader2 } from "lucide-react";
 import { d1 } from "../../../lib/d1";
+import { formatDate } from "../../../lib/date";
 import { sendProExpiredEmail, sendProExpiringSoonEmail } from "../../../lib/email";
 import { useAdmin } from "../context/AdminContext";
 
@@ -158,7 +159,7 @@ export const RevokeProModal: React.FC<RevokeProModalProps> = ({
                 </div>
                 {targetSub.expiryDate && (
                   <div className="text-[10px] text-amber-900 font-medium pt-1 border-t border-amber-200">
-                    Cycle Ends: {new Date(targetSub.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    Cycle Ends: {formatDate(targetSub.expiryDate)}
                   </div>
                 )}
               </div>

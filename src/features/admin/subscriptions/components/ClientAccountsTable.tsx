@@ -1,5 +1,6 @@
 import React from "react";
 import { Crown, Clock, CheckCircle2, ShieldCheck, Trash2 } from "lucide-react";
+import { formatDate } from "../../../../lib/date";
 
 interface ClientAccountsTableProps {
   filteredProfiles: any[];
@@ -172,11 +173,11 @@ export const ClientAccountsTable: React.FC<ClientAccountsTableProps> = ({
                     </td>
                     <td className="p-4 whitespace-nowrap text-[#726F6D]">
                       <div className="text-[11px] font-bold text-[#111111]">
-                        {p.created_at ? new Date(p.created_at).toLocaleDateString() : "Recent"}
+                        {p.created_at ? formatDate(p.created_at) : "Recent"}
                       </div>
                       {p.last_sign_in_at && (
                         <span className="text-[10px] text-emerald-700 block">
-                          Active: {new Date(p.last_sign_in_at).toLocaleDateString()}
+                          Active: {formatDate(p.last_sign_in_at)}
                         </span>
                       )}
                     </td>

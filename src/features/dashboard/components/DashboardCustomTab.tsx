@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Briefcase, ArrowRight, Download, Mail, CheckCircle2, MessageCircle } from "lucide-react";
+import { formatDate } from "../../../lib/date";
 
 interface DashboardCustomTabProps {
   userOrders: any[];
@@ -89,7 +90,7 @@ export function DashboardCustomTab({ userOrders, studioWhatsapp }: DashboardCust
                       {title}
                     </h3>
                     <p className="text-xs text-[#726F6D]">
-                      Brief submitted: {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Active cycle"}
+                      Brief submitted: {order.created_at ? formatDate(order.created_at) : "Active cycle"}
                       {order.slide_count ? ` • ${order.slide_count} slides` : ""}
                     </p>
                   </div>

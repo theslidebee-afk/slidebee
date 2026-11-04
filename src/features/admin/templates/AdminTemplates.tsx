@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useAdmin } from "../context/AdminContext";
 import { d1 } from "../../../lib/d1";
+import { formatDate } from "../../../lib/date";
 import { BulkImportModal } from "./BulkImportModal";
 import { TemplateCreateModal } from "./TemplateCreateModal";
 import { TemplateEditModal } from "./TemplateEditModal";
@@ -42,18 +43,7 @@ export const AdminTemplates: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
 
   const formatUploadedDate = (dateStr?: string): string => {
-    if (!dateStr) return "N/A";
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
+    return formatDate(dateStr);
   };
 
   const sortedAndFilteredTemplates = useMemo(() => {

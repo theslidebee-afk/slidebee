@@ -1,7 +1,11 @@
 # SlideBee — Session Handoff Baton
 
 ## Current Task
-Completed Complete Elimination of Footer Address & Legal Location Suffix, and Fixed Coupon Campaign Deletion with In-App Confirmation Modal and SQLite Foreign-Key Cascading Clean-Up. Verified clean build and 35/35 passing tests on dev branch.
+Completed:
+1. Implemented pre-checkout sandbox compliance notice modal in `src/lib/razorpay.ts` to inform customers and Razorpay audit officers of demonstration mode before opening Razorpay checkout.
+2. Merged `dev` into `main` and pushed to `origin/main` to trigger live production deployment on `https://theslidebee.com`.
+3. Verified all 35 security and promotions tests pass (`npm test`) and production build passes cleanly (`tsc -b && vite build`).
+4. Re-anchored workspace to working branch `dev`.
 
 ## What Was Done
 1. **Dead Code & Dependency Pruning**:

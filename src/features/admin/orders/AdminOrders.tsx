@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { ORDER_MILESTONES, getMilestoneIndex, getSafeExternalUrl } from "../shared/adminConstants";
+import { formatDate } from "../../../lib/date";
 import { OrderBriefModal } from "./OrderBriefModal";
 
 export const AdminOrders: React.FC = () => {
@@ -156,7 +157,7 @@ export const AdminOrders: React.FC = () => {
                         </div>
                         <div className="text-[#726F6D] text-[11px] font-medium">{ord.client_email}</div>
                         <div className="text-[10px] text-gray-400 mt-0.5">
-                          Submitted {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : "Recent"}
+                          Submitted {ord.created_at ? formatDate(ord.created_at) : "Recent"}
                         </div>
                       </td>
 

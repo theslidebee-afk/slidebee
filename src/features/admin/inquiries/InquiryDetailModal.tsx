@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Phone, Building, MessageSquare, ExternalLink, Trash2 } from "lucide-react";
+import { formatDateTime } from "../../../lib/date";
 
 export interface InquiryItem {
   id: string | number;
@@ -66,7 +67,7 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
                   {inquiry.orderReference || "INBOUND LEAD"}
                 </span>
                 <span className="text-xs text-[#726F6D] font-mono">
-                  {new Date(inquiry.createdAt).toLocaleString()}
+                  {formatDateTime(inquiry.createdAt)}
                 </span>
               </div>
               <h3 className="text-xl font-heading font-extrabold text-[#111111]">

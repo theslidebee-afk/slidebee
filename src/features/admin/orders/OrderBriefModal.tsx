@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, ExternalLink } from "lucide-react";
+import { formatDate } from "../../../lib/date";
 import { getSafeExternalUrl } from "../shared/adminConstants";
 import {
   OrderMilestoneStepper,
@@ -86,6 +87,11 @@ export const OrderBriefModal: React.FC<OrderBriefModalProps> = ({
             </h3>
             <p className="text-xs text-[#726F6D] font-medium">
               Client: <strong className="text-[#111111]">{currentOrder.client_name || "N/A"}</strong> ({currentOrder.client_email})
+              {currentOrder.created_at && (
+                <span className="block mt-0.5 text-gray-400 font-mono text-[11px]">
+                  Submitted: {formatDate(currentOrder.created_at)}
+                </span>
+              )}
             </p>
           </div>
 
