@@ -8,6 +8,7 @@ import {
   Trash2
 } from "lucide-react";
 import { d1 } from "../../../lib/d1";
+import { formatDate } from "../../../lib/date";
 import { InquiryDetailModal, type InquiryItem } from "./InquiryDetailModal";
 
 export const AdminInquiries: React.FC = () => {
@@ -289,7 +290,7 @@ export const AdminInquiries: React.FC = () => {
                         {inq.orderReference || "INQ-DIRECT"}
                       </div>
                       <div className="text-[10px] text-gray-400">
-                        {new Date(inq.createdAt).toLocaleDateString()}
+                        {formatDate(inq.createdAt)}
                       </div>
                     </td>
 

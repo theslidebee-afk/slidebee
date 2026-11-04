@@ -313,7 +313,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       if (resendApiKey) {
         try {
           const formattedExpiry = periodEnd
-            ? new Date(periodEnd).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+            ? (() => {
+                const d = new Date(periodEnd);
+                const day = String(d.getDate()).padStart(2, "0");
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+              })()
             : resolvedTier === "lifetime" ? "Lifetime Unlimited" : "1 Year Active Period";
           const clientCurrency = currency === "USD" ? "$" : "₹";
           const clientAmount = currency === "USD" ? amountUsd : amountInr;

@@ -1,4 +1,5 @@
 import { escapeHtml, sendEmail } from '../client';
+import { formatDate } from '../../date';
 
 /**
  * 1. Complimentary Pro Membership Granted Email
@@ -213,7 +214,7 @@ export async function sendProExpiringSoonEmail({
   const safeRemainingQuota = Number(remainingQuota) || 15;
   const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
   const defaultSubject = `Reminder: Your SlideBee Pro Membership Expires in ${safeDaysRemaining} Days`;
-  const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "in 7 days";
+  const formattedExpiry = expiryDate ? formatDate(expiryDate) : "in 7 days";
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
@@ -296,7 +297,7 @@ export async function sendProExpiredEmail({
   const safeClientName = escapeHtml(clientName || "there");
   const safeCustomMessage = customMessage ? escapeHtml(customMessage) : '';
   const defaultSubject = `Your SlideBee Pro Membership Has Concluded`;
-  const formattedExpiry = expiryDate ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "recently";
+  const formattedExpiry = expiryDate ? formatDate(expiryDate) : "recently";
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFF9E8; padding: 32px; border-radius: 16px; color: #111111;">
@@ -389,7 +390,7 @@ export async function sendSubscriptionActivatedReceiptEmail({
   const safeQuota = Number(quotaLimit) || (tier === "lifetime" ? 45 : 30);
 
   const formattedExpiry = expiryDate
-    ? new Date(expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    ? formatDate(expiryDate)
     : tier === "lifetime"
     ? "Lifetime Unlimited"
     : "1 Year Active Period";

@@ -11,6 +11,7 @@ import {
   ImageIcon 
 } from "lucide-react";
 import { fetchR2Telemetry, R2_PUBLIC_BASE_URL } from "../../../lib/r2";
+import { formatDate } from "../../../lib/date";
 
 interface StorageBucketExplorerProps {
   storageStats: any;
@@ -167,7 +168,7 @@ export const StorageBucketExplorer: React.FC<StorageBucketExplorerProps> = ({
                       </td>
 
                       <td className="px-5 py-3.5 text-[#726F6D] text-[11px]">
-                        {obj.uploaded ? new Date(obj.uploaded).toLocaleDateString() : "Active"}
+                        {obj.uploaded ? formatDate(obj.uploaded) : "Active"}
                       </td>
 
                       <td className="px-5 py-3.5 text-right">

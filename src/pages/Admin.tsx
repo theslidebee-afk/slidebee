@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { d1 } from "../lib/d1";
+import { formatDate } from "../lib/date";
 import { performGlobalLogout, subscribeToAuthSync } from "../lib/authSync";
 import { fetchR2Telemetry } from "../lib/r2";
 import { 
@@ -290,7 +291,7 @@ export const Admin: React.FC = () => {
       await sendProExpiringSoonEmail({
         clientEmail: sub.user_email,
         clientName: sub.user_email?.split("@")[0] || "VIP Member",
-        expiryDate: sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "Soon",
+        expiryDate: sub.current_period_end ? formatDate(sub.current_period_end) : "Soon",
         daysRemaining: daysLeft
       });
       alert(`Sent 7-day expiry notice to ${sub.user_email}`);

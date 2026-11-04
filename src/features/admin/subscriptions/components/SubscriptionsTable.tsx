@@ -1,5 +1,6 @@
 import React from "react";
 import { Crown, CreditCard, CheckCircle2, Clock, Send, UserX, ShieldCheck, Trash2 } from "lucide-react";
+import { formatDate } from "../../../../lib/date";
 
 interface SubscriptionsTableProps {
   subscriptions: any[];
@@ -128,7 +129,7 @@ export const SubscriptionsTable: React.FC<SubscriptionsTableProps> = ({
                       {sub.current_period_end ? (
                         <div>
                           <span className="font-bold text-[#111111]">
-                            {new Date(sub.current_period_end).toLocaleDateString()}
+                            {formatDate(sub.current_period_end)}
                           </span>
                           {!isPeriodEnded ? (
                             <span className="block text-[10px] text-emerald-700 font-extrabold">

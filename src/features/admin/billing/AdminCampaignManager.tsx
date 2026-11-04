@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { d1 } from "../../../lib/d1";
+import { formatDate } from "../../../lib/date";
 
 interface PromotionItem {
   id: string;
@@ -509,7 +510,7 @@ export const AdminCampaignManager: React.FC = () => {
                     <td className="py-3.5 px-3 text-[11px] text-[#726F6D]">
                       <div className="flex items-center gap-1">
                         <Calendar size={11} className="text-[#936610]" />
-                        <span>Until {new Date(p.expires_at).toLocaleDateString()}</span>
+                        <span>Until {formatDate(p.expires_at)}</span>
                       </div>
                     </td>
                     <td className="py-3.5 px-3">

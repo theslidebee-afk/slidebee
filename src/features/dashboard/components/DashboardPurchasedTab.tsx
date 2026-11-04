@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FileText, ArrowRight, Download, ShieldCheck, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { formatDate } from "../../../lib/date";
 
 export interface PurchasedItem {
   id: string;
@@ -123,6 +124,7 @@ export function DashboardPurchasedTab({
                       </h4>
                       <p className="text-xs text-[#726F6D] truncate">
                         {item.subtitle}
+                        {item.purchasedAt ? ` • Acquired ${formatDate(item.purchasedAt)}` : ""}
                       </p>
                     </div>
                   </div>
