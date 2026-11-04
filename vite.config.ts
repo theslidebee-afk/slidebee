@@ -2,6 +2,8 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import fs from 'fs'
+import { execFileSync } from 'child_process'
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "9821e608622e999a9c0f06f52a168d97";
 const CF_BUCKET = process.env.CLOUDFLARE_R2_BUCKET || "slidebee";
@@ -216,8 +218,8 @@ function r2DevPlugin(): Plugin {
                 );
               }
 
-              // 3. Upload to Cloudflare R2 if token configured, else return public CDN endpoint
-              let uploadSuccess = true;
+              // 3. Upload to Cloudflare R2: try API token if configured, then fallback to wrangler CLI
+              let uploadSuccess = false;
               let uploadErrors: any = undefined;
 
               if (CF_API_TOKEN) {
@@ -243,14 +245,42 @@ function r2DevPlugin(): Plugin {
                 }
               }
 
+              // Fallback to wrangler CLI directly if no token or API failed
+              if (!uploadSuccess) {
+                try {
+                  const tmpFile = path.resolve('/tmp', `r2_upload_${Date.now()}_${path.basename(fileKey)}`);
+                  fs.writeFileSync(tmpFile, fileBuffer);
+                  execFileSync('npx', ['wrangler', 'r2', 'object', 'put', `${CF_BUCKET}/${fileKey}`, '--file', tmpFile], {
+                    encoding: 'utf-8',
+                    timeout: 60000,
+                  });
+                  try { fs.unlinkSync(tmpFile); } catch {}
+                  uploadSuccess = true;
+                  uploadErrors = undefined;
+                } catch (wranglerErr: any) {
+                  console.error('Wrangler R2 CLI upload error:', wranglerErr.message || wranglerErr);
+                  uploadSuccess = false;
+                  uploadErrors = wranglerErr.message || String(wranglerErr);
+                }
+              }
+
               res.setHeader('Content-Type', 'application/json');
+              if (!uploadSuccess) {
+                res.statusCode = 500;
+                return res.end(
+                  JSON.stringify({
+                    success: false,
+                    error: `Upload to Cloudflare R2 failed: ${uploadErrors || 'Unknown error'}`,
+                  })
+                );
+              }
+
               return res.end(
                 JSON.stringify({
-                  success: uploadSuccess,
+                  success: true,
                   key: fileKey,
                   publicUrl: `${PUBLIC_CDN_BASE}/${fileKey}`,
                   size: fileSize,
-                  errors: uploadErrors,
                 })
               );
             });
@@ -272,23 +302,770 @@ function r2DevPlugin(): Plugin {
               res.statusCode = 400;
               return res.end(JSON.stringify({ success: false, error: 'Missing key' }));
             }
-            const delRes = await fetch(
-              `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${key}`,
-              {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${CF_API_TOKEN}`,
-                },
+
+            let delSuccess = false;
+            let delErrors: any = undefined;
+
+            if (CF_API_TOKEN) {
+              try {
+                const delRes = await fetch(
+                  `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${CF_BUCKET}/objects/${key}`,
+                  {
+                    method: 'DELETE',
+                    headers: {
+                      Authorization: `Bearer ${CF_API_TOKEN}`,
+                    },
+                  }
+                );
+                const delJson: any = await delRes.json();
+                delSuccess = Boolean(delJson.success);
+              } catch (cfErr: any) {
+                delSuccess = false;
               }
-            );
-            const delJson: any = await delRes.json();
+            }
+
+            if (!delSuccess) {
+              try {
+                execFileSync('npx', ['wrangler', 'r2', 'object', 'delete', `${CF_BUCKET}/${key}`], {
+                  encoding: 'utf-8',
+                  timeout: 30000,
+                });
+                delSuccess = true;
+              } catch (err: any) {
+                console.error('Wrangler R2 CLI delete error:', err.message || err);
+                delErrors = err.message || String(err);
+              }
+            }
+
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify(delJson));
+            return res.end(JSON.stringify({ success: delSuccess, errors: delErrors }));
           }
         } catch (e: any) {
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
         }
+      });
+    },
+  };
+}
+
+const SQLITE_DB_PATH = path.resolve(process.cwd(), "scratch/slidebee_local.sqlite");
+
+function formatSql(sql: string, params: any[] = []): string {
+  if (!params || params.length === 0) return sql;
+  let idx = 0;
+  return sql.replace(/\?/g, () => {
+    if (idx >= params.length) return "?";
+    const val = params[idx++];
+    if (val === null || val === undefined) return "NULL";
+    if (typeof val === "number") return String(val);
+    if (typeof val === "boolean") return val ? "1" : "0";
+    return "'" + String(val).replace(/'/g, "''") + "'";
+  });
+}
+
+function runSqliteQuery(sql: string, params: any[] = []): any[] {
+  try {
+    const formatted = formatSql(sql, params);
+    const jsonOutput = execFileSync("sqlite3", ["-json", SQLITE_DB_PATH, formatted], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return jsonOutput.trim() ? JSON.parse(jsonOutput) : [];
+  } catch (err: any) {
+    console.warn("[Local D1 Fallback Error]:", err.message);
+    return [];
+  }
+}
+
+function runSqliteExec(sql: string, params: any[] = []): void {
+  try {
+    const formatted = formatSql(sql, params);
+    execFileSync("sqlite3", [SQLITE_DB_PATH, formatted], { encoding: "utf8" });
+  } catch (err: any) {
+    console.warn("[Local D1 Exec Fallback Error]:", err.message);
+  }
+}
+
+const JSON_COLUMNS: Record<string, string[]> = {
+  templates: ["formats", "slides", "features"],
+  profiles: ["purchased_items", "usage_history"],
+  orders: ["formats"],
+  site_config: ["value"],
+  auth_logs: ["metadata"],
+  assets: ["metadata"],
+};
+
+function parseRow(table: string, row: any) {
+  if (!row) return row;
+  const cols = JSON_COLUMNS[table] || [];
+  const parsed = { ...row };
+  for (const col of cols) {
+    if (typeof parsed[col] === "string") {
+      try {
+        parsed[col] = JSON.parse(parsed[col]);
+      } catch {}
+    }
+  }
+  return parsed;
+}
+
+function stringifyValue(val: any): any {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "object") return JSON.stringify(val);
+  if (typeof val === "boolean") return val ? 1 : 0;
+  return val;
+}
+
+function edgeDevPlugin(): Plugin {
+  return {
+    name: "edge-dev-sqlite-proxy",
+    configureServer(server) {
+      server.middlewares.use("/api/data", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          return res.end(JSON.stringify({ error: "Method not allowed" }));
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "select", table, select = "*", filters = [], order, limit, offset, values, single, rpcName, rpcParams } = body;
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (action === "rpc") {
+              if (rpcName === "fn_grant_starter_credits") {
+                const cleanEmail = String(rpcParams?.p_email || "").trim().toLowerCase();
+                const existing = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+                if (existing.length === 0) {
+                  const id = "prf-" + Math.random().toString(36).substring(2, 9);
+                  const name = rpcParams?.p_full_name || cleanEmail.split("@")[0];
+                  const company = rpcParams?.p_company || "Client Enterprise";
+                  runSqliteExec(
+                    "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, 'client', 5, 5)",
+                    [id, cleanEmail, name, company]
+                  );
+                }
+                const profile = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail])[0];
+                return res.end(JSON.stringify({ data: { success: true, credits_balance: profile?.credits_balance || 5, credits_total: profile?.credits_total || 5 }, error: null }));
+              }
+
+              if (rpcName === "fn_redeem_template_credit") {
+                const userEmail = String(rpcParams?.p_user_email || "").trim().toLowerCase();
+                const templateId = String(rpcParams?.p_template_id || "").trim();
+
+                const users = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [userEmail]);
+                if (users.length === 0) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "User account not found." }, error: null }));
+                }
+                const user = users[0];
+                if ((user.credits_balance || 0) < 5) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "Insufficient design credits." }, error: null }));
+                }
+
+                const templates = runSqliteQuery("SELECT * FROM templates WHERE id = ? OR slug = ? OR code = ?", [templateId, templateId, templateId]);
+                if (templates.length === 0) {
+                  return res.end(JSON.stringify({ data: { success: false, message: "Template not found." }, error: null }));
+                }
+                const template = templates[0];
+
+                let purchasedItems = [];
+                try { purchasedItems = JSON.parse(user.purchased_items || "[]"); } catch {}
+
+                const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+                purchasedItems.unshift({
+                  id: template.id,
+                  slug: template.slug,
+                  code: template.code || "SLD-MASTER",
+                  title: template.title,
+                  category: template.category,
+                  slides_count: template.slides_count || 30,
+                  formats: ["Master PowerPoint (.pptx)"],
+                  amount: 0,
+                  currency: "INR",
+                  download_url: deliverable,
+                  is_credit_redemption: true,
+                  purchased_at: new Date().toISOString(),
+                });
+
+                const newBalance = Math.max(0, (user.credits_balance || 5) - 5);
+                const newUsed = (user.credits_used || 0) + 5;
+
+                runSqliteExec(
+                  "UPDATE profiles SET credits_balance = ?, credits_used = ?, purchased_items = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                  [newBalance, newUsed, JSON.stringify(purchasedItems), user.id]
+                );
+
+                const orderRef = "CRD-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+                runSqliteExec(
+                  "INSERT INTO orders (id, order_reference, service_type, slide_count, timeline, formats, project_brief, full_name, email, status) VALUES (?, ?, ?, ?, 'Instant Credit Dispatch', '[\"Master PowerPoint (.pptx)\"]', 'Redeemed via 5 starter credits.', ?, ?, 'completed')",
+                  ["ord-" + Math.random().toString(36).substring(2, 9), orderRef, "Starter Credit Claim: " + template.title, String(template.slides_count || 30), user.full_name || userEmail.split("@")[0], userEmail]
+                );
+
+                return res.end(JSON.stringify({
+                  data: {
+                    success: true,
+                    message: "Template claimed successfully with your design credits!",
+                    template_title: template.title,
+                    download_url: deliverable,
+                    credits_remaining: newBalance,
+                  },
+                  error: null,
+                }));
+              }
+            }
+
+            if (action === "select") {
+              let sql = `SELECT ${select || "*"} FROM ${table}`;
+              const params: any[] = [];
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                } else if (filter.op === "neq") {
+                  whereClauses.push(`${filter.column} != ?`);
+                  params.push(stringifyValue(filter.value));
+                } else if (filter.op === "like" || filter.op === "ilike") {
+                  whereClauses.push(`${filter.column} LIKE ?`);
+                  params.push(String(filter.value).replace(/\*/g, "%"));
+                } else if (filter.op === "in" && Array.isArray(filter.value)) {
+                  if (filter.value.length === 0) {
+                    whereClauses.push("1 = 0");
+                  } else {
+                    const placeholders = filter.value.map(() => "?").join(",");
+                    whereClauses.push(`${filter.column} IN (${placeholders})`);
+                    params.push(...filter.value.map(stringifyValue));
+                  }
+                } else if (filter.op === "is") {
+                  if (filter.value === null) whereClauses.push(`${filter.column} IS NULL`);
+                  else {
+                    whereClauses.push(`${filter.column} = ?`);
+                    params.push(stringifyValue(filter.value));
+                  }
+                }
+              }
+
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              if (order?.column) {
+                const dir = order.ascending === false ? "DESC" : "ASC";
+                sql += ` ORDER BY ${order.column} ${dir}`;
+              }
+              if (typeof limit === "number") {
+                sql += ` LIMIT ${limit}`;
+                if (typeof offset === "number") sql += ` OFFSET ${offset}`;
+              }
+
+              const rawRows = runSqliteQuery(sql, params);
+              const parsedRows = rawRows.map((r: any) => parseRow(table, r));
+              const finalData = single ? (parsedRows[0] || null) : parsedRows;
+              return res.end(JSON.stringify({ data: finalData, error: null }));
+            }
+
+            if (action === "insert") {
+              const rows = Array.isArray(values) ? values : [values];
+              const insertedRows: any[] = [];
+
+              for (const r of rows) {
+                const id = r.id || "rec-" + Math.random().toString(36).substring(2, 10);
+                const rowWithId = { ...r, id };
+                const keys = Object.keys(rowWithId);
+                const placeholders = keys.map(() => "?").join(", ");
+                const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`;
+                const params = keys.map((k) => stringifyValue(rowWithId[k]));
+                runSqliteExec(sql, params);
+                insertedRows.push(rowWithId);
+              }
+
+              const resData = Array.isArray(values) ? insertedRows : insertedRows[0];
+              return res.end(JSON.stringify({ data: resData, error: null }));
+            }
+
+            if (action === "update") {
+              const keys = Object.keys(values || {});
+              const setClauses = keys.map((k) => `${k} = ?`).join(", ");
+              const params = keys.map((k) => stringifyValue(values[k]));
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                }
+              }
+
+              let sql = `UPDATE ${table} SET ${setClauses}`;
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              runSqliteExec(sql, params);
+              return res.end(JSON.stringify({ data: values, error: null }));
+            }
+
+            if (action === "upsert") {
+              const rows = Array.isArray(values) ? values : [values];
+              const conflictCol = table === "site_config" ? "key" : (table === "profiles" ? "email" : "id");
+
+              for (const r of rows) {
+                const id = r.id || "cfg-" + Math.random().toString(36).substring(2, 9);
+                const rowWithId = { ...r, id };
+                const keys = Object.keys(rowWithId);
+                const placeholders = keys.map(() => "?").join(", ");
+                const updateClauses = keys.filter((k) => k !== conflictCol && k !== "id").map((k) => `${k} = excluded.${k}`).join(", ");
+                const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders}) ON CONFLICT(${conflictCol}) DO UPDATE SET ${updateClauses}`;
+                const params = keys.map((k) => stringifyValue(rowWithId[k]));
+                runSqliteExec(sql, params);
+              }
+
+              return res.end(JSON.stringify({ data: values, error: null }));
+            }
+
+            if (action === "delete") {
+              const params: any[] = [];
+              const whereClauses: string[] = [];
+
+              for (const filter of filters) {
+                if (!filter.column) continue;
+                if (filter.op === "eq") {
+                  whereClauses.push(`${filter.column} = ?`);
+                  params.push(stringifyValue(filter.value));
+                }
+              }
+
+              let sql = `DELETE FROM ${table}`;
+              if (whereClauses.length > 0) sql += ` WHERE ` + whereClauses.join(" AND ");
+              runSqliteExec(sql, params);
+              return res.end(JSON.stringify({ data: null, error: null }));
+            }
+
+            return res.end(JSON.stringify({ data: null, error: { message: "Unsupported action." } }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ data: null, error: { message: e.message || String(e) } }));
+          }
+        });
+      });
+
+      server.middlewares.use("/api/auth", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "session", email, full_name, company, sessionId, deviceInfo } = body;
+            const cleanEmail = String(email || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (action === "session") {
+              const token = sessionId || req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+              if (!token) {
+                return res.end(JSON.stringify({ user: null, session: null }));
+              }
+              const sessions = runSqliteQuery("SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')", [token]);
+              if (sessions.length === 0) {
+                return res.end(JSON.stringify({ user: null, session: null }));
+              }
+              const s = sessions[0];
+              const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [s.email]);
+              const p = profiles[0] || {};
+              const userObj = {
+                id: s.user_id,
+                email: s.email,
+                role: s.role,
+                user_metadata: { full_name: p.full_name, company: p.company },
+              };
+              return res.end(JSON.stringify({ user: userObj, session: { access_token: s.id, user: userObj } }));
+            }
+
+            if (action === "login") {
+              const isAdmin = cleanEmail === "admin@theslidebee.com";
+
+              if (isAdmin) {
+                const pass = String(body.password || "").trim();
+                const isValidAdminPass = pass === "SlideBee@Admin2026!";
+                if (!isValidAdminPass) {
+                  return res.end(JSON.stringify({
+                    error: { message: "Invalid administrator credentials. Please check your admin password." }
+                  }));
+                }
+              }
+
+              let profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+              if (!isAdmin && profiles.length === 0) {
+                return res.end(JSON.stringify({
+                  error: {
+                    message: `No registered account found for ${cleanEmail}`,
+                    isUnregistered: true
+                  }
+                }));
+              }
+
+              const role = isAdmin ? "super_admin" : "client";
+              const userId = "usr-" + Math.random().toString(36).substring(2, 10);
+              const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
+              const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+              runSqliteExec("DELETE FROM sessions WHERE email = ?", [cleanEmail]);
+              runSqliteExec(
+                "INSERT INTO sessions (id, user_id, email, role, device_info, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [newSessionId, userId, cleanEmail, role, deviceInfo || "Browser", expiresAt]
+              );
+
+              if (profiles.length === 0) {
+                runSqliteExec(
+                  "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                  ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, full_name || cleanEmail.split("@")[0], company || "Enterprise", role, isAdmin ? 999 : 5, isAdmin ? 999 : 5, isAdmin ? "lifetime" : "free"]
+                );
+                profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+              } else {
+                runSqliteExec("UPDATE profiles SET last_sign_in_at = CURRENT_TIMESTAMP WHERE email = ?", [cleanEmail]);
+              }
+
+              const profile = parseRow("profiles", profiles[0]) || { full_name: cleanEmail.split("@")[0], company: "Enterprise" };
+              const userObj = {
+                id: userId,
+                email: cleanEmail,
+                role,
+                user_metadata: { full_name: profile.full_name || cleanEmail.split("@")[0], company: profile.company || "Enterprise" },
+              };
+
+              return res.end(JSON.stringify({
+                data: {
+                  user: userObj,
+                  session: { access_token: newSessionId, expires_at: expiresAt, user: userObj },
+                  profile,
+                },
+                error: null,
+              }));
+            }
+
+            if (action === "signup") {
+              const isAdmin = cleanEmail === "admin@theslidebee.com";
+              const role = isAdmin ? "admin" : "client";
+              const userId = "usr-" + Math.random().toString(36).substring(2, 10);
+              const newSessionId = "sess-" + Math.random().toString(36).substring(2, 12);
+              const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+              const resolvedName = full_name || cleanEmail.split("@")[0];
+              const resolvedCompany = company || "Client Enterprise";
+
+              runSqliteExec(
+                "INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance) VALUES (?, ?, ?, ?, ?, 5, 5) ON CONFLICT(email) DO UPDATE SET full_name = excluded.full_name",
+                ["prf-" + Math.random().toString(36).substring(2, 10), cleanEmail, resolvedName, resolvedCompany, role]
+              );
+
+              runSqliteExec(
+                "INSERT INTO sessions (id, user_id, email, role, device_info, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [newSessionId, userId, cleanEmail, role, deviceInfo || "Browser", expiresAt]
+              );
+
+              const userObj = {
+                id: userId,
+                email: cleanEmail,
+                role,
+                user_metadata: { full_name: resolvedName, company: resolvedCompany },
+              };
+
+              return res.end(JSON.stringify({
+                data: {
+                  user: userObj,
+                  session: { access_token: newSessionId, expires_at: expiresAt, user: userObj },
+                },
+                error: null,
+              }));
+            }
+
+            if (action === "logout") {
+              const token = sessionId || req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+              if (token) runSqliteExec("DELETE FROM sessions WHERE id = ?", [token]);
+              return res.end(JSON.stringify({ error: null }));
+            }
+
+            return res.end(JSON.stringify({ error: { message: "Invalid action." } }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: { message: e.message || String(e) } }));
+          }
+        });
+      });
+
+      // Session Guard Middleware (Matches Cloudflare Pages Function /api/session-guard)
+      server.middlewares.use("/api/session-guard", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-slidebee-app-token");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { action = "VERIFY", email, sessionId, deviceInfo = "Browser" } = body;
+            const cleanEmail = String(email || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              return res.end(JSON.stringify({ success: true, valid: true }));
+            }
+
+            if (action === "REGISTER") {
+              return res.end(JSON.stringify({
+                success: true,
+                activeSession: { sessionId, deviceInfo, registeredAt: new Date().toISOString() }
+              }));
+            }
+
+            return res.end(JSON.stringify({ success: true, valid: true }));
+          } catch (err: any) {
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            return res.end(JSON.stringify({ success: true, valid: true }));
+          }
+        });
+      });
+
+      // 3. /api/entitlement Endpoint
+      server.middlewares.use("/api/entitlement", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { templateId, userEmail } = body;
+            const cleanEmail = String(userEmail || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              res.statusCode = 401;
+              return res.end(JSON.stringify({ success: false, errorCode: "LOGIN_REQUIRED", message: "Sign in required." }));
+            }
+
+            const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+            if (profiles.length === 0) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ success: false, errorCode: "USER_NOT_FOUND", message: "User profile not found." }));
+            }
+            const profile = profiles[0];
+            const tier = profile.tier || "free";
+            const today = new Date().toISOString().split("T")[0];
+            const currentMonth = today.substring(0, 7);
+
+            let downloadsToday = profile.downloads_today || 0;
+            if (profile.last_download_date !== today) downloadsToday = 0;
+
+            let downloadsThisMonth = profile.downloads_this_month || 0;
+            if (profile.month_cycle_start !== currentMonth) downloadsThisMonth = 0;
+
+            const templates = runSqliteQuery("SELECT * FROM templates WHERE id = ? OR slug = ? OR code = ?", [templateId, templateId, templateId]);
+            if (templates.length === 0) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ success: false, errorCode: "TEMPLATE_NOT_FOUND", message: "Template not found." }));
+            }
+            const template = templates[0];
+            const isPremium = template.is_premium !== 0;
+
+            if (!isPremium) {
+              if (tier === "free" && downloadsToday >= 3) {
+                res.statusCode = 429;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "DAILY_LIMIT_REACHED",
+                  message: "You have reached your daily limit of 3 free downloads. Upgrade to Monthly ($5) or Lifetime ($75) for unlimited downloads.",
+                  requiresUpgrade: true,
+                  limit: 3,
+                  used: downloadsToday,
+                }));
+              }
+            } else {
+              if (tier === "free") {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "UPGRADE_REQUIRED",
+                  message: "This is a Premium Template. Upgrade to Monthly ($5), Yearly ($45), or Lifetime ($75) to unlock this template and our entire library.",
+                  requiresUpgrade: true,
+                }));
+              }
+
+              if (tier === "monthly" || tier === "yearly") {
+                if (downloadsThisMonth >= 30) {
+                  res.statusCode = 429;
+                  return res.end(JSON.stringify({
+                    success: false,
+                    errorCode: "MONTHLY_LIMIT_REACHED",
+                    message: "You have reached your monthly allowance of 30 premium template downloads.",
+                    limit: 30,
+                    used: downloadsThisMonth,
+                  }));
+                }
+              }
+
+              if (tier === "lifetime" && downloadsThisMonth >= 45) {
+                runSqliteExec("UPDATE profiles SET is_bot_flagged = 1 WHERE id = ?", [profile.id]);
+                res.statusCode = 429;
+                return res.end(JSON.stringify({
+                  success: false,
+                  errorCode: "BOT_SAFETY_LIMIT",
+                  message: "Fair-Use Security Threshold Reached (45 downloads/month). Verification email sent to unlock additional downloads.",
+                  limit: 45,
+                  used: downloadsThisMonth,
+                }));
+              }
+            }
+
+            const newToday = downloadsToday + 1;
+            const newMonth = isPremium ? downloadsThisMonth + 1 : downloadsThisMonth;
+            const deliverable = template.download_url || template.image_url || "/portfolio/case_study_a_1.png";
+
+            runSqliteExec(
+              "UPDATE profiles SET downloads_today = ?, last_download_date = ?, downloads_this_month = ?, month_cycle_start = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+              [newToday, today, newMonth, currentMonth, profile.id]
+            );
+
+            runSqliteExec(
+              "INSERT INTO download_logs (id, user_email, template_id, template_title, tier, is_premium, download_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              ["log-" + Math.random().toString(36).substring(2, 9), cleanEmail, template.id, template.title, tier, isPremium ? 1 : 0, deliverable]
+            );
+
+            return res.end(JSON.stringify({
+              success: true,
+              message: "Download granted.",
+              downloadUrl: deliverable,
+              fileName: template.file_name || `${template.title}.pptx`,
+              tier,
+              isPremium,
+              downloadsToday: newToday,
+              downloadsThisMonth: newMonth,
+              remainingDailyFree: tier === "free" ? Math.max(0, 3 - newToday) : null,
+              remainingMonthlyPremium: (tier === "monthly" || tier === "yearly") ? Math.max(0, 30 - newMonth) : (tier === "lifetime" ? Math.max(0, 45 - newMonth) : null),
+            }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+          }
+        });
+      });
+
+      // 4. /api/subscribe-pro Endpoint
+      server.middlewares.use("/api/subscribe-pro", async (req, res) => {
+        if (req.method === "OPTIONS") {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString("utf8");
+            const body = JSON.parse(rawBody || "{}");
+            const { paymentId, userEmail, billingPeriod, tier: inputTier, planName, amount = 5, currency = "USD" } = body;
+            const cleanEmail = String(userEmail || "").trim().toLowerCase();
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
+            if (!cleanEmail) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ success: false, error: "Invalid client email." }));
+            }
+
+            let resolvedTier: "monthly" | "yearly" | "lifetime" = "monthly";
+            const periodLower = String(billingPeriod || inputTier || "").toLowerCase();
+            if (periodLower.includes("life")) resolvedTier = "lifetime";
+            else if (periodLower.includes("year") || periodLower.includes("annual")) resolvedTier = "yearly";
+            else resolvedTier = "monthly";
+
+            const now = new Date();
+            const currentMonth = now.toISOString().substring(0, 7);
+            const durationDays = resolvedTier === "lifetime" ? 36500 : (resolvedTier === "yearly" ? 365 : 30);
+            const periodEnd = new Date(Date.now() + durationDays * 86400000).toISOString();
+            const quotaLimit = resolvedTier === "lifetime" ? 45 : 30;
+
+            const profiles = runSqliteQuery("SELECT * FROM profiles WHERE email = ?", [cleanEmail]);
+            if (profiles.length === 0) {
+              const newProfId = "prf-" + Math.random().toString(36).substring(2, 10);
+              const namePart = cleanEmail.split("@")[0];
+              runSqliteExec(
+                "INSERT INTO profiles (id, email, full_name, role, tier, tier_expires_at, downloads_today, downloads_this_month, month_cycle_start) VALUES (?, ?, ?, 'client', ?, ?, 0, 0, ?)",
+                [newProfId, cleanEmail, namePart, resolvedTier, periodEnd, currentMonth]
+              );
+            } else {
+              runSqliteExec(
+                "UPDATE profiles SET tier = ?, tier_expires_at = ?, downloads_this_month = 0, month_cycle_start = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?",
+                [resolvedTier, periodEnd, currentMonth, cleanEmail]
+              );
+            }
+
+            const subId = "sub-" + Math.random().toString(36).substring(2, 10);
+            const resolvedPlanName = planName || (resolvedTier === "lifetime" ? "Lifetime VIP" : (resolvedTier === "yearly" ? "Yearly Pro" : "Monthly Pro"));
+            const amountNum = Number(amount) || (resolvedTier === "lifetime" ? 75 : (resolvedTier === "yearly" ? 45 : 5));
+            const amountUsd = currency === "INR" ? (resolvedTier === "lifetime" ? 75 : (resolvedTier === "yearly" ? 45 : 5)) : amountNum;
+            const amountInr = currency === "INR" ? amountNum : (resolvedTier === "lifetime" ? 5999 : (resolvedTier === "yearly" ? 3499 : 399));
+
+            runSqliteExec(
+              "INSERT INTO subscriptions (id, user_email, plan_name, amount_usd, amount_inr, slides_limit, slides_used, status, current_period_end, razorpay_subscription_id) VALUES (?, ?, ?, ?, ?, ?, 0, 'active', ?, ?)",
+              [subId, cleanEmail, resolvedPlanName, amountUsd, amountInr, quotaLimit, periodEnd, paymentId || "rzp_manual"]
+            );
+
+            return res.end(JSON.stringify({
+              success: true,
+              message: `${resolvedPlanName} activated successfully.`,
+              tier: resolvedTier,
+              tierExpiresAt: periodEnd,
+              quotaLimit,
+            }));
+          } catch (e: any) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+          }
+        });
       });
     },
   };
@@ -300,6 +1077,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     r2DevPlugin(),
+    edgeDevPlugin(),
   ],
   resolve: {
     alias: {

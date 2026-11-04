@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFF9E8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+    <link rel="preload" href="/fonts/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/slidebee_icon.png" />
@@ -120,8 +123,71 @@
             "price": "49.00",
             "priceCurrency": "USD"
           }
-        ]
-      }
+        },
+        {
+          "@type": "ProfessionalService",
+          "@id": "https://theslidebee.com/#organization",
+          "name": "SlideBee",
+          "alternateName": "SlideBee Design Studio",
+          "url": "https://theslidebee.com",
+          "logo": "https://theslidebee.com/slidebee_logo_light.png",
+          "image": "https://theslidebee.com/slidebee_logo_light.png",
+          "description": "Executive presentation design studio specializing in investor pitch decks, conference keynotes, and master templates.",
+          "priceRange": "$19 - $1490",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "SlideBee Design Studio",
+            "addressLocality": "Bengaluru",
+            "addressRegion": "Karnataka",
+            "postalCode": "560001",
+            "addressCountry": "IN"
+          },
+          "openingHoursSpecification": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+            ],
+            "opens": "00:00",
+            "closes": "23:59"
+          },
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Presentation Design Services",
+            "itemListElement": [
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Presentation Redesign",
+                  "description": "Complete visual polish and hierarchy overhaul for draft slides."
+                },
+                "price": "19.00",
+                "priceCurrency": "USD"
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Venture Pitch Deck",
+                  "description": "12-slide VC-grade investor narrative with unit economics visualizers."
+                },
+                "price": "29.00",
+                "priceCurrency": "USD"
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Executive Keynote",
+                  "description": "High-stakes keynotes for board meetings, global conferences, and summits."
+                },
+                "price": "49.00",
+                "priceCurrency": "USD"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

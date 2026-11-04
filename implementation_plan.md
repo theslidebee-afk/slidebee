@@ -12,7 +12,7 @@ Based on the deep audit of `Admin.tsx` (7,024 lines), the 10 frontend pages, dat
 > 1. **Phase 1 (Critical)**: Field Name Harmonization & Immediate Working Admin Toggles (Hero, About, Contact, Pricing Retainer).
 > 2. **Phase 2 (High)**: Live Data Wiring & Dead Tab Remediation (Assets tab mapped to Cloudflare R2 inventory, Subscriptions ghost tab resolution, dynamic Navbar credit balance).
 > 3. **Phase 3 (High - Deep CMS)**: Dynamic Content Migration for Hardcoded Sections (Pricing plan feature lists & FAQs, Services tier descriptions & guarantees, About core values, Home categories).
-> 4. **Phase 4 (High - Security & Persistence)**: Server-First Migration of Gateway & Email Config (Migrate Razorpay and Zoho settings from browser `localStorage` to Supabase `site_config` source-of-truth).
+> 4. **Phase 4 (High - Security & Persistence)**: Server-First Migration of Gateway & Email Config (Migrate Razorpay and Zoho settings from browser `localStorage` to Cloudflare D1 `site_config` source-of-truth).
 > 5. **Phase 5 (Governance & Consistency)**: Global Brand Consistency (Ensure footer, social links, guarantees, and contact channels propagate to all routes including `ComingSoon.tsx`).
 
 > [!WARNING]

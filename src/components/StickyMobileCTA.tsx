@@ -19,21 +19,21 @@ export default function StickyMobileCTA() {
   }
 
   return (
-    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#111111]/10 px-4 py-2.5 shadow-xl">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#FCBF14] flex items-center gap-1">
-            <Zap size={12} className="fill-[#FCBF14]" />
+    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#111111]/10 px-4 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] shadow-xl">
+      <div className="flex items-center justify-between gap-3 min-h-[44px]">
+        <div className="flex flex-col justify-center text-left">
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#D99B00] flex items-center gap-1 leading-tight">
+            <Zap size={12} className="fill-[#D99B00]" />
             24h-48h Delivery
           </span>
-          <span className="text-xs font-heading font-extrabold text-[#111111]">
+          <span className="text-xs font-heading font-extrabold text-[#111111] leading-tight mt-0.5">
             Executive Slide Design
           </span>
         </div>
 
         <Link
           to="/ordernow"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FCBF14] text-[#111111] text-xs font-extrabold rounded-md shadow-sm hover:bg-[#E5AC10] active:scale-95 transition-all"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-[#FCBF14] text-[#111111] text-xs font-extrabold rounded-md shadow-sm hover:bg-[#E5AC10] active:scale-95 transition-all select-none"
         >
           <span>Order Slides</span>
           <ArrowRight size={14} />

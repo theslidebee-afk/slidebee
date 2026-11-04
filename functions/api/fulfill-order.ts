@@ -1,8 +1,16 @@
 // Cloudflare Pages Function: /api/fulfill-order
-// Server-side verification and fulfillment of template purchases
+// Server-side verification and fulfillment of template purchases via Cloudflare D1
+// 100% Edge native serverless service
 
-const DEFAULT_SUPABASE_URL = "https://whwyfqtvuubkfypmgosi.supabase.co";
-const DEFAULT_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indod3lmcXR2dXVia2Z5cG1nb3NpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM2NzIzNCwiZXhwIjoyMTAzOTQzMjM0fQ.xZmFmQRq7V5ExKUzh0CpDVjqHfgprRgi64Jd8qqBsfk";
+interface Env {
+  DB?: any;
+}
+
+import {
+  verifyRazorpaySignature,
+  validatePromotion,
+  recordPromotionRedemption,
+} from "./_promotions";
 
 const ALLOWED_ORIGINS = [
   "https://theslidebee.com",
@@ -23,27 +31,30 @@ function getCorsHeaders(request: Request) {
   };
 }
 
-export async function onRequestOptions(context: any) {
+export async function onRequestOptions(context: { request: Request }) {
   return new Response(null, {
     status: 204,
     headers: getCorsHeaders(context.request),
   });
 }
 
-export async function onRequestPost(context: any) {
+export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const {
       orderRef,
       paymentId,
       templateId,
       clientEmail,
       clientName,
-      currency,
-      amount,
+      currency = "INR",
+      amount = 0,
+      orderId: razorpayOrderId,
+      signature: razorpaySignature,
+      promotionCode,
     } = body;
 
     // Validate required fields
@@ -72,66 +83,210 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = env?.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
+    if (!env.DB) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Cloudflare D1 database unavailable." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Check for replay attacks: ensure payment_id has not already been fulfilled
-    const checkPaymentRes = await fetch(
-      `${supabaseUrl}/rest/v1/orders?select=id,order_reference&project_brief=like.*${encodeURIComponent(cleanPaymentId)}*`,
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-      }
-    );
+    // Check for replay attacks: ensure payment_id has not already been fulfilled or redeemed
+    const existingOrder = await env.DB.prepare(
+      `SELECT id, order_reference FROM orders WHERE project_brief LIKE ?`
+    ).bind(`%${cleanPaymentId}%`).first();
 
-    if (checkPaymentRes.ok) {
-      const existingOrders = await checkPaymentRes.json();
-      if (Array.isArray(existingOrders) && existingOrders.length > 0) {
+    const existingRedemption = await env.DB.prepare(
+      `SELECT id FROM promotion_redemptions WHERE payment_id = ?`
+    ).bind(cleanPaymentId).first();
+
+    if (existingOrder || existingRedemption) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Payment already processed. Deliverable has already been dispatched.",
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch Template from D1
+    const cleanTemplateId = String(templateId).trim();
+    const template = await env.DB.prepare(
+      `SELECT * FROM templates WHERE id = ? OR slug = ? OR code = ?`
+    ).bind(cleanTemplateId, cleanTemplateId, cleanTemplateId).first();
+
+    if (!template) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Template not found." }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
+    const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+
+    // Cryptographic HMAC-SHA256 signature check if orderId and signature are provided
+    if (razorpayOrderId && razorpaySignature && rzpSecret) {
+      const isSigValid = await verifyRazorpaySignature(
+        String(razorpayOrderId).trim(),
+        cleanPaymentId,
+        String(razorpaySignature).trim(),
+        rzpSecret
+      );
+      if (!isSigValid) {
         return new Response(
-          JSON.stringify({
-            success: false,
-            error: "Payment already processed. Deliverable has already been dispatched.",
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error: "Payment cryptographic signature verification failed." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // Execute privileged RPC fn_fulfill_template_order via service_role
-    const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/fn_fulfill_template_order`, {
-      method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        p_order_ref: String(orderRef).trim(),
-        p_payment_id: cleanPaymentId,
-        p_template_id: String(templateId).trim(),
-        p_client_email: cleanEmail,
-        p_client_name: String(clientName || cleanEmail.split("@")[0]).trim(),
-        p_currency: String(currency || "INR").trim(),
-        p_amount: Number(amount) || 0,
-      }),
-    });
-
-    if (!rpcRes.ok) {
-      const errText = await rpcRes.text();
-      return new Response(
-        JSON.stringify({ success: false, error: `Order fulfillment failed: ${errText}` }),
-        { status: rpcRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Verify payment with Razorpay API if secret is configured in Cloudflare environment
+    if (rzpSecret && rzpKeyId && !cleanPaymentId.startsWith("order_sim_") && !cleanPaymentId.startsWith("pay_sim_")) {
+      try {
+        const authBasic = btoa(`${rzpKeyId}:${rzpSecret}`);
+        const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/${cleanPaymentId}`, {
+          headers: {
+            Authorization: `Basic ${authBasic}`,
+          },
+        });
+        if (rzpRes.ok) {
+          const rzpJson: any = await rzpRes.json();
+          if (rzpJson.status !== "captured" && rzpJson.status !== "authorized") {
+            return new Response(
+              JSON.stringify({ success: false, error: `Payment not completed. Current gateway status: ${rzpJson.status}` }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          return new Response(
+            JSON.stringify({ success: false, error: "Payment verification failed with gateway." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (rzpErr) {
+        console.warn("Razorpay API verification warning:", rzpErr);
+        return new Response(
+          JSON.stringify({ success: false, error: "Payment gateway communication error." }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    const result = await rpcRes.json();
+    const R2_BASE = "https://pub-7b09eb3d8c7349848cd1ce14cd290c56.r2.dev";
+    let deliverable = template.download_url;
+    if (!deliverable && template.file_name && template.file_name.endsWith(".pptx")) {
+      deliverable = `${R2_BASE}/templates/decks/${template.file_name}`;
+    }
+    if (!deliverable) {
+      deliverable = `${R2_BASE}/templates/decks/accenture.pptx`;
+    }
+    const resolvedClientName = String(clientName || cleanEmail.split("@")[0]).trim();
+    const authoritativeCurrency = String(currency || "INR").toUpperCase();
+    const rawTemplateAmount = authoritativeCurrency === "USD"
+      ? Number(template.price_usd || 0)
+      : Number(template.price_inr || 0);
 
-    return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    let authoritativeAmount = rawTemplateAmount;
+    let validPromotionRecord: any = null;
+
+    if (promotionCode) {
+      const promoValidation = await validatePromotion(env.DB, {
+        code: String(promotionCode).trim(),
+        orderType: "template",
+        targetId: String(template.id || template.code),
+        currency: authoritativeCurrency as "INR" | "USD",
+        userEmail: cleanEmail,
+      });
+
+      if (promoValidation.valid) {
+        authoritativeAmount = promoValidation.finalAmount;
+        validPromotionRecord = promoValidation;
+      }
+    }
+
+    // Fetch or create profile
+    let profile = await env.DB.prepare(`SELECT * FROM profiles WHERE email = ?`).bind(cleanEmail).first();
+    let purchasedItems: any[] = [];
+
+    if (profile) {
+      try {
+        purchasedItems = JSON.parse(profile.purchased_items || "[]");
+      } catch {}
+    } else {
+      const profileId = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO profiles (id, email, full_name, company, role, credits_total, credits_balance)
+         VALUES (?, ?, ?, 'Client Enterprise', 'client', 5, 5)`
+      ).bind(profileId, cleanEmail, resolvedClientName).run();
+    }
+
+    // Append newly purchased template to purchased items
+    const newItem = {
+      id: template.id,
+      slug: template.slug,
+      code: template.code || "SLD-MASTER",
+      title: template.title,
+      category: template.category,
+      slides_count: template.slides_count || 30,
+      formats: ["Master PowerPoint (.pptx)"],
+      amount: authoritativeAmount,
+      currency: authoritativeCurrency,
+      download_url: deliverable,
+      purchased_at: new Date().toISOString(),
+      payment_id: cleanPaymentId,
+    };
+
+    purchasedItems.unshift(newItem);
+
+    await env.DB.prepare(
+      `UPDATE profiles SET purchased_items = ?, updated_at = datetime('now') WHERE email = ?`
+    ).bind(JSON.stringify(purchasedItems), cleanEmail).run();
+
+    // Insert completed Order
+    const orderId = crypto.randomUUID();
+    const cleanOrderRef = String(orderRef).trim();
+    await env.DB.prepare(
+      `INSERT INTO orders (id, order_reference, service_type, slide_count, timeline, formats, project_brief, full_name, email, status)
+       VALUES (?, ?, ?, ?, 'Instant Fulfillment', '["Master PowerPoint (.pptx)"]', ?, ?, ?, 'completed')`
+    ).bind(
+      orderId,
+      cleanOrderRef,
+      `Template Purchase: ${template.title}`,
+      String(template.slides_count || 30),
+      `Razorpay Payment: ${cleanPaymentId}`,
+      resolvedClientName,
+      cleanEmail
+    ).run();
+
+    // Record promotion redemption if promo was applied
+    if (validPromotionRecord) {
+      await recordPromotionRedemption(env.DB, {
+        promotionId: validPromotionRecord.promotionId,
+        promotionCode: validPromotionRecord.code,
+        userEmail: cleanEmail,
+        userId: profile?.id || null,
+        orderType: "template",
+        targetId: String(template.id || template.code),
+        originalAmount: validPromotionRecord.originalAmount,
+        discountAmount: validPromotionRecord.discountAmount,
+        finalAmount: validPromotionRecord.finalAmount,
+        currency: authoritativeCurrency as "INR" | "USD",
+        paymentId: cleanPaymentId,
+        orderReference: cleanOrderRef,
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        order_reference: cleanOrderRef,
+        template_title: template.title,
+        deliverable_url: deliverable,
+        message: "Order fulfilled successfully via Cloudflare D1.",
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message || "Internal server error" }),

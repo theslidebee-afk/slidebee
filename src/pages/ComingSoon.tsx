@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import SlideBeeLogo from "../components/SlideBeeLogo";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { sendWaitlistConfirmationEmail } from "../lib/email";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -10,7 +10,24 @@ export default function ComingSoon() {
   usePageSEO({
     title: "SlideBee | Executive PowerPoint Presentation Templates & Bespoke Design Studio",
     description: "SlideBee is an executive presentation design studio and curated template marketplace for PowerPoint (.pptx) and Google Slides. Early access and studio waitlist.",
+    keywords: [
+      "SlideBee",
+      "presentation design",
+      "pitch deck design",
+      "PowerPoint templates",
+      "executive presentation studio",
+      "Google Slides template",
+      "keynote presentation design"
+    ],
     canonicalUrl: "https://theslidebee.com/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://theslidebee.com/",
+      "name": "SlideBee",
+      "alternateName": ["Slide Bee", "TheSlideBee", "theslidebee.com"],
+      "description": "Executive PowerPoint Presentation Templates & Bespoke Slide Design Studio"
+    }
   });
 
   const [email, setEmail] = useState("");
@@ -24,13 +41,13 @@ export default function ComingSoon() {
 
     setIsSubmitting(true);
     try {
-      // 1. Save to Supabase
-      const { error } = await supabase.from("waitlist").insert([
+      // 1. Save to D1
+      const { error } = await d1.from("waitlist").insert([
         { email: cleanEmail, source: "coming_soon" }
       ]);
       
       if (error && error.code !== "23505") { // Ignore duplicate key errors gracefully
-        console.warn("Supabase waitlist error:", error.message);
+        console.warn("D1 waitlist error:", error.message);
       }
 
       // 2. Dispatch Confirmation Email via Zoho/Resend

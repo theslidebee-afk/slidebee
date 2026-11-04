@@ -19,7 +19,7 @@
 
 ---
 
-## 2. Supabase Row-Level Security (RLS) Policies
+## 2. Database Row-Level Security & Access Policies
 
 ### 2.1 Least-Privilege by Default
 - Every table created in `public` schema must have Row-Level Security enabled immediately:

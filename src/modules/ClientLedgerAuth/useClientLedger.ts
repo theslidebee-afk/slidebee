@@ -1,61 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 import { performClientLogout, subscribeToAuthSync, broadcastAuthEvent } from "../../lib/authSync";
-import { sendWelcomeEmail } from "../../lib/email";
+import { registerActiveSession, verifyActiveSession, triggerSessionDisplacement } from "../../lib/sessionGuard";
+import type { UserProfile, ClientAuthResult } from "./types";
+import { fetchClientProfileAndOrders, recordAuthEvent } from "./clientLedgerStorage";
+import {
+  performSignUp,
+  performCompletePasswordReset,
+  performTemplateDownload,
+} from "./clientAuthActions";
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  full_name?: string;
-  company?: string;
-  phone?: string;
-  role: "client" | "admin" | "super_admin";
-  credits_total: number;
-  credits_used: number;
-  credits_balance: number;
-  purchased_items: Array<{
-    id: string;
-    slug?: string;
-    code?: string;
-    title: string;
-    category?: string;
-    slides_count?: number;
-    download_url: string;
-    purchased_at: string;
-    is_credit_redemption?: boolean;
-    amount?: number;
-    currency?: string;
-  }>;
-  usage_history: Array<{
-    item_title: string;
-    credits_used: number;
-    action: string;
-    date: string;
-  }>;
-  last_sign_in_at?: string;
-}
+export type { UserProfile, ClientAuthResult } from "./types";
 
-export interface ClientAuthResult {
-  success: boolean;
-  message?: string;
-  unregisteredPrompt?: string;
-  isUnregistered?: boolean;
-}
-
-/**
- * Deep Module: ClientLedgerAuth
- * 
- * Public Interface:
- * - currentUser: Supabase or localStorage user object
- * - userProfile: Normalized client profile and credits ledger
- * - userOrders: Client quote and template purchase orders
- * - loading: Boolean initialization state
- * - signIn(email, password): Signs in client or redirects admin
- * - signUp(email, password, fullName, company): Registers client & grants 5 starter credits
- * - logout(): Global cross-tab logout
- * - redeemCredit(templateId): Atomically redeems 1 free eligible template using starter credits
- * - refreshClientData(): Re-syncs profile and order ledger
- */
 export function useClientLedger() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -65,45 +21,34 @@ export function useClientLedger() {
 
   const fetchClientData = useCallback(async (userEmail: string) => {
     if (!userEmail) return;
-
-    // 1. Fetch Profile ledger
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("email", userEmail)
-      .maybeSingle();
-
-    if (profile) {
-      setUserProfile(profile as UserProfile);
+    const cleanEmail = userEmail.trim();
+    const result = await fetchClientProfileAndOrders(cleanEmail);
+    if (result.profile) {
+      setUserProfile(result.profile);
+      try {
+        const stored = localStorage.getItem("slidebee_client_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localStorage.setItem(
+            "slidebee_client_user",
+            JSON.stringify({
+              ...parsed,
+              tier: result.profile.tier,
+              tier_expires_at: result.profile.tier_expires_at,
+            })
+          );
+        }
+      } catch {
+        // silent
+      }
     }
-
-    // 2. Fetch Orders
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("email", userEmail)
-      .order("created_at", { ascending: false });
-
-    if (ords) {
-      setUserOrders(ords);
-    }
-
-    // 3. Fetch Subscription
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_email", userEmail)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    setUserSubscription(sub || null);
+    setUserOrders(result.orders);
+    setUserSubscription(result.subscription);
   }, []);
 
   const checkUserSession = useCallback(async () => {
     const localAdmin = localStorage.getItem("slidebee_admin_session");
     if (localAdmin === "true") {
-      // Admin session is active: client session cannot coexist under strict mutual exclusivity
       setCurrentUser(null);
       setUserProfile(null);
       setUserOrders([]);
@@ -111,14 +56,14 @@ export function useClientLedger() {
       return;
     }
 
-    // Strict GoTrue Server-Side Session Verification (Prompts 18 & 25)
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await d1.auth.getSession();
     if (session?.user) {
       const isSessionAdmin =
         session.user.email === "admin@theslidebee.com" ||
-        session.user.email === "admin@slidebee.com" ||
-        session.user.email?.startsWith("admin@") ||
-        session.user.user_metadata?.role === "admin";
+        session.user.user_metadata?.role === "admin" ||
+        session.user.user_metadata?.role === "super_admin";
 
       if (isSessionAdmin) {
         localStorage.removeItem("slidebee_client_user");
@@ -128,6 +73,14 @@ export function useClientLedger() {
         setUserProfile(null);
         setUserOrders([]);
       } else {
+        if (session.user.email) {
+          const sessionVerification = await verifyActiveSession(session.user.email);
+          if (!sessionVerification.valid) {
+            await triggerSessionDisplacement(sessionVerification.newDevice);
+            setLoading(false);
+            return;
+          }
+        }
         localStorage.removeItem("slidebee_admin_session");
         localStorage.removeItem("slidebee_admin_email");
         setCurrentUser(session.user);
@@ -155,7 +108,6 @@ export function useClientLedger() {
       },
       (role) => {
         if (role === "admin") {
-          // Admin signed in on another tab; terminate client view in this tab
           setCurrentUser(null);
           setUserProfile(null);
           setUserOrders([]);
@@ -168,39 +120,22 @@ export function useClientLedger() {
     return () => unsubscribe();
   }, [checkUserSession]);
 
-  // Log authentication events to auth_logs
-  const recordAuthEvent = async (userEmail: string, event: "LOGIN" | "SIGNUP", meta: any = {}) => {
-    try {
-      await supabase.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("email", userEmail);
-      await supabase.from("auth_logs").insert([
-        {
-          user_email: userEmail,
-          event,
-          metadata: {
-            ...meta,
-            timestamp: new Date().toISOString(),
-            userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "browser"
-          }
-        }
-      ]);
-    } catch (e) {
-      console.warn("Auth event logging error:", e);
-    }
-  };
-
-  // Sign In with Unregistered Intercept
   const signIn = async (emailInput: string, passwordInput: string): Promise<ClientAuthResult> => {
     const cleanEmail = emailInput.toLowerCase().trim();
     const cleanPassword = passwordInput.trim();
 
-    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authErr } = await d1.auth.signInWithPassword({
       email: cleanEmail,
-      password: cleanPassword
+      password: cleanPassword,
     });
 
     if (authData?.user) {
-      const isUserAdmin = authData.user.email?.startsWith("admin@") || authData.user.user_metadata?.role === "admin";
+      const isUserAdmin =
+        authData.user.email === "admin@theslidebee.com" ||
+        authData.user.user_metadata?.role === "admin" ||
+        authData.user.user_metadata?.role === "super_admin";
       if (isUserAdmin) {
+        await registerActiveSession(cleanEmail);
         await recordAuthEvent(cleanEmail, "LOGIN", { role: "admin" });
         localStorage.removeItem("slidebee_client_user");
         localStorage.setItem("slidebee_admin_session", "true");
@@ -209,11 +144,12 @@ export function useClientLedger() {
         setUserProfile(null);
         setUserOrders([]);
         broadcastAuthEvent("LOGIN", "admin");
-        window.location.hash = "#/admin";
-        return { success: true };
+        window.location.href = "/admin";
+        return { success: true, isAdmin: true };
       }
 
-      await recordAuthEvent(cleanEmail, "LOGIN", { provider: "supabase_auth" });
+      await registerActiveSession(cleanEmail);
+      await recordAuthEvent(cleanEmail, "LOGIN", { provider: "d1_auth" });
       localStorage.removeItem("slidebee_admin_session");
       localStorage.removeItem("slidebee_admin_email");
       setCurrentUser(authData.user);
@@ -226,76 +162,50 @@ export function useClientLedger() {
     if (authErr) {
       return {
         success: false,
-        message: "Invalid email or password. Please verify your credentials and try again."
+        message: authErr.message || "Invalid email or password. Please verify your credentials and try again.",
+        isUnregistered: Boolean(
+          (authErr as any)?.isUnregistered || authErr.message?.includes("No registered account found")
+        ),
       };
     }
 
     return { success: false, message: "Authentication failed. Please verify your credentials." };
   };
 
-  // Sign Up with 5 Free Starter Credits Provisioning via RPC
+  const signInWithGoogle = async () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://theslidebee.com";
+    const redirectTo = `${origin}/auth/callback`;
+    const { data, error } = await d1.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+    if (error) {
+      throw error;
+    }
+    return data;
+  };
+
   const signUp = async (
     emailInput: string,
     passwordInput: string,
     fullNameInput: string,
     companyInput: string
   ): Promise<ClientAuthResult> => {
-    const cleanEmail = emailInput.toLowerCase().trim();
-    const cleanPassword = passwordInput.trim();
-    const cleanName = fullNameInput.trim();
-    const cleanCompany = companyInput.trim() || "Client Enterprise";
+    const { authData, cleanEmail, trialEligible } = await performSignUp(
+      emailInput,
+      passwordInput,
+      fullNameInput,
+      companyInput
+    );
 
-    if (!cleanName) throw new Error("Please enter your full name.");
-    if (cleanPassword.length < 8 || !/[A-Z]/.test(cleanPassword) || !/[0-9]/.test(cleanPassword)) {
-      throw new Error("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
-    }
-
-    // Check duplicate
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-
-    if (existingProfile) {
-      throw new Error("An account with this email already exists. Please sign in instead.");
-    }
-
-    // Register in Supabase Auth
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: cleanPassword,
-      options: {
-        data: {
-          full_name: cleanName,
-          company: cleanCompany
-        }
-      }
-    });
-
-    if (authErr) {
-      throw new Error(authErr.message || "Failed to register account.");
-    }
-
-    // Atomically grant 5 starter credits via Deep Module RPC
-    try {
-      await supabase.rpc("fn_grant_starter_credits", {
-        p_email: cleanEmail,
-        p_full_name: cleanName,
-        p_company: cleanCompany
-      });
-    } catch (e) {
-      console.warn("Starter credit RPC notice:", e);
-    }
-
-    await recordAuthEvent(cleanEmail, "SIGNUP", { fullName: cleanName, company: cleanCompany });
-
-    // Send Welcome Onboarding Email
-    sendWelcomeEmail({
-      clientName: cleanName || cleanEmail.split("@")[0],
-      clientEmail: cleanEmail,
-      company: cleanCompany
-    }).catch(err => console.warn("Welcome email notice:", err));
+    const welcomeNotice =
+      "Welcome to SlideBee! Your Free Tier account is active with 3 daily community presentation downloads.";
 
     if (authData?.session?.user || authData?.user) {
       const clientObj = authData.session?.user || authData.user;
@@ -305,58 +215,59 @@ export function useClientLedger() {
       broadcastAuthEvent("LOGIN", "client");
       setCurrentUser(clientObj);
       await fetchClientData(cleanEmail);
-      return { success: true, message: "Welcome! Your 5 free starter design credits are active." };
+      return { success: true, message: welcomeNotice };
     }
 
     return {
       success: true,
-      message: "Account created successfully with 5 free design credits. Please sign in."
+      message: trialEligible
+        ? "Account created successfully with 5 free design credits. Please sign in."
+        : "Account created successfully. Free starter trial was already claimed on this device. Please sign in.",
     };
   };
 
-  // Atomic Credit Redemption for Eligible Templates
-  const redeemCredit = async (templateId: string) => {
+  const downloadTemplate = async (templateId: string) => {
     if (!currentUser?.email && !userProfile?.email) {
-      throw new Error("Please log in to redeem templates using your credits.");
+      throw new Error("Please log in to download presentation templates.");
     }
-
     const emailToUse = currentUser?.email || userProfile?.email;
-
-    const { data, error } = await supabase.rpc("fn_redeem_template_credit", {
-      p_user_email: emailToUse,
-      p_template_id: templateId
-    });
-
-    if (error) {
-      throw new Error(error.message || "Credit redemption failed.");
-    }
-
-    if (!data?.success) {
-      throw new Error(data?.message || "Failed to redeem template with credits.");
-    }
-
-    // Refresh client ledger state
+    const data = await performTemplateDownload(emailToUse, templateId);
     await fetchClientData(emailToUse);
     return data;
   };
 
-  // Secure Password Reset Request (Prompts 11 & 12)
+  const redeemCredit = downloadTemplate;
+
   const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = emailInput.toLowerCase().trim();
     if (!cleanEmail) {
       return { success: false, message: "Please enter your registered email address." };
     }
     try {
-      await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/#/login?action=reset`
+      const redirectOrigin =
+        typeof window !== "undefined" ? window.location.origin : "https://dev.slidebee.pages.dev";
+      await d1.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${redirectOrigin}/login?action=reset`,
       });
     } catch (err) {
-      // Fail closed with uniform feedback to prevent enumeration
+      // Fail closed
     }
     return {
       success: true,
-      message: "If an account exists with this email, a secure password recovery link has been dispatched."
+      message: "If an account exists with this email, a secure password recovery link has been dispatched.",
     };
+  };
+
+  const completePasswordReset = async (
+    newPasswordInput: string,
+    token?: string,
+    email?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await performCompletePasswordReset(newPasswordInput, token, email);
+    if (res.user) {
+      setCurrentUser(res.user);
+    }
+    return res;
   };
 
   const logout = async () => {
@@ -368,26 +279,59 @@ export function useClientLedger() {
   };
 
   const isPro = Boolean(
-    userSubscription &&
-    userSubscription.status === "active" &&
-    (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date())
+    (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
+      (userSubscription &&
+        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
   );
 
   const isProExpired = Boolean(
-    userSubscription &&
-    userSubscription.current_period_end &&
-    new Date(userSubscription.current_period_end) <= new Date()
+    (userSubscription &&
+      userSubscription.current_period_end &&
+      new Date(userSubscription.current_period_end) <= new Date()) ||
+      (userProfile?.tier_expires_at &&
+        userProfile?.tier !== "free" &&
+        new Date(userProfile.tier_expires_at) <= new Date())
   );
 
   const daysRemaining = userSubscription?.current_period_end
-    ? Math.max(0, Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(
+        0,
+        Math.ceil((new Date(userSubscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      )
+    : userProfile?.tier_expires_at
+    ? Math.max(
+        0,
+        Math.ceil((new Date(userProfile.tier_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      )
     : null;
 
-  const templateQuotaTotal = isPro ? Number(userSubscription?.slides_limit || 15) : (userProfile?.credits_total ?? 5);
-  const templateQuotaUsed = isPro ? Number(userSubscription?.slides_used || 0) : (userProfile?.credits_used ?? 0);
-  const templateQuotaRemaining = isPro
-    ? Math.max(0, templateQuotaTotal - templateQuotaUsed)
-    : (userProfile?.credits_balance ?? 5);
+  const userTier: "free" | "monthly" | "yearly" | "lifetime" =
+    userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)
+      ? (userProfile.tier as any)
+      : userSubscription?.tier && ["monthly", "yearly", "lifetime"].includes(userSubscription.tier)
+      ? (userSubscription.tier as any)
+      : isPro
+      ? userSubscription?.plan_name?.toLowerCase()?.includes("year")
+        ? "yearly"
+        : userSubscription?.plan_name?.toLowerCase()?.includes("lifetime")
+        ? "lifetime"
+        : "monthly"
+      : "free";
+
+  const downloadsToday = userProfile?.downloads_today || 0;
+  const downloadsThisMonth = userProfile?.downloads_this_month || 0;
+  const remainingFreeToday = Math.max(0, 3 - downloadsToday);
+  const remainingPremiumThisMonth =
+    userTier === "monthly" || userTier === "yearly"
+      ? Math.max(0, 30 - downloadsThisMonth)
+      : userTier === "lifetime"
+      ? Math.max(0, 45 - downloadsThisMonth)
+      : 0;
+
+  const templateQuotaTotal = userTier === "lifetime" ? 45 : userTier === "free" ? 3 : 30;
+  const templateQuotaUsed = userTier === "free" ? downloadsToday : downloadsThisMonth;
+  const templateQuotaRemaining = userTier === "free" ? remainingFreeToday : remainingPremiumThisMonth;
 
   return {
     currentUser,
@@ -396,6 +340,11 @@ export function useClientLedger() {
     userSubscription,
     isPro,
     isProExpired,
+    userTier,
+    downloadsToday,
+    downloadsThisMonth,
+    remainingFreeToday,
+    remainingPremiumThisMonth,
     daysRemaining,
     templateQuotaTotal,
     templateQuotaUsed,
@@ -407,10 +356,13 @@ export function useClientLedger() {
     purchasedItems: userProfile?.purchased_items ?? [],
     usageHistory: userProfile?.usage_history ?? [],
     signIn,
+    signInWithGoogle,
     signUp,
     logout,
     requestPasswordReset,
+    completePasswordReset,
+    downloadTemplate,
     redeemCredit,
-    refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined)
+    refreshClientData: () => (currentUser?.email ? fetchClientData(currentUser.email) : undefined),
   };
 }

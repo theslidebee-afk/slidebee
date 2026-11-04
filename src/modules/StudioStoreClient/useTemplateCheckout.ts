@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { openRazorpayCheckout } from "../../lib/razorpay";
 import { sendTemplatePurchaseReceiptEmail } from "../../lib/email";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 import { type StoreTemplate } from "./useStudioStore";
+import { redeemProTemplateDownload } from "./proRedemptionHelper";
+import { getTemplateDeliverableUrl, triggerPptxDownload, isValidPptxUrl } from "../../lib/templates";
 
 export interface CheckoutResult {
   success: boolean;
@@ -11,18 +13,6 @@ export interface CheckoutResult {
   isCreditRedemption?: boolean;
 }
 
-/**
- * Deep Module: useTemplateCheckout
- * 
- * Public Interface:
- * - isProcessing: Boolean state during checkout or redemption
- * - isPurchased: Boolean status indicating completed purchase
- * - purchasedClientEmail: Client email associated with completed transaction
- * - deliverableUrl: Direct Master PowerPoint (.pptx) download link
- * - error: Any failure message
- * - executeCreditRedemption(template, clientEmail): Atomically claims template with starter credits
- * - executeRazorpayCheckout(template, currency, clientEmail, clientName): Initiates Razorpay payment
- */
 export function useTemplateCheckout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPurchased, setIsPurchased] = useState(false);
@@ -30,7 +20,7 @@ export function useTemplateCheckout() {
   const [deliverableUrl, setDeliverableUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Starter Credit Redemption (Atomic Postgres RPC)
+  // 1. Template Entitlement Download (Free 3/day, Pro 30/mo, Lifetime 45/mo)
   const executeCreditRedemption = async (
     template: StoreTemplate,
     clientEmail: string
@@ -40,70 +30,52 @@ export function useTemplateCheckout() {
 
     try {
       if (!clientEmail) {
-        throw new Error("Please log in to use your starter design credits.");
+        throw new Error("Please log in to download this presentation template.");
       }
 
-      if (!template.is_credit_eligible) {
-        throw new Error("This template is not eligible for free starter credits. Starter credits apply strictly to tagged free templates.");
-      }
-
-      const { data, error: rpcErr } = await supabase.rpc("fn_redeem_template_credit", {
-        p_user_email: clientEmail,
-        p_template_id: template.id
+      const res = await fetch("/api/entitlement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: template.id,
+          userEmail: clientEmail,
+        }),
       });
 
-      if (rpcErr) throw rpcErr;
-
-      if (!data?.success) {
-        throw new Error(data?.message || "Credit redemption failed.");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Download entitlement check failed.");
       }
 
-      const pptxUrl = data.download_url || template.download_url || template.image_url;
+      const pptxUrl = (data.downloadUrl && isValidPptxUrl(data.downloadUrl)) ? data.downloadUrl : getTemplateDeliverableUrl(template);
       setIsPurchased(true);
       setPurchasedClientEmail(clientEmail);
-      setDeliverableUrl(pptxUrl);
+      setDeliverableUrl(pptxUrl || undefined);
 
-      // Auto-trigger browser download for client
+      // Auto-trigger browser download for client if verified deliverable is available
       if (typeof window !== "undefined" && pptxUrl) {
         try {
-          const dlLink = document.createElement("a");
-          dlLink.href = pptxUrl;
-          dlLink.download = template.file_name || `${template.code}_Master.pptx`;
-          dlLink.target = "_blank";
-          document.body.appendChild(dlLink);
-          dlLink.click();
-          document.body.removeChild(dlLink);
+          triggerPptxDownload(`/api/download?id=${encodeURIComponent(template.id || template.code)}`, data.fileName || template.file_name || `${template.code}_Master.pptx`);
         } catch (dlErr) {
           console.warn("Auto-download notice:", dlErr);
         }
       }
 
-      // Trigger deliverable email asynchronously in background (non-blocking)
-      sendTemplatePurchaseReceiptEmail({
-        clientEmail,
-        clientName: clientEmail.split("@")[0],
-        templateTitle: template.title,
-        templateCode: template.code,
-        downloadUrl: pptxUrl.startsWith("http") ? pptxUrl : `https://theslidebee.com${pptxUrl}`,
-        amountPaid: 0,
-        currency: "INR"
-      }).catch(err => console.warn("Receipt email dispatch notice:", err));
-
       return {
         success: true,
-        message: data.message,
+        message: data.message || "Template download unlocked successfully.",
         downloadUrl: pptxUrl,
         isCreditRedemption: true
       };
     } catch (err: any) {
-      setError(err.message || "Failed to redeem credits.");
+      setError(err.message || "Failed to download template.");
       return { success: false, message: err.message };
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // 2. Pro Membership Template Download (15 Monthly Quota - Applies to ANY template)
+  // 2. Pro Membership Template Download
   const executeProTemplateDownload = async (
     template: StoreTemplate,
     clientEmail: string
@@ -112,64 +84,13 @@ export function useTemplateCheckout() {
     setError(null);
 
     try {
-      if (!clientEmail) {
-        throw new Error("Please log in to your Pro account to download templates.");
+      const result = await redeemProTemplateDownload(template, clientEmail);
+      if (result.success && result.downloadUrl) {
+        setIsPurchased(true);
+        setPurchasedClientEmail(clientEmail);
+        setDeliverableUrl(result.downloadUrl);
       }
-
-      const res = await fetch("/api/redeem-pro-template", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientEmail,
-          templateId: template.id
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to download template with Pro quota.");
-      }
-
-      const pptxUrl = data.downloadUrl || template.download_url || template.image_url;
-      const fileName = data.fileName || template.file_name || `${template.code}_Master.pptx`;
-
-      setIsPurchased(true);
-      setPurchasedClientEmail(clientEmail);
-      setDeliverableUrl(pptxUrl);
-
-      // Auto-trigger browser download for client
-      if (typeof window !== "undefined" && pptxUrl) {
-        try {
-          const dlLink = document.createElement("a");
-          dlLink.href = pptxUrl;
-          dlLink.download = fileName;
-          dlLink.target = "_blank";
-          document.body.appendChild(dlLink);
-          dlLink.click();
-          document.body.removeChild(dlLink);
-        } catch (dlErr) {
-          console.warn("Auto-download notice:", dlErr);
-        }
-      }
-
-      // Trigger deliverable email asynchronously in background
-      sendTemplatePurchaseReceiptEmail({
-        clientEmail,
-        clientName: clientEmail.split("@")[0],
-        templateTitle: template.title,
-        templateCode: template.code,
-        downloadUrl: pptxUrl.startsWith("http") ? pptxUrl : `https://theslidebee.com${pptxUrl}`,
-        amountPaid: 0,
-        currency: "INR"
-      }).catch(err => console.warn("Receipt email dispatch notice:", err));
-
-      return {
-        success: true,
-        message: data.message || "Template successfully downloaded using Pro quota.",
-        downloadUrl: pptxUrl,
-        isCreditRedemption: true
-      };
+      return result;
     } catch (err: any) {
       setError(err.message || "Pro download failed.");
       return { success: false, message: err.message };
@@ -183,15 +104,44 @@ export function useTemplateCheckout() {
     template: StoreTemplate,
     currency: "USD" | "INR",
     clientEmail: string,
-    clientName: string
+    clientName: string,
+    promotionCode?: string
   ): Promise<void> => {
     setIsProcessing(true);
     setError(null);
 
-    const priceNum = currency === "USD" ? template.price_usd : template.price_inr;
+    const rawPrice = currency === "USD" ? template.price_usd : template.price_inr;
+    let priceNum = rawPrice;
+    let serverOrderId: string | undefined;
+
+    // Create server-authoritative order with locked pricing and promotion validation
+    try {
+      const orderRes = await fetch("/api/checkout/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "template",
+          targetId: String(template.id || template.code),
+          currency,
+          promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
+          userEmail: clientEmail,
+        }),
+      });
+
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        if (orderData.success && orderData.orderId) {
+          serverOrderId = orderData.orderId;
+          priceNum = orderData.amount;
+        }
+      }
+    } catch (orderErr) {
+      console.warn("Server order generation notice, falling back:", orderErr);
+    }
 
     await openRazorpayCheckout({
       amount: priceNum,
+      orderId: serverOrderId,
       currency,
       title: template.title,
       description: `Master PowerPoint Presentation (.pptx) — ${template.code}`,
@@ -205,13 +155,12 @@ export function useTemplateCheckout() {
         setPurchasedClientEmail(clientEmail);
 
         const orderRef = `TPL-${template.code}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-        let pptxUrl = template.image_url;
+        let pptxUrl = getTemplateDeliverableUrl(template) || "";
         let fileName = template.file_name || `${template.code}_Master.pptx`;
 
         try {
           let fulfilled = false;
 
-          // 1. Fulfill order via serverless backend endpoint
           try {
             const apiRes = await fetch("/api/fulfill-order", {
               method: "POST",
@@ -219,6 +168,9 @@ export function useTemplateCheckout() {
               body: JSON.stringify({
                 orderRef,
                 paymentId: payment.razorpay_payment_id,
+                orderId: payment.razorpay_order_id || serverOrderId,
+                signature: payment.razorpay_signature,
+                promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
                 templateId: template.id,
                 clientEmail,
                 clientName,
@@ -239,9 +191,8 @@ export function useTemplateCheckout() {
             console.warn("Backend order fulfillment notice, falling back to direct RPC:", apiErr);
           }
 
-          // 2. Direct Supabase RPC fallback
           if (!fulfilled) {
-            const { data: fulfillData, error: fulfillErr } = await supabase.rpc("fn_fulfill_template_order", {
+            const { data: fulfillData, error: fulfillErr } = await d1.rpc("fn_fulfill_template_order", {
               p_order_ref: orderRef,
               p_payment_id: payment.razorpay_payment_id,
               p_template_id: template.id,
@@ -264,11 +215,10 @@ export function useTemplateCheckout() {
 
         setDeliverableUrl(pptxUrl);
 
-        // Auto-trigger browser download for client immediately upon successful payment
         if (typeof window !== "undefined" && pptxUrl) {
           try {
             const dlLink = document.createElement("a");
-            dlLink.href = pptxUrl;
+            dlLink.href = `/api/download?id=${encodeURIComponent(template.id || template.code)}`;
             dlLink.download = fileName;
             dlLink.target = "_blank";
             document.body.appendChild(dlLink);
@@ -279,7 +229,6 @@ export function useTemplateCheckout() {
           }
         }
 
-        // Send confirmation receipt & master files asynchronously in background
         sendTemplatePurchaseReceiptEmail({
           clientEmail,
           clientName,

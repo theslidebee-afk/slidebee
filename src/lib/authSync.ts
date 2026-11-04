@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { d1 } from "./d1";
 
 export type AuthEventType = "LOGOUT" | "LOGIN";
 
@@ -50,7 +50,7 @@ export const performGlobalLogout = async () => {
     localStorage.removeItem("slidebee_admin_session");
     localStorage.removeItem("slidebee_admin_email");
     localStorage.removeItem("slidebee_client_user");
-    await supabase.auth.signOut().catch(() => {});
+    await d1.auth.signOut().catch(() => {});
   } catch (err) {
     console.warn("Global logout notice:", err);
   } finally {
@@ -73,12 +73,12 @@ export const performAdminLogout = () => {
 };
 
 /**
- * Terminate Client session specifically and sign out from Supabase Auth
+ * Terminate Client session specifically and sign out from Edge Auth
  */
 export const performClientLogout = async () => {
   try {
     localStorage.removeItem("slidebee_client_user");
-    await supabase.auth.signOut().catch(() => {});
+    await d1.auth.signOut().catch(() => {});
   } catch (err) {
     console.warn("Client logout notice:", err);
   } finally {

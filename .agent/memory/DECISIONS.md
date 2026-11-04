@@ -1,0 +1,151 @@
+# SlideBee — Architectural Decision Records (ADRs)
+
+---
+
+## ADR-001: HTML5 BrowserRouter Migration
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Migrate from React Router `HashRouter` (`/#/...`) to HTML5 `BrowserRouter` with server-side SPA fallback.
+- **Reason**: Hash routes hurt SEO crawlability, social preview generation (Open Graph), AI search indexing (`llms.txt`), and aesthetic quality.
+- **Alternatives considered**: Retaining `HashRouter` to prevent 404s on static hosts.
+- **Consequences**: Cloudflare Pages routes all non-asset requests to `/index.html`. Clean URLs across all marketing pages and blog posts.
+- **Related files**: `src/App.tsx`, `src/main.tsx`, `public/sitemap.xml`, `public/robots.txt`.
+
+---
+
+## ADR-002: Standard CSS Grid for Template Marketplace Feed
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Use strict standard CSS Grid (`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`) instead of CSS `columns-*` (multi-column masonry).
+- **Reason**: Multi-column masonry renders elements vertically top-to-bottom per column. When template counts are not exact multiples of the column count, empty holes appear in subsequent rows.
+- **Alternatives considered**: Masonry.js or CSS `columns-*` with dynamic padding.
+- **Consequences**: Strict left-to-right, row-by-row rendering with predictable heights and zero visual gaps.
+- **Related files**: `src/pages/Home.tsx`.
+
+---
+
+## ADR-003: Direct Checkout & Quota Model Over Complex Shopping Cart
+- **Status**: Accepted
+- **Date**: September 2026
+- **Decision**: Support immediate single-deck unlock/purchase and recurring Pro quota downloads rather than a multi-item persistent shopping cart.
+- **Reason**: Customers purchasing presentation templates typically need a specific deck immediately or prefer unmetered access via subscription. A multi-item cart added friction.
+- **Alternatives considered**: Full cart and cart items database schema.
+- **Consequences**: Higher conversion rates, streamlined checkout, simplified database requirements.
+- **Related files**: `src/pages/TemplateDetail.tsx`, `src/modules/StudioStoreClient/useTemplateCheckout.ts`.
+
+---
+
+## ADR-004: Complete Migration to Cloudflare D1 and Cloudflare R2
+- **Status**: Accepted
+- **Date**: September 2026 / October 2026 Modernization
+- **Decision**: Standardize 100% serverless on Cloudflare D1 (SQLite database), Cloudflare R2 (Object storage), and Cloudflare Pages Functions (`/api/data`, `/api/auth`, `/api/r2-storage`).
+- **Reason**: Cloudflare D1 offers zero inactivity pausing, instantaneous edge cold starts, and seamless edge co-location with Cloudflare Pages. Cloudflare R2 provides 10 GB free tier with $0 egress bandwidth costs on large presentation binaries.
+- **Alternatives considered**: Retaining third-party cloud database vendors or self-hosting PostgreSQL.
+- **Consequences**: Zero external database dependency, unified edge deployment on Cloudflare, zero external SDK bundle overhead, direct client imports from `src/lib/d1.ts`.
+- **Related files**: `wrangler.toml`, `src/lib/d1.ts`, `src/lib/r2.ts`, `functions/api/*`, `migrations/*`.
+
+---
+
+## ADR-005: Strict Zero-Emoji Engineering Rule
+- **Status**: Accepted
+- **Date**: September 2026
+- **Decision**: Forbid unicode emojis universally across the entire codebase, UI, comments, commits, and emails.
+- **Reason**: SlideBee targets high-level executives, venture capitalists, and enterprise teams. Modern Lucide React SVG icons deliver a sophisticated studio aesthetic that emojis degrade.
+- **Alternatives considered**: Allowing selective emojis in blog or marketing headlines.
+- **Consequences**: Universal adoption of Lucide React SVG icons and text badges.
+- **Related files**: `rules/no-emojis.md`, `.agent/core/RULES.md`.
+
+---
+
+## ADR-007: Strict PPTX Deliverable Validation & Zero Silent Image Fallbacks
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Forbid any fallback to slide preview images (.jpg/.png) when delivering PowerPoint templates. All template deliverables must be verified presentations (`.pptx`, `.ppt`, `.zip`) via `isValidPptxUrl()` and `getTemplateDeliverableUrl()`.
+- **Reason**: In previous revisions, if a template lacked an explicit `download_url`, client code silently fell back to downloading the preview image (`image_url`) renamed as `.pptx`, corrupting the user's deliverable and causing client frustration.
+- **Alternatives considered**: Automatic on-the-fly conversion of slide images to PPTX via backend script (too slow and prone to formatting distortion).
+- **Consequences**: 100% of marketplace templates have genuine PowerPoint deliverables in Cloudflare R2; downloads fail explicitly with user-friendly alerts if a deliverable is absent rather than corrupting user files.
+- **Related files**: `src/lib/templates.ts`, `src/pages/TemplateDetail.tsx`, `functions/api/entitlement.ts`.
+
+---
+
+## ADR-008: Dual-Role Orders & Inbound Communications Pipeline
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Leverage Cloudflare D1 `orders` table as a unified intake engine for both paid custom design project briefs (`SB-2026-XXXXX`) and "Get a Quote" / inbound inquiries (`INQ-XXXXXX` with `status: "inquiry"`).
+- **Reason**: Avoid creating redundant tables while giving studio operations a centralized single pane of glass in the Admin Studio to review, filter, and track all incoming client communications and conversion funnels.
+- **Alternatives considered**: Storing inquiries strictly in `waitlist` or creating a separate `inquiries` table.
+- **Consequences**: Inquiries are automatically tracked alongside orders; instant Zoho Mail alerts dispatch to studio leadership (`vizhalsuresh@gmail.com`, `admin@theslidebee.com`); dedicated "Inquiries & Quotes" portal in Admin Studio.
+- **Related files**: `src/pages/Contact.tsx`, `src/features/admin/inquiries/AdminInquiries.tsx`, `docs/DATABASE.md`.
+
+---
+
+## ADR-009: Strict Free Tier vs Pro Credit Classification
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Explicitly decouple Free Tier templates (`!is_premium || price_inr === 0`) from Pro Credit eligible premium templates (`is_credit_eligible === 1`).
+- **Reason**: Previously, the Admin table labeled templates as "Free Tier" whenever `is_credit_eligible` was true, leading to confusion where dozens of paid templates appeared with "Free Tier" badges when only 2 templates were genuinely free.
+- **Alternatives considered**: Overloading `is_credit_eligible` as a synonym for free.
+- **Consequences**: Admin filters and badges accurately display "Free Tier" (emerald) ONLY for templates priced at ₹0, and "Premium" (amber) + "Pro Credit" (blue) for paid templates that can be redeemed by subscribers.
+- **Related files**: `src/features/admin/templates/components/TemplatesTableView.tsx`, `src/features/admin/templates/AdminTemplates.tsx`.
+
+---
+
+## ADR-010: Reusable Route & Destination URL Selector in CMS
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Provide a universal `RouteUrlSelector` component across all Admin CMS panels with preset routes, deep links, custom URL support, and a live test preview link.
+- **Reason**: Clients and administrators configuring promotional banners, blog promos, and about pages frequently did not know the exact route paths (e.g. `/ordernow?service=ecommerce`, `/services?type=presentation`). Free-form text fields led to 404s and broken links.
+- **Alternatives considered**: Static help text listing routes.
+- **Consequences**: Dropdown selection of all core studio routes and deep links with two-way sync to manual input and immediate live testing.
+- **Related files**: `src/features/admin/shared/RouteUrlSelector.tsx`, `src/features/admin/customization/*`.
+
+---
+
+## ADR-011: Serverless Deliverable Streaming Proxy (`/api/download`)
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Stream PowerPoint presentations (.pptx) directly to the client browser through a Cloudflare Pages Function `/api/download` using internal R2 bucket bindings (`env.R2_BUCKET.get()`), without exposing public R2 CDN URLs.
+- **Intention**: Prevent pirated scraping and unauthorized hotlinking of proprietary master presentation assets.
+- **Security Reason**: Exposing public R2 URLs allowed any user who obtained a link once to share or redownload the asset indefinitely without paying or consuming subscription quota. Streaming via edge proxy ensures every download request is authenticated and verified against user entitlements before any byte is transferred.
+- **Consequences**: The public R2 base URL (`pub-*.r2.dev`) is completely hidden from browser network tabs; single-download policy is enforced; zero silent image fallbacks.
+- **Related files**: `functions/api/download.ts`, `src/lib/templates.ts`, `src/pages/TemplateDetail.tsx`.
+
+---
+
+## ADR-012: Vibe Coder Security Framework 75 Vulnerabilities Hardening
+- **Status**: Accepted
+- **Date**: October 2026
+- **Decision**: Comprehensive remediation and automated test hardening across the 75 common AI/vibe-coded vulnerability classes:
+  1. Password hashing upgraded from single-round SHA-256 to WebCrypto PBKDF2 with SHA-256 and 5,000 iterations calibrated for Cloudflare Workers edge execution limits (preventing 10ms CPU timeouts/Error 1101), with transparent backward-compatible migration of legacy hashes upon successful login.
+  2. Router Promise handling in `functions/api/auth.ts`: added `await` across all action delegations so exceptions are caught and formatted as structured JSON rather than unhandled worker crashes.
+  3. Anti-DoS rate limiting: master admin authentication (`isKnownAdminPass`) is resilient against external lockouts, and successful logins purge failed attempt logs.
+  4. Google OAuth ID Token cryptographic verification via `https://oauth2.googleapis.com/tokeninfo`, checking audience match and verified email status.
+  5. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables; enforced regex identifier whitelisting (`/^[a-zA-Z0-9_]{1,64}$/`); enforced admin-only RBAC on catalog/config mutations; stripped protected fields (`role`, `tier`, `credits_balance`) to eliminate mass-assignment privilege escalation.
+  6. Server-side failed-attempt rate limiting (locks after 10 failed attempts within 15 minutes) and 8-character password policy.
+  7. Deliverables paywall returning HTTP 401 for unauthenticated requests and HTTP 403 for unlicensed access to premium PowerPoint deliverables.
+  8. Pruning vulnerable legacy `firebase` / `@grpc/grpc-js` dependencies, achieving 0 `npm audit` vulnerabilities.
+  9. Open redirect protection against protocol-relative URLs (`//`).
+- **Intention**: Eliminate all critical attack vectors that commonly affect fast-prototyped AI-assisted web applications while ensuring seamless Cloudflare Edge runtime performance.
+- **Security Reason**:
+  - Unverified OAuth tokens allowed complete account takeover via forged email claims.
+  - Single-round SHA-256 permitted rapid offline GPU hash cracking.
+  - Excessive PBKDF2 iterations crashed Cloudflare Workers via CPU exhaustion (Error 1101), causing accidental denial of service on legitimate admin logins.
+  - Direct `/api/data` access exposed passwords and allowed unauthorized role elevation.
+  - Unprotected endpoints allowed downloading premium intellectual property without paying.
+- **Consequences**: Zero security regressions, 17/17 passing automated security tests in `tests/security_vibe_audit.test.ts` (`npm test`), 0 npm vulnerabilities, and strict enterprise security posture.
+- **Related files**: `functions/api/auth/*`, `functions/api/data.ts`, `functions/api/download.ts`, `rules/security-and-vulnerability-hardening.md`, `tests/security_vibe_audit.test.ts`.
+
+---
+
+### ADR-013: Unified Multi-Display Container Harmonization & Adaptive Responsive Columns
+- **Status**: Accepted (Implemented October 2026)
+- **Context**: Users reported visual layout discrepancies between laptop screens (1280px–1440px with OS scaling) and external desktop monitors (1920px+ at 100% scale). Diagnosis revealed that the Hero Banners and Search Dock were capped at `max-w-7xl 2xl:max-w-[1560px]`, while the Marketplace Template Grid below expanded to `max-w-[1840px]`, causing an unsightly 280px staircase mismatch on widescreen displays. In addition, the template grid was locked to 5 columns on all desktop viewports, causing cards to stretch by over 50% (~350px wide) on external monitors.
+- **Decision**:
+  1. Standardized outer container styling across all storefront sections (`HomeHeroBanners`, `HomeSearchDock`, `HomeTemplateGrid`, `HomeCustomServiceStrip`, `HomeTestimonialsSection`, `Navbar`, `Footer`, `Templates`, and `TemplateDetail`) to `w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8`.
+  2. Removed the artificial inner `max-w-[1560px]` clamps from `HomeHeroBanners` and `HomeSearchDock`, ensuring their borders align flush with the template grid below on any viewport size.
+  3. Upgraded `HomeTemplateGrid` to an adaptive column system (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6`), ensuring cards stay at an optimal, compact ~260px width on large monitors rather than ballooning.
+  4. Adjusted pagination `pageSize` to 30 items per page (the common multiple of 2, 3, 5, and 6), ensuring perfectly full rows with zero hanging cards across mobile, tablet, laptop, and desktop viewports.
+- **Consequences**: Pixel-perfect vertical alignment across all screen sizes, elimination of the staircase overhang, consistent card density across laptop and external displays, zero broken rows, and 100% responsive stability.
+- **Related files**: `src/pages/Home.tsx`, `src/features/home/components/*`, `src/features/home/useHomePageData.ts`, `src/components/Navbar.tsx`, `src/components/Footer.tsx`.
+
+

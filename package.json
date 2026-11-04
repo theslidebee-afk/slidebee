@@ -7,13 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "npx --yes tsx tests/security_vibe_audit.test.ts && npx --yes tsx tests/promotions_security.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.114.0",
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",
-    "firebase": "^12.18.0",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.38.0",
     "puppeteer": "^25.10.0",
@@ -21,14 +20,12 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.3",
-    "three": "^0.185.1"
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",

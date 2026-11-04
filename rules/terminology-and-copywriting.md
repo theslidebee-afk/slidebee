@@ -13,13 +13,13 @@ SlideBee is a premier presentation design studio serving venture capital, founde
 
 | Internal / Technical Concept | Client-Facing / Executive Term | Strictly Forbidden on Frontend |
 | :--- | :--- | :--- |
-| Supabase Auth / User UID | **Client Account / Studio Access** | "Supabase", "Auth ID", "UUID", "DB Row" |
+| Edge Auth / User UID | **Client Account / Studio Access** | "Internal Auth", "Auth ID", "UUID", "DB Row" |
 | Credits Balance in DB | **Studio Credit Balance / Design Credits** | "Credit Integer", "Tokens in DB" |
 | Credit Ledger / History Table | **Credit Ledger / Usage History** | "Transactions table", "credit_ledger" |
 | Template Row in Database | **Master Deck / Executive Presentation Template** | "Template record", "row #12" |
 | Downloadable PPTX binary | **Master PowerPoint Presentation (.pptx)** | "PPT zip asset", "blob", "S3 key", "bucket object" |
 | Razorpay Gateway Webhook | **Secure Instant Checkout** | "Razorpay Webhook Handler", "signature verification" |
-| Storage Bucket / CDN | **SlideBee Secure Asset Vault / High-Resolution Deliverables** | "Supabase Storage bucket", "public CDN URL" |
+| Storage Bucket / CDN | **SlideBee Secure Asset Vault / High-Resolution Deliverables** | "Raw Storage bucket", "public CDN URL" |
 | Get a Quote form | **Custom Presentation Brief / Request Executive Quote** | "Submission form", "payload generator" |
 | Welcome Email Trigger | **Executive Welcome & Studio Access Onboarding** | "Resend API trigger", "auth hook email" |
 

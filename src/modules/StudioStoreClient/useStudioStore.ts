@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../lib/supabase";
+import { d1 } from "../../lib/d1";
 import { normalizeR2Url } from "../../lib/r2";
 
 export interface StoreTemplate {
@@ -10,17 +10,19 @@ export interface StoreTemplate {
   price_inr: number;
   price_usd: number;
   original_price_inr: number;
+  original_price_usd?: number;
   image_url: string;
   slides: string[];
   slides_count: number;
-  rating: number;
-  downloads: number;
+  rating?: number;
+  downloads?: number;
   download_url?: string;
   file_name: string;
   file_size: string;
   description: string;
   features: string[];
   formats?: string[];
+  is_premium: boolean;
   is_credit_eligible: boolean;
   is_featured: boolean;
   is_published: boolean;
@@ -31,6 +33,7 @@ export interface StudioStoreOptions {
   category?: string;
   searchQuery?: string;
   onlyCreditEligible?: boolean;
+  filterTier?: "all" | "free" | "premium";
 }
 
 /**
@@ -57,7 +60,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
     setError(null);
     try {
       // 1. Fetch site_config metrics toggle
-      const { data: configData } = await supabase
+      const { data: configData } = await d1
         .from("site_config")
         .select("value")
         .eq("key", "show_template_metrics")
@@ -69,7 +72,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
       }
 
       // 2. Fetch full catalog from Deep Module view v_storefront_catalog
-      const { data: catalogData, error: catErr } = await supabase
+      const { data: catalogData, error: catErr } = await d1
         .from("v_storefront_catalog")
         .select("*")
         .order("created_at", { ascending: false });
@@ -81,16 +84,30 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
         const slideUrls = Array.isArray(t.slides) && t.slides.length > 0
           ? t.slides.map((s: string) => normalizeR2Url(s, "slides"))
           : [coverImg];
-        const pptxUrl = t.download_url ? normalizeR2Url(t.download_url, "decks") : undefined;
+        const pptxUrl = t.download_url
+          ? normalizeR2Url(t.download_url, "decks")
+          : t.file_name && t.file_name.endsWith(".pptx")
+          ? normalizeR2Url(t.file_name, "decks")
+          : undefined;
+
+        const isPrem = t.is_premium !== undefined 
+          ? Number(t.is_premium) === 1 
+          : (t.price_inr !== undefined && Number(t.price_inr) > 0);
+
+        const priceInr = isPrem ? (t.price_inr !== undefined && t.price_inr !== null ? Number(t.price_inr) : 499) : 0;
+        const priceUsd = isPrem ? (t.price_usd !== undefined && t.price_usd !== null ? Number(t.price_usd) : 9) : 0;
+        const originalPriceInr = isPrem ? (Number(t.original_price_inr) || 0) : 0;
+        const originalPriceUsd = isPrem ? (Number(t.original_price_usd) || 0) : 0;
 
         return {
           id: t.id,
           code: t.code || `SLD-${t.id.slice(0, 4).toUpperCase()}`,
           title: t.title,
           category: t.category || "Business",
-          price_inr: Number(t.price_inr) || 499,
-          price_usd: Number(t.price_usd) || 9,
-          original_price_inr: Number(t.original_price_inr) || 999,
+          price_inr: priceInr,
+          price_usd: priceUsd,
+          original_price_inr: originalPriceInr,
+          original_price_usd: originalPriceUsd,
           image_url: coverImg,
           slides: slideUrls,
           slides_count: Number(t.slides_count || t.slide_count) || slideUrls.length || 30,
@@ -102,7 +119,8 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
           description: t.description || "Executive presentation deck tailored for high-stakes business meetings.",
           features: Array.isArray(t.features) ? t.features : ["30+ High-Impact Slides", "16:9 Widescreen Format", "Master PowerPoint (.pptx)"],
           formats: Array.isArray(t.formats) && t.formats.length > 0 ? t.formats : ["PowerPoint"],
-          is_credit_eligible: Boolean(t.is_credit_eligible),
+          is_premium: isPrem,
+          is_credit_eligible: isPrem,
           is_featured: Boolean(t.is_featured),
           is_published: Boolean(t.is_published),
           created_at: t.created_at
@@ -110,7 +128,7 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
       });
 
       setTemplates(normalized);
-      setFreeTemplates(normalized.filter(t => t.is_credit_eligible));
+      setFreeTemplates(normalized.filter(t => !t.is_premium));
     } catch (err: any) {
       console.warn("Studio Storefront fetch notice:", err.message);
       setError(err.message || "Failed to load templates.");
@@ -124,7 +142,9 @@ export function useStudioStore(options: StudioStoreOptions = {}) {
   }, [fetchCatalog]);
 
   const filteredTemplates = templates.filter((t) => {
-    if (options.onlyCreditEligible && !t.is_credit_eligible) return false;
+    if (options.filterTier === "free" && t.is_premium) return false;
+    if (options.filterTier === "premium" && !t.is_premium) return false;
+    if (options.onlyCreditEligible && t.is_premium) return false;
     if (options.category && options.category !== "All" && t.category.toLowerCase() !== options.category.toLowerCase()) {
       return false;
     }

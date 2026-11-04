@@ -88,6 +88,15 @@ export default function ThankYou() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-[#111111]/10">
+            {!isContact && (
+              <Link
+                to={`/login?orderRef=${ref}&action=track_sla`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#111111] text-[#FCBF14] font-bold hex-card hover:bg-black transition-colors shadow-sm"
+              >
+                Track SLA in Client Portal
+              </Link>
+            )}
+
             <Link
               to="/home"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FCBF14] text-[#111111] font-bold hex-card hover:bg-[#E5AC10] transition-colors shadow-sm"

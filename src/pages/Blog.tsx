@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight, Search, Sparkles } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { d1 } from "../lib/d1";
 import { normalizeR2Url } from "../lib/r2";
 import { usePageSEO } from "../hooks/usePageSEO";
 
@@ -114,6 +114,15 @@ export const initialBlogArticles = [
     date: "May 2026",
     category: "Corporate",
     readTime: "6 min read"
+  },
+  {
+    id: "13",
+    title: "How to Build & Launch a High-Converting Ecommerce Store in India for ₹25,000 (Complete 2026 Blueprint)",
+    content: "Why smart Indian brands are skipping bloated SaaS fees for lightning-fast serverless storefronts with Razorpay, zero recurring monthly costs, and enterprise Google Cloud/Cloudflare edge delivery.",
+    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
+    date: "May 2026",
+    category: "Business",
+    readTime: "8 min read"
   }
 ];
 
@@ -187,13 +196,25 @@ export default function Blog() {
   useEffect(() => {
     async function loadBlogCms() {
       try {
-        const { data } = await supabase
+        const { data } = await d1
           .from("site_config")
           .select("value")
           .eq("key", "blog_cms")
           .maybeSingle();
-        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
-          setBlogs(data.value);
+
+        if (data?.value) {
+          let cmsArticles: any[] = [];
+          if (Array.isArray(data.value) && data.value.length > 0) {
+            cmsArticles = data.value;
+          } else if (typeof data.value === "object" && Array.isArray(data.value.articles)) {
+            cmsArticles = data.value.articles;
+          }
+
+          if (cmsArticles.length > 0) {
+            const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
+            const unaddedDefaults = initialBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
+            setBlogs([...cmsArticles, ...unaddedDefaults]);
+          }
         }
       } catch (err) {
         console.warn("Could not load dynamic blog CMS:", err);
@@ -329,7 +350,7 @@ export default function Blog() {
                       {blog.title}
                     </h3>
                     <p className="text-xs text-[#726F6D] font-medium line-clamp-3 mb-6 flex-grow leading-relaxed">
-                      {blog.content}
+                      {blog.subtitle || blog.excerpt || blog.metaDescription || (blog.content ? blog.content.replace(/#{1,6}\s+/g, "").replace(/\*\*|\*/g, "").slice(0, 150) + "..." : "")}
                     </p>
                     <div className="text-primary-amber text-xs font-black inline-flex items-center gap-1.5 mt-auto group-hover:translate-x-1 transition-transform">
                       Read Article <ArrowRight size={14} />

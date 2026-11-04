@@ -1,0 +1,120 @@
+# SlideBee — Completed Tasks
+
+---
+
+## TASK-001: Router Modernization (HashRouter to HTML5 BrowserRouter)
+- **Completed**: October 2026
+- **Summary**: Migrated root routing in `src/App.tsx` from `HashRouter` to `BrowserRouter`. Updated URL normalizer in `src/main.tsx` to handle legacy bookmarks. Cleaned internal link redirects across auth and policy pages.
+- **Verification**: Verified zero 404 errors, clean HTML5 canonical URLs.
+
+---
+
+## TASK-002: Blog SEO & JSON-LD Structured Data Implementation
+- **Completed**: October 2026
+- **Summary**: Overhauled `usePageSEO.ts` hook. Implemented Open Graph, Twitter card, canonical links, and `BlogPosting` JSON-LD schema across all 10 articles in `src/pages/BlogDetail.tsx` and `src/pages/Blog.tsx`.
+- **Verification**: Validated schema output and rich preview meta tags.
+
+---
+
+## TASK-003: AI Search Engine Optimization (robots.txt, llms.txt, llms-full.txt)
+- **Completed**: October 2026
+- **Summary**: Modernized `public/robots.txt` with permissions for AI agents (GPTBot, ClaudeBot, PerplexityBot). Generated `public/llms.txt` and `public/llms-full.txt` indexing the entire SlideBee platform.
+- **Verification**: Verified clean canonical URLs without hash fragments.
+
+---
+
+## TASK-004: Admin Studio Cleanup of Retired Fields
+- **Completed**: October 2026
+- **Summary**: Pruned obsolete eyebrow and subtitle textarea controls from `src/pages/Admin.tsx` and deleted unused `Banner.tsx` component.
+- **Verification**: Clean build and streamlined admin layout.
+
+---
+
+## TASK-005: Hero Stage Black Underlayer Removal & Scroll Animation
+- **Completed**: October 2026
+- **Summary**: Replaced `bg-[#141310]` on `#hero-stage` with `bg-[#FFF9E8]` and removed dark top/bottom gradient overlays. Restored scroll-driven opacity dissolve and template section parallax slide-up.
+- **Verification**: `npm run build` passed with exit code 0; visual verification confirmed zero dark bands.
+
+---
+
+## TASK-006: Implementation of AI Agent Context System (.agent/)
+- **Completed**: October 2026
+- **Summary**: Established full `.agent/` directory structure, `docs/DATABASE.md`, and updated root `AGENTS.md` per project context guidelines.
+- **Verification**: Complete documentation coverage without guessing.
+
+---
+
+## TASK-010: Comprehensive 9-Point Bug Fixes & Refinements
+- **Completed**: October 2026
+- **Summary**: Resolved 9 critical client-reported bugs and platform refinements:
+  1. Strict PPTX download integrity with zero silent image fallbacks (`src/lib/templates.ts`, verified 108/108 templates have real R2 PPTX decks).
+  2. Inbound quote requests recorded in `orders` (`status: "inquiry"`, `INQ-xxxxxx`) with automated email alerts.
+  3. Portfolio multi-slide local computer uploader to R2 with slide strip, reordering, and deletion controls (`CmsPortfolioPanel.tsx`).
+  4. Bulk CSV import enhancements with explicit `pptx_file_url` column, row deletion, asset queue removal, and validation badges.
+  5. Decoupled Free Tier (2 templates) from Pro Credit eligibility in table and filter badges.
+  6. Dedicated Admin "Inquiries & Quotes" portal for managing inbound client communications.
+  7. Connected `Suspended3DCarousel.tsx` and `PresentationServicesSection.tsx` dynamically to `services_cms`.
+  8. Unified Blog Table of Contents anchor navigation with fixed navbar offset.
+  9. Reusable `RouteUrlSelector.tsx` for preset and custom URL destinations across all CMS panels.
+- **Verification**: `npm run build` exits 0; zero unicode emojis across all files.
+ 
+---
+
+## TASK-011: Vibe Coder Security Framework 75-Vulnerabilities Hardening
+- **Completed**: October 2026
+- **Summary**: Comprehensive audit and defense remediation across all 75 vulnerability categories from the Vibe Coder Security Framework:
+  1. PBKDF2 WebCrypto password hashing (5,000 edge worker rounds) with transparent backward-compatible migration for legacy hashes, server-side rate limiting (10 attempts / 15 minutes), and 8-character password policy.
+  2. Google OAuth ID Token cryptographic signature verification via Google tokeninfo service, validating audience match and verified email status.
+  3. Strict D1 data endpoint gatekeeper (`/api/data`): permanently removed `users` and `auth_logs` from allowed tables, added identifier regex whitelisting, restricted catalog/config mutations to admins, and stripped protected fields (`role`, `tier`, `credits_balance`) against mass assignment privilege escalation.
+  4. Enterprise entitlement enforcement on `/api/download`: returning HTTP 401 for unauthenticated and HTTP 403 for unlicensed access to premium PowerPoint deliverables, with anti-SSRF hostname verification.
+  5. Dependency sanitation: pruned `firebase` and `@grpc/grpc-js`, resolving 5 high-severity vulnerabilities down to 0 in `npm audit`.
+  6. Automated security test suite (`tests/security_vibe_audit.test.ts`) integrated into `npm test` with 17/17 passing checks.
+- **Verification**: `npm test` passed 17/17; `npm run build` passed with exit code 0; `npm audit` reports 0 vulnerabilities; zero unicode emojis.
+
+---
+
+## TASK-012: Unified Multi-Display Viewport Scaling & Container Harmonization
+- **Completed**: October 2026
+- **Summary**: Resolved cross-display visual scale discrepancies between laptops (1280px–1440px with OS zoom) and external desktop monitors (1920px+ at 100% scale):
+  1. Standardized outer container styling across all storefront sections (`HomeHeroBanners`, `HomeSearchDock`, `HomeTemplateGrid`, `HomeCustomServiceStrip`, `HomeTestimonialsSection`, `Navbar`, `Footer`, `Templates`, and `TemplateDetail`) to `w-[92%] max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8`.
+  2. Removed the artificial inner `max-w-[1560px]` clamps from `HomeHeroBanners` and `HomeSearchDock`, ensuring their borders align flush with the template grid below on any viewport size and eliminating the 280px staircase mismatch.
+  3. Upgraded `HomeTemplateGrid` to an adaptive column layout (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6`), ensuring cards stay at an optimal, compact ~260px width on large monitors rather than ballooning to 350px.
+  4. Adjusted pagination `pageSize` to 30 items per page (evenly divisible by 2, 3, 5, and 6), ensuring perfectly full rows with zero hanging cards across mobile, tablet, laptop, and desktop viewports.
+- **Verification**: `npm run build` exits with code 0; `npm test` passes 17/17; zero unicode emojis across all files.
+
+---
+
+## TASK-013: Cover Aspect Ratio Fix (16:9), Native .potx Support & Banner 3 Removal
+- **Completed**: October 2026
+- **Summary**:
+  1. Cover Aspect Ratio Optimization: Replaced container `aspect-[16/10]` across `HomeTemplateCard.tsx`, `DashboardWishlistTab.tsx`, `TemplatesGridView.tsx`, `TemplatePreviewsField.tsx`, and `CmsTrendingSelector.tsx` with standard `aspect-video` (16:9 widescreen ratio, 1.778), preventing edge clipping on 1920x1080 and 2001x1125 presentation slides.
+  2. Native Microsoft PowerPoint Template (.potx) Deliverable Support: Added `"potx"` to Cloudflare R2 security allowlist (`functions/api/r2/utils.ts`), R2 size validators and telemetry (`functions/api/r2-storage.ts`, `functions/api/r2/telemetry.ts`), storage file explorer (`StorageBucketExplorer.tsx`, `StorageTemplatesTable.tsx`), admin uploaders (`PptxUploaderField.tsx`, `BulkAssetUploaderTab.tsx`, `bulkImportUtils.ts`), `isValidPptxUrl` (`src/lib/templates.ts`), `normalizeR2Url` (`src/lib/r2.ts`), and streaming download proxy dynamic MIME header dispatching (`functions/api/download.ts`).
+  3. Banner 3 Removal & Hero Stage Simplification: Removed Banner 3 from `HomeHeroBanners.tsx` and `Home.tsx`, eliminated `homeBannerTop` state and fetches from `useHomePageData.ts`, and updated `CmsPromotionalBanners.tsx` in Admin Studio to configure and save only the two primary split banners.
+---
+
+## TASK-014: Server-Authoritative Promotions & Voucher Engine
+- **Completed**: October 2026
+- **Summary**:
+  1. Master campaign schema (`promotions`) and audit ledger (`promotion_redemptions`) created in D1.
+  2. Authoritative serverless validation endpoint (`/api/promotions/validate`) checking dates, global/per-user redemption limits, tier/template eligibility, and currency matching.
+  3. Pre-calculated server-side order generation (`/api/checkout/create-order`) binding verified discounts to Razorpay Order IDs.
+  4. Cryptographic HMAC-SHA256 signature verification in payment webhooks/fulfillment, replay protection via idempotency keys, and atomic redemption logging.
+  5. UI components (`usePromotion.ts`, `CouponInputBox.tsx`, and `AdminCampaignManager.tsx`) integrated cleanly into storefront and Admin Studio with zero emojis.
+- **Verification**: `npm test` runs 17 promotions security tests (34 total tests passing); `npm run build` exits with code 0.
+
+---
+
+## TASK-015: Animation System Polish, Cursor Optimization & Dead Code Decommissioning
+- **Completed**: October 2026
+- **Summary**:
+  1. Repaired modal exit animations across 10 dialogs by placing conditional rendering inside `<AnimatePresence>` and animating backdrop overlays.
+  2. Eliminated hidden background CPU drain in `CustomBeeCursor.tsx` by replacing continuous 60-144fps `requestAnimationFrame` with event-driven scheduling on `pointermove`.
+  3. Enforced universal `@media (prefers-reduced-motion: reduce)` accessibility rules and replaced `transition: all` with GPU-accelerated scoped properties.
+  4. Added directional slide momentum (`x: direction * 40`, `mode="popLayout"`) in `TemplateSlideViewer.tsx` to eliminate blank white flashes during deck navigation.
+  5. Anchored dropdowns in `SlideBeeSelect.tsx` to `top center` and synchronized FAQ accordion timings to 250ms `[0.16, 1, 0.3, 1]`.
+  6. Added staggered card arrivals (`30ms` stagger) in `HomeTemplateGrid.tsx`, tactile spring feedback to wishlist hearts in `HomeTemplateCard.tsx`, and error shake to `CouponInputBox.tsx`.
+  7. Decommissioned 29 unreachable dead code files (3D honeycomb assets, superseded redirect pages, and orphaned UI widgets) and uninstalled `"three"` from `package.json`, saving ~55MB in `node_modules` while keeping `WhatsAppLeadWidget.tsx` pinned for future refinement.
+- **Verification**: `npm run build` builds in 2.27s with exit code 0; `npm test` passes 34/34 tests; verified zero unicode emojis across all files.
+
+
+

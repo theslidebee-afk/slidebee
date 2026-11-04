@@ -71,7 +71,7 @@ sequenceDiagram
     autonumber
     actor Client as New Client
     participant Ledger as useClientLedger.ts
-    participant RPC as Supabase RPC (fn_grant_starter_credits)
+    participant RPC as Edge RPC (fn_grant_starter_credits)
     participant Email as src/lib/email.ts (sendWelcomeEmail)
     participant Router as functions/api/send-email.ts
     participant Resend as Resend API
@@ -106,7 +106,7 @@ sequenceDiagram
     actor Client as Purchasing Client
     participant Checkout as useTemplateCheckout.ts
     participant RZP as Razorpay Gateway
-    participant RPC as Supabase RPC (fn_fulfill_template_order)
+    participant RPC as Edge RPC (fn_fulfill_template_order)
     participant Email as src/lib/email.ts (sendTemplatePurchaseReceiptEmail)
     participant Router as functions/api/send-email.ts
     participant Resend as Resend API
@@ -144,7 +144,7 @@ sequenceDiagram
     autonumber
     actor Client as Authenticated Client
     participant Checkout as useTemplateCheckout.ts
-    participant RPC as Supabase RPC (fn_redeem_template_credit)
+    participant RPC as Edge RPC (fn_redeem_template_credit)
     participant Email as src/lib/email.ts (sendTemplatePurchaseReceiptEmail)
     participant Router as functions/api/send-email.ts
     participant Resend as Resend API
@@ -178,7 +178,7 @@ sequenceDiagram
     autonumber
     actor Client as Enterprise Client
     participant Page as OrderNow.tsx
-    participant Supa as Supabase DB (orders table)
+    participant Supa as D1 DB (orders table)
     participant Email as src/lib/email.ts (sendOrderConfirmationEmail)
     participant Router as functions/api/send-email.ts
     participant Resend as Resend API
@@ -215,7 +215,7 @@ sequenceDiagram
     autonumber
     actor Visitor as Early Visitor
     participant Page as ComingSoon.tsx
-    participant Supa as Supabase DB (waitlist table)
+    participant Supa as D1 DB (waitlist table)
     participant Email as src/lib/email.ts (sendWaitlistConfirmationEmail)
     participant Router as functions/api/send-email.ts
     participant Resend as Resend API

@@ -3,19 +3,36 @@
 > SlideBee is a premier presentation design studio engineered for venture-backed founders, C-suite executives, and enterprise brands. We craft investor pitch decks, board meeting keynotes, and sales presentations with guaranteed 24h to 48h turnaround, strict NDAs, and 100% editable PowerPoint (.pptx), Google Slides, and Keynote deliverables.
 
 ## Core Capabilities & Services
-- [Presentation Redesign & Polish](https://theslidebee.com/#/services): Overhauling raw, unformatted decks into executive visual narratives.
-- [Venture Pitch Decks](https://theslidebee.com/#/services): 12-slide VC-grade investor narrative structure with unit economics and TAM visualizers.
-- [Executive Stage Keynotes](https://theslidebee.com/#/services): High-contrast keynote decks for global conferences, annual summits, and boardrooms.
-- [PowerPoint Templates](https://theslidebee.com/#/templates): Master slide systems built for enterprise marketing and sales teams.
-- [Monthly Designer Retainer](https://theslidebee.com/#/pricing): Embedded presentation art director with same-day turns and direct Slack integration.
+- [Presentation Redesign & Polish](https://theslidebee.com/services): Overhauling raw, unformatted decks into executive visual narratives.
+- [Venture Pitch Decks](https://theslidebee.com/services): 12-slide VC-grade investor narrative structure with unit economics and TAM visualizers.
+- [Executive Stage Keynotes](https://theslidebee.com/services): High-contrast keynote decks for global conferences, annual summits, and boardrooms.
+- [PowerPoint Templates](https://theslidebee.com/templates): Master slide systems built for enterprise marketing and sales teams.
+- [Ecommerce Website Development](https://theslidebee.com/services?type=ecommerce): All-inclusive ₹25,000 storefront architecture with 500 product capacity, Razorpay checkout, and Cloudflare deployment.
+- [Monthly Designer Retainer](https://theslidebee.com/pricing): Embedded presentation art director with same-day turns and direct Slack integration.
 
 ## Transparent Pricing
 - Presentation Redesign: $19 / ₹1,499 per slide (24h–48h turnaround)
 - Venture Pitch Deck: $29 / ₹2,299 per slide (48h–72h turnaround, unlimited revisions, signed NDA)
 - Executive & Stage Keynote: $49 / ₹3,899 per slide (24h priority guarantee, master template included)
 - Dedicated Designer Retainer: $1,490 / ₹1,19,000 per month (pause/cancel anytime)
+- Complete Ecommerce Storefront: ₹25,000 one-time (500 products, Razorpay, Cloudflare, Zoho email)
+
+## Presentation Playbook & Category Guides
+- [Strategy: The 3-Second Rule: Why Most C-Suite Strategy Slides Fail to Persuade](https://theslidebee.com/blog/1): Ex-McKinsey focal points and strategic slide problem solving.
+- [Pitch Decks: How to Design a Series A Pitch Deck That Secures Partner Meetings](https://theslidebee.com/blog/2): The 12-slide venture capital fundraising framework in PowerPoint & Google Slides.
+- [Corporate: Building an Enterprise Corporate Presentation Template System That Teams Actually Use](https://theslidebee.com/blog/3): Layout locking and modular slide master architecture for 500+ employee teams.
+- [Business: Top 10 Executive Business Presentation Best Practices for High-Stakes Keynotes](https://theslidebee.com/blog/4): Boardroom contrast, 30-foot visibility, and executive visual direction.
+- [Business: PowerPoint vs Google Slides vs Keynote: The Enterprise Executive Comparison](https://theslidebee.com/blog/5): Tool comparison across typography, collaboration, and enterprise policies.
+- [Finance: Financial Presentation Design: How to Present Unit Economics, M&A & Models](https://theslidebee.com/blog/6): Waterfall charts, margin bridges, and CFO financial storytelling.
+- [Business: Complete Ecommerce Website Development Guide for Modern Brands](https://theslidebee.com/blog/7): The ₹25,000 all-inclusive launch architecture.
+- [Infographics: Infographic Presentation Design: Turning Complex Data & Workflows into Slides](https://theslidebee.com/blog/8): Process flow diagrams, swimlane visualizers, and circular roadmaps.
+- [Marketing: Designing High-Impact Marketing Presentation Decks for Product Launches & GTM](https://theslidebee.com/blog/9): Go-to-market slides, positioning wedge, and campaign KPI visualizers.
+- [Strategy: The Anatomy of a High-Converting B2B Strategic Proposal Deck](https://theslidebee.com/blog/10): 5-part consultative consensus framework for enterprise committees.
+- [Finance: How Much Does Professional Presentation Design Cost in 2026?](https://theslidebee.com/blog/11): Agency pricing breakdown, per-slide costs, and global ROI comparisons.
+- [Corporate: Essential Technical SEO, GEO & Digital Discovery Architecture for Modern Presentation Studios](https://theslidebee.com/blog/12): Google Search Console indexing, Schema.org WebSite snippets, XML sitemaps, and Core Web Vitals.
 
 ## Contacts & Studio Inquiries
 - Official Website: https://theslidebee.com
+- Portfolio & Case Studies: https://theslidebee.com/examples
 - Inquiries: hello@theslidebee.com
 - Support & Briefs: support@theslidebee.com

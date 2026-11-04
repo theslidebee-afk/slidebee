@@ -1,169 +1,273 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
-import { 
-  ShieldCheck, 
-  Target, 
-  Zap, 
-  ArrowRight, 
-  Award
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { usePageSEO } from "../hooks/usePageSEO";
+import { d1 } from "../lib/d1";
+
+const DEFAULT_ABOUT_CONFIG = {
+  heroTitle: "About Us",
+  heroSubtitle: "Crafting high-impact executive presentation systems and bespoke presentation decks for visionary founders and global leaders.",
+  heroBreadcrumb: "Home \u00BB About Us",
+  heroImage: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=85",
+  heroColorTheme: "charcoal_amber",
+
+  teamEyebrow: "OUR TEAM",
+  teamHeading: "A Specialized\nPresentation\nDesign Team.",
+  teamSubtitle: "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries.",
+  teamCtaText: "Meet Our Work",
+  teamCtaLink: "/examples",
+  teamImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80",
+  teamNote: "Different\nPerspectives\nBetter Slides",
+
+  visionEyebrow: "OUR VISION",
+  visionHeading: "A Global Destination\nfor Better Presentations.",
+  visionSubtitle: "We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively.",
+  visionNote: "Clear Ideas\nCreate Bigger\nOpportunities",
+
+  ctaEyebrow: "LET'S CREATE BETTER PRESENTATIONS",
+  ctaHeading: "Your Ideas. Our Design.",
+  ctaSubtitle: "Choose your way to create better presentations with Slidebee.",
+  ctaPrimaryText: "Explore Templates",
+  ctaPrimaryLink: "/",
+  ctaSecondaryText: "Get a Custom Presentation",
+  ctaSecondaryLink: "/ordernow",
+};
+
+function getHeroOverlay(theme?: string) {
+  switch (theme) {
+    case "pine_emerald":
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1F13]/92 via-[#0E2E1C]/82 to-[#0A1F13]/94 pointer-events-none" />
+      );
+    case "midnight_obsidian":
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D0D]/95 via-[#141414]/85 to-[#0D0D0D]/95 pointer-events-none" />
+      );
+    case "charcoal_amber":
+    default:
+      return (
+        <div className="absolute inset-0 bg-gradient-to-b from-[#111111]/90 via-[#1A1508]/82 to-[#111111]/92 pointer-events-none" />
+      );
+  }
+}
 
 export default function About() {
-  usePageSEO({
-    title: "About SlideBee | Executive Presentation Studio",
-    description: "Learn about SlideBee: our mission, strategic narrative design philosophy, senior art directors, and commitment to transforming business presentations.",
-  });
+  const [cfg, setCfg] = useState(DEFAULT_ABOUT_CONFIG);
 
-  const [aboutConfig, setAboutConfig] = useState<any>({
-    headline: "We Turn Complex Business Ideas into Unforgettable Visuals.",
-    subheadline: "SlideBee is a dedicated presentation design studio engineered for high-growth startups, C-suite executives, and forward-thinking enterprises.",
-    storyHeading: "Most Great Ideas Get Lost in Bad PowerPoint Slides.",
-    storyParagraph1: "Founders spend months building transformative products, only to pitch them with crowded bullet points, default templates, and unreadable spreadsheet screenshots.",
-    storyParagraph2: "SlideBee was founded to fix this. We combine ex-consulting strategic framing with world-class graphic artistry to create presentations that command the room and secure deals."
+  usePageSEO({
+    title: "About Us | A Specialized Presentation Design Team | SlideBee",
+    description: "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals. We are a global destination for better presentations.",
   });
 
   useEffect(() => {
-    supabase
+    d1
       .from("site_config")
       .select("value")
       .eq("key", "about_cms")
       .single()
       .then(({ data }) => {
-        if (data?.value) setAboutConfig(data.value);
-      });
+        if (data?.value && typeof data.value === "object") {
+          setCfg((prev) => ({ ...prev, ...data.value }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
-interface ValueItem {
-  icon?: any;
-  title: string;
-  desc: string;
-}
-
-  const defaultValues: ValueItem[] = [
-    {
-      icon: <Target className="w-6 h-6 text-primary-amber" />,
-      title: "Clarity Above All",
-      desc: "If an investor or executive cannot grasp the key takeaway in 3 seconds, the slide has failed. We ruthlessly cut visual clutter."
-    },
-    {
-      icon: <Zap className="w-6 h-6 text-primary-amber" />,
-      title: "Relentless Speed",
-      desc: "High-stakes presentations don't wait weeks. We deliver agency-grade decks in 24 to 48 hours without compromising quality."
-    },
-    {
-      icon: <ShieldCheck className="w-6 h-6 text-primary-amber" />,
-      title: "Strict Confidentiality",
-      desc: "We work with confidential cap tables, M&A filings, and unannounced products under strict enterprise NDAs and encrypted drives."
-    },
-    {
-      icon: <Award className="w-6 h-6 text-primary-amber" />,
-      title: "100% Editable Vector Assets",
-      desc: "No locked images or uneditable PDFs. You receive native Master PowerPoint (.pptx) files your team can edit forever."
-    }
-  ];
-
-  const values: ValueItem[] = Array.isArray(aboutConfig?.values) && aboutConfig.values.length > 0
-    ? aboutConfig.values.map((v: any, i: number): ValueItem => ({
-        ...defaultValues[i % defaultValues.length],
-        ...v
-      }))
-    : defaultValues;
+  const heroImageSrc = cfg.heroImage || DEFAULT_ABOUT_CONFIG.heroImage;
 
   return (
-    <div className="min-h-screen bg-[#FFF9E8] text-[#111111] overflow-hidden pt-28 pb-20 large-hex-grid">
+    <div className="min-h-screen bg-white text-[#111111] overflow-hidden pt-0 pb-0">
       
-      {/* 1. HERO SECTION */}
-      <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FCBF14]/12 rounded-full blur-[140px] pointer-events-none" />
+      {/* ========================================================================= */}
+      {/* HERO HEADER: FULL-PAGE ARCHITECTURAL MASTHEAD (min-h-screen, rounded-none) */}
+      {/* ========================================================================= */}
+      <section className="relative w-full min-h-screen overflow-hidden rounded-none border-b border-[#FCBF14]/30 select-none flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        {/* Background Photographic Image Layer */}
+        <img
+          src={heroImageSrc}
+          alt={cfg.teamHeading?.replace(/\n/g, " ") || "SlideBee Team"}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
 
-        <span className="hex-pill inline-block bg-white border border-primary/40 text-primary-amber px-6 py-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-4 shadow-sm">
-          The SlideBee Story
-        </span>
+        {/* Brand Palette Duotone Gradient Overlay */}
+        {getHeroOverlay(cfg.heroColorTheme)}
 
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-[#111111] leading-[1.12] mb-4 tracking-tight">
-          {aboutConfig.headline}
-        </h1>
+        {/* Ambient Warm Golden Center Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(252,191,20,0.22)_0%,transparent_70%)] pointer-events-none" />
 
-        <p className="text-[#726F6D] text-sm sm:text-base font-medium max-w-xl mx-auto leading-relaxed">
-          {aboutConfig.subheadline}
-        </p>
-      </section>
+        {/* Centered Overlaid Content: Heading, Subtitle, CTA Button */}
+        <div className="relative z-10 w-[92%] max-w-4xl mx-auto flex flex-col items-center justify-center space-y-6 sm:space-y-8">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-white leading-[1.08] tracking-tight whitespace-pre-line mx-auto drop-shadow-xl max-w-4xl">
+            {cfg.teamHeading || "A Specialized\nPresentation\nDesign Team."}
+          </h1>
 
-      {/* 2. THE MISSION & CRAFT */}
-      <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="hex-card-lg bg-white border-2 border-primary/40 p-8 sm:p-14 shadow-xl">
-          <div className="max-w-4xl mx-auto space-y-6 text-left">
-            <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block">
-              Why We Started SlideBee
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#111111] leading-tight">
-              {aboutConfig.storyHeading}
-            </h2>
-            <p className="text-[#726F6D] text-sm sm:text-base font-medium leading-relaxed">
-              {aboutConfig.storyParagraph1}
-            </p>
-            <p className="text-[#726F6D] text-sm sm:text-base font-medium leading-relaxed">
-              {aboutConfig.storyParagraph2}
-            </p>
-          </div>
-        </div>
-      </section>
+          <p className="text-base sm:text-xl text-[#FFF9E8]/90 font-medium leading-relaxed max-w-2xl mx-auto drop-shadow-md">
+            {cfg.teamSubtitle || "Slidebee is powered by a team of presentation designers, visual storytellers, and creative professionals with extensive experience across industries."}
+          </p>
 
-      {/* 3. CORE VALUES GRID */}
-      <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="text-center mb-12">
-          <span className="text-primary-amber text-xs font-extrabold uppercase tracking-widest block mb-1">
-            Our Principles
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#111111]">
-            What Sets SlideBee Apart
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {values.map((v, i) => (
-            <div
-              key={i}
-              className="hex-card bg-white border-2 border-primary/40 hover:border-primary p-6 shadow-sm h-full flex flex-col justify-between transition-all group"
-            >
-              <div>
-                <div className="hex-pure w-12 h-12 bg-[#FFF9E8] border border-primary/30 group-hover:bg-primary/20 flex items-center justify-center mb-4 transition-colors">
-                  {v.icon}
-                </div>
-                <h3 className="font-heading font-extrabold text-base text-[#111111] mb-2">
-                  {v.title}
-                </h3>
-                <p className="text-xs text-[#726F6D] font-medium leading-relaxed">
-                  {v.desc}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 4. CTA BANNER */}
-      <section className="w-[90%] max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="hex-card-dark bg-[#111111] border-2 border-primary text-white p-8 sm:p-12 text-center relative overflow-hidden shadow-2xl">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#FCBF14]/10 rounded-full blur-[140px] pointer-events-none" />
-
-          <div className="relative z-10 max-w-xl mx-auto">
-            <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-white mb-3">
-              Ready to Upgrade Your Deck?
-            </h3>
-            <p className="text-gray-300 text-xs sm:text-sm font-medium mb-8">
-              Send us your draft slides or project outline. We'll send you a custom redesign sample and quote within 2 hours.
-            </p>
+          <div className="pt-4 flex justify-center">
             <Link
-              to="/ordernow"
-              className="hex-pill inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-[#111111] font-black px-8 py-3.5 text-xs sm:text-sm transition-all shadow-xl hover:scale-105"
+              to={cfg.teamCtaLink || "/examples"}
+              data-bee-state="hover"
+              className="inline-flex items-center gap-2 bg-[#FCBF14] hover:bg-[#E0A810] text-[#111111] font-extrabold text-base px-9 py-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
             >
-              Get Started Now <ArrowRight size={16} />
+              <span>{cfg.teamCtaText || "Meet Our Work"}</span>
+              <ArrowRight size={18} className="stroke-[2.5]" />
             </Link>
           </div>
         </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2. OUR VISION SECTION                                                     */}
+      {/* ========================================================================= */}
+      <section className="w-[90%] max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 items-center">
+          
+          {/* Left Text Column */}
+          <div className="lg:col-span-7 space-y-6">
+            <span className="text-xs font-black uppercase tracking-[0.25em] text-[#726F6D] block">
+              {cfg.visionEyebrow || "OUR VISION"}
+            </span>
+
+            <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-heading font-black text-[#111111] leading-[1.08] tracking-tight whitespace-pre-line">
+              {cfg.visionHeading || "A Global Destination\nfor Better Presentations."}
+            </h2>
+
+            <p className="text-base sm:text-lg text-[#555250] font-normal leading-relaxed max-w-xl">
+              {cfg.visionSubtitle || "We aim to make Slidebee a trusted global destination for presentation design — where anyone can find the right tools, templates, and creative expertise to communicate their ideas more effectively."}
+            </p>
+          </div>
+
+          {/* Right Visual Column: Hand-Drawn Paper Airplane with Flight Loop */}
+          <div className="lg:col-span-5 relative flex flex-col items-center justify-center pt-8 lg:pt-0">
+            
+            <div className="relative w-full max-w-[380px] h-[220px]">
+              
+              {/* Paper Airplane and Loop Trail SVG */}
+              <svg
+                viewBox="0 0 340 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-full h-full overflow-visible select-none"
+              >
+                {/* Swirling Loop-de-loop Trail Line */}
+                <path
+                  d="M 120 160 C 145 150, 165 140, 175 125 C 190 100, 170 80, 150 90 C 135 100, 140 125, 160 120 C 185 110, 220 70, 260 40"
+                  stroke="#111111"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+
+                {/* Origami Paper Airplane Facing Top-Right */}
+                <g transform="translate(262, 38) rotate(-10)">
+                  {/* Underwing Shadow */}
+                  <path
+                    d="M 0 0 L -55 24 L -28 10 Z"
+                    fill="#E0A810"
+                    stroke="#111111"
+                    strokeWidth="2.5"
+                    strokeLinejoin="round"
+                  />
+                  {/* Top Wing Yellow */}
+                  <path
+                    d="M 0 0 L -55 -16 L -28 10 Z"
+                    fill="#FCBF14"
+                    stroke="#111111"
+                    strokeWidth="2.5"
+                    strokeLinejoin="round"
+                  />
+                  {/* Center Crease */}
+                  <path
+                    d="M 0 0 L -28 10"
+                    stroke="#111111"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                </g>
+              </svg>
+
+              {/* Hand-Drawn Styled Text Note beside Trail */}
+              <div className="absolute left-6 bottom-4">
+                <p className="font-heading font-black italic text-base sm:text-lg text-[#111111] leading-tight whitespace-pre-line">
+                  {cfg.visionNote || "Clear Ideas\nCreate Bigger\nOpportunities"}
+                </p>
+                {/* Yellow Hand-Drawn Underline under Opportunities */}
+                <svg className="w-24 h-3 mt-1 text-[#FCBF14]" viewBox="0 0 100 12" fill="none">
+                  <path
+                    d="M 2 7 Q 50 12, 98 4"
+                    stroke="#FCBF14"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 3. FULL-WIDTH CALL TO ACTION (Yellow Background)                          */}
+      {/* ========================================================================= */}
+      <section className="w-full bg-[#FCBF14] text-[#111111] py-20 sm:py-28 relative overflow-hidden text-center mt-12">
+        
+        {/* Organic Decorative Fluid Blobs on Left and Right Edges */}
+        <div className="absolute top-1/2 -left-20 -translate-y-1/2 w-80 h-80 pointer-events-none opacity-40">
+          <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+            <path d="M 0 50 C 60 20, 90 90, 80 140 C 70 190, 20 180, 0 200 Z" fill="#F0B108" />
+          </svg>
+        </div>
+
+        <div className="absolute top-1/2 -right-20 -translate-y-1/2 w-80 h-80 pointer-events-none opacity-40">
+          <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+            <path d="M 200 40 C 130 50, 110 120, 130 160 C 150 190, 170 190, 200 180 Z" fill="#F0B108" />
+          </svg>
+        </div>
+
+        <div className="relative z-10 w-[90%] max-w-[850px] mx-auto space-y-6">
+          
+          <span className="text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#111111]/80 block">
+            {cfg.ctaEyebrow || "LET'S CREATE BETTER PRESENTATIONS"}
+          </span>
+
+          <h2 className="text-4xl sm:text-6xl lg:text-[68px] font-heading font-black text-[#111111] leading-[1.05] tracking-tight">
+            {cfg.ctaHeading || "Your Ideas. Our Design."}
+          </h2>
+
+          <p className="text-base sm:text-xl text-[#111111]/90 font-medium max-w-xl mx-auto">
+            {cfg.ctaSubtitle || "Choose your way to create better presentations with Slidebee."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            
+            {/* Button 1: Dark - Explore Templates */}
+            <Link
+              to={cfg.ctaPrimaryLink || "/"}
+              data-bee-state="hover"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-[#111111] hover:bg-black text-white font-bold text-sm sm:text-base px-9 py-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{cfg.ctaPrimaryText || "Explore Templates"}</span>
+            </Link>
+
+            {/* Button 2: Light - Get a Custom Presentation */}
+            <Link
+              to={cfg.ctaSecondaryLink || "/ordernow"}
+              data-bee-state="quote"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-white hover:bg-[#FFFDF5] text-[#111111] font-bold text-sm sm:text-base px-9 py-4 rounded-full shadow-md border border-black/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{cfg.ctaSecondaryText || "Get a Custom Presentation"}</span>
+            </Link>
+
+          </div>
+
+        </div>
+
       </section>
 
     </div>

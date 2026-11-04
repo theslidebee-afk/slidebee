@@ -37,15 +37,37 @@ export interface R2Telemetry {
   error?: string;
 }
 
+function getR2AdminHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (typeof window !== "undefined") {
+    const adminKey = localStorage.getItem("slidebee_admin_key") || sessionStorage.getItem("slidebee_admin_key");
+    if (adminKey) {
+      headers["x-slidebee-admin-key"] = adminKey;
+      headers["Authorization"] = `Bearer ${adminKey}`;
+    }
+
+    if (!headers["Authorization"]) {
+      const edgeSessionRaw = localStorage.getItem("slidebee_edge_session");
+      if (edgeSessionRaw) {
+        try {
+          const session = JSON.parse(edgeSessionRaw);
+          if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+          }
+        } catch {}
+      }
+    }
+  }
+  return headers;
+}
+
 /**
  * Fetch real-time Cloudflare R2 bucket telemetry and file inventory
  */
 export async function fetchR2Telemetry(): Promise<R2Telemetry> {
   try {
     const res = await fetch("/api/r2-storage", {
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers: getR2AdminHeaders(),
     });
     if (!res.ok) {
       throw new Error(`R2 telemetry request failed: ${res.statusText}`);
@@ -187,17 +209,44 @@ export async function uploadToR2(
       formData.append("key", generatedKey);
     }
 
+    const headers: Record<string, string> = {
+      ...getR2AdminHeaders(),
+    };
+    try {
+      if (!headers["Authorization"]) {
+        const edgeSessionRaw = localStorage.getItem("slidebee_edge_session");
+        if (edgeSessionRaw) {
+          const parsed = JSON.parse(edgeSessionRaw);
+          if (parsed?.access_token) {
+            headers["Authorization"] = `Bearer ${parsed.access_token}`;
+          }
+        }
+      }
+      const authData = localStorage.getItem("sb-pcuacwvyfxvxszqgspxk-auth-token");
+      if (authData && !headers["Authorization"]) {
+        const parsed = JSON.parse(authData);
+        if (parsed?.access_token) {
+          headers["Authorization"] = `Bearer ${parsed.access_token}`;
+        }
+      }
+    } catch (e) {}
+
     const res = await fetch("/api/r2-storage", {
       method: "POST",
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers,
       body: formData,
     });
 
-    const json = await res.json();
+    let json: any;
+    try {
+      json = await res.json();
+    } catch {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Upload server error (${res.status}): ${text.slice(0, 150) || res.statusText}`);
+    }
+
     if (!json.success) {
-      throw new Error(json.error ? JSON.stringify(json.error) : "Upload to R2 failed");
+      throw new Error(json.error ? (typeof json.error === "string" ? json.error : JSON.stringify(json.error)) : "Upload to R2 failed");
     }
 
     return {
@@ -224,9 +273,7 @@ export async function deleteFromR2(key: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/r2-storage?key=${encodeURIComponent(key)}`, {
       method: "DELETE",
-      headers: {
-        "x-slidebee-admin-key": "slidebee_master_admin_2026",
-      },
+      headers: getR2AdminHeaders(),
     });
     const json = await res.json();
     return Boolean(json.success);
@@ -237,12 +284,46 @@ export async function deleteFromR2(key: string): Promise<boolean> {
 }
 
 /**
- * Normalizes any asset URL (legacy Supabase storage, flat R2 root, or relative)
- * to its exact structured Cloudflare R2 folder CDN URL.
+ * Automatically converts Google Drive sharing links to direct streamable CDN URLs.
+ * Handles /file/d/ID/view, /open?id=ID, and direct download links.
+ */
+export function convertGoogleDriveUrl(url: string | undefined | null, isImage = true): string {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed.includes("drive.google.com") && !trimmed.includes("docs.google.com")) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+                trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    if (isImage) {
+      // Direct CDN image stream for Google Drive
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    } else {
+      // Direct binary download link for PPTX / deliverables
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+  }
+
+  return trimmed;
+}
+
+/**
+ * Normalizes any asset URL (legacy storage, flat R2 root, Google Drive, or relative)
+ * to its exact structured Cloudflare R2 folder CDN URL or direct media URL.
  */
 export function normalizeR2Url(url: string | undefined | null, _type: "slides" | "decks" = "slides"): string {
   if (!url || typeof url !== "string") {
     return "";
+  }
+
+  // Auto-convert Google Drive sharing links to direct CDN media links
+  if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+    return convertGoogleDriveUrl(url, _type === "slides");
   }
 
   // If already proper structured R2 URL, return as-is
@@ -255,15 +336,16 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
     url.includes("/portfolio/slides/") ||
     url.includes("/portfolio/") ||
     url.includes("/use_cases/") ||
-    url.includes("/logos/")
+    url.includes("/logos/") ||
+    url.includes("/banners/")
   ) {
     return url;
   }
 
-  // If pointing to old Supabase storage URL
-  if (url.includes("supabase.co/storage")) {
+  // If pointing to old legacy storage URL
+  if (url.includes("d1.co/storage")) {
     const filename = url.split("/").pop() || "";
-    if (filename.endsWith(".pptx") || filename.endsWith(".ppt")) {
+    if (filename.endsWith(".pptx") || filename.endsWith(".potx") || filename.endsWith(".ppt")) {
       return `${R2_PUBLIC_BASE_URL}/templates/decks/${filename}`;
     }
     if (filename.startsWith("marquee_")) {
@@ -276,7 +358,7 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
   if (url.includes("r2.dev/")) {
     const pathPart = url.split("r2.dev/")[1];
     if (pathPart && !pathPart.includes("/")) {
-      if (pathPart.endsWith(".pptx") || pathPart.endsWith(".ppt")) {
+      if (pathPart.endsWith(".pptx") || pathPart.endsWith(".potx") || pathPart.endsWith(".ppt")) {
         return `${R2_PUBLIC_BASE_URL}/templates/decks/${pathPart}`;
       }
       if (pathPart.startsWith("marquee_")) {
@@ -292,14 +374,15 @@ export function normalizeR2Url(url: string | undefined | null, _type: "slides" |
     url.startsWith("use_cases/") ||
     url.startsWith("logos/") ||
     url.startsWith("marquee/") ||
-    url.startsWith("templates/")
+    url.startsWith("templates/") ||
+    url.startsWith("banners/")
   ) {
     return `${R2_PUBLIC_BASE_URL}/${url}`;
   }
 
   // If raw filename without protocol (e.g. "volvo_slide-1.jpg")
   if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
-    if (url.endsWith(".pptx") || url.endsWith(".ppt")) {
+    if (url.endsWith(".pptx") || url.endsWith(".potx") || url.endsWith(".ppt")) {
       return `${R2_PUBLIC_BASE_URL}/templates/decks/${url}`;
     }
     return `${R2_PUBLIC_BASE_URL}/templates/slides/${url}`;
