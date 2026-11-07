@@ -3,8 +3,6 @@
  * Supports Razorpay Test & Live modes with dynamic script loading and admin config.
  */
 
-import { d1 } from "./d1";
-
 declare global {
   interface Window {
     Razorpay: any;
@@ -37,29 +35,8 @@ export function loadRazorpayScript(): Promise<boolean> {
 }
 
 export async function getRazorpayKey(): Promise<string> {
-  // 1. Local Storage override (set via Admin panel)
-  const localKey = localStorage.getItem("slidebee_razorpay_key");
-  if (localKey && localKey.trim()) return localKey.trim();
-
-  // 2. Vite Environment Variable
   const envKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
   if (envKey && envKey.trim()) return envKey.trim();
-
-  // 3. D1 site_config
-  try {
-    const { data } = await d1
-      .from("site_config")
-      .select("value")
-      .eq("key", "razorpay_settings")
-      .single();
-    if (data?.value?.key_id) {
-      return data.value.key_id.trim();
-    }
-  } catch (err) {
-    // ignore
-  }
-
-  // 4. Default official test key
   return "rzp_test_TZARWG8iLkM589";
 }
 
