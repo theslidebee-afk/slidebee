@@ -124,8 +124,25 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     const amountSubunits = Math.round(finalAmount * 100);
-    const rzpKeyId = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || "rzp_test_TZARWG8iLkM589";
-    const rzpSecret = env.RAZORPAY_KEY_SECRET;
+    let rzpKeyId = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
+    let rzpSecret = env.RAZORPAY_KEY_SECRET;
+
+    if (!rzpKeyId || !rzpSecret) {
+      try {
+        const configRow: any = await env.DB.prepare(
+          "SELECT value FROM site_config WHERE key = 'razorpay_settings'"
+        ).first();
+        if (configRow?.value) {
+          const cfg = typeof configRow.value === "string" ? JSON.parse(configRow.value) : configRow.value;
+          if (!rzpKeyId && cfg?.key_id) rzpKeyId = cfg.key_id.trim();
+          if (!rzpSecret && cfg?.key_secret) rzpSecret = cfg.key_secret.trim();
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    if (!rzpKeyId) rzpKeyId = "rzp_test_TZARWG8iLkM589";
 
     let orderId: string | null = null;
 

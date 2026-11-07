@@ -159,8 +159,23 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         }
       }
 
-      const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
-      const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+      let rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
+      let rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+
+      if (!rzpSecret || !rzpKeyId) {
+        try {
+          const cfgRow: any = await env.DB.prepare(
+            "SELECT value FROM site_config WHERE key = 'razorpay_settings'"
+          ).first();
+          if (cfgRow?.value) {
+            const parsed = typeof cfgRow.value === "string" ? JSON.parse(cfgRow.value) : cfgRow.value;
+            if (!rzpSecret && parsed?.key_secret) rzpSecret = parsed.key_secret.trim();
+            if (!rzpKeyId && parsed?.key_id) rzpKeyId = parsed.key_id.trim();
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
       // Cryptographic HMAC-SHA256 signature check if orderId and signature are provided
       if (orderId && signature && rzpSecret) {

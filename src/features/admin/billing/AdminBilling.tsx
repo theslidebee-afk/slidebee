@@ -1,5 +1,5 @@
 import React from "react";
-import { Save, CheckCircle2, AlertCircle, DollarSign, Tag } from "lucide-react";
+import { Save, CheckCircle2, AlertCircle, DollarSign, Tag, CreditCard } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { AdminCampaignManager } from "./AdminCampaignManager";
 
@@ -14,6 +14,7 @@ export const AdminBilling: React.FC = () => {
   } = useAdmin();
 
   const pricingConfig = siteConfigs["pricing"] || {};
+  const razorpayConfig = siteConfigs["razorpay_settings"] || {};
 
   return (
     <div className="space-y-8">
@@ -26,6 +27,13 @@ export const AdminBilling: React.FC = () => {
           >
             <DollarSign size={14} className="text-primary-amber" />
             <span>Marketplace Base Rates</span>
+          </a>
+          <a
+            href="#gateway"
+            className="hex-pill text-xs font-heading font-extrabold px-4 py-2 bg-[#FFF9E8] border border-[#111111]/10 text-[#111111] hover:border-primary transition-all flex items-center gap-2"
+          >
+            <CreditCard size={14} className="text-primary-amber" />
+            <span>Payment Gateway</span>
           </a>
           <a
             href="#campaigns"
@@ -196,6 +204,91 @@ export const AdminBilling: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PAYMENT GATEWAY & RAZORPAY CONFIGURATION */}
+      <div id="gateway" className="hex-card-lg bg-white border border-[#111111]/10 p-6 sm:p-8 shadow-sm space-y-6 scroll-mt-24">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#111111]/8">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="hex-pill-sm bg-primary/20 text-[#111111] text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                Razorpay Integration
+              </span>
+              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                razorpayConfig.key_id?.startsWith("rzp_live_")
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-amber-100 text-amber-900 border border-amber-300"
+              }`}>
+                {razorpayConfig.key_id?.startsWith("rzp_live_") ? "Live Mode Active" : "Test Mode Active"}
+              </span>
+            </div>
+            <h3 className="text-base font-heading font-extrabold text-[#111111]">
+              Payment Gateway Credentials
+            </h3>
+            <p className="text-xs text-[#726F6D]">
+              Connect your official Razorpay Key ID and Secret to collect live card and UPI payments.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (razorpayConfig.key_id) {
+                localStorage.setItem("slidebee_razorpay_key", razorpayConfig.key_id.trim());
+              }
+              handleSaveConfig("razorpay_settings", razorpayConfig);
+            }}
+            disabled={configSaving}
+            className="hex-pill bg-primary hover:bg-primary-dark text-[#111111] font-black px-6 py-2.5 text-xs flex items-center gap-1.5 shadow cursor-pointer transition-all hover:scale-105"
+          >
+            <Save size={14} /> {configSaving ? "Saving..." : "Save Gateway Keys"}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-[#111111] mb-1.5">
+              Razorpay Key ID (Public)
+            </label>
+            <input
+              type="text"
+              placeholder="rzp_live_... or rzp_test_..."
+              value={razorpayConfig.key_id || ""}
+              onChange={(e) => {
+                const fresh = { ...razorpayConfig, key_id: e.target.value.trim() };
+                setSiteConfigs({ ...siteConfigs, razorpay_settings: fresh });
+              }}
+              className="w-full bg-[#FAFAFA] border border-[#111111]/15 rounded-xl px-4 py-3 text-xs font-mono font-bold text-[#111111] focus:outline-none focus:border-primary focus:bg-white transition-all"
+            />
+            <p className="text-[11px] text-[#726F6D] mt-1.5 leading-relaxed">
+              Begins with <code className="text-[#111111] font-bold">rzp_live_</code> for live sales or <code className="text-[#111111] font-bold">rzp_test_</code> for sandbox testing.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-[#111111] mb-1.5">
+              Razorpay Key Secret (Server Verification)
+            </label>
+            <input
+              type="password"
+              placeholder="Paste Key Secret"
+              value={razorpayConfig.key_secret || ""}
+              onChange={(e) => {
+                const fresh = { ...razorpayConfig, key_secret: e.target.value.trim() };
+                setSiteConfigs({ ...siteConfigs, razorpay_settings: fresh });
+              }}
+              className="w-full bg-[#FAFAFA] border border-[#111111]/15 rounded-xl px-4 py-3 text-xs font-mono font-bold text-[#111111] focus:outline-none focus:border-primary focus:bg-white transition-all"
+            />
+            <p className="text-[11px] text-[#726F6D] mt-1.5 leading-relaxed">
+              Used securely by Cloudflare serverless edge to authenticate Razorpay order signatures.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-[#FFF9E8] border border-primary/30 rounded-xl p-4 text-xs text-[#111111] space-y-1">
+          <div className="font-extrabold text-[#936610] text-xs">Credential Synchronization</div>
+          <div className="text-[11px] text-[#726F6D] leading-relaxed">
+            Keys saved here update the database (<code className="font-bold">site_config</code>) instantly with zero downtime. You can also optionally configure <code className="font-bold">VITE_RAZORPAY_KEY_ID</code> and <code className="font-bold">RAZORPAY_KEY_SECRET</code> in the Cloudflare Pages Dashboard under Settings &gt; Environment Variables.
           </div>
         </div>
       </div>
