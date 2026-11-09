@@ -21,6 +21,7 @@ interface TemplateActionPanelProps {
   showStars: boolean;
   showDownloads: boolean;
   isPro: boolean;
+  isProExpired?: boolean;
   quotaLimit: number;
   quotaUsed: number;
   quotaRemaining: number;
@@ -45,6 +46,7 @@ export function TemplateActionPanel({
   showStars: _showStars,
   showDownloads,
   isPro,
+  isProExpired = false,
   quotaLimit,
   quotaUsed,
   quotaRemaining,
@@ -127,6 +129,8 @@ export function TemplateActionPanel({
                 ? "Included with Pro Membership"
                 : isPro && quotaRemaining <= 0
                 ? "Pro Quota Limit Reached (Commercial License Required)"
+                : isProExpired
+                ? "Pro Membership Concluded • Standalone Commercial License"
                 : "Perpetual Commercial License"}
             </span>
             <div className="flex items-baseline gap-2 mt-0.5">
@@ -203,6 +207,18 @@ export function TemplateActionPanel({
           <div className="bg-rose-50 border border-rose-300 p-3 rounded-xl flex items-start gap-2 text-xs text-rose-900 font-medium">
             <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
             <span>{checkoutError}</span>
+          </div>
+        )}
+
+        {isProExpired && !isPurchased && !alreadyOwned && (
+          <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 font-medium">
+            <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-extrabold block text-[#111111]">Previous Pro Membership Ended</span>
+              <span className="text-[11px] text-[#726F6D] leading-relaxed block">
+                Your monthly Pro membership has concluded. You can purchase this presentation as a perpetual commercial license below, or renew Pro anytime.
+              </span>
+            </div>
           </div>
         )}
 
@@ -318,6 +334,17 @@ export function TemplateActionPanel({
                   <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#726F6D] font-bold text-center">
                     <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
                     <span>Perpetual Commercial Rights • Deducts 1 from {quotaLimit}-Deck Monthly Quota</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#111111]/10 text-center">
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => handleInstantDownload(appliedPromo?.code || undefined)}
+                      className="text-xs font-bold text-[#111111] hover:text-[#D99B00] transition-colors underline cursor-pointer"
+                    >
+                      Or buy standalone commercial license ({currency === "USD" ? `$${finalTemplatePrice}` : `₹${finalTemplatePrice.toLocaleString()}`})
+                    </button>
                   </div>
                 </>
               ) : (

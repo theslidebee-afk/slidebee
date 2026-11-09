@@ -121,12 +121,31 @@ export default function TemplateDetail() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const isPro = Boolean(
+  const isSubActive = Boolean(
+    clientSub &&
+      (clientSub.status === "active" || clientSub.status === "trialing") &&
+      (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())
+  );
+
+  const isProExpired = Boolean(
     (clientSub &&
-      clientSub.status === "active" &&
-      (!clientSub.current_period_end || new Date(clientSub.current_period_end) > new Date())) ||
-      (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
-      (client?.tier && ["monthly", "yearly", "lifetime"].includes(client.tier))
+      (clientSub.status === "expired" ||
+        clientSub.status === "cancelled" ||
+        (clientSub.current_period_end && new Date(clientSub.current_period_end) <= new Date()))) ||
+      (userProfile?.tier_expires_at &&
+        userProfile?.tier !== "free" &&
+        userProfile?.tier !== "lifetime" &&
+        new Date(userProfile.tier_expires_at) <= new Date())
+  );
+
+  const isPro = Boolean(
+    !isProExpired &&
+      (isSubActive ||
+        userProfile?.tier === "lifetime" ||
+        (userProfile?.tier &&
+          ["monthly", "yearly"].includes(userProfile.tier) &&
+          userProfile.tier_expires_at &&
+          new Date(userProfile.tier_expires_at) > new Date()))
   );
 
   const isMonthlyTier =
@@ -346,6 +365,7 @@ export default function TemplateDetail() {
             showStars={showStars}
             showDownloads={showDownloads}
             isPro={isPro}
+            isProExpired={isProExpired}
             quotaLimit={quotaLimit}
             quotaUsed={quotaUsed}
             quotaRemaining={quotaRemaining}
