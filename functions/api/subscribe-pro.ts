@@ -159,8 +159,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         }
       }
 
-      const rzpSecret = (env as any)?.RAZORPAY_KEY_SECRET;
-      const rzpKeyId = (env as any)?.RAZORPAY_KEY_ID || (env as any)?.VITE_RAZORPAY_KEY_ID;
+      const rzpSecret =
+        (env as any)?.RAZORPAY_KEY_SECRET ||
+        (env as any)?.RAZORPAY_SECRET ||
+        (env as any)?.RZP_SECRET ||
+        (env as any)?.RAZORPAY_LIVE_SECRET;
+      const rzpKeyId =
+        (env as any)?.RAZORPAY_KEY_ID ||
+        (env as any)?.VITE_RAZORPAY_KEY_ID ||
+        (env as any)?.RAZORPAY_LIVE_KEY_ID ||
+        (env as any)?.RAZORPAY_LIVE_KEY ||
+        (env as any)?.RZP_KEY_ID ||
+        (env as any)?.RAZORPAY_KEY;
 
       // Cryptographic HMAC-SHA256 signature check if orderId and signature are provided
       if (orderId && signature && rzpSecret) {

@@ -41,6 +41,7 @@ export async function getRazorpayKey(): Promise<string> {
 }
 
 export interface CheckoutParams {
+  keyId?: string; // Optional server-provided key ID
   amount: number; // in whole currency units (e.g. 499 INR or 9 USD)
   orderId?: string; // Optional server-created Razorpay order_id
   currency?: "INR" | "USD";
@@ -67,6 +68,7 @@ export interface CheckoutParams {
 export async function openRazorpayCheckout({
   amount,
   orderId,
+  keyId,
   currency = "INR",
   title,
   description,
@@ -76,7 +78,7 @@ export async function openRazorpayCheckout({
   onDismiss,
 }: CheckoutParams) {
   const isLoaded = await loadRazorpayScript();
-  const key = await getRazorpayKey();
+  const key = (keyId && keyId.trim()) || (await getRazorpayKey());
 
   // If Razorpay key is provided and script is loaded, launch official Razorpay checkout!
   if (isLoaded && key && window.Razorpay) {

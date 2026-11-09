@@ -113,6 +113,7 @@ export function useTemplateCheckout() {
     const rawPrice = currency === "USD" ? template.price_usd : template.price_inr;
     let priceNum = rawPrice;
     let serverOrderId: string | undefined;
+    let serverKeyId: string | undefined;
 
     // Create server-authoritative order with locked pricing and promotion validation
     try {
@@ -133,6 +134,7 @@ export function useTemplateCheckout() {
         if (orderData.success && orderData.orderId) {
           serverOrderId = orderData.orderId;
           priceNum = orderData.amount;
+          if (orderData.keyId) serverKeyId = orderData.keyId;
         }
       }
     } catch (orderErr) {
@@ -142,6 +144,7 @@ export function useTemplateCheckout() {
     await openRazorpayCheckout({
       amount: priceNum,
       orderId: serverOrderId,
+      keyId: serverKeyId,
       currency,
       title: template.title,
       description: `Master PowerPoint Presentation (.pptx) — ${template.code}`,
