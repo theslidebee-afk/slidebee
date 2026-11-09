@@ -278,20 +278,28 @@ export function useClientLedger() {
     setUserSubscription(null);
   };
 
-  const isPro = Boolean(
-    (userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)) ||
-      (userSubscription &&
-        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
-        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
-  );
-
   const isProExpired = Boolean(
     (userSubscription &&
-      userSubscription.current_period_end &&
-      new Date(userSubscription.current_period_end) <= new Date()) ||
+      (userSubscription.status === "expired" ||
+        userSubscription.status === "cancelled" ||
+        (userSubscription.current_period_end &&
+          new Date(userSubscription.current_period_end) <= new Date()))) ||
       (userProfile?.tier_expires_at &&
         userProfile?.tier !== "free" &&
+        userProfile?.tier !== "lifetime" &&
         new Date(userProfile.tier_expires_at) <= new Date())
+  );
+
+  const isPro = Boolean(
+    !isProExpired &&
+      ((userSubscription &&
+        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date())) ||
+        (userProfile?.tier === "lifetime") ||
+        (userProfile?.tier &&
+          ["monthly", "yearly"].includes(userProfile.tier) &&
+          userProfile.tier_expires_at &&
+          new Date(userProfile.tier_expires_at) > new Date()))
   );
 
   const daysRemaining = userSubscription?.current_period_end
@@ -306,18 +314,13 @@ export function useClientLedger() {
       )
     : null;
 
-  const userTier: "free" | "monthly" | "yearly" | "lifetime" =
-    userProfile?.tier && ["monthly", "yearly", "lifetime"].includes(userProfile.tier)
-      ? (userProfile.tier as any)
-      : userSubscription?.tier && ["monthly", "yearly", "lifetime"].includes(userSubscription.tier)
-      ? (userSubscription.tier as any)
-      : isPro
-      ? userSubscription?.plan_name?.toLowerCase()?.includes("year")
-        ? "yearly"
-        : userSubscription?.plan_name?.toLowerCase()?.includes("lifetime")
-        ? "lifetime"
-        : "monthly"
-      : "free";
+  const userTier: "free" | "monthly" | "yearly" | "lifetime" = !isPro
+    ? "free"
+    : userProfile?.tier === "lifetime" || userSubscription?.plan_name?.toLowerCase()?.includes("lifetime")
+    ? "lifetime"
+    : userProfile?.tier === "yearly" || userSubscription?.plan_name?.toLowerCase()?.includes("year")
+    ? "yearly"
+    : "monthly";
 
   const downloadsToday = userProfile?.downloads_today || 0;
   const downloadsThisMonth = userProfile?.downloads_this_month || 0;

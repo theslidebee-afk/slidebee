@@ -50,7 +50,7 @@ export function useTemplateData(id?: string) {
         });
 
       d1.from("profiles")
-        .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month")
+        .select("purchased_items, downloads_today, last_download_date, tier, downloads_this_month, tier_expires_at")
         .eq("email", client.email)
         .maybeSingle()
         .then(({ data }) => {

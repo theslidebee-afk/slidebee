@@ -61,9 +61,21 @@ export async function redeemProTemplateDownload(
       .eq("email", cleanEmail)
       .maybeSingle();
 
-    const isPro = Boolean(sub || (profile?.tier && ["monthly", "yearly", "lifetime"].includes(profile.tier)));
+    const isSubActive = Boolean(
+      sub &&
+        (sub.status === "active" || sub.status === "trialing") &&
+        (!sub.current_period_end || new Date(sub.current_period_end) > new Date())
+    );
+    const isTierActive = Boolean(
+      profile?.tier === "lifetime" ||
+        (profile?.tier &&
+          ["monthly", "yearly"].includes(profile.tier) &&
+          profile.tier_expires_at &&
+          new Date(profile.tier_expires_at) > new Date())
+    );
+    const isPro = isSubActive || isTierActive;
     if (!isPro) {
-      throw new Error("An active Pro membership is required to unlock this template.");
+      throw new Error("Your Pro membership has concluded. You can purchase this template as a standalone commercial license.");
     }
 
     const isMonthly = sub?.plan_name?.toLowerCase().includes("monthly") || profile?.tier === "monthly";

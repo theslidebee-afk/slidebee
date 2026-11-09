@@ -15,7 +15,41 @@ function assert(condition: boolean, testName: string, detail: string) {
   }
 }
 
+function createMockDB() {
+  const store: Record<string, any> = {};
+  return {
+    prepare(query: string) {
+      return {
+        _params: [] as any[],
+        bind(...args: any[]) {
+          this._params = args;
+          return this;
+        },
+        async first() {
+          if (query.includes("trial_claims_ledger")) {
+            return store["trial_claims_ledger"] ? { value: store["trial_claims_ledger"] } : null;
+          }
+          if (query.includes("active_sessions_ledger")) {
+            return store["active_sessions_ledger"] ? { value: store["active_sessions_ledger"] } : null;
+          }
+          return null;
+        },
+        async run() {
+          if (query.includes("trial_claims_ledger")) {
+            store["trial_claims_ledger"] = this._params[0];
+          }
+          if (query.includes("active_sessions_ledger")) {
+            store["active_sessions_ledger"] = this._params[0];
+          }
+          return { success: true };
+        }
+      };
+    }
+  };
+}
+
 async function runSecurityTests() {
+  const mockEnv = { DB: createMockDB() };
   console.log("=== SLIDEBEE SECURITY: SINGLE ACTIVE SESSION & TRIAL ANTI-ABUSE TEST SUITE ===\n");
 
   // --- TEST 1: Disposable Email Detection ---
@@ -89,7 +123,7 @@ async function runSecurityTests() {
       deviceFingerprint: testFingerprint
     })
   });
-  const res1 = await handleTrialGuard({ request: req1, env: {} });
+  const res1 = await handleTrialGuard({ request: req1, env: mockEnv });
   const data1 = await res1.json();
 
   assert(
@@ -109,7 +143,7 @@ async function runSecurityTests() {
       deviceFingerprint: testFingerprint
     })
   });
-  const res2 = await handleTrialGuard({ request: req2, env: {} });
+  const res2 = await handleTrialGuard({ request: req2, env: mockEnv });
   const data2 = await res2.json();
 
   assert(
@@ -128,7 +162,7 @@ async function runSecurityTests() {
       deviceFingerprint: "new_fp_999"
     })
   });
-  const res3 = await handleTrialGuard({ request: req3, env: {} });
+  const res3 = await handleTrialGuard({ request: req3, env: mockEnv });
   const data3 = await res3.json();
 
   assert(
@@ -154,7 +188,7 @@ async function runSecurityTests() {
       deviceInfo: "Chrome on Mac"
     })
   });
-  const regResA = await handleSessionGuard({ request: regReqA, env: {} });
+  const regResA = await handleSessionGuard({ request: regReqA, env: mockEnv });
   const regDataA = await regResA.json();
   assert(regDataA.success === true, "Device A Session Registration", "Registered session for Device A (Chrome on Mac)");
 
@@ -168,7 +202,7 @@ async function runSecurityTests() {
       sessionId: sessionIdDeviceA
     })
   });
-  const verResA1 = await handleSessionGuard({ request: verReqA1, env: {} });
+  const verResA1 = await handleSessionGuard({ request: verReqA1, env: mockEnv });
   const verDataA1 = await verResA1.json();
   assert(verDataA1.valid === true, "Device A Session Verification (Before Displacement)", "Device A session is active and valid");
 
@@ -183,7 +217,7 @@ async function runSecurityTests() {
       deviceInfo: "Safari on iOS Device"
     })
   });
-  const regResB = await handleSessionGuard({ request: regReqB, env: {} });
+  const regResB = await handleSessionGuard({ request: regReqB, env: mockEnv });
   const regDataB = await regResB.json();
   assert(regDataB.success === true, "Device B Session Registration", "Device B logged in (Safari on iOS Device)");
 
@@ -197,7 +231,7 @@ async function runSecurityTests() {
       sessionId: sessionIdDeviceB
     })
   });
-  const verResB = await handleSessionGuard({ request: verReqB, env: {} });
+  const verResB = await handleSessionGuard({ request: verReqB, env: mockEnv });
   const verDataB = await verResB.json();
   assert(verDataB.valid === true, "Device B Active Session Verification", "Device B is now the sole active session");
 
@@ -211,7 +245,7 @@ async function runSecurityTests() {
       sessionId: sessionIdDeviceA
     })
   });
-  const verResA2 = await handleSessionGuard({ request: verReqA2, env: {} });
+  const verResA2 = await handleSessionGuard({ request: verReqA2, env: mockEnv });
   const verDataA2 = await verResA2.json();
   assert(
     verDataA2.valid === false && verDataA2.reason === "DISPLACED" && verDataA2.newDevice === "Safari on iOS Device",

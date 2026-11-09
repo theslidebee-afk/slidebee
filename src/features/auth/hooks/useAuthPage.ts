@@ -197,20 +197,24 @@ export function useAuthPage() {
   const isProExpired = Boolean(
     ledgerProExpired ||
       (userSubscription &&
-        userSubscription.current_period_end &&
-        new Date(userSubscription.current_period_end) <= new Date()) ||
+        (userSubscription.status === "expired" ||
+          userSubscription.status === "cancelled" ||
+          (userSubscription.current_period_end &&
+            new Date(userSubscription.current_period_end) <= new Date()))) ||
       (userProfile?.tier_expires_at &&
         userProfile?.tier !== "free" &&
+        userProfile?.tier !== "lifetime" &&
         new Date(userProfile.tier_expires_at) <= new Date())
   );
 
   const isProUser = Boolean(
-    isPro ||
-      ["monthly", "yearly", "lifetime"].includes(userTier) ||
-      ["monthly", "yearly", "lifetime"].includes(userProfile?.tier || "") ||
-      (userSubscription &&
-        (userSubscription.status === "active" || userSubscription.status === "trialing") &&
-        (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date()))
+    !isProExpired &&
+      (isPro ||
+        userTier !== "free" ||
+        userProfile?.tier === "lifetime" ||
+        (userSubscription &&
+          (userSubscription.status === "active" || userSubscription.status === "trialing") &&
+          (!userSubscription.current_period_end || new Date(userSubscription.current_period_end) > new Date())))
   );
 
   const proDaysRemaining =
