@@ -100,6 +100,7 @@ export function usePricing() {
 
     // 1. Create server-authoritative order with locked pricing and promotion binding
     let serverOrderId: string | undefined;
+    let serverKeyId: string | undefined;
     let checkoutAmount = baseAmount;
 
     try {
@@ -120,6 +121,7 @@ export function usePricing() {
         if (orderData.success && orderData.orderId) {
           serverOrderId = orderData.orderId;
           checkoutAmount = orderData.amount;
+          if (orderData.keyId) serverKeyId = orderData.keyId;
         }
       }
     } catch (orderErr) {
@@ -129,6 +131,7 @@ export function usePricing() {
     await openRazorpayCheckout({
       amount: checkoutAmount,
       orderId: serverOrderId,
+      keyId: serverKeyId,
       currency: currency === "USD" ? "USD" : "INR",
       title,
       description: desc,

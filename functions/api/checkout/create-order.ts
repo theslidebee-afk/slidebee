@@ -124,8 +124,19 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     const amountSubunits = Math.round(finalAmount * 100);
-    const rzpKeyId = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || "rzp_test_TZARWG8iLkM589";
-    const rzpSecret = env.RAZORPAY_KEY_SECRET;
+    const rzpKeyId =
+      env.RAZORPAY_KEY_ID ||
+      env.VITE_RAZORPAY_KEY_ID ||
+      (env as any).RAZORPAY_LIVE_KEY_ID ||
+      (env as any).RAZORPAY_LIVE_KEY ||
+      (env as any).RZP_KEY_ID ||
+      (env as any).RAZORPAY_KEY ||
+      "rzp_test_TZARWG8iLkM589";
+    const rzpSecret =
+      env.RAZORPAY_KEY_SECRET ||
+      (env as any).RAZORPAY_SECRET ||
+      (env as any).RZP_SECRET ||
+      (env as any).RAZORPAY_LIVE_SECRET;
 
     let orderId: string | null = null;
 
