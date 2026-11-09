@@ -3,7 +3,7 @@
 **Last Updated**: November 2026 (Active Dev Session)  
 **Branch**: `dev` (Production deployed via `main`)  
 **Deployment**: Cloudflare Pages Live (`https://theslidebee.com` / `https://dev.slidebee.pages.dev`)  
-**Build Status**: Passing (`npm run build` exits 0; 35/35 tests passing)
+**Build Status**: Passing (`npm run build` exits 0; 48/48 tests passing; 0 vulnerabilities)
 
 ---
 
@@ -122,10 +122,16 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **Ecommerce Contact Page Tailoring**: Updated `Contact.tsx` to dynamically adapt the hero section when `isEcommerce` is active (`?type=ecommerce` / `?service=ecommerce`), replacing presentation copy with an ecommerce store development headline, subheadline, and engineering intake badge.
 - **Category-Aware Similar Presentation Recommendations**: Upgraded `useTemplateData.ts` to query recommendations matching the current template's category, with intelligent backfill from the storefront catalog to guarantee 4 recommendations are always displayed.
 - **Google Sign-In Provider Recognition & Industry Standard Guidance**: Hardened `functions/api/auth/login.ts` and `functions/api/auth/signup.ts` to detect accounts created via Google OAuth. When a user attempts password login on a Google-linked account, the system displays a clear, industry-standard message: "This account is linked with Google Sign-In. Please click 'Continue with Google' to sign in, or click 'Forgot Password' below to set an email password."
-- **Sandbox Compliance Gateway Notice & Production Launch**:
-  - Built pre-checkout modal notice in `src/lib/razorpay.ts` that warns customers when the payment gateway is undergoing merchant compliance review in sandbox mode (`key.startsWith("rzp_test_")`), preventing accidental submissions of real credit card numbers while providing Razorpay compliance reviewers an explicit button to test the checkout flow.
-  - Merged `dev` cleanly into `main` and pushed to `origin/main`, taking the full SlideBee platform (15+ real presentation decks, bespoke services configurator, pricing plans, and all mandatory policy routes: `/privacy`, `/terms`, `/refund-policy`, `/shipping-policy`, `/contact`) live on `https://theslidebee.com` to satisfy Razorpay BMC requirements.
-  - Test suite passing 100% (35/35 tests) and build passing cleanly.
+- **Sandbox Popup Retirement & Live Payment Gateway Activation**:
+  - Removed the pre-checkout sandbox review modal from `src/lib/razorpay.ts` upon user transition to live Razorpay credentials (`rzp_live_...`). Standard checkout now opens directly with clean presentation descriptions and authentic pricing.
+- **Standalone Template Purchase Unlocking for Concluded/Expired Pro Memberships**:
+  - Resolved bug where users with expired/concluded Monthly Pro plans were incorrectly detected as active Pro members with exhausted quotas, displaying "quota is done" and blocking single template purchases.
+  - Hardened `isProExpired` and `isPro` evaluations across `useClientLedger.ts`, `useAuthPage.ts`, `useTemplateData.ts`, `TemplateDetail.tsx`, and `proRedemptionHelper.ts` to verify subscription expiration dates (`current_period_end` and `tier_expires_at`).
+  - When Pro membership concludes, users cleanly default to standard commercial purchasing with coupon support and transparent renewal banners.
+  - Active Pro members also receive a direct option to purchase a standalone commercial license without consuming their monthly quota.
+- **Security Audit & Automated Test Hardening (48/48 Passing, 0 CVEs)**:
+  - Upgraded Vite to `8.3.7` via `npm audit fix`, resolving all 5 CVE advisories and achieving 0 vulnerabilities across all dependencies.
+  - Linked `tests/security_session_trial.test.ts` into authoritative CI test runner in `package.json`, verifying 48/48 checks across all 3 security test suites (PBKDF2 cryptographic hashing, anti-SQLi whitelisting, RBAC privilege separation, R2 paywall download protections, HMAC-SHA256 signature validation, disposable email blocklisting, device hardware fingerprint sybil defense, and single active session displacement).
 
 ## 4. Not-Started / Future Considerations
 - Multi-item shopping cart (currently single-item direct checkout).
