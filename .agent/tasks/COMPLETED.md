@@ -116,5 +116,18 @@
   7. Decommissioned 29 unreachable dead code files (3D honeycomb assets, superseded redirect pages, and orphaned UI widgets) and uninstalled `"three"` from `package.json`, saving ~55MB in `node_modules` while keeping `WhatsAppLeadWidget.tsx` pinned for future refinement.
 - **Verification**: `npm run build` builds in 2.27s with exit code 0; `npm test` passes 34/34 tests; verified zero unicode emojis across all files.
 
+---
+
+## TASK-016: Single-Use Browser Download Tokens & Secure Server-Side Post-Purchase Fulfillment
+- **Completed**: November 2026
+- **Summary**:
+  1. Zero Storage URL Exposure: Stripped internal Cloudflare R2 bucket URLs (`pub-*.r2.dev`) from fulfillment API responses (`/api/fulfill-order`) and client-side code; all deliverable streaming is conducted via `/api/download` proxy using internal worker bindings with strict attachment headers.
+  2. Single-Use Browser Download Token: Created D1 table `single_use_download_tokens` (migration `0005_single_use_download_tokens.sql`). When payment is fulfilled in `/api/fulfill-order`, a cryptographically random, 15-minute single-use token (`sdt_...`) is generated. The browser downloads the PPTX once at checkout; `/api/download` atomically consumes the token (`is_consumed = 1, consumed_at = datetime('now')`). Replay attacks, refreshes, or secondary downloads immediately return HTTP 410 Gone.
+  3. Authoritative Server-Side Receipt Emails: Moved transactional email dispatch into `/api/fulfill-order.ts` using Resend (`env.RESEND_API_KEY`). Emails strictly contain payment breakdowns, order references, commercial licenses, and the official single-browser delivery notice with zero raw download links.
+  4. Preserved Single-Browser Delivery Policy: Maintained disabled re-downloads in `DashboardPurchasedTab.tsx` for standalone one-time purchases, reminding users that deliverables are streamed directly to the browser at checkout.
+  5. Automated Security Test Suite: Added `tests/security_single_use_download.test.ts` testing issuance, atomic consumption, replay defense, TTL expiration, and zero storage leakage.
+- **Verification**: `npm test` runs 52/52 passing security tests; `npm run build` exits 0; remote D1 migration executed.
+
+
 
 
