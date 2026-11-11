@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "npx --yes tsx tests/security_vibe_audit.test.ts && npx --yes tsx tests/promotions_security.test.ts && npx --yes tsx tests/security_session_trial.test.ts && npx --yes tsx tests/security_single_use_download.test.ts",
+    "test:regression": "npx --yes tsx tests/regression/run_all_regression.ts",
+    "test:e2e": "npx --yes tsx tests/regression/06_e2e_browser_smoke.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
