@@ -112,6 +112,12 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
   - Enforced per-user promotion limits: Bound authenticated client email to `Pricing.tsx` coupon drawer; verified case-insensitive `max_redemptions_per_user` enforcement across D1, blocking duplicate redemptions with `USER_LIMIT_REACHED`.
   - 100% test coverage with 34/34 passing security and integration tests (`npm test`).
 
+- **Single-Use Browser Download Tokens & Secure Server-Side Post-Purchase Fulfillment**:
+  - Zero Storage URL Exposure: Entirely removed internal Cloudflare R2 bucket URLs (`pub-*.r2.dev`) from fulfillment API responses (`/api/fulfill-order`) and client-side code; all deliverable streaming is conducted via `/api/download` proxy using internal worker bindings with strict attachment headers.
+  - Single-Use Browser Download Token: Created D1 table `single_use_download_tokens` (migration `0005_single_use_download_tokens.sql`). When payment is fulfilled in `/api/fulfill-order`, a cryptographically random, 15-minute single-use token (`sdt_...`) is generated. The browser downloads the PPTX once at checkout; `/api/download` atomically consumes the token (`is_consumed = 1, consumed_at = datetime('now')`). Replay attacks, refreshes, or secondary downloads immediately return HTTP 410 Gone.
+  - Authoritative Server-Side Receipt Emails: Moved transactional email dispatch into `/api/fulfill-order.ts` using Resend (`env.RESEND_API_KEY`). Emails strictly contain payment breakdowns, order references, commercial licenses, and the official single-browser delivery notice with zero raw download links.
+  - Preserved Single-Browser Delivery Policy: Maintained disabled re-downloads in `DashboardPurchasedTab.tsx` for standalone one-time purchases, reminding users that deliverables are streamed directly to the browser at checkout. Added automated security test suite `tests/security_single_use_download.test.ts`. All 52 platform security tests passing.
+
 ## 3. In-Progress Features
 - **All Core Sprint Tasks Verified & Clean**: Zero pending blockers. Ready for production verification.
 
