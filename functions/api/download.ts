@@ -97,6 +97,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
     // 2. Entitlement verification for premium templates
     const isFreeTier = template.is_premium === 0 || template.is_premium === false;
+    let authenticatedUserEmail = "";
+    let isSingleUsePurchase = false;
 
     if (!isFreeTier) {
       const authHeader = request.headers.get("Authorization");
@@ -107,19 +109,73 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
       let isEntitled = false;
 
+      // Check cryptographic single-use download token first (for one-time browser checkout download)
+      if (token && token.startsWith("sdt_")) {
+        const tokenRecord: any = await env.DB.prepare(
+          `SELECT * FROM single_use_download_tokens WHERE token = ?`
+        ).bind(token).first();
+
+        if (tokenRecord) {
+          const isExpired = new Date(tokenRecord.expires_at) < new Date();
+          if (tokenRecord.is_consumed === 1 || isExpired) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: "This single-use download session has already been completed or has expired. In accordance with SlideBee digital asset security policies, presentation decks can only be downloaded once within the browser upon checkout.",
+              }),
+              { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          const tokenMatchesTemplate =
+            tokenRecord.template_id === template.id ||
+            tokenRecord.template_id === template.code ||
+            tokenRecord.template_id === template.slug;
+
+          if (!tokenMatchesTemplate) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: "Download token is not valid for this presentation deck.",
+              }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          // Atomic consumption to prevent concurrent replays
+          const updateRes = await env.DB.prepare(
+            `UPDATE single_use_download_tokens SET is_consumed = 1, consumed_at = datetime('now') WHERE token = ? AND is_consumed = 0`
+          ).bind(token).run();
+
+          if (!updateRes.success && updateRes.changes === 0) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: "This single-use download session has already been completed.",
+              }),
+              { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          isEntitled = true;
+          isSingleUsePurchase = true;
+          authenticatedUserEmail = tokenRecord.client_email;
+        }
+      }
+
       // Check admin privilege
-      if (
-        (env as any)?.SLIDEBEE_ADMIN_SECRET &&
-        (token === (env as any).SLIDEBEE_ADMIN_SECRET || adminKey === (env as any).SLIDEBEE_ADMIN_SECRET)
-      ) {
+      if (!isEntitled && (env as any)?.SLIDEBEE_ADMIN_SECRET && (token === (env as any).SLIDEBEE_ADMIN_SECRET || adminKey === (env as any).SLIDEBEE_ADMIN_SECRET)) {
         isEntitled = true;
-      } else if (token) {
+        authenticatedUserEmail = "admin@theslidebee.com";
+      } else if (!isEntitled && token) {
         const session: any = await env.DB.prepare(
           `SELECT email, role FROM sessions WHERE id = ? AND expires_at > datetime('now')`
         ).bind(token).first();
 
         if (session) {
           const sessionEmail = String(session.email || "").toLowerCase().trim();
+          authenticatedUserEmail = sessionEmail;
+
           if (
             session.role === "admin" ||
             session.role === "super_admin" ||
@@ -140,31 +196,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
               if (isProActive) {
                 isEntitled = true;
-              } else {
-                // 2. Purchased item check
-                try {
-                  const purchased = JSON.parse(profile.purchased_items || "[]");
-                  const hasPurchased = purchased.some(
-                    (p: any) =>
-                      p.id === template.id ||
-                      p.code === template.code ||
-                      p.slug === template.slug
-                  );
-                  if (hasPurchased) {
-                    isEntitled = true;
-                  }
-                } catch {}
-
-                // 3. Orders table fallback check
-                if (!isEntitled) {
-                  const completedOrder: any = await env.DB.prepare(
-                    `SELECT id FROM orders WHERE email = ? AND (project_brief LIKE ? OR service_type LIKE ?) AND status = 'completed'`
-                  ).bind(sessionEmail, `%${template.code || template.id}%`, `%${template.title}%`).first();
-
-                  if (completedOrder) {
-                    isEntitled = true;
-                  }
-                }
               }
             }
           }
@@ -177,11 +208,32 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
             success: false,
             error: token
               ? "Access denied. Active Pro subscription or individual purchase required to download this master presentation."
-              : "Authentication and active license required to download this master presentation. Please sign in with an account that has acquired this template or holds an active Pro subscription.",
+              : "Authentication and active license required to download this master presentation. Please sign in with an account that holds an active Pro subscription or complete checkout.",
           }),
           { status: token ? 403 : 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // Log download event in D1
+    try {
+      const clientIp = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
+      const userAgent = request.headers.get("User-Agent") || "Unknown";
+      await env.DB.prepare(
+        `INSERT INTO download_logs (id, user_email, template_id, template_title, tier, is_premium, ip_address, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        crypto.randomUUID(),
+        authenticatedUserEmail || "guest",
+        template.id,
+        template.title,
+        isSingleUsePurchase ? "standalone_purchase" : "license",
+        template.is_premium ? 1 : 0,
+        clientIp,
+        userAgent
+      ).run();
+    } catch (logErr) {
+      console.warn("Download log notice:", logErr);
     }
 
     const r2Key = extractR2Key(template.download_url, template.file_name);

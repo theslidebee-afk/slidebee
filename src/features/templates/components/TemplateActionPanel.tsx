@@ -12,7 +12,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { StoreTemplate } from "../../../modules/StudioStoreClient";
-import { getTemplateDeliverableUrl } from "../../../lib/templates";
 import { usePromotion } from "../../promotions/usePromotion";
 import { CouponInputBox } from "../../promotions/components/CouponInputBox";
 
@@ -286,19 +285,22 @@ export function TemplateActionPanel({
               </div>
 
               {(() => {
-                const hasDeliverable = Boolean(deliverableUrl || getTemplateDeliverableUrl(template));
-                const secureDownloadHref = `/api/download?id=${encodeURIComponent(template.id || template.code)}`;
-                return hasDeliverable ? (
-                  <a
-                    href={secureDownloadHref}
-                    download={template.file_name || `${template.code}_Master.pptx`}
-                    className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
-                  >
-                    <Download size={14} /> Download Master PowerPoint (.pptx)
-                  </a>
+                return deliverableUrl ? (
+                  <div className="space-y-2">
+                    <a
+                      href={deliverableUrl}
+                      download={template.file_name || `${template.code}_Master.pptx`}
+                      className="hex-pill w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer text-center"
+                    >
+                      <Download size={14} /> Download Master PowerPoint (.pptx)
+                    </a>
+                    <p className="text-[10px] text-center text-emerald-800 font-medium">
+                      Single-use browser download session. Please save the presentation to your local device.
+                    </p>
+                  </div>
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl font-bold text-center">
-                    Master PowerPoint deck (.pptx) is being provisioned by the studio.
+                    Master PowerPoint deck (.pptx) was delivered to your browser at checkout.
                   </div>
                 );
               })()}

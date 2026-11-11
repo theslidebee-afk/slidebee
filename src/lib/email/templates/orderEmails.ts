@@ -428,13 +428,13 @@ export async function sendTemplatePurchaseReceiptEmail({
         <div style="background-color: #F8F9FA; border-left: 4px solid #111111; padding: 14px 18px; border-radius: 6px; margin: 20px 0;">
           <p style="font-size: 13px; font-weight: 800; color: #111111; margin: 0 0 4px 0;">SINGLE-BROWSER DELIVERY NOTICE</p>
           <p style="font-size: 12px; color: #555555; line-height: 1.6; margin: 0;">
-            Your Master PowerPoint (.pptx) file was streamed directly to your browser upon checkout. In accordance with SlideBee digital rights protection, raw download links are not distributed via email. Please ensure your downloaded deck is stored safely on your local drive.
+            Your Master PowerPoint (.pptx) file was streamed directly to your browser upon checkout. In accordance with SlideBee digital asset security policies, raw download links are not distributed via email. Please ensure your downloaded deck is stored safely on your local drive.
           </p>
         </div>
 
         <p style="font-size: 12px; color: #726F6D; line-height: 1.6; text-align: center;">
           Need help customizing or want our designers to tailor this deck to your branding?<br/>
-          Reply to this email or submit a redesign brief on <a href="https://theslidebee.com/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
+          Reply directly to this email or submit a redesign brief on <a href="https://theslidebee.com/ordernow" style="color: #936610; font-weight: bold;">theslidebee.com/ordernow</a>.
         </p>
       </div>
 
@@ -449,7 +449,7 @@ export async function sendTemplatePurchaseReceiptEmail({
     fromEmail: 'design@theslidebee.com',
     fromName: 'SlideBee Design Studio',
     replyTo: 'design@theslidebee.com',
-    subject: `Your Master Presentation Files: ${safeTemplateTitle} (${safeTemplateCode}) — SlideBee`,
+    subject: `Payment Receipt: ${safeTemplateTitle} (${safeTemplateCode}) — SlideBee`,
     html,
   });
 }
