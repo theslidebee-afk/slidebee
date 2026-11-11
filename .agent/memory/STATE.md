@@ -132,6 +132,10 @@ The entire platform runs 100% serverless on Cloudflare Edge (Cloudflare D1 SQLit
 - **Security Audit & Automated Test Hardening (48/48 Passing, 0 CVEs)**:
   - Upgraded Vite to `8.3.7` via `npm audit fix`, resolving all 5 CVE advisories and achieving 0 vulnerabilities across all dependencies.
   - Linked `tests/security_session_trial.test.ts` into authoritative CI test runner in `package.json`, verifying 48/48 checks across all 3 security test suites (PBKDF2 cryptographic hashing, anti-SQLi whitelisting, RBAC privilege separation, R2 paywall download protections, HMAC-SHA256 signature validation, disposable email blocklisting, device hardware fingerprint sybil defense, and single active session displacement).
+- **Persistent Blog Article Deletion & Resurrection Prevention**:
+  - Diagnosed and resolved the issue where blog articles could not be permanently deleted.
+  - Root cause: `CmsBlogPanel.tsx`, `Blog.tsx`, and `BlogDetail.tsx` contained logic that re-computed "missing" default articles on every load (`allDefaultBlogArticles.filter((d) => !cmsIds.has(d.id))`), resurrecting any deleted master article right back into state and saving them back to D1. Furthermore, the delete action was only updating in-memory React state rather than immediately persisting to the database.
+  - Removed the automatic default-merging resurrection logic across all three files, added an executive `<AnimatePresence>` delete confirmation modal with title, category, and ID preview, and wired `handleDeleteArticle` to automatically save the updated article list directly to Cloudflare D1 immediately. Added a "Delete Article" button inside the expanded editor as well.
 
 ## 4. Not-Started / Future Considerations
 - Multi-item shopping cart (currently single-item direct checkout).
