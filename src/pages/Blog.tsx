@@ -211,9 +211,7 @@ export default function Blog() {
           }
 
           if (cmsArticles.length > 0) {
-            const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
-            const unaddedDefaults = initialBlogArticles.filter((def) => !cmsIds.has(String(def.id)));
-            setBlogs([...cmsArticles, ...unaddedDefaults]);
+            setBlogs(cmsArticles);
           }
         }
       } catch (err) {
