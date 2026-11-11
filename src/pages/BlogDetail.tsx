@@ -103,17 +103,12 @@ export default function BlogDetail() {
         let loadedSettings: BlogGlobalSettings = DEFAULT_BLOG_SETTINGS;
 
         if (data?.value) {
-          if (Array.isArray(data.value)) {
+          if (Array.isArray(data.value) && data.value.length > 0) {
             // Backward-compatible array of articles
-            const cmsIds = new Set(data.value.map((a: any) => String(a.id)));
-            const missing = allDefaultBlogArticles.filter((d) => !cmsIds.has(String(d.id)));
-            loadedArticles = [...data.value, ...missing];
-          } else if (typeof data.value === "object" && data.value.articles) {
+            loadedArticles = data.value;
+          } else if (typeof data.value === "object" && Array.isArray(data.value.articles) && data.value.articles.length > 0) {
             // New schema with settings and articles
-            const cmsArticles = Array.isArray(data.value.articles) ? data.value.articles : [];
-            const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
-            const missing = allDefaultBlogArticles.filter((d) => !cmsIds.has(String(d.id)));
-            loadedArticles = [...cmsArticles, ...missing];
+            loadedArticles = data.value.articles;
             if (data.value.settings) {
               loadedSettings = { ...DEFAULT_BLOG_SETTINGS, ...data.value.settings };
             }

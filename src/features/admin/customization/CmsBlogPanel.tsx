@@ -15,7 +15,8 @@ import {
   Copy,
   Sparkles,
   User,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from "lucide-react";
 import { useAdmin } from "../context/AdminContext";
 import { uploadToR2 } from "../../../lib/r2";
@@ -35,6 +36,8 @@ export const CmsBlogPanel: React.FC = () => {
   const [previewModeId, setPreviewModeId] = useState<string | null>(null);
   const [uploadingIdx, setUploadingIdx] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [articleToDelete, setArticleToDelete] = useState<BlogArticle | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Parse state from siteConfigs["blog_cms"]
   const getInitialState = (): { articles: BlogArticle[]; settings: BlogGlobalSettings } => {
@@ -45,15 +48,10 @@ export const CmsBlogPanel: React.FC = () => {
     if (raw) {
       if (Array.isArray(raw)) {
         // Legacy array of articles
-        const cmsIds = new Set(raw.map((a: any) => String(a.id)));
-        const missing = allDefaultBlogArticles.filter((d) => !cmsIds.has(String(d.id)));
-        articles = [...raw, ...missing];
-      } else if (typeof raw === "object" && raw.articles) {
-        // Modern schema
-        const cmsArticles = Array.isArray(raw.articles) ? raw.articles : [];
-        const cmsIds = new Set(cmsArticles.map((a: any) => String(a.id)));
-        const missing = allDefaultBlogArticles.filter((d) => !cmsIds.has(String(d.id)));
-        articles = [...cmsArticles, ...missing];
+        articles = raw;
+      } else if (typeof raw === "object" && Array.isArray(raw.articles)) {
+        // Modern schema: trust configured articles completely
+        articles = raw.articles;
         if (raw.settings) {
           settings = { ...DEFAULT_BLOG_SETTINGS, ...raw.settings };
         }
@@ -64,6 +62,30 @@ export const CmsBlogPanel: React.FC = () => {
   };
 
   const { articles, settings } = getInitialState();
+
+  const handleDeleteArticle = async (targetArticle: BlogArticle) => {
+    setIsDeleting(true);
+    try {
+      const updated = articles.filter((a) => String(a.id) !== String(targetArticle.id));
+      const payload = {
+        articles: updated,
+        settings,
+      };
+      setSiteConfigs({
+        ...siteConfigs,
+        blog_cms: payload,
+      });
+      await handleSaveConfig("blog_cms", payload);
+      setArticleToDelete(null);
+      if (expandedArticleId === String(targetArticle.id)) {
+        setExpandedArticleId(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete article:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const updateArticles = (newArticles: BlogArticle[]) => {
     setSiteConfigs({
@@ -333,12 +355,7 @@ export const CmsBlogPanel: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm(`Delete article "${art.title}"?`)) {
-                            const updated = articles.filter((a) => String(a.id) !== String(art.id));
-                            updateArticles(updated);
-                          }
-                        }}
+                        onClick={() => setArticleToDelete(art)}
                         className="text-red-600 hover:text-red-800 p-1.5 text-xs font-bold flex items-center cursor-pointer"
                         title="Delete Article"
                       >
@@ -851,6 +868,25 @@ export const CmsBlogPanel: React.FC = () => {
                         )}
                       </div>
 
+                      {/* Expanded Editor Action Bar */}
+                      <div className="flex items-center justify-between pt-4 border-t border-[#111111]/10">
+                        <button
+                          type="button"
+                          onClick={() => setArticleToDelete(art)}
+                          className="hex-pill bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3.5 py-2 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Trash2 size={13} /> Delete Article
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedArticleId(null)}
+                          className="hex-pill bg-white hover:bg-black/5 text-[#111111] border border-[#111111]/15 font-bold px-4 py-2 text-xs cursor-pointer"
+                        >
+                          Done Editing
+                        </button>
+                      </div>
+
                     </div>
                   )}
                 </div>
@@ -1058,6 +1094,64 @@ export const CmsBlogPanel: React.FC = () => {
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Delete Article Confirmation Modal */}
+      {articleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border-2 border-red-500/40 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#111111]/10">
+              <div className="flex items-center gap-2 text-red-600">
+                <Trash2 size={18} />
+                <h4 className="font-heading font-extrabold text-sm text-[#111111]">
+                  Delete Blog Article
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setArticleToDelete(null)}
+                disabled={isDeleting}
+                className="text-[#726F6D] hover:text-[#111111] p-1 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs text-[#726F6D] leading-relaxed">
+                Are you sure you want to permanently delete this article? It will be removed from your public Playbook archive and CMS.
+              </p>
+              <div className="p-3 bg-[#FFF9E8] rounded-xl border border-primary/20 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary-amber block">
+                  {articleToDelete.category}
+                </span>
+                <p className="text-xs font-bold text-[#111111] line-clamp-2">
+                  {articleToDelete.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setArticleToDelete(null)}
+                disabled={isDeleting}
+                className="hex-pill px-4 py-2 text-xs font-bold bg-white border border-[#111111]/15 text-[#111111] hover:bg-black/5 cursor-pointer disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteArticle(articleToDelete)}
+                disabled={isDeleting}
+                className="hex-pill px-5 py-2 text-xs font-black bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-60"
+              >
+                <Trash2 size={13} />
+                {isDeleting ? "Deleting..." : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
