@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { openRazorpayCheckout } from "../../lib/razorpay";
-import { sendTemplatePurchaseReceiptEmail } from "../../lib/email";
-import { d1 } from "../../lib/d1";
 import { type StoreTemplate } from "./useStudioStore";
 import { redeemProTemplateDownload } from "./proRedemptionHelper";
 import { getTemplateDeliverableUrl, triggerPptxDownload, isValidPptxUrl } from "../../lib/templates";
@@ -158,72 +156,51 @@ export function useTemplateCheckout() {
         setPurchasedClientEmail(clientEmail);
 
         const orderRef = `TPL-${template.code}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-        let pptxUrl = getTemplateDeliverableUrl(template) || "";
+        let downloadToken = "";
         let fileName = template.file_name || `${template.code}_Master.pptx`;
 
         try {
-          let fulfilled = false;
+          const apiRes = await fetch("/api/fulfill-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderRef,
+              paymentId: payment.razorpay_payment_id,
+              orderId: payment.razorpay_order_id || serverOrderId,
+              signature: payment.razorpay_signature,
+              promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
+              templateId: template.id,
+              clientEmail,
+              clientName,
+              currency,
+              amount: priceNum,
+            }),
+          });
 
-          try {
-            const apiRes = await fetch("/api/fulfill-order", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                orderRef,
-                paymentId: payment.razorpay_payment_id,
-                orderId: payment.razorpay_order_id || serverOrderId,
-                signature: payment.razorpay_signature,
-                promotionCode: promotionCode ? promotionCode.trim().toUpperCase() : undefined,
-                templateId: template.id,
-                clientEmail,
-                clientName,
-                currency,
-                amount: priceNum,
-              }),
-            });
-
-            if (apiRes.ok) {
-              const apiData = await apiRes.json();
-              if (apiData?.success && apiData.download_url) {
-                pptxUrl = apiData.download_url;
-                if (apiData.file_name) fileName = apiData.file_name;
-                fulfilled = true;
-              }
-            }
-          } catch (apiErr) {
-            console.warn("Backend order fulfillment notice, falling back to direct RPC:", apiErr);
-          }
-
-          if (!fulfilled) {
-            const { data: fulfillData, error: fulfillErr } = await d1.rpc("fn_fulfill_template_order", {
-              p_order_ref: orderRef,
-              p_payment_id: payment.razorpay_payment_id,
-              p_template_id: template.id,
-              p_client_email: clientEmail,
-              p_client_name: clientName,
-              p_currency: currency,
-              p_amount: priceNum
-            });
-
-            if (fulfillData?.success && fulfillData.download_url) {
-              pptxUrl = fulfillData.download_url;
-              if (fulfillData.file_name) fileName = fulfillData.file_name;
-            } else if (fulfillErr) {
-              console.warn("Fulfillment RPC notice:", fulfillErr);
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            if (apiData?.success && apiData.download_token) {
+              downloadToken = apiData.download_token;
+              if (apiData.file_name) fileName = apiData.file_name;
             }
           }
-        } catch (e) {
-          console.warn("Order fulfillment exception:", e);
+        } catch (apiErr) {
+          console.warn("Backend order fulfillment notice:", apiErr);
         }
 
-        setDeliverableUrl(pptxUrl);
+        // Secure download endpoint using single-use token (zero storage URL exposure)
+        const downloadEndpoint = downloadToken
+          ? `/api/download?id=${encodeURIComponent(template.id || template.code)}&token=${encodeURIComponent(downloadToken)}`
+          : null;
 
-        if (typeof window !== "undefined" && pptxUrl) {
+        setDeliverableUrl(downloadEndpoint);
+
+        // Auto-trigger browser download once using the single-use token
+        if (typeof window !== "undefined" && downloadEndpoint) {
           try {
             const dlLink = document.createElement("a");
-            dlLink.href = `/api/download?id=${encodeURIComponent(template.id || template.code)}`;
+            dlLink.href = downloadEndpoint;
             dlLink.download = fileName;
-            dlLink.target = "_blank";
             document.body.appendChild(dlLink);
             dlLink.click();
             document.body.removeChild(dlLink);
@@ -231,16 +208,6 @@ export function useTemplateCheckout() {
             console.warn("Auto-download notice:", dlErr);
           }
         }
-
-        sendTemplatePurchaseReceiptEmail({
-          clientEmail,
-          clientName,
-          templateTitle: template.title,
-          templateCode: template.code,
-          downloadUrl: pptxUrl.startsWith("http") ? pptxUrl : `https://theslidebee.com${pptxUrl}`,
-          amountPaid: priceNum,
-          currency
-        }).catch(err => console.warn("Receipt email notice:", err));
       },
       onFailure: (err) => {
         setIsProcessing(false);
